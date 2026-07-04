@@ -61,12 +61,16 @@ import {
   isBktConfident,
   ROTATION_MULTIPLIERS,
 } from '@/lib/curriculum/config'
-import type { ProblemResultWithContext } from '@/lib/curriculum/server'
+import type { PaceAssessment, ProblemResultWithContext } from '@/lib/curriculum/server'
 import {
   assessSkillReadiness,
   type SkillReadinessDimensions,
 } from '@/lib/curriculum/skill-readiness'
 import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
+import {
+  classifyAttemptTiming,
+  getEffectiveResponseTimeMs,
+} from '@/lib/curriculum/timing/effective-time'
 import { api } from '@/lib/queryClient'
 import { curriculumKeys, playerKeys, sessionHistoryKeys } from '@/lib/queryKeys'
 import { GuestProgressBanner } from '@/components/GuestProgressBanner'
@@ -106,6 +110,8 @@ interface DashboardClientProps {
   activeSession: SessionPlan | null
   currentPracticingSkillIds: string[]
   problemHistory: ProblemResultWithContext[]
+  /** Robust, outlier-aware pace estimate — single producer (#157). */
+  paceAssessment: PaceAssessment
   initialTab?: TabId
   /** Database user ID for session observation authorization */
   userId: string
@@ -382,8 +388,12 @@ function processSkills(
       if (problem.isCorrect) {
         stats.correct++
       }
-      if (problem.responseTimeMs > 0) {
-        stats.responseTimes.push(problem.responseTimeMs)
+      // Use the shared effective-time helper and exclude Tier-1 (auto-quarantined,
+      // provably broken) samples so a single poisoned timing (e.g. an 8h idle
+      // measurement) can't distort the per-skill average speed (#157).
+      const effectiveMs = getEffectiveResponseTimeMs(problem)
+      if (effectiveMs != null && classifyAttemptTiming(problem).tier !== 'tier1') {
+        stats.responseTimes.push(effectiveMs)
       }
     }
   }
@@ -3325,6 +3335,7 @@ export function DashboardClient({
   activeSession: initialActiveSession,
   currentPracticingSkillIds,
   problemHistory,
+  paceAssessment: paceAssessmentProp,
   initialTab = 'overview',
   userId,
   initialSessionMode,
@@ -3355,12 +3366,20 @@ export function DashboardClient({
       if (!response.ok) throw new Error('Failed to fetch curriculum')
       return response.json()
     },
-    initialData: { skills },
+    // Seed with the SSR props so there's no layout shift on mount; the curriculum
+    // GET embeds `paceAssessment` (#157), so a mutation that invalidates this key
+    // refreshes both skills AND the pace estimate / TimingDataNotice live.
+    initialData: { skills, paceAssessment: paceAssessmentProp },
     staleTime: 0, // Always refetch when invalidated
   })
 
   // Use skills from React Query cache (falls back to SSR prop structure)
   const liveSkills: PlayerSkillMastery[] = skillsQueryData?.skills ?? skills
+
+  // Read the pace assessment from the SAME live query so #158 timing repairs
+  // (which invalidate curriculumKeys.detail) visibly recover the estimate here.
+  // SSR prop is the placeholder/fallback to avoid a flash of empty state.
+  const paceAssessment: PaceAssessment = skillsQueryData?.paceAssessment ?? paceAssessmentProp
 
   // React Query mutations
   const setSkillLevelsMutation = useSetSkillLevels()
@@ -3554,15 +3573,10 @@ export function DashboardClient({
     }
   }, [activeSession, livePracticingSkillIds, bktResultsMap])
 
-  // Calculate avg seconds per problem (clamped to MIN_SECONDS_PER_PROBLEM to prevent excessive estimates)
-  const avgSecondsPerProblem = (() => {
-    if (recentSessions.length === 0) return 40
-    const totalTime = recentSessions.reduce((sum, s) => sum + (s.totalTimeMs || 0), 0)
-    const totalProblems = recentSessions.reduce((sum, s) => sum + s.problemsAttempted, 0)
-    if (totalProblems === 0) return 40
-    const calculated = Math.round(totalTime / 1000 / totalProblems)
-    return Math.max(10, calculated) // MIN_SECONDS_PER_PROBLEM = 10
-  })()
+  // Robust, outlier-aware pace estimate from the single producer (#157) — replaces
+  // the old poisoned raw-mean over recentSessions.totalTimeMs. Already excludes
+  // Tier-1 samples, winsorizes Tier-2, and clamps to the sanity band.
+  const avgSecondsPerProblem = paceAssessment.avgSecondsPerProblem
 
   // Handlers
   const handleStartPractice = useCallback(() => {
@@ -3727,6 +3741,7 @@ export function DashboardClient({
               comfortLevel={comfortLevel}
               comfortByMode={comfortByMode}
               avgSecondsPerProblem={avgSecondsPerProblem}
+              paceAssessment={paceAssessment}
               existingPlan={activeSession}
               startFresh={startFresh}
               problemHistory={problemHistory}

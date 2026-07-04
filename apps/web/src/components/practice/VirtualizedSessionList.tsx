@@ -280,6 +280,18 @@ function SessionItem({
   const durationMinutes = Math.round((session.totalTimeMs || 0) / 60000)
   const isOfflineSession = session.problemsAttempted === 0
 
+  // De-poisoned "active" duration (#157): Σ effective time over non-Tier-1 samples.
+  // Shown alongside the raw duration only when the two differ materially — i.e. a
+  // broken/idle timing inflated the raw total — so the timeline makes the
+  // distortion visible without adding noise to clean sessions.
+  const cleanMinutes =
+    session.cleanTotalTimeMs != null ? Math.round(session.cleanTotalTimeMs / 60000) : null
+  const showCleanActive =
+    !isOfflineSession &&
+    cleanMinutes != null &&
+    (session.timedProblemCount ?? 0) > 0 &&
+    Math.abs(cleanMinutes - durationMinutes) >= 1
+
   return (
     <div
       data-element="session-history-item"
@@ -344,6 +356,13 @@ function SessionItem({
           ) : (
             <StatItem isDark={isDark}>{durationMinutes} min</StatItem>
           )}
+          {showCleanActive && (
+            <span data-element="clean-active-duration" data-clean-minutes={cleanMinutes}>
+              <StatItem isDark={isDark} highlight>
+                {cleanMinutes} min active
+              </StatItem>
+            </span>
+          )}
         </StatsRow>
       </Link>
 
@@ -379,6 +398,38 @@ function SessionItem({
           <span>📷</span>
           <span>{photoCount}</span>
         </button>
+      )}
+
+      {/* Timing-review affordance (#158): timings that still NEED review.
+          Resolution-aware (`unresolvedTimingCount`) so the badge disappears once
+          every flag is omitted/adjusted/confirmed — not the raw Tier-1 count. */}
+      {(session.unresolvedTimingCount ?? 0) > 0 && (
+        <Link
+          href={`/practice/${studentId}/review-timings?session=${session.id}`}
+          data-component="timing-review-link"
+          data-action="open-timing-review"
+          onClick={(e) => e.stopPropagation()}
+          className={css({
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            px: 2,
+            py: 1,
+            bg: isDark ? 'amber.900' : 'amber.100',
+            color: isDark ? 'amber.200' : 'amber.800',
+            borderRadius: 'md',
+            fontSize: 'sm',
+            fontWeight: 'medium',
+            textDecoration: 'none',
+            transition: 'all 0.15s',
+            alignSelf: 'center',
+            whiteSpace: 'nowrap',
+            _hover: { bg: isDark ? 'amber.800' : 'amber.200' },
+          })}
+        >
+          <span>⚠️</span>
+          <span>{session.unresolvedTimingCount}</span>
+        </Link>
       )}
     </div>
   )

@@ -9,12 +9,33 @@ import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-c
 import type { NewPlayerSkillMastery, PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import { type PracticeLevel, isActive } from '@/db/schema/player-skill-mastery'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
+import type { SlotResult } from '@/db/schema/session-plans'
 import {
   isTutorialSatisfied,
   type NewSkillTutorialProgress,
   type SkillTutorialProgress,
 } from '@/db/schema/skill-tutorial-progress'
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
+import { DEFAULT_SECONDS_PER_PROBLEM } from '@/lib/curriculum/config'
+import {
+  classifyAttemptTiming,
+  countUnresolvedFlagged,
+  getEffectiveResponseTimeMs,
+  isFlagResolved,
+  type AttemptTimingReason,
+} from '@/lib/curriculum/timing/effective-time'
+import {
+  assessPace,
+  computeChildTimingStats,
+  type PaceAssessment,
+  type TimedAttempt,
+} from '@/lib/curriculum/timing/pace-estimation'
+import type {
+  DeletedSessionSummary,
+  FlaggedAttempt,
+  SerializedSlotResult,
+  TimingReviewData,
+} from '@/lib/curriculum/timing/review-types'
 
 // ============================================================================
 // CURRICULUM POSITION OPERATIONS
@@ -450,6 +471,252 @@ export async function calculateMasteryPercent(
 // PRACTICE SESSION OPERATIONS
 // ============================================================================
 
+/** Narrow session_plans projection every session transform reads (#141-safe). */
+interface RawSessionRow {
+  id: string
+  playerId: string
+  results: SlotResult[]
+  startedAt: Date | null
+  createdAt: Date
+  completedAt: Date | null
+}
+
+/**
+ * Transform a raw session_plans row into the dashboard `PracticeSession` shape.
+ *
+ * Single source of truth shared by `getRecentSessions` and
+ * `getPaginatedSessions` (previously duplicated). `totalTimeMs`/`averageTimeMs`
+ * stay RAW (distortion preserved and shown alongside); the clean substats
+ * (`quarantinedTimingCount`/`cleanTotalTimeMs`/`timedProblemCount`) are derived
+ * via the shared timing helpers with Tier-1 samples excluded.
+ */
+function toPracticeSession(session: RawSessionRow): PracticeSession {
+  const results = session.results ?? []
+
+  const problemsAttempted = results.length
+  const problemsCorrect = results.filter((r) => r.isCorrect).length
+  // RAW totals — semantics deliberately unchanged.
+  const totalTimeMs = results.reduce((sum, r) => sum + (r.responseTimeMs || 0), 0)
+  const averageTimeMs = problemsAttempted > 0 ? Math.round(totalTimeMs / problemsAttempted) : null
+  const skillsUsed = [...new Set(results.flatMap((r) => r.skillsExercised || []))]
+
+  // De-poisoned substats: exclude Tier-1, sum effective non-Tier-1 samples.
+  let quarantinedTimingCount = 0
+  let cleanTotalTimeMs = 0
+  let timedProblemCount = 0
+  for (const result of results) {
+    if (classifyAttemptTiming(result).tier === 'tier1') {
+      quarantinedTimingCount++
+      continue
+    }
+    const effective = getEffectiveResponseTimeMs(result)
+    if (effective != null) {
+      cleanTotalTimeMs += effective
+      timedProblemCount++
+    }
+  }
+  // Resolution-aware "needs review" count for the session-list badge: flagged
+  // AND not yet omitted/adjusted/confirmed. Context-free (no child stats), so it
+  // surfaces Tier-1 flags — the same read-time signal `quarantinedTimingCount`
+  // uses — but disappears as each flag is resolved.
+  const unresolvedTimingCount = countUnresolvedFlagged(results)
+
+  return {
+    id: session.id,
+    playerId: session.playerId,
+    phaseId: 'session', // session_plans don't have phaseId
+    problemsAttempted,
+    problemsCorrect,
+    averageTimeMs,
+    totalTimeMs,
+    skillsUsed,
+    visualizationMode: false, // Not tracked in session_plans
+    startedAt: session.startedAt || session.createdAt,
+    completedAt: session.completedAt,
+    quarantinedTimingCount,
+    unresolvedTimingCount,
+    cleanTotalTimeMs,
+    timedProblemCount,
+  }
+}
+
+/** Sessions the pace window pools attempts over (matches getRecentSessions). */
+const PACE_WINDOW_SESSIONS = 10
+
+/** One row of the pace window: the projection every pace/review reader shares. */
+interface PaceWindowSession {
+  id: string
+  results: SlotResult[]
+  completedAt: Date | null
+}
+
+/**
+ * Fetch the pace window — the N most-recent finished sessions the pace estimate
+ * and the timing-review list are both computed over. Extracted so both readers
+ * pool exactly the same sessions (never forked). Narrow projection avoids the
+ * heavy `parts` column (issue #141).
+ */
+async function fetchPaceWindowSessions(playerId: string): Promise<PaceWindowSession[]> {
+  const sessions = await db
+    .select({
+      id: schema.sessionPlans.id,
+      results: schema.sessionPlans.results,
+      completedAt: schema.sessionPlans.completedAt,
+    })
+    .from(schema.sessionPlans)
+    .where(
+      and(
+        eq(schema.sessionPlans.playerId, playerId),
+        inArray(schema.sessionPlans.status, ['completed', 'abandoned'])
+      )
+    )
+    .orderBy(desc(schema.sessionPlans.completedAt))
+    .limit(PACE_WINDOW_SESSIONS)
+
+  return sessions.map((session) => ({
+    id: session.id,
+    results: (session.results as SlotResult[] | null) ?? [],
+    completedAt: session.completedAt,
+  }))
+}
+
+/** Flatten pace-window sessions into the `TimedAttempt[]` the estimator reads. */
+function toTimedAttempts(sessions: readonly PaceWindowSession[]): TimedAttempt[] {
+  const attempts: TimedAttempt[] = []
+  for (const session of sessions) {
+    const completedAt = session.completedAt ? session.completedAt.toISOString() : null
+    for (const result of session.results) {
+      attempts.push({
+        sessionId: session.id,
+        completedAt,
+        termCount: result.problem?.terms?.length ?? 0,
+        sample: result,
+      })
+    }
+  }
+  return attempts
+}
+
+/**
+ * Assess pace over an already-fetched pace window. Extracted so callers that
+ * already hold the window (e.g. {@link getTimingReviewData}) don't re-fetch it —
+ * the single place the pace statistic is derived from a set of sessions.
+ */
+function assessPaceForSessions(sessions: readonly PaceWindowSession[]): PaceAssessment {
+  return assessPace(toTimedAttempts(sessions), sessions.length, {
+    defaultSecondsPerProblem: DEFAULT_SECONDS_PER_PROBLEM,
+  })
+}
+
+/**
+ * Compute the robust pace assessment for a player — the SINGLE producer of the
+ * pace statistic (shared contract). Live-computed at read time from a narrow
+ * projection of the recent session window; no cached aggregate, so #158 repairs
+ * self-correct on the next call.
+ */
+export async function getPaceAssessment(playerId: string): Promise<PaceAssessment> {
+  const sessions = await fetchPaceWindowSessions(playerId)
+  return assessPaceForSessions(sessions)
+}
+
+/** Serialize a stored result for the wire (its only `Date`, `timestamp`, → ISO). */
+function serializeResultForReview(result: SlotResult): SerializedSlotResult {
+  const ts = result.timestamp as unknown
+  return {
+    ...result,
+    timestamp: ts instanceof Date ? ts.toISOString() : String(ts),
+  }
+}
+
+/**
+ * Read-side data for the timing-review page (#158).
+ *
+ * The estimate (`assessment`) comes from the same producer as
+ * {@link getPaceAssessment} (`assessPaceForSessions`, over one shared fetch of
+ * the window) — this function NEVER computes its own pace number. It only
+ * enumerates the flagged attempts (using the same shared classifier and
+ * per-child stats the estimator uses) so a parent sees every unusual timing at
+ * the player level without needing to know which session to open, plus the
+ * soft-deleted sessions available to restore.
+ */
+export async function getTimingReviewData(playerId: string): Promise<TimingReviewData> {
+  // Fetch the pace window ONCE and derive the assessment from it (rather than
+  // calling getPaceAssessment, which would fetch the same window a second time).
+  const [windowSessions, deletedRows] = await Promise.all([
+    fetchPaceWindowSessions(playerId),
+    db
+      .select({
+        id: schema.sessionPlans.id,
+        results: schema.sessionPlans.results,
+        completedAt: schema.sessionPlans.completedAt,
+        deletedAt: schema.sessionPlans.deletedAt,
+      })
+      .from(schema.sessionPlans)
+      .where(
+        and(
+          eq(schema.sessionPlans.playerId, playerId),
+          eq(schema.sessionPlans.status, 'deleted')
+        )
+      )
+      .orderBy(desc(schema.sessionPlans.deletedAt))
+      .limit(PACE_WINDOW_SESSIONS),
+  ])
+  const assessment = assessPaceForSessions(windowSessions)
+
+  // Rebuild the child's clean distribution exactly as the estimator does so the
+  // Tier-2 classification here matches the assessment's counts (Tier-1 needs no
+  // stats; Tier-2 is judged against the child's own windowed spread).
+  const cleanEffectiveMs: number[] = []
+  for (const session of windowSessions) {
+    for (const result of session.results) {
+      if (classifyAttemptTiming(result).tier === 'tier1') continue
+      const effective = getEffectiveResponseTimeMs(result)
+      if (effective != null) cleanEffectiveMs.push(effective)
+    }
+  }
+  const childStats = computeChildTimingStats(cleanEffectiveMs)
+
+  const flagged: FlaggedAttempt[] = []
+  for (const session of windowSessions) {
+    const completedAt = session.completedAt ? session.completedAt.toISOString() : null
+    session.results.forEach((result, resultIndex) => {
+      const classification = classifyAttemptTiming(result, childStats)
+      if (classification.tier === 'ok') return
+      flagged.push({
+        sessionId: session.id,
+        completedAt,
+        resultIndex,
+        tier: classification.tier,
+        reason: classification.reason as AttemptTimingReason | undefined,
+        effectiveMs: getEffectiveResponseTimeMs(result),
+        // Resolution-aware (#158 FIX A/B): a bare review stamp (e.g. mastery-only)
+        // or an unconfirm doesn't resolve the timing flag — only omit/adjust/
+        // confirm does. Keeps the review page's "to review" count and each card's
+        // resolved state honest (and lets an unconfirm reopen the flag).
+        resolved: isFlagResolved(result),
+        result: serializeResultForReview(result),
+      })
+    })
+  }
+
+  // Worst (slowest) first; Tier-1 (unbounded/legacy) tends to sort to the top.
+  // Omitted attempts (effectiveMs null) are resolved, so they sink to the bottom.
+  flagged.sort((a, b) => (b.effectiveMs ?? 0) - (a.effectiveMs ?? 0))
+
+  const deletedSessions: DeletedSessionSummary[] = deletedRows.map((row) => {
+    const results = (row.results as SlotResult[] | null) ?? []
+    return {
+      sessionId: row.id,
+      completedAt: row.completedAt ? row.completedAt.toISOString() : null,
+      deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+      problemsAttempted: results.length,
+      problemsCorrect: results.filter((r) => r.isCorrect).length,
+    }
+  })
+
+  return { assessment, flagged, deletedSessions }
+}
+
 /**
  * Get recent practice sessions for a player
  *
@@ -487,36 +754,8 @@ export async function getRecentSessions(
     .orderBy(desc(schema.sessionPlans.completedAt))
     .limit(limit)
 
-  // Transform session_plans data into PracticeSession format
-  return sessions.map((session) => {
-    // Parse results from JSON
-    const results =
-      (session.results as Array<{
-        isCorrect: boolean
-        responseTimeMs: number
-        skillsExercised: string[]
-      }>) || []
-
-    const problemsAttempted = results.length
-    const problemsCorrect = results.filter((r) => r.isCorrect).length
-    const totalTimeMs = results.reduce((sum, r) => sum + (r.responseTimeMs || 0), 0)
-    const averageTimeMs = problemsAttempted > 0 ? Math.round(totalTimeMs / problemsAttempted) : null
-    const skillsUsed = [...new Set(results.flatMap((r) => r.skillsExercised || []))]
-
-    return {
-      id: session.id,
-      playerId: session.playerId,
-      phaseId: 'session', // session_plans don't have phaseId
-      problemsAttempted,
-      problemsCorrect,
-      averageTimeMs,
-      totalTimeMs,
-      skillsUsed,
-      visualizationMode: false, // Not tracked in session_plans
-      startedAt: session.startedAt || session.createdAt,
-      completedAt: session.completedAt,
-    } as PracticeSession
-  })
+  // Transform session_plans data into PracticeSession format (shared transform).
+  return sessions.map(toPracticeSession)
 }
 
 /**
@@ -597,35 +836,8 @@ export async function getPaginatedSessions(
   const resultSessions = hasMore ? sessions.slice(0, limit) : sessions
   console.log(`[getPaginatedSessions] Final: ${resultSessions.length} sessions, hasMore=${hasMore}`)
 
-  // Transform to PracticeSession format
-  const practiceSessionsResult = resultSessions.map((session) => {
-    const results =
-      (session.results as Array<{
-        isCorrect: boolean
-        responseTimeMs: number
-        skillsExercised: string[]
-      }>) || []
-
-    const problemsAttempted = results.length
-    const problemsCorrect = results.filter((r) => r.isCorrect).length
-    const totalTimeMs = results.reduce((sum, r) => sum + (r.responseTimeMs || 0), 0)
-    const averageTimeMs = problemsAttempted > 0 ? Math.round(totalTimeMs / problemsAttempted) : null
-    const skillsUsed = [...new Set(results.flatMap((r) => r.skillsExercised || []))]
-
-    return {
-      id: session.id,
-      playerId: session.playerId,
-      phaseId: 'session',
-      problemsAttempted,
-      problemsCorrect,
-      averageTimeMs,
-      totalTimeMs,
-      skillsUsed,
-      visualizationMode: false,
-      startedAt: session.startedAt || session.createdAt,
-      completedAt: session.completedAt,
-    } as PracticeSession
-  })
+  // Transform to PracticeSession format (shared transform).
+  const practiceSessionsResult = resultSessions.map(toPracticeSession)
 
   // Next cursor is the last session's ID
   const nextCursor =

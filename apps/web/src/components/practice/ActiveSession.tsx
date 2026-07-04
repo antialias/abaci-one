@@ -18,6 +18,7 @@ import type {
 import { css } from '../../../styled-system/css'
 import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'
 import { calculateComplexityScaledThresholds, getComplexityCost } from './autoPauseCalculator'
+import { applyResponseTimeGuard } from '@/lib/curriculum/timing/response-time-guard'
 import { getProgressiveAssistanceTiming, shouldUseDebugTiming } from '@/constants/helpTiming'
 import { BrowseModeView, getLinearIndex } from './BrowseModeView'
 import { PartTransitionScreen, TRANSITION_COUNTDOWN_MS } from './PartTransitionScreen'
@@ -1523,8 +1524,16 @@ export function ActiveSession({
     // Transition to submitting phase
     startSubmit()
 
-    // Subtract accumulated pause time to get actual response time
-    const responseTimeMs = Date.now() - attemptData.startTime - attemptData.accumulatedPauseMs
+    // Subtract accumulated pause time to get actual response time, then apply
+    // the capture-time timing guard (#156): caps idle/backgrounded or
+    // clock-anomaly deltas at this child's auto-pause threshold and flags the
+    // sample (raw preserved) so #157/#158 can quarantine and review it.
+    const rawResponseTimeMs = Date.now() - attemptData.startTime - attemptData.accumulatedPauseMs
+    const timingGuard = applyResponseTimeGuard(
+      rawResponseTimeMs,
+      assistance.machineState.context.thresholds.autoPauseMs,
+      'client'
+    )
     const isCorrect = answerNum === attemptData.problem.answer
     const epochNumberAtSubmit = currentProblemInfo?.epochNumber ?? 0
     const activeProblemKeyAtSubmit = activeProblem?.key ?? null
@@ -1559,7 +1568,8 @@ export function ActiveSession({
       problem: attemptData.problem,
       studentAnswer: answerNum,
       isCorrect,
-      responseTimeMs,
+      ...timingGuard,
+      hiddenTimeExcludedMs: attemptData.accumulatedHiddenMs || undefined,
       skillsExercised: attemptData.problem.skillsRequired,
       usedOnScreenAbacus: phase.phase === 'helpMode',
       incorrectAttempts: assistance.machineState.context.wrongAttemptCount,
@@ -1661,6 +1671,7 @@ export function ActiveSession({
     assistance.onWrongAnswer,
     assistance.machineState.context.wrongAttemptCount,
     assistance.machineState.context.helpedTermIndices,
+    assistance.machineState.context.thresholds,
   ])
 
   // Auto-submit when correct answer is entered
@@ -1768,15 +1779,23 @@ export function ActiveSession({
       return
     }
 
-    // Record as incorrect with help
-    const responseTimeMs = Date.now() - attempt.startTime - attempt.accumulatedPauseMs
+    // Record as incorrect with help. Same capture-time timing guard (#156) as
+    // handleSubmit — a skip after a long idle/backgrounded stretch must not
+    // store an unbounded response time.
+    const rawResponseTimeMs = Date.now() - attempt.startTime - attempt.accumulatedPauseMs
+    const timingGuard = applyResponseTimeGuard(
+      rawResponseTimeMs,
+      assistance.machineState.context.thresholds.autoPauseMs,
+      'client'
+    )
     const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
       slotId: currentProblemInfo!.slotId,
       slotIndex: attempt.slotIndex,
       problem: attempt.problem,
       studentAnswer: attempt.problem.answer, // Record the correct answer
       isCorrect: false, // Marked incorrect because student didn't solve it
-      responseTimeMs,
+      ...timingGuard,
+      hiddenTimeExcludedMs: attempt.accumulatedHiddenMs || undefined,
       skillsExercised: attempt.problem.skillsRequired,
       usedOnScreenAbacus: false,
       incorrectAttempts: assistance.machineState.context.wrongAttemptCount,
@@ -1810,6 +1829,7 @@ export function ActiveSession({
     completeSubmit,
     clearToLoading,
     assistance.machineState.context.wrongAttemptCount,
+    assistance.machineState.context.thresholds,
   ])
 
   // Handle help requested from progressive assistance UI

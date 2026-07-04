@@ -9,6 +9,7 @@ import type {
 import { billingKeys } from '@/lib/queryKeys'
 import { TIER_LIMITS, type TierName } from '@/lib/tier-limits'
 import type { EffectiveTierResponse } from '@/hooks/useTier'
+import type { PaceAssessment as PaceAssessmentType } from '@/lib/curriculum/timing/pace-estimation'
 import { StartPracticeModal } from './StartPracticeModal'
 import { css } from '../../../styled-system/css'
 
@@ -346,6 +347,25 @@ const defaultProps = {
   open: true,
 }
 
+/** Build a PaceAssessment for the TimingDataNotice banner variants. */
+function makePaceAssessment(
+  overrides: Partial<PaceAssessmentType> = {}
+): PaceAssessmentType {
+  return {
+    avgSecondsPerProblem: 45,
+    secondsPerTerm: 12,
+    secondsPerProblemExcludingFlagged: null,
+    sampleCount: 14,
+    isDefault: false,
+    tier1Count: 0,
+    tier2Count: 0,
+    unresolvedCount: 0,
+    affectedSessions: [],
+    windowSessionCount: 6,
+    ...overrides,
+  }
+}
+
 /**
  * Default state - collapsed, single game (current production state)
  */
@@ -465,6 +485,9 @@ export const WithExistingPlan: Story = {
           approvedAt: new Date(),
           startedAt: null,
           completedAt: null,
+          statusBeforeDeletion: null,
+          deletedAt: null,
+          deletedBy: null,
           isPaused: false,
           pausedAt: null,
           pausedBy: null,
@@ -1048,6 +1071,106 @@ export const GameBreakConfigDocumentation: Story = {
   },
 }`}
         </pre>
+      </div>
+    </StoryWrapper>
+  ),
+}
+
+// ============================================================================
+// TimingDataNotice banner variants (#157)
+//
+// The notice renders below the session summary when the pace estimate may be
+// affected by flagged timings. Amber + prominent for genuine-but-unusual
+// (Tier-2) timings still counted in the estimate; neutral when only broken
+// (Tier-1) measurements were auto-quarantined.
+// ============================================================================
+
+/**
+ * No flagged timings — the banner renders nothing (clean data, control case).
+ */
+export const TimingNoticeNone: Story = {
+  render: () => (
+    <StoryWrapper>
+      <StartPracticeModal
+        {...defaultProps}
+        practiceApprovedGamesOverride={mockSingleGame}
+        paceAssessment={makePaceAssessment()}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Tier-2 (unusual-for-child) timings still counted in the estimate — amber
+ * banner with the "~M problems instead of ~N" if-repaired preview.
+ */
+export const TimingNoticeTier2: Story = {
+  render: () => (
+    <StoryWrapper>
+      <StartPracticeModal
+        {...defaultProps}
+        practiceApprovedGamesOverride={mockSingleGame}
+        paceAssessment={makePaceAssessment({
+          avgSecondsPerProblem: 60,
+          secondsPerProblemExcludingFlagged: 35,
+          tier2Count: 3,
+          unresolvedCount: 3,
+          affectedSessions: [
+            { sessionId: 'sess-a', completedAt: null, flaggedCount: 2, worstSeconds: 240 },
+            { sessionId: 'sess-b', completedAt: null, flaggedCount: 1, worstSeconds: 90 },
+          ],
+        })}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Tier-1 only (broken/idle-capped) — neutral banner: the estimate is already
+ * protected, reversible without alarm. A single affected session, so the
+ * tap-through focuses it.
+ */
+export const TimingNoticeTier1Only: Story = {
+  render: () => (
+    <StoryWrapper>
+      <StartPracticeModal
+        {...defaultProps}
+        practiceApprovedGamesOverride={mockSingleGame}
+        paceAssessment={makePaceAssessment({
+          tier1Count: 2,
+          unresolvedCount: 2,
+          affectedSessions: [
+            { sessionId: 'sess-c', completedAt: null, flaggedCount: 2, worstSeconds: 28800 },
+          ],
+        })}
+      />
+    </StoryWrapper>
+  ),
+}
+
+/**
+ * Both tiers present — amber banner with the Tier-1 "set aside automatically"
+ * note appended, dark theme.
+ */
+export const TimingNoticeBothDark: Story = {
+  render: () => (
+    <StoryWrapper theme="dark">
+      <div data-theme="dark">
+        <StartPracticeModal
+          {...defaultProps}
+          practiceApprovedGamesOverride={mockSingleGame}
+          paceAssessment={makePaceAssessment({
+            avgSecondsPerProblem: 58,
+            secondsPerProblemExcludingFlagged: 34,
+            tier1Count: 1,
+            tier2Count: 2,
+            unresolvedCount: 3,
+            affectedSessions: [
+              { sessionId: 'sess-d', completedAt: null, flaggedCount: 2, worstSeconds: 300 },
+              { sessionId: 'sess-e', completedAt: null, flaggedCount: 1, worstSeconds: 28800 },
+            ],
+          })}
+        />
       </div>
     </StoryWrapper>
   ),

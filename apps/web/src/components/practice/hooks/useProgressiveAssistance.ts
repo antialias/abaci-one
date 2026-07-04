@@ -64,6 +64,7 @@ export type AssistanceEvent =
   | { type: 'PROBLEM_CHANGED' }
   | { type: 'DISMISS_WRONG_ANSWER_SUGGESTION' }
   | { type: 'UPDATE_THRESHOLDS'; thresholds: ProgressiveThresholds }
+  | { type: 'VISIBILITY_RETURNED' }
 
 // =============================================================================
 // Constants
@@ -169,6 +170,26 @@ export function assistanceReducer(
         eventLog: appendLog(context, event.type, state, state, 'dismissed'),
       },
     }
+  }
+
+  // VISIBILITY_RETURNED — the tab regained the foreground (#156). The escalation
+  // timers were frozen while hidden, and the timer effect fires synchronously
+  // once `remainingMs <= 0`; without resetting the idle clock a returning child
+  // would be slammed straight to the auto-pause modal. Mirror DIGIT_TYPED (reset
+  // to idle) in the timed states; no-op in inHelp / autoPaused (data stays
+  // correct either way — the hidden time is already folded out of responseTimeMs).
+  if (event.type === 'VISIBILITY_RETURNED') {
+    if (state === 'idle' || state === 'encouraging' || state === 'offeringHelp') {
+      return {
+        state: 'idle',
+        context: {
+          ...context,
+          idleStartedAt: Date.now(),
+          eventLog: appendLog(context, event.type, state, 'idle', 'visibility returned — reset timer'),
+        },
+      }
+    }
+    return machine
   }
 
   switch (state) {
@@ -626,6 +647,21 @@ export function useProgressiveAssistance(
     machine.context.moveOnGraceStartedAt,
     machine.context.moveOnGraceMs,
   ])
+
+  // Reset the idle escalation clock when the tab returns to the foreground so
+  // frozen timers don't instantly cascade to auto-pause (#156). Self-contained:
+  // the hidden-time exclusion itself lives in useInteractionPhase; this only
+  // guards the assistance UX. Mount-only — `dispatch` is stable.
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        dispatch({ type: 'VISIBILITY_RETURNED' })
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
 
   // Stable event dispatchers
   const onDigitTyped = useCallback(() => {

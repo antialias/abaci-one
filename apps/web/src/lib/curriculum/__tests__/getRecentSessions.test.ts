@@ -287,14 +287,18 @@ describe('getRecentSessions', () => {
     expect(Object.keys(session).sort()).toEqual(
       [
         'averageTimeMs',
+        'cleanTotalTimeMs',
         'completedAt',
         'id',
         'phaseId',
         'playerId',
         'problemsAttempted',
         'problemsCorrect',
+        'quarantinedTimingCount',
+        'unresolvedTimingCount',
         'skillsUsed',
         'startedAt',
+        'timedProblemCount',
         'totalTimeMs',
         'visualizationMode',
       ].sort()

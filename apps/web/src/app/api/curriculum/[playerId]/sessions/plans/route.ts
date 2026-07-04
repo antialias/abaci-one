@@ -118,7 +118,9 @@ export const POST = withAuth(async (request, { params }) => {
     // Enforce sessions-per-week limit (rolling 7-day window)
     if (limits.maxSessionsPerWeek !== Infinity) {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      const completedStatuses = ['completed', 'in_progress', 'approved'] as const
+      // Include 'deleted' so soft-deleting a session never refunds a free-tier
+      // weekly slot (anti-gaming). A deleted session still counts as "used".
+      const completedStatuses = ['completed', 'in_progress', 'approved', 'deleted'] as const
       const recentSessions = await db
         .select({ id: schema.sessionPlans.id })
         .from(schema.sessionPlans)

@@ -225,6 +225,7 @@ export type PlayerAction =
   | 'observe' // Watch an active session
   | 'control-tutorial' // Control tutorial navigation
   | 'control-abacus' // Control the abacus display
+  | 'repair-data' // Review/repair timing data, delete/restore sessions (#158)
 
 /**
  * Check if viewer can perform action on player
@@ -249,6 +250,7 @@ export async function canPerformAction(
     case 'observe':
     case 'control-tutorial':
     case 'control-abacus':
+    case 'repair-data':
       // Parent always, or teacher with presence
       result = access.isParent || access.isPresent
       break

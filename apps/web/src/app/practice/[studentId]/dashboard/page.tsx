@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { canPerformAction } from '@/lib/classroom/access-control'
 import {
   getAllSkillMastery,
+  getPaceAssessment,
   getPlayerCurriculum,
   getPracticeStudent,
   getRecentSessions,
@@ -42,16 +43,25 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
   const userId = await getUserId()
 
   // Fetch player data in parallel (includes session mode to avoid client-side waterfall)
-  const [player, curriculum, skills, recentSessions, activeSession, problemHistory, sessionMode] =
-    await Promise.all([
-      getPracticeStudent(studentId),
-      getPlayerCurriculum(studentId),
-      getAllSkillMastery(studentId),
-      getRecentSessions(studentId, 200),
-      getActiveSessionPlan(studentId),
-      getRecentSessionResults(studentId, 2000), // For Skills tab BKT analysis
-      getSessionMode(studentId),
-    ])
+  const [
+    player,
+    curriculum,
+    skills,
+    recentSessions,
+    activeSession,
+    problemHistory,
+    sessionMode,
+    paceAssessment,
+  ] = await Promise.all([
+    getPracticeStudent(studentId),
+    getPlayerCurriculum(studentId),
+    getAllSkillMastery(studentId),
+    getRecentSessions(studentId, 200),
+    getActiveSessionPlan(studentId),
+    getRecentSessionResults(studentId, 2000), // For Skills tab BKT analysis
+    getSessionMode(studentId),
+    getPaceAssessment(studentId), // Single producer of the robust pace statistic (#157)
+  ])
 
   // 404 if player doesn't exist
   if (!player) {
@@ -81,6 +91,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       activeSession={activeSession}
       currentPracticingSkillIds={currentPracticingSkillIds}
       problemHistory={problemHistory}
+      paceAssessment={paceAssessment}
       initialTab={
         tab === 'overview' ||
         tab === 'skills' ||

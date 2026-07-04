@@ -22,6 +22,9 @@ import {
   type RedoContext,
   recordRedoResult,
   recordSlotResult,
+  restoreSessionPlan,
+  SessionReviewError,
+  softDeleteSessionPlan,
   startSessionPlan,
   StaleFlowVersionError,
   updateSessionPlanRemoteCamera,
@@ -44,6 +47,7 @@ function serializePlan(plan: SessionPlan) {
       plan.flowUpdatedAt instanceof Date ? plan.flowUpdatedAt.getTime() : plan.flowUpdatedAt,
     breakStartedAt:
       plan.breakStartedAt instanceof Date ? plan.breakStartedAt.getTime() : plan.breakStartedAt,
+    deletedAt: plan.deletedAt instanceof Date ? plan.deletedAt.getTime() : plan.deletedAt,
   }
 }
 
@@ -85,6 +89,13 @@ export const PATCH = withAuth(async (request, { params }) => {
     const canModify = await canPerformAction(userId, playerId, 'start-session')
     if (!canModify) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    }
+
+    // Ownership: the plan must belong to the player in the path. Without this,
+    // authorization was evaluated against a player the plan may not belong to.
+    const ownedPlan = await getSessionPlan(planId)
+    if (!ownedPlan || ownedPlan.playerId !== playerId) {
+      return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
 
     const body = await request.json()
@@ -218,11 +229,16 @@ export const PATCH = withAuth(async (request, { params }) => {
         plan = await acknowledgeGameBreakResults(planId)
         break
 
+      case 'restore':
+        // Restore a soft-deleted session to its prior status (#158).
+        plan = await restoreSessionPlan({ planId, playerId })
+        break
+
       default:
         return NextResponse.json(
           {
             error:
-              'Invalid action. Must be: approve, start, record, record_redo, end_early, abandon, set_remote_camera, part_transition_complete, break_finished, or break_results_acked',
+              'Invalid action. Must be: approve, start, record, record_redo, end_early, abandon, set_remote_camera, part_transition_complete, break_finished, break_results_acked, or restore',
           },
           { status: 400 }
         )
@@ -257,6 +273,9 @@ export const PATCH = withAuth(async (request, { params }) => {
     }
     return NextResponse.json({ plan: serializePlan(plan) })
   } catch (error) {
+    if (error instanceof SessionReviewError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
     if (error instanceof InvalidFlowTransitionError) {
       return NextResponse.json(
         {
@@ -281,6 +300,33 @@ export const PATCH = withAuth(async (request, { params }) => {
     }
     console.error('Error updating plan:', error)
     return NextResponse.json({ error: 'Failed to update plan' }, { status: 500 })
+  }
+})
+
+/**
+ * DELETE /api/curriculum/[playerId]/sessions/plans/[planId]
+ * Soft-delete a finished session (#158). Status → 'deleted', prior status
+ * preserved for restore. Requires 'repair-data' (parent or teacher-present)
+ * and plan ownership (enforced inside softDeleteSessionPlan).
+ */
+export const DELETE = withAuth(async (_request, { params }) => {
+  const { playerId, planId } = (await params) as { playerId: string; planId: string }
+
+  try {
+    const userId = await getUserId()
+    const canDelete = await canPerformAction(userId, playerId, 'repair-data')
+    if (!canDelete) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+    }
+
+    const plan = await softDeleteSessionPlan({ planId, playerId, deletedByUserId: userId })
+    return NextResponse.json({ plan: serializePlan(plan) })
+  } catch (error) {
+    if (error instanceof SessionReviewError) {
+      return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+    console.error('Error deleting plan:', error)
+    return NextResponse.json({ error: 'Failed to delete plan' }, { status: 500 })
   }
 })
 

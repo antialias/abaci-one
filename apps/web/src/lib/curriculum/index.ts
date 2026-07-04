@@ -72,6 +72,21 @@ export {
   updateSessionPlanResults,
 } from './session-planner'
 
+// Session review & repair (#158)
+export {
+  applySlotResultReview,
+  computeReviewedResult,
+  restoreSessionPlan,
+  SessionReviewError,
+  SET_TIME_MAX_MS,
+  SET_TIME_MIN_MS,
+  type ApplySlotResultReviewParams,
+  type SlotResultReviewAction,
+  type SlotResultReviewActionName,
+  type SlotReviewScope,
+  softDeleteSessionPlan,
+} from './session-review'
+
 // Session mode - unified session state computation
 export {
   getSessionMode,

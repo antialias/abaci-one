@@ -50,7 +50,6 @@ import { computeBktFromHistory, type SkillBktResult } from './bkt'
 import {
   BKT_INTEGRATION_CONFIG,
   DEFAULT_PROBLEM_GENERATION_MODE,
-  MIN_SECONDS_PER_PROBLEM,
   WEAK_SKILL_THRESHOLDS,
   type ProblemGenerationMode,
 } from './config'
@@ -63,8 +62,8 @@ import {
 import { generateProblemFromConstraints } from './problem-generator'
 import {
   getAllSkillMastery,
+  getPaceAssessment,
   getPlayerCurriculum,
-  getRecentSessions,
   recordSkillAttemptsWithHelp,
 } from './progress-manager'
 import { getWeakSkillIds, type SessionMode } from './session-mode'
@@ -82,6 +81,7 @@ import {
 } from './config/term-count-scaling'
 import { appSettings } from '@/db/schema'
 import { applyFlowEvent, type SessionFlowEvent } from './session-flow'
+import { sanitizeResultTiming } from './timing/response-time-guard'
 
 // ============================================================================
 // Plan Generation
@@ -231,10 +231,10 @@ export async function generateSessionPlan(
 
   // 1. Load student state and app config (in parallel for performance)
   const loadDataStart = performance.now()
-  const [curriculum, skillMastery, recentSessions, problemHistory, dbSettings] = await Promise.all([
+  const [curriculum, skillMastery, paceAssessment, problemHistory, dbSettings] = await Promise.all([
     getPlayerCurriculum(playerId),
     getAllSkillMastery(playerId),
-    getRecentSessions(playerId, 10),
+    getPaceAssessment(playerId),
     // Only load problem history for BKT in adaptive modes
     problemGenerationMode === 'adaptive' || problemGenerationMode === 'adaptive-bkt'
       ? getRecentSessionResults(playerId, BKT_INTEGRATION_CONFIG.sessionHistoryDepth)
@@ -357,13 +357,14 @@ export async function generateSessionPlan(
   const currentPhaseId = curriculum?.currentPhaseId || 'L1.add.+1.direct'
   const currentPhase = getPhase(currentPhaseId)
 
-  // 2. Calculate personalized timing
-  // Clamp to MIN_SECONDS_PER_PROBLEM to prevent generating excessive problems
-  // when student timing data is anomalously low (see session-timing.ts for rationale)
-  const avgTimeSeconds = Math.max(
-    MIN_SECONDS_PER_PROBLEM,
-    calculateAvgTimePerProblem(recentSessions) || config.defaultSecondsPerProblem
-  )
+  // 2. Personalized timing — the robust, outlier-aware pace estimate (#157).
+  // `getPaceAssessment` is the single producer: it excludes Tier-1 (provably
+  // broken) samples, winsorizes Tier-2, and clamps to [MIN, MAX]_SECONDS_PER_PROBLEM,
+  // so no further clamp is needed here. Falls back to the configured default when
+  // there aren't enough clean samples yet.
+  const avgTimeSeconds = paceAssessment.isDefault
+    ? config.defaultSecondsPerProblem
+    : paceAssessment.avgSecondsPerProblem
 
   // 3. Build skill constraints from the student's ACTUAL practicing skills
   //    Two constraint sets: one for abacus parts (all active skills) and one for
@@ -1299,6 +1300,13 @@ export async function recordSlotResult(
   // Calculate mastery weight based on epoch and correctness
   const masteryWeight = calculateMasteryWeight(result.isCorrect, epochNumber)
 
+  // Server-side timing backstop (#156): cap any value that outran the absolute
+  // ceiling (stale/hostile clients, clock anomalies) before it is ever stored
+  // or fed to BKT via recordSkillAttemptsWithHelp below. Independently
+  // deployable — this alone ends unbounded writes even if the client guard
+  // never ran. Client-capped values pass through untouched.
+  result = { ...result, ...sanitizeResultTiming(result) }
+
   const newResult: SlotResult = {
     ...result,
     partNumber: currentPart.partNumber,
@@ -1555,6 +1563,10 @@ export async function recordRedoResult(
     )
   }
 
+  // Server-side timing backstop (#156): symmetric with recordSlotResult — cap
+  // any value above the absolute ceiling before storing or feeding BKT.
+  result = { ...result, ...sanitizeResultTiming(result) }
+
   // Build the result with manual redo flag
   const newResult: SlotResult = {
     ...result,
@@ -1810,9 +1822,17 @@ export async function updateSessionPlanResults(
   // Create a temporary plan with updated results to calculate health
   const tempPlan = { ...plan, results }
 
-  // Calculate elapsed time since session started
+  // Calculate elapsed time since session started. For a finished session being
+  // edited (the review/repair path), measure against completedAt — using
+  // Date.now() would report a nonsense (days-long) elapsed for an old session.
   const startedAt = plan.startedAt instanceof Date ? plan.startedAt : new Date(plan.startedAt ?? 0)
-  const elapsedTimeMs = Date.now() - startedAt.getTime()
+  const endAt =
+    plan.completedAt instanceof Date
+      ? plan.completedAt
+      : plan.completedAt != null
+        ? new Date(plan.completedAt)
+        : new Date()
+  const elapsedTimeMs = endAt.getTime() - startedAt.getTime()
 
   const newHealth = calculateSessionHealth(tempPlan, elapsedTimeMs)
 
@@ -2043,21 +2063,6 @@ function createSlot(
     complexityBounds,
     termCountExplanation,
   }
-}
-
-function calculateAvgTimePerProblem(
-  sessions: Array<{ averageTimeMs: number | null; problemsAttempted: number }>
-): number | null {
-  const validSessions = sessions.filter((s) => s.averageTimeMs !== null && s.problemsAttempted > 0)
-  if (validSessions.length === 0) return null
-
-  const totalProblems = validSessions.reduce((sum, s) => sum + s.problemsAttempted, 0)
-  const weightedSum = validSessions.reduce(
-    (sum, s) => sum + s.averageTimeMs! * s.problemsAttempted,
-    0
-  )
-
-  return Math.round(weightedSum / totalProblems / 1000) // Convert ms to seconds
 }
 
 function findSkillsNeedingReview(

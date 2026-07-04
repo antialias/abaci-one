@@ -91,6 +91,42 @@ describe('assistanceReducer', () => {
     })
   })
 
+  describe('VISIBILITY_RETURNED', () => {
+    it.each<AssistanceStateName>(['idle', 'encouraging', 'offeringHelp'])(
+      'from %s → idle with the idle clock reset',
+      (fromState) => {
+        const machine = makeMachine(fromState, { idleStartedAt: 1000 })
+        const result = assistanceReducer(machine, { type: 'VISIBILITY_RETURNED' })
+
+        expect(result.state).toBe('idle')
+        expect(result.context.idleStartedAt).toBeGreaterThan(1000)
+      }
+    )
+
+    it.each<AssistanceStateName>(['inHelp', 'autoPaused'])(
+      'is a no-op in %s (no state or context mutation)',
+      (fromState) => {
+        const machine = makeMachine(fromState, { idleStartedAt: 1000, wrongAttemptCount: 2 })
+        const result = assistanceReducer(machine, { type: 'VISIBILITY_RETURNED' })
+
+        expect(result).toBe(machine) // referentially unchanged
+      }
+    )
+
+    it('does not mutate unrelated context fields when it resets the clock', () => {
+      const machine = makeMachine('encouraging', {
+        idleStartedAt: 1000,
+        wrongAttemptCount: 2,
+        helpedTermIndices: new Set([1]),
+      })
+      const result = assistanceReducer(machine, { type: 'VISIBILITY_RETURNED' })
+
+      expect(result.context.wrongAttemptCount).toBe(2)
+      expect(result.context.helpedTermIndices).toBe(machine.context.helpedTermIndices)
+      expect(result.context.thresholds).toBe(machine.context.thresholds)
+    })
+  })
+
   // ==========================================================================
   // idle state
   // ==========================================================================
