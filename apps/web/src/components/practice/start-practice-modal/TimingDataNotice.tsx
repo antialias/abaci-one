@@ -198,6 +198,44 @@ export function TimingDataNoticeView({
   )
 }
 
+/**
+ * Quiet, always-available entry to the review tool. Shown in the modal when
+ * there is timing history but nothing currently needs review, so a parent can
+ * *proactively* open the tool — not only when a flag is nagging them. (The
+ * prominent {@link TimingDataNoticeView} takes over whenever something is
+ * actually unresolved.)
+ */
+export function ReviewTimingsQuietLink({
+  studentId,
+  isDark,
+}: {
+  studentId: string
+  isDark: boolean
+}) {
+  return (
+    <Link
+      href={`/practice/${studentId}/review-timings`}
+      data-component="review-timings-quiet-link"
+      data-action="review-timings"
+      className={css({
+        alignSelf: 'flex-start',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.375rem',
+        fontSize: '0.75rem',
+        fontWeight: '500',
+        textDecoration: 'none',
+        borderRadius: '4px',
+        _hover: { textDecoration: 'underline' },
+        _focusVisible: { outline: '2px solid currentColor', outlineOffset: '2px' },
+      })}
+      style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+    >
+      <span aria-hidden="true">⏱</span> Review timing data →
+    </Link>
+  )
+}
+
 /** Container: reads the pace assessment + estimates off the modal context. */
 export function TimingDataNotice() {
   const { resolvedTheme } = useTheme()
@@ -206,6 +244,14 @@ export function TimingDataNotice() {
     useStartPracticeModal()
 
   if (!paceAssessment) return null
+
+  // Nothing needs review right now → a quiet, always-available link (proactive
+  // discovery), but only when there's timing history worth opening the tool for
+  // (avoids a dead-end link for a brand-new student with no attempts yet).
+  if (paceAssessment.unresolvedCount <= 0) {
+    if (paceAssessment.sampleCount <= 0) return null
+    return <ReviewTimingsQuietLink studentId={studentId} isDark={isDark} />
+  }
 
   return (
     <TimingDataNoticeView

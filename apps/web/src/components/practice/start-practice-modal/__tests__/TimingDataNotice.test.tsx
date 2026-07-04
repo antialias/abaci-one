@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import type { AnchorHTMLAttributes } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import type { AffectedSession } from '@/lib/curriculum/timing/pace-estimation'
-import { TimingDataNoticeView } from '../TimingDataNotice'
+import { ReviewTimingsQuietLink, TimingDataNoticeView } from '../TimingDataNotice'
 
 // next/link needs the app-router context; for a pure-presentation test we only
 // care that it renders an anchor with the right href, so stub it to one.
@@ -114,5 +114,16 @@ describe('TimingDataNoticeView', () => {
     })
     const link = document.querySelector('[data-action="review-timings"]')!
     expect(link.getAttribute('href')).toBe(`/practice/${STUDENT}/review-timings`)
+  })
+})
+
+describe('ReviewTimingsQuietLink', () => {
+  it('links to the player-level review page (proactive, no session focus)', () => {
+    render(<ReviewTimingsQuietLink studentId={STUDENT} isDark={false} />)
+    const link = document.querySelector('[data-component="review-timings-quiet-link"]')!
+    expect(link).not.toBeNull()
+    expect(link.getAttribute('href')).toBe(`/practice/${STUDENT}/review-timings`)
+    expect(link.getAttribute('data-action')).toBe('review-timings')
+    expect(screen.getByText(/Review timing data/)).toBeInTheDocument()
   })
 })
