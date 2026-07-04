@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { useStartPracticeModal, PART_TYPES } from '../StartPracticeModalContext'
+import { LinearGraduationBanner } from './LinearGraduationBanner'
 import { ProportionBar, type ProportionBarSegment } from './ProportionBar'
 
 /** All practice mode segments use green tones */
@@ -32,13 +33,16 @@ export function PracticeModesSelector() {
   )
 
   return (
-    <ProportionBar
-      label="Practice Modes"
-      dataSetting="practice-modes"
-      segments={segments}
-      onCycleWeight={(key) => cyclePartWeight(key as keyof typeof partWeights)}
-      onDisable={(key) => disablePart(key as keyof typeof partWeights)}
-      enabledCount={enabledPartCount}
-    />
+    <>
+      <LinearGraduationBanner />
+      <ProportionBar
+        label="Practice Modes"
+        dataSetting="practice-modes"
+        segments={segments}
+        onCycleWeight={(key) => cyclePartWeight(key as keyof typeof partWeights)}
+        onDisable={(key) => disablePart(key as keyof typeof partWeights)}
+        enabledCount={enabledPartCount}
+      />
+    </>
   )
 }
