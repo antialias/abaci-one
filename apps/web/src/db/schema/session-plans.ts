@@ -300,6 +300,52 @@ export interface SlotResult {
    * Manual redos don't advance the session position but can affect the retry queue.
    */
   isManualRedo?: boolean
+
+  // ---- Timing Integrity (shared contract #156 / #157 / #158) ----
+  //
+  // All optional; `results` is a JSON text column so absent fields = a plain
+  // measurement (no migration required). Written by the #156 timing-integrity
+  // guard and the #158 review tool; read by every timing consumer via the
+  // shared helpers in `@/lib/curriculum/timing`.
+
+  // ---- Written by #156 (timing-integrity guard); read-only for #157/#158 ----
+
+  /** raw measured value before any guard modified it; present iff a guard fired; never deleted */
+  responseTimeMsRaw?: number
+  /** Tier-1 auto-quarantine flag: responseTimeMs is NOT the raw measurement */
+  wasIdleCapped?: boolean
+  capReason?: 'idle-exceeded' | 'clock-anomaly'
+  /** cap applied (attempt's autoPauseMs client-side; 300_000 server backstop) */
+  capThresholdMs?: number
+  capSource?: 'client' | 'server'
+  /** hidden-tab time already excluded from responseTimeMs (audit) */
+  hiddenTimeExcludedMs?: number
+
+  // ---- Written by #158 (review & repair tool); read by #157 ----
+
+  timingReview?: SlotTimingReview
+  /** formalizes the untyped `_originalSource` (results route :92) */
+  originalSource?: SlotResultSource
+}
+
+/**
+ * Adult review/repair metadata for a single attempt's timing sample (#158).
+ *
+ * Scopes are independent from mastery exclusion (`source: 'teacher-excluded'`):
+ * `omitFromTiming` removes only the timing sample. Review never mutates
+ * `responseTimeMs`; raw values (`responseTimeMsRaw`) are never deleted.
+ */
+export interface SlotTimingReview {
+  /** scope: timing — attempt contributes no timing sample */
+  omitFromTiming?: boolean
+  /** adult-entered replacement; "restore raw" = set to responseTimeMsRaw */
+  adjustedResponseTimeMs?: number
+  /** adult vouched a flagged value is genuine; silences warnings, value stays in calcs */
+  timingConfirmed?: boolean
+  /** userId of last modifying adult */
+  reviewedBy: string
+  /** ISO-8601 */
+  reviewedAt: string
 }
 
 export type SessionStatus =
@@ -309,6 +355,15 @@ export type SessionStatus =
   | 'completed'
   | 'abandoned'
   | 'recency-refresh'
+  /**
+   * Soft-deleted by an adult via the timing review/repair tool (#158).
+   * The prior status is preserved in `statusBeforeDeletion` for exact restore.
+   * Every `sessionPlans.status` reader is a positive allow-list, so a deleted
+   * session drops out of history/estimates/BKT automatically — the sole
+   * exception (the history route, which filters on `completedAt`) filters
+   * `'deleted'` explicitly.
+   */
+  | 'deleted'
 
 export type SessionFlowState =
   | 'practicing'
@@ -595,6 +650,24 @@ export const sessionPlans = sqliteTable(
 
     /** When the session was completed */
     completedAt: integer('completed_at', { mode: 'timestamp' }),
+
+    // ---- Soft Delete (#158 timing review/repair tool) ----
+    //
+    // A session is soft-deleted (status = 'deleted') by an adult from the
+    // review tool. Raw results are preserved (they feed BKT history) and the
+    // session stays loadable by ID so `session/[sessionId]` can show a
+    // "removed — restore" banner. Restore reads `statusBeforeDeletion`.
+    // NOTE: the drizzle migration for these three columns is generated
+    // separately (via the /db-migrate skill) — this is only the table typing.
+
+    /** Status the session had immediately before it was soft-deleted (for exact restore) */
+    statusBeforeDeletion: text('status_before_deletion').$type<SessionStatus>(),
+
+    /** When the session was soft-deleted */
+    deletedAt: integer('deleted_at', { mode: 'timestamp' }),
+
+    /** User ID of the adult who soft-deleted the session (audit) */
+    deletedBy: text('deleted_by'),
   },
   (table) => ({
     /** Index for fast lookups by playerId */

@@ -15,12 +15,30 @@ export interface PracticeSession {
   phaseId: string
   problemsAttempted: number
   problemsCorrect: number
+  /** RAW mean response time (ms). Distortion is preserved and shown alongside the clean substats. */
   averageTimeMs: number | null
+  /** RAW sum of response times (ms). Preserved verbatim; see `cleanTotalTimeMs` for the de-poisoned total. */
   totalTimeMs: number | null
   skillsUsed: string[]
   visualizationMode: boolean
   startedAt: Date
   completedAt: Date | null
+
+  // ---- Timing-integrity display substats (#157; context-free per-session) ----
+
+  /** Count of Tier-1 (auto-quarantined) attempts in this session. */
+  quarantinedTimingCount?: number
+  /**
+   * Count of flagged attempts in this session that still NEED adult review —
+   * resolution-aware (flagged AND not omitted/adjusted/confirmed). Drives the
+   * session-list "review timings" badge so it disappears once every flag is
+   * acted on; `quarantinedTimingCount` stays as the raw informational substat.
+   */
+  unresolvedTimingCount?: number
+  /** Σ effective response time (ms) over non-Tier-1 samples — the de-poisoned total. */
+  cleanTotalTimeMs?: number | null
+  /** Count of samples summed into `cleanTotalTimeMs` (its denominator companion). */
+  timedProblemCount?: number
 }
 
 /**

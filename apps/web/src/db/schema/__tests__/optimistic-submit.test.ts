@@ -86,6 +86,9 @@ function buildPlan(overrides: Partial<SessionPlan> = {}): SessionPlan {
     approvedAt: null,
     startedAt: new Date('2026-01-01'),
     completedAt: null,
+    statusBeforeDeletion: null,
+    deletedAt: null,
+    deletedBy: null,
     ...overrides,
   }
 }
