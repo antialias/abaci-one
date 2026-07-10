@@ -330,9 +330,18 @@ resource "kubernetes_deployment" "woodpecker_agent" {
             value = "docker"
           }
 
+          # Serialize the default lane to ONE workflow at a time. This is the
+          # only node (k3s-node, 4 cores), and every heavy repo — eink-photo-frame,
+          # things-haunt-house, sonia-* — routes to this agent. At value "2" two
+          # heavy pipelines co-ran and starved each other over 4 cores (observed:
+          # eink #409 unit-tests ran 71% slower and timed out render tests while
+          # things-haunt-house #252 built alongside it). At "1" they queue instead,
+          # and each build gets the whole node — faster and deterministic. The
+          # packages agent stays at 2 (weather-display only, lighter, not involved
+          # in the collision). Bump back up only after the node gains cores/a worker.
           env {
             name  = "WOODPECKER_MAX_WORKFLOWS"
-            value = "2"
+            value = "1"
           }
 
           env {
