@@ -116,6 +116,12 @@ resource "helm_release" "kube_prometheus_stack" {
           group_interval = "5m"
           repeat_interval = "4h"
         }
+        # NOTE: Claude Code usage/quota alerts are NOT routed here. They carry
+        # alertroute="claude-usage" and are routed to the NAS alert-bridge
+        # (Telegram + HA critical push) by a namespaced AlertmanagerConfig CR —
+        # see claude-usage-monitor.tf / files/claude-usage-alertmanagerconfig.yaml.
+        # That keeps the whole claude-usage chain on the same null_resource+kubectl
+        # idiom as its scrape/rule/dashboard (no Helm re-apply needed to change it).
         receivers = [
           {
             name = "email"

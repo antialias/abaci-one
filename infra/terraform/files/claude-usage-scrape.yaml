@@ -1,0 +1,54 @@
+# claude-usage-exporter scrape wiring — codifies the off-cluster NAS Claude usage probe.
+# The exporter runs on the NAS (192.168.86.51:9115), outside the cluster, polling
+# Anthropic's OAuth usage endpoints per account, so it is scraped via a headless
+# Service + manually-managed Endpoints + a ServiceMonitor. Series carry
+# job="claude-usage-exporter". Exporter source lives in the home-infra repo
+# (services/claude-usage-exporter). Applied via null_resource.claude_usage_scrape.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: claude-usage-exporter
+  namespace: monitoring
+  labels:
+    app: claude-usage-exporter
+spec:
+  # Headless + no selector: endpoints managed manually (object below) — external host.
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9115
+      targetPort: 9115
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: claude-usage-exporter
+  namespace: monitoring
+  labels:
+    app: claude-usage-exporter
+subsets:
+  - addresses:
+      - ip: 192.168.86.51
+    ports:
+      - name: metrics
+        port: 9115
+        protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: claude-usage-exporter
+  namespace: monitoring
+  labels:
+    app: claude-usage-exporter
+spec:
+  selector:
+    matchLabels:
+      app: claude-usage-exporter
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 60s
+      scrapeTimeout: 10s

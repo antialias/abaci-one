@@ -1,0 +1,336 @@
+# Claude Code usage alerts — subscription quota (5h/7d) across both accounts.
+# Meta-metrics project (2026-07-12), RE-TIERED for the account-switchover era.
+#
+# Metrics come from the NAS claude-usage-exporter (192.168.86.51:9115), which polls
+# Anthropic's OAuth usage endpoints per account. Labels: account (email), tier, and
+# for per-limit series kind/group/scope_model.
+#
+# ---------------------------------------------------------------------------------
+# WHY THIS FILE WAS RE-TIERED (2026-07-12)
+#
+# A switchover proxy (services/claude-switch-proxy in home-infra) now routes Claude
+# Code to whichever account has the most weekly headroom, automatically, and fails
+# over reactively on a 429. That INVALIDATES per-account paging: a single hot account
+# is now a NON-EVENT — the proxy just routes away from it. Paging you at 3am because
+# one account hit 95% while the other sits at 3% is crying wolf, and a critical push
+# you learn to ignore is worse than no push at all.
+#
+# The paging philosophy, one sentence:
+#   A DND-bypassing push happens only when you are (or are about to be) unable to
+#   work, AND the machine has already exhausted everything it can do about it.
+#   Everything else is Telegram.
+#
+# That yields exactly ONE delivery=critical rule: ClaudeAllAccountsWeeklyExhausted.
+# ---------------------------------------------------------------------------------
+#
+# DELIVERY: every rule carries alertroute=claude-usage so Alertmanager routes it to
+# the NAS alert-bridge (Telegram + HA critical push), NOT to Gmail. The bridge reads
+# the `delivery` label:
+#   delivery=telegram  -> Telegram DM only (informational / self-healing)
+#   delivery=critical  -> Telegram DM + iOS *critical* push (bypasses DND)
+# The bridge also appends a live cross-account "most headroom: <account>" line, and
+# uses the `title` annotation (if present) as the push title.
+#
+# !!! INVARIANT — `namespace: monitoring` ON EVERY RULE. NON-NEGOTIABLE. !!!
+# The operator's OnNamespace matcher strategy rewrites our AlertmanagerConfig route to
+#     matchers: [alertroute="claude-usage", namespace="monitoring"]
+# Per-account alerts inherit namespace from the scraped series, but AGGREGATES built
+# with min()/count() DROP EVERY LABEL, including namespace. Without a static namespace
+# label such an alert does NOT match the bridge route, falls through to the root route,
+# and is silently EMAILED instead of paging your phone — i.e. the one alert that
+# actually matters would be the one you never receive. Rule labels overwrite sample
+# labels, so this is a harmless no-op on per-account rules and load-bearing on the
+# aggregates. Add it to every new rule, always.
+#
+# Do NOT use severity=info: a stock inhibit rule (InfoInhibitor, equal:[namespace])
+# swallows info alerts namespace-wide. Informational == severity:warning +
+# delivery:telegram. The channel is chosen by `delivery`, never by `severity`.
+#
+# Loaded by the kube-prometheus-stack Prometheus via the release ruleSelector — the
+# app/release labels below are REQUIRED or the rule is silently ignored.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: claude-usage-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: claude-usage
+      rules:
+        # =====================================================================
+        # RECORDING RULES — the "routable set"
+        #
+        # ROUTABLE = the exporter has FRESH data for this account, so the brain can
+        # actually route to it. This freshness join is the load-bearing part of the
+        # whole file.
+        #
+        # WHY: the exporter DELIBERATELY RETAINS the last-good utilization through
+        # poll failures (poller(): `res["usage"] = prev["usage"]`). So an account
+        # whose OAuth refresh token has died keeps advertising a stale, deceptively
+        # COOL number forever. Without this join, min() reads that stale 20%,
+        # concludes "plenty of headroom", and stays SILENT while the only account
+        # that still works burns to 100% — because /token 502s and the proxy quietly
+        # degrades to native passthrough. A stale account is an UNROUTABLE account
+        # and must not be counted as headroom.
+        #
+        # 1800s == ClaudeUsageDataStale's threshold == ~6 poll intervals (POLL=300s),
+        # so a healthy account can never trip it.
+        # =====================================================================
+        - record: claude:weekly_utilization_routable:percent
+          expr: |
+            claude_usage_window_utilization_percent{window="seven_day"}
+            and on(account) (claude_usage_data_age_seconds < 1800)
+
+        - record: claude:five_hour_utilization_routable:percent
+          expr: |
+            claude_usage_window_utilization_percent{window="five_hour"}
+            and on(account) (claude_usage_data_age_seconds < 1800)
+
+        # The number that now actually matters: the MOST-IDLE routable account's
+        # weekly burn. If this is high, there is nowhere left to switch.
+        - record: claude:weekly_utilization_routable:min
+          expr: min(claude:weekly_utilization_routable:percent)
+
+        - record: claude:five_hour_utilization_routable:min
+          expr: min(claude:five_hour_utilization_routable:percent)
+
+        # The hero number on the dashboard. Absent (not 0, not 100) when we're blind —
+        # "No data" is honest; inventing a value would be a lie.
+        - record: claude:combined_headroom:percent
+          expr: 100 - claude:weekly_utilization_routable:min
+
+        # `or vector(0)` is MANDATORY: count() over an EMPTY selector returns EMPTY,
+        # not 0, so `count(...) < 2` would silently NEVER fire in exactly the case it
+        # exists to catch (all accounts stale/gone).
+        - record: claude:routable_accounts:count
+          expr: count(claude:weekly_utilization_routable:percent) or vector(0)
+
+        # =====================================================================
+        # THE ONLY delivery=critical RULE
+        # =====================================================================
+        - alert: ClaudeAllAccountsWeeklyExhausted
+          # for: 10m == at least 2 independent polls (POLL_INTERVAL=300s), so a single
+          # bad poll can never page you.
+          expr: claude:weekly_utilization_routable:min >= 90
+          for: 10m
+          labels:
+            severity: critical
+            alertroute: claude-usage
+            delivery: critical
+            namespace: monitoring # <<< see INVARIANT above — without this you get EMAIL
+          annotations:
+            title: "🔴 Claude: nowhere left to switch"
+            summary: 'Every Claude account is ≥{{ $value | printf "%.0f" }}% weekly — switchover cannot save you'
+            description: >-
+              All routable accounts have used at least {{ $value | printf "%.0f" }}% of
+              their rolling 7-day window. The switch-proxy has no account with headroom
+              left, so SWITCHING ACCOUNTS WILL NOT HELP. What still works:
+              (1) downshift the model — Sonnet/Haiku burn a fraction of Opus;
+              (2) buy extra-usage credits (claude.ai -> Settings -> Usage);
+              (3) stop until the 7-day window rolls (~5pm Chicago / 22:00 UTC).
+
+        # =====================================================================
+        # AGGREGATE — heads-up before the page (Telegram)
+        # =====================================================================
+        - alert: ClaudeCombinedHeadroomLow
+          expr: |
+            claude:weekly_utilization_routable:min >= 80
+            and claude:weekly_utilization_routable:min < 90
+          for: 10m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: 'Claude combined headroom low — even the idlest account is {{ $value | printf "%.0f" }}% weekly'
+            description: >-
+              Both accounts are getting hot; {{ $value | printf "%.0f" }}% is the LOWEST
+              of them. At 90% you get a critical page. Act now while it is cheap:
+              downshift to Sonnet for routine work, or top up extra-usage credits.
+
+        # =====================================================================
+        # AGGREGATE — 5h lockout (Telegram, deliberately NOT a page)
+        #
+        # It self-heals in <5h, and if you are at the keyboard the 429 already told
+        # you. A DND-bypass at 3am for a window that rolls before you wake up is
+        # precisely the crying-wolf this re-tier exists to delete.
+        # =====================================================================
+        - alert: ClaudeAllAccountsSessionExhausted
+          expr: claude:five_hour_utilization_routable:min >= 95
+          for: 5m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: "All Claude accounts' 5h window exhausted ({{ $value | printf \"%.0f\" }}%) — blocked until it rolls"
+            description: >-
+              Every routable account has burned ≥{{ $value | printf "%.0f" }}% of its
+              5-hour session window, so both will 429 and the proxy's reactive failover
+              has nowhere to go. Self-heals at the next 5h roll (see the "5h resets"
+              panel). NOTE: the brain's proactive policy only watches the 7-DAY window,
+              so it does not pre-empt this.
+
+        # =====================================================================
+        # THE SWITCHOVER MECHANISM ITSELF IS BROKEN
+        #
+        # This closes the min()-masking hole: it fires when the routable set has
+        # collapsed to a single account — exactly the state in which the aggregate
+        # alerts above are running on one sample and your redundancy is gone.
+        #
+        # The `and on() (up == 1)` guard means this does NOT fire merely because the
+        # exporter is down (ClaudeUsageExporterDown already owns that) — without it
+        # you get two Telegram messages for one fault.
+        # =====================================================================
+        - alert: ClaudeSwitchoverNoAlternative
+          expr: |
+            claude:routable_accounts:count < 2
+            and on() (up{job="claude-usage-exporter"} == 1)
+          for: 15m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: 'Claude switchover has no alternative — only {{ $value | printf "%.0f" }} routable account(s)'
+            description: >-
+              Fewer than 2 accounts have fresh usage data, so the switch-proxy has
+              nothing to fail over TO — you are effectively back to single-account
+              operation. Usually a dead OAuth refresh token. Check
+              claude_usage_poll_http_code (401 = re-mint) and claude_usage_poll_success.
+
+        # Fast + specific: fires in 10m instead of waiting 30m for staleness. A 401 on
+        # refresh means the exporter (the SOLE token refresher) can no longer mint a
+        # token for this account, so the proxy cannot route to it — the switchover is
+        # half-dead even though everything still "works" on the other account.
+        - alert: ClaudeAccountTokenDead
+          expr: claude_usage_poll_http_code == 401
+          for: 10m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: "Claude OAuth refresh token dead — {{ $labels.account }}"
+            description: >-
+              HTTP 401 refreshing {{ $labels.account }}'s token. The exporter is the sole
+              token refresher, so the switch-proxy can no longer route to this account.
+              Re-mint the refresh token and update
+              /volume1/homes/antialias/claude-usage/creds/accounts.json (chmod 600).
+
+        # =====================================================================
+        # PER-ACCOUNT — DEMOTED TO INFORMATIONAL (Telegram only)
+        #
+        # A single hot account is a NON-EVENT: the proxy routes away from it. These
+        # exist only so you can watch it happen. Bounded ranges => exactly ONE fires
+        # per account.
+        # =====================================================================
+        - alert: ClaudeAccountWeeklyHigh
+          expr: |
+            claude_usage_window_utilization_percent{window="seven_day"} >= 80
+            and claude_usage_window_utilization_percent{window="seven_day"} < 95
+          for: 15m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: 'Claude weekly {{ $value | printf "%.0f" }}% — {{ $labels.account }} (informational)'
+            description: >-
+              {{ $labels.account }} is at {{ $value | printf "%.0f" }}% of its 7-day
+              window. NOT an emergency — the switch-proxy routes away from a hot account
+              by itself. You only need to act if ClaudeAllAccountsWeeklyExhausted fires.
+
+        - alert: ClaudeAccountWeeklySpent
+          expr: claude_usage_window_utilization_percent{window="seven_day"} >= 95
+          for: 5m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: 'Claude account spent for the week ({{ $value | printf "%.0f" }}%) — {{ $labels.account }}'
+            description: >-
+              {{ $labels.account }} is at {{ $value | printf "%.0f" }}% weekly and is now
+              effectively out of rotation. Your redundancy is halved: if the remaining
+              account also gets hot you WILL be paged.
+
+        - alert: ClaudeAccountFiveHourHigh
+          expr: claude_usage_window_utilization_percent{window="five_hour"} >= 90
+          for: 2m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: 'Claude 5h session {{ $value | printf "%.0f" }}% — {{ $labels.account }}'
+            description: >-
+              {{ $labels.account }} has used {{ $value | printf "%.0f" }}% of its 5-hour
+              window. The proactive policy does NOT watch 5h (7d only), so this will not
+              trigger a pre-emptive switch — you will eat one 429, which the proxy retries
+              transparently against the other account. Harmless unless BOTH are 5h-hot.
+
+        - alert: ClaudeModelCapMaxed
+          expr: claude_usage_limit_severity{kind="weekly_scoped"} >= 2
+          for: 5m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: "Claude {{ $labels.scope_model }} weekly cap maxed — {{ $labels.account }}"
+            description: >-
+              Anthropic capped the {{ $labels.scope_model }} weekly sub-limit on
+              {{ $labels.account }}. Only that model is blocked; other models on this
+              account still work, and the switch-proxy still routes here.
+
+        # =====================================================================
+        # EXPORTER / POLL HEALTH (Telegram)
+        # =====================================================================
+        - alert: ClaudeUsageExporterDown
+          expr: up{job="claude-usage-exporter"} == 0
+          for: 10m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: "claude-usage-exporter unscrapeable"
+            description: >-
+              Prometheus cannot scrape 192.168.86.51:9115. Quota alerting is blind AND the
+              switch-proxy degrades to native passthrough (= exactly the pre-switchover
+              behaviour, so nothing is burning — hence Telegram, not a page).
+
+        # `unless` dedups against ClaudeAccountTokenDead: a 401 ALSO drives data_age past
+        # 1800, which would otherwise give you two Telegram messages ~20 min apart for one
+        # fault. 401 -> TokenDead (fast, "re-mint"). Anything else -> DataStale (slow,
+        # generic, usually a self-clearing 429).
+        - alert: ClaudeUsageDataStale
+          expr: |
+            claude_usage_data_age_seconds > 1800
+            unless on(account) (claude_usage_poll_http_code == 401)
+          for: 0m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: 'claude-usage data stale ({{ $value | humanizeDuration }}) — {{ $labels.account }}'
+            description: >-
+              The exporter has not refreshed {{ $labels.account }}'s usage for >30m and is
+              serving the last-good snapshot. This account is now EXCLUDED from the routable
+              set (so it can no longer mask a both-accounts-hot emergency). Check
+              claude_usage_poll_http_code: 429 = API rate-limited, usually self-clears.

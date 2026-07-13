@@ -1,0 +1,43 @@
+# Routes Claude Code usage/quota alerts to the NAS alert-bridge (Telegram + HA
+# critical push) instead of email. Meta-metrics project (2026-07-12).
+#
+# Why an AlertmanagerConfig CR (not the main Alertmanager config in the Helm
+# values): it keeps the whole claude-usage chain on the same null_resource +
+# kubectl-apply idiom as its scrape/rule/dashboard, applies LIVE with no Helm
+# re-apply (the abaci Helm values need secrets this session doesn't hold), and is
+# trivially reversible (kubectl delete). The kube-prometheus-stack Alertmanager
+# selects it: alertmanagerConfigSelector={} and namespaceSelector={} (match all).
+#
+# Matching: the operator's default matcher strategy (OnNamespace) auto-adds a
+# namespace="monitoring" matcher to this route; our alerts are scraped in the
+# monitoring namespace, so combined with alertroute="claude-usage" the match is
+# exact. Because a matched child route handles the alert, it does NOT also fall
+# through to the root email receiver.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: claude-usage
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  route:
+    receiver: claude-usage-bridge
+    groupBy: ["account", "alertname"]
+    groupWait: 30s
+    groupInterval: 5m
+    # Re-nag every 3h while a quota alert keeps firing (the bridge re-sends the
+    # Telegram DM / HA push). Resolved notifications are sent too.
+    repeatInterval: 3h
+    matchers:
+      - name: alertroute
+        value: claude-usage
+        matchType: "="
+  receivers:
+    - name: claude-usage-bridge
+      webhookConfigs:
+        # LAN-only, unauthenticated — same trust model as the NAS exporters this
+        # cluster already scrapes. The bridge decides HA-critical vs Telegram-only
+        # from each alert's `delivery` label.
+        - url: http://192.168.86.51:9116/alert
+          sendResolved: true

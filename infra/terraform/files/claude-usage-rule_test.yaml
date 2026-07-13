@@ -1,0 +1,205 @@
+# promtool unit tests for claude-usage-rule.yaml.
+# Run:  infra/tools/claude-usage-rule-test.sh   (strips the CR .spec, runs promtool)
+#
+# Every case here encodes a real bug found while re-tiering these alerts for the
+# account-switchover era. They are regression tests, not decoration:
+#   1. stale-masking  — the false NEGATIVE that would have let you burn to 100% silently
+#   2. crying-wolf    — the false POSITIVE we are deleting (one hot account is a non-event)
+#   3. namespace      — the Gmail-routing showstopper (min() drops labels)
+#   4. count-or-vector— count() over an empty selector returns EMPTY, not 0
+#   5. up-guard       — no double-notify when the exporter is simply down
+#   6. 401 unless     — no double-notify for one dead token
+rule_files:
+  - claude-usage-rule.rules.yaml
+
+evaluation_interval: 1m
+
+tests:
+  # ===================================================================
+  # 1 + 3. THE CROWN JEWEL: a STALE account must not mask a real emergency,
+  #        and the resulting page MUST carry namespace=monitoring or it emails.
+  #
+  # native is genuinely hot (92%). The other account's token died 40 min ago, so the
+  # exporter is serving its last-good, deceptively COOL 20%. A naive min() reads 20,
+  # says "plenty of headroom", and NEVER PAGES — while the only routable account burns
+  # to 100%. The freshness join must exclude it, making min() = 92.
+  # ===================================================================
+  - interval: 1m
+    name: stale account must not mask a both-accounts-hot emergency
+    input_series:
+      - series: 'claude_usage_window_utilization_percent{account="native@x",window="seven_day",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "92+0x30"
+      - series: 'claude_usage_window_utilization_percent{account="other@x",window="seven_day",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "20+0x30" # stale last-good: looks cool, is a lie
+      - series: 'claude_usage_data_age_seconds{account="native@x",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "120+0x30"
+      - series: 'claude_usage_data_age_seconds{account="other@x",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "2400+0x30" # >1800 => UNROUTABLE
+      - series: 'up{job="claude-usage-exporter",namespace="monitoring"}'
+        values: "1+0x30"
+    promql_expr_test:
+      # the stale account is excluded from the routable set entirely
+      - expr: count(claude:weekly_utilization_routable:percent)
+        eval_time: 12m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+      # min() therefore reads the HOT account (92), not the stale cool one (20)
+      - expr: claude:weekly_utilization_routable:min
+        eval_time: 12m
+        exp_samples:
+          - labels: '{__name__="claude:weekly_utilization_routable:min"}'
+            value: 92
+      - expr: claude:combined_headroom:percent
+        eval_time: 12m
+        exp_samples:
+          - labels: '{__name__="claude:combined_headroom:percent"}'
+            value: 8
+    alert_rule_test:
+      # ...and the page fires, carrying namespace=monitoring (or Alertmanager emails it)
+      - eval_time: 12m
+        alertname: ClaudeAllAccountsWeeklyExhausted
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              alertroute: claude-usage
+              delivery: critical
+              namespace: monitoring
+            exp_annotations:
+              title: "🔴 Claude: nowhere left to switch"
+              summary: "Every Claude account is ≥92% weekly — switchover cannot save you"
+              description: "All routable accounts have used at least 92% of their rolling 7-day window. The switch-proxy has no account with headroom left, so SWITCHING ACCOUNTS WILL NOT HELP. What still works: (1) downshift the model — Sonnet/Haiku burn a fraction of Opus; (2) buy extra-usage credits (claude.ai -> Settings -> Usage); (3) stop until the 7-day window rolls (~5pm Chicago / 22:00 UTC)."
+      # the routable set collapsed to 1 => redundancy gone
+      - eval_time: 20m
+        alertname: ClaudeSwitchoverNoAlternative
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              alertroute: claude-usage
+              delivery: telegram
+              namespace: monitoring
+            exp_annotations:
+              summary: "Claude switchover has no alternative — only 1 routable account(s)"
+              description: "Fewer than 2 accounts have fresh usage data, so the switch-proxy has nothing to fail over TO — you are effectively back to single-account operation. Usually a dead OAuth refresh token. Check claude_usage_poll_http_code (401 = re-mint) and claude_usage_poll_success."
+
+  # ===================================================================
+  # 2. THE CRYING-WOLF FIX: one hot account + one cool account = NO PAGE.
+  #    This is the exact scenario that would have woken you at 3am before.
+  # ===================================================================
+  - interval: 1m
+    name: one hot account with a cool alternative must NOT page
+    input_series:
+      - series: 'claude_usage_window_utilization_percent{account="native@x",window="seven_day",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "96+0x30" # would have fired ClaudeWeeklyViolent (critical) before
+      - series: 'claude_usage_window_utilization_percent{account="other@x",window="seven_day",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "41+0x30" # plenty of headroom -> the proxy just routes here
+      - series: 'claude_usage_data_age_seconds{account="native@x",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "120+0x30"
+      - series: 'claude_usage_data_age_seconds{account="other@x",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "120+0x30"
+      - series: 'up{job="claude-usage-exporter",namespace="monitoring"}'
+        values: "1+0x30"
+    promql_expr_test:
+      - expr: claude:weekly_utilization_routable:min
+        eval_time: 12m
+        exp_samples:
+          - labels: '{__name__="claude:weekly_utilization_routable:min"}'
+            value: 41
+      - expr: claude:routable_accounts:count
+        eval_time: 12m
+        exp_samples:
+          - labels: '{__name__="claude:routable_accounts:count"}'
+            value: 2
+    alert_rule_test:
+      # NO critical page. This is the whole point of the re-tier.
+      - eval_time: 20m
+        alertname: ClaudeAllAccountsWeeklyExhausted
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: ClaudeCombinedHeadroomLow
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: ClaudeSwitchoverNoAlternative
+        exp_alerts: []
+      # ...you get a Telegram note instead, and nothing more.
+      - eval_time: 20m
+        alertname: ClaudeAccountWeeklySpent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              alertroute: claude-usage
+              delivery: telegram
+              namespace: monitoring
+              account: native@x
+              window: seven_day
+              job: claude-usage-exporter
+            exp_annotations:
+              summary: "Claude account spent for the week (96%) — native@x"
+              description: "native@x is at 96% weekly and is now effectively out of rotation. Your redundancy is halved: if the remaining account also gets hot you WILL be paged."
+
+  # ===================================================================
+  # 4 + 5. count() over an EMPTY selector returns EMPTY, not 0 — so `< 2` would
+  #        silently never fire without `or vector(0)`. And when the exporter is
+  #        simply DOWN, only ExporterDown should fire (not also NoAlternative).
+  # ===================================================================
+  - interval: 1m
+    name: exporter down - count falls back to 0 and we do not double-notify
+    input_series:
+      - series: 'up{job="claude-usage-exporter",namespace="monitoring"}'
+        values: "0+0x30"
+    promql_expr_test:
+      # THE BUG: without `or vector(0)` this returns empty and the alert never fires.
+      - expr: claude:routable_accounts:count
+        eval_time: 12m
+        exp_samples:
+          - labels: '{__name__="claude:routable_accounts:count"}'
+            value: 0
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ClaudeUsageExporterDown
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              alertroute: claude-usage
+              delivery: telegram
+              namespace: monitoring
+              job: claude-usage-exporter
+            exp_annotations:
+              summary: "claude-usage-exporter unscrapeable"
+              description: "Prometheus cannot scrape 192.168.86.51:9115. Quota alerting is blind AND the switch-proxy degrades to native passthrough (= exactly the pre-switchover behaviour, so nothing is burning — hence Telegram, not a page)."
+      # the `and on() (up == 1)` guard suppresses this — one fault, one message
+      - eval_time: 20m
+        alertname: ClaudeSwitchoverNoAlternative
+        exp_alerts: []
+
+  # ===================================================================
+  # 6. A dead token (401) must produce ONE message (TokenDead), not two.
+  #    A 401 also drives data_age past 1800, so DataStale must be suppressed.
+  # ===================================================================
+  - interval: 1m
+    name: dead token fires TokenDead only - DataStale is suppressed
+    input_series:
+      - series: 'claude_usage_poll_http_code{account="other@x",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "401+0x30"
+      - series: 'claude_usage_data_age_seconds{account="other@x",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "2400+0x30" # a 401 inevitably drags this past 1800 too
+      - series: 'up{job="claude-usage-exporter",namespace="monitoring"}'
+        values: "1+0x30"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: ClaudeAccountTokenDead
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              alertroute: claude-usage
+              delivery: telegram
+              namespace: monitoring
+              account: other@x
+              job: claude-usage-exporter
+            exp_annotations:
+              summary: "Claude OAuth refresh token dead — other@x"
+              description: "HTTP 401 refreshing other@x's token. The exporter is the sole token refresher, so the switch-proxy can no longer route to this account. Re-mint the refresh token and update /volume1/homes/antialias/claude-usage/creds/accounts.json (chmod 600)."
+      # suppressed by `unless on(account) (claude_usage_poll_http_code == 401)`
+      - eval_time: 15m
+        alertname: ClaudeUsageDataStale
+        exp_alerts: []
