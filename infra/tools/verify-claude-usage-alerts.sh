@@ -7,7 +7,7 @@ set -euo pipefail
 # Run after applying claude-usage-rule.yaml.
 #
 # Checks:
-#   1. all rules loaded (6 recording + 11 alerting)
+#   1. all rules loaded (6 recording + 12 alerting)
 #   2. NO alert is currently firing/pending (no false positives on live data)
 #   3. every alert carries namespace+alertroute+delivery  <- the Gmail-routing invariant
 #   4. exactly ONE delivery=critical rule                 <- the crying-wolf invariant
@@ -49,7 +49,7 @@ rec = [r for r in rules if r["type"] == "recording"]
 al = [r for r in rules if r["type"] == "alerting"]
 
 check(len(rec) == 6, "6 recording rules loaded", f"got {len(rec)}")
-check(len(al) == 11, "11 alerting rules loaded", f"got {len(al)}")
+check(len(al) == 12, "12 alerting rules loaded", f"got {len(al)}")
 
 active = [r["name"] for r in al if r.get("state") != "inactive"]
 check(not active, "no alert firing/pending on live data", f"active: {active}" if active else "all inactive")

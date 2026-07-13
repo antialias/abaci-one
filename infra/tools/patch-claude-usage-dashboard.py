@@ -27,10 +27,10 @@ HERE = pathlib.Path(__file__).resolve().parent
 DASH = HERE / ".." / "terraform" / "files" / "claude-usage-dashboard.json"
 
 DS = {"type": "prometheus", "uid": "prometheus"}
-OURS = {101, 103, 105, 107, 109}  # panel ids this script owns
-ROW_H = 9                         # height of the switchover row we prepend (5 + 4)
+OURS = {101, 103, 105, 107, 109, 111}  # panel ids this script owns
+ROW_H = 17                             # height of the switchover row block (5 + 6 + 6)
 ANN = "Account switchover"
-VERSION = 2
+VERSION = 3
 TITLE = "Claude Code Usage — quota, burn & switchover"
 
 
@@ -73,11 +73,13 @@ PANELS = [
         }, "overrides": []},
     },
     {
-        "id": 103, "type": "stat", "title": "Routing now",
-        "description": ("The account the switch-proxy is currently sending Claude "
-                        "Code to (`claude_usage_preferred == 1`)."),
+        "id": 103, "type": "stat", "title": "Routing now (per model lane)",
+        "description": ("Where the switch-proxy sends each MODEL LANE right now "
+                        "(`claude_usage_lane_preferred == 1`). One chip per lane: "
+                        "fable can ride one account while everything else stays on "
+                        "the other — concurrently."),
         "datasource": DS, "gridPos": {"x": 6, "y": 0, "w": 6, "h": 5},
-        "targets": [tgt("claude_usage_preferred == 1")],
+        "targets": [tgt("claude_usage_lane_preferred == 1", "{{lane}} → {{account}}")],
         "options": {"colorMode": "background", "graphMode": "none",
                     "textMode": "name", "reduceOptions": {
                         "calcs": ["lastNotNull"], "fields": "", "values": False}},
@@ -88,8 +90,9 @@ PANELS = [
     },
     {
         "id": 105, "type": "stat", "title": "Last switchover",
-        "description": ("How long ago the proxy last flipped accounts. 'No data' = "
-                        "it has never switched since the exporter started."),
+        "description": ("How long ago ANY lane last flipped accounts (max over "
+                        "lanes). 'No data' = never switched since the exporter "
+                        "started."),
         "datasource": DS, "gridPos": {"x": 12, "y": 0, "w": 6, "h": 5},
         # `> 0` filters the never-switched sentinel to EMPTY so the panel reads
         # "No data" instead of "56 years ago".
@@ -122,11 +125,13 @@ PANELS = [
         }, "overrides": []},
     },
     {
-        "id": 109, "type": "state-timeline", "title": "Account routing over time",
-        "description": ("`claude_usage_preferred` per account — which account was "
-                        "live, when. Each lane flip is a switchover."),
-        "datasource": DS, "gridPos": {"x": 0, "y": 5, "w": 24, "h": 4},
-        "targets": [tgt("claude_usage_preferred", instant=False)],
+        "id": 109, "type": "state-timeline", "title": "Lane routing over time",
+        "description": ("`claude_usage_lane_preferred` — which account served each "
+                        "model lane, when. A row flipping is that lane's switchover; "
+                        "two lanes on different accounts at once is split routing."),
+        "datasource": DS, "gridPos": {"x": 0, "y": 5, "w": 24, "h": 6},
+        "targets": [tgt("claude_usage_lane_preferred == 1", "{{lane}} → {{account}}",
+                        instant=False)],
         "options": {
             "showValue": "never", "rowHeight": 0.9, "mergeValues": True,
             "alignValue": "center",
@@ -139,6 +144,31 @@ PANELS = [
             "thresholds": steps((None, "transparent"), (1, "blue")),
         }, "overrides": []},
     },
+    {
+        "id": 111, "type": "timeseries", "title": "Lane-effective utilization",
+        "description": (
+            "The switchover policy's actual input, per lane per account: "
+            "`claude_usage_lane_effective_percent` = max(overall 7-day, that "
+            "model's scoped weekly cap). THIS is the panel that answers \"why did "
+            "fable move when overall weekly looked fine\" — the scoped cap was the "
+            "binding constraint. A lane moves off home base when its line there "
+            "crosses 80%."
+        ),
+        "datasource": DS, "gridPos": {"x": 0, "y": 11, "w": 24, "h": 6},
+        "targets": [tgt("claude_usage_lane_effective_percent",
+                        "{{lane}} @ {{account}}", instant=False)],
+        "options": {
+            "legend": {"displayMode": "list", "placement": "bottom",
+                       "showLegend": True, "calcs": ["lastNotNull"]},
+            "tooltip": {"mode": "multi", "sort": "desc"},
+        },
+        "fieldConfig": {"defaults": {
+            "unit": "percent", "min": 0, "max": 100, "decimals": 0,
+            "custom": {"lineWidth": 2, "fillOpacity": 0, "showPoints": "never",
+                       "spanNulls": True},
+            "color": {"mode": "palette-classic"},
+        }, "overrides": []},
+    },
 ]
 
 ANNOTATION = {
@@ -146,11 +176,11 @@ ANNOTATION = {
     "datasource": DS,
     "enable": True,
     "iconColor": "purple",
-    # Fires on the account that BECAME preferred (== 1), so each switchover marks
-    # once rather than twice (the losing account also `changes`).
-    "expr": "changes(claude_usage_preferred[2m]) > 0 and claude_usage_preferred == 1",
-    "titleFormat": "🔀 Account switchover",
-    "textFormat": "now routing to {{account}}",
+    # Fires on the (lane, account) that BECAME preferred (== 1), so each lane's
+    # switchover marks once rather than twice (the losing account also `changes`).
+    "expr": "changes(claude_usage_lane_preferred[2m]) > 0 and claude_usage_lane_preferred == 1",
+    "titleFormat": "🔀 Lane switchover",
+    "textFormat": "{{lane}} now routing to {{account}}",
     "step": "60s",
 }
 

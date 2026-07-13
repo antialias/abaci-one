@@ -9,6 +9,8 @@
 #   4. count-or-vector— count() over an empty selector returns EMPTY, not 0
 #   5. up-guard       — no double-notify when the exporter is simply down
 #   6. 401 unless     — no double-notify for one dead token
+#   7. join-loss only — the lane cap-join alert fires when a lane LOSES its scoped
+#                       cap (display_name drift), never for lanes that never had one
 rule_files:
   - claude-usage-rule.rules.yaml
 
@@ -171,6 +173,40 @@ tests:
       - eval_time: 20m
         alertname: ClaudeSwitchoverNoAlternative
         exp_alerts: []
+
+  # ===================================================================
+  # 7. LANE CAP-JOIN LOSS: the fable lane had a scoped cap (cap_found=1) and then
+  #    lost the join (display_name drift) => alert after 1h. The opus lane has
+  #    NEVER had a cap (permanent 0) and must stay silent forever — firing on it
+  #    would be a permanent false alarm, since Anthropic only publishes a Fable cap.
+  # ===================================================================
+  - interval: 1m
+    name: lane cap-join alert fires on LOSS only - never-capped lanes stay silent
+    input_series:
+      - series: 'claude_usage_lane_scoped_cap_found{lane="fable",account="other@x",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "1+0x30 0+0x120" # had the join for 30m, then lost it
+      - series: 'claude_usage_lane_scoped_cap_found{lane="opus",account="other@x",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "0+0x150" # never had a cap — must never fire
+    alert_rule_test:
+      # 30 min after the loss: inside the for: 1h window — not yet
+      - eval_time: 61m
+        alertname: ClaudeLaneScopedCapJoinLost
+        exp_alerts: []
+      # >1h after the loss: fable fires; opus (never capped) does not
+      - eval_time: 100m
+        alertname: ClaudeLaneScopedCapJoinLost
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              alertroute: claude-usage
+              delivery: telegram
+              namespace: monitoring
+              lane: fable
+              account: other@x
+              job: claude-usage-exporter
+            exp_annotations:
+              summary: "Claude fable lane lost its scoped-cap join — other@x"
+              description: "The fable lane's scope_model no longer matches any weekly_scoped limit in other@x's usage payload, but it did within the last 7 days. Its lane-effective utilization has quietly fallen back to overall weekly, so a hot model cap would no longer move this lane off the account. Check the display_name in the API payload vs the lane config (/creds/lanes.json on the NAS, or DEFAULT_LANES in claude_usage_exporter.py)."
 
   # ===================================================================
   # 6. A dead token (401) must produce ONE message (TokenDead), not two.

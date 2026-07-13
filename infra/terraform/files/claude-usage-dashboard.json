@@ -19,9 +19,9 @@
         },
         "enable": true,
         "iconColor": "purple",
-        "expr": "changes(claude_usage_preferred[2m]) > 0 and claude_usage_preferred == 1",
-        "titleFormat": "🔀 Account switchover",
-        "textFormat": "now routing to {{account}}",
+        "expr": "changes(claude_usage_lane_preferred[2m]) > 0 and claude_usage_lane_preferred == 1",
+        "titleFormat": "🔀 Lane switchover",
+        "textFormat": "{{lane}} now routing to {{account}}",
         "step": "60s"
       }
     ]
@@ -108,8 +108,8 @@
     {
       "id": 103,
       "type": "stat",
-      "title": "Routing now",
-      "description": "The account the switch-proxy is currently sending Claude Code to (`claude_usage_preferred == 1`).",
+      "title": "Routing now (per model lane)",
+      "description": "Where the switch-proxy sends each MODEL LANE right now (`claude_usage_lane_preferred == 1`). One chip per lane: fable can ride one account while everything else stays on the other — concurrently.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -126,8 +126,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "claude_usage_preferred == 1",
-          "legendFormat": "{{account}}",
+          "expr": "claude_usage_lane_preferred == 1",
+          "legendFormat": "{{lane}} → {{account}}",
           "refId": "A",
           "instant": true,
           "range": false
@@ -168,7 +168,7 @@
       "id": 105,
       "type": "stat",
       "title": "Last switchover",
-      "description": "How long ago the proxy last flipped accounts. 'No data' = it has never switched since the exporter started.",
+      "description": "How long ago ANY lane last flipped accounts (max over lanes). 'No data' = never switched since the exporter started.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -294,8 +294,8 @@
     {
       "id": 109,
       "type": "state-timeline",
-      "title": "Account routing over time",
-      "description": "`claude_usage_preferred` per account — which account was live, when. Each lane flip is a switchover.",
+      "title": "Lane routing over time",
+      "description": "`claude_usage_lane_preferred` — which account served each model lane, when. A row flipping is that lane's switchover; two lanes on different accounts at once is split routing.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -304,7 +304,7 @@
         "x": 0,
         "y": 5,
         "w": 24,
-        "h": 4
+        "h": 6
       },
       "targets": [
         {
@@ -312,8 +312,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "claude_usage_preferred",
-          "legendFormat": "{{account}}",
+          "expr": "claude_usage_lane_preferred == 1",
+          "legendFormat": "{{lane}} → {{account}}",
           "refId": "A",
           "instant": false,
           "range": true
@@ -357,6 +357,67 @@
       }
     },
     {
+      "id": 111,
+      "type": "timeseries",
+      "title": "Lane-effective utilization",
+      "description": "The switchover policy's actual input, per lane per account: `claude_usage_lane_effective_percent` = max(overall 7-day, that model's scoped weekly cap). THIS is the panel that answers \"why did fable move when overall weekly looked fine\" — the scoped cap was the binding constraint. A lane moves off home base when its line there crosses 80%.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 24,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "claude_usage_lane_effective_percent",
+          "legendFormat": "{{lane}} @ {{account}}",
+          "refId": "A",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "id": 1,
       "type": "gauge",
       "title": "Weekly (7d) used",
@@ -366,7 +427,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 17,
         "w": 8,
         "h": 8
       },
@@ -434,7 +495,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 9,
+        "y": 17,
         "w": 16,
         "h": 8
       },
@@ -507,7 +568,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 17,
+        "y": 25,
         "w": 8,
         "h": 7
       },
@@ -575,7 +636,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 17,
+        "y": 25,
         "w": 16,
         "h": 7
       },
@@ -625,14 +686,14 @@
     {
       "id": 9,
       "type": "table",
-      "title": "Per-model & window limits (with severity via % color)",
+      "title": "All limits — hottest first",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 32,
         "w": 12,
         "h": 8
       },
@@ -646,14 +707,11 @@
           "legendFormat": "",
           "refId": "K",
           "instant": true,
-          "range": false
+          "range": false,
+          "format": "table"
         }
       ],
       "transformations": [
-        {
-          "id": "labelsToFields",
-          "options": {}
-        },
         {
           "id": "organize",
           "options": {
@@ -665,6 +723,8 @@
               "job": true,
               "namespace": true,
               "service": true,
+              "container": true,
+              "pod": true,
               "tier": true,
               "group": true
             },
@@ -680,6 +740,18 @@
               "scope_model": 2,
               "Value": 3
             }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "% used",
+                "desc": true
+              }
+            ]
           }
         }
       ],
@@ -697,6 +769,14 @@
                 "value": "percent"
               },
               {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              },
+              {
                 "id": "custom.cellOptions",
                 "value": {
                   "type": "color-background"
@@ -712,23 +792,86 @@
                       "color": "green"
                     },
                     {
-                      "value": 85,
+                      "value": 60,
+                      "color": "yellow"
+                    },
+                    {
+                      "value": 80,
                       "color": "orange"
                     },
                     {
-                      "value": 100,
+                      "value": 90,
                       "color": "red"
                     }
                   ]
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Limit"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "session": {
+                        "text": "5-hour session",
+                        "index": 0
+                      },
+                      "weekly_all": {
+                        "text": "Weekly — everything",
+                        "index": 1
+                      },
+                      "weekly_scoped": {
+                        "text": "Weekly — model cap",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Model"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "special",
+                    "options": {
+                      "match": "empty",
+                      "result": {
+                        "text": "all",
+                        "index": 0
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
           }
         ]
       },
       "options": {
-        "showHeader": true
-      }
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "description": "Every rate limit Anthropic tracks for each account, one row per limit, sorted hottest-first. 'Weekly — model cap' rows are the per-model scoped caps (e.g. Fable) that can max out even while the overall weekly looks fine — ClaudeModelCapMaxed alerts on those."
     },
     {
       "id": 11,
@@ -740,7 +883,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 24,
+        "y": 32,
         "w": 6,
         "h": 4
       },
@@ -795,7 +938,7 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 24,
+        "y": 32,
         "w": 6,
         "h": 4
       },
@@ -850,7 +993,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 28,
+        "y": 36,
         "w": 6,
         "h": 4
       },
@@ -913,7 +1056,7 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 28,
+        "y": 36,
         "w": 6,
         "h": 4
       },
@@ -976,7 +1119,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 32,
+        "y": 40,
         "w": 8,
         "h": 4
       },
@@ -1048,7 +1191,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 32,
+        "y": 40,
         "w": 8,
         "h": 4
       },
@@ -1103,7 +1246,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 32,
+        "y": 40,
         "w": 8,
         "h": 4
       },
@@ -1167,6 +1310,6 @@
   "timezone": "browser",
   "title": "Claude Code Usage — quota, burn & switchover",
   "uid": "claude-usage",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
