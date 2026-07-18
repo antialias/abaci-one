@@ -1,6 +1,10 @@
 // Abacus Studio — pure parametric model logic (graduated verbatim from the
 // off-stack bench's main.ts; see Gitea epic #5, Phase 0 #6).
 //
+// SPEC: apps/web/docs/abacus-studio/master-model-spec.md — anatomy, the
+// locked-vs-proportional dimension model, and the constant-clearance proof this
+// module's `derived()` implements.
+//
 // This module is framework-free and three-free: it turns the intent-knob
 // parameter surface into the `-D` defines the OpenSCAD-WASM worker renders, and
 // it carries the myabacus color / AMS-filament model plus the union-find shell
