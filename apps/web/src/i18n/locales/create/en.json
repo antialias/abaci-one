@@ -36,12 +36,12 @@
         "button": "Create Worksheets"
       },
       "visionAbacus": {
-        "title": "Create Your Own Abacus",
-        "description": "Print custom markers to turn any surface into a camera-trackable abacus for computer vision practice.",
-        "feature1": "Printable fiducial markers",
-        "feature2": "Works with any camera",
-        "feature3": "Real-time value detection",
-        "button": "Create Markers"
+        "title": "Your Abacus",
+        "description": "Turn the abacus you use on screen into a real one — 3D-print it with markers baked in, or add stick-on markers to one you own, so the camera can read it back.",
+        "feature1": "3D-printable, markers baked in",
+        "feature2": "Or stick-on markers for any abacus",
+        "feature3": "Read back live with your camera",
+        "button": "Open Your Abacus"
       }
     },
     "abacus": {

@@ -342,8 +342,8 @@ export default function CreateHubPage() {
 
             <CreatorCard
               type="visionAbacus"
-              href="/create/vision-markers"
-              emoji="📷"
+              href="/create/abacus"
+              emoji="🧮"
               title={t('visionAbacus.title')}
               description={t('visionAbacus.description')}
               features={[
