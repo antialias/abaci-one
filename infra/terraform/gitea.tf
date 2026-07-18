@@ -303,7 +303,10 @@ resource "kubernetes_config_map" "gitea" {
       SSH_DOMAIN       = git.dev.${var.app_domain}
       HTTP_PORT        = 3000
       ROOT_URL         = https://git.dev.${var.app_domain}/
-      DISABLE_SSH      = true
+      DISABLE_SSH      = false
+      START_SSH_SERVER = true
+      SSH_PORT         = 2222
+      SSH_LISTEN_PORT  = 2222
       LFS_START_SERVER = true
       LFS_JWT_SECRET   = ${random_password.gitea_lfs_jwt[0].result}
 
@@ -506,6 +509,11 @@ resource "kubernetes_deployment" "gitea" {
             name           = "http"
           }
 
+          port {
+            container_port = 2222
+            name           = "ssh"
+          }
+
           # Tell Gitea where to find custom config
           env {
             name  = "GITEA_WORK_DIR"
@@ -603,6 +611,28 @@ resource "kubernetes_service" "gitea" {
     }
 
     type = "ClusterIP"
+  }
+}
+
+resource "kubernetes_service" "gitea_ssh" {
+  metadata {
+    name      = "gitea-ssh"
+    namespace = kubernetes_namespace.gitea.metadata[0].name
+  }
+
+  spec {
+    selector = {
+      app = "gitea"
+    }
+
+    port {
+      port        = 2222
+      target_port = 2222
+      name        = "ssh"
+      protocol    = "TCP"
+    }
+
+    type = "LoadBalancer"
   }
 }
 

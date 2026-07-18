@@ -73,6 +73,15 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
                 value = "/artifacts/smoke-reports"
               }
 
+              env {
+                # Push run-result metrics to the Prometheus Pushgateway as a
+                # single series (job="smoke-tests", app="abaci-app"), instead of
+                # relying on per-pod in-memory gauges on abaci-app. See
+                # monitoring.tf (kubernetes_deployment.pushgateway).
+                name  = "PUSHGATEWAY_URL"
+                value = "http://${kubernetes_service.pushgateway.metadata[0].name}.${kubernetes_service.pushgateway.metadata[0].namespace}.svc.cluster.local:9091"
+              }
+
               resources {
                 requests = {
                   memory = "512Mi"
