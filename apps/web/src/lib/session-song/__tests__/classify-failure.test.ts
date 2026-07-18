@@ -38,9 +38,7 @@ describe('classifySongFailure', () => {
     const outOfFunds = classifySongFailure(
       'openai API error (429): You exceeded your current quota, please check your plan and billing details.'
     )
-    const insufficientQuotaCode = classifySongFailure(
-      'openai API error (429): insufficient_quota'
-    )
+    const insufficientQuotaCode = classifySongFailure('openai API error (429): insufficient_quota')
     const rateLimited = classifySongFailure(
       'openai API error (429): Rate limit reached for gpt-4o in organization org-...'
     )
@@ -56,7 +54,9 @@ describe('classifySongFailure', () => {
   })
 
   it('classifies 429 as rate_limited', () => {
-    const result = classifySongFailure(new Error('Request failed with status 429: too many requests'))
+    const result = classifySongFailure(
+      new Error('Request failed with status 429: too many requests')
+    )
     expect(result.kind).toBe('rate_limited')
     expect(result.remediation).toBeNull()
   })

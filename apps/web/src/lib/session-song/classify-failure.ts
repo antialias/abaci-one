@@ -97,7 +97,11 @@ export function classifySongFailure(rawError: unknown): ClassifiedSongFailure {
   }
 
   // Rate limiting — 429 with retry-after.
-  if (lower.includes('429') || lower.includes('rate limit') || lower.includes('too many requests')) {
+  if (
+    lower.includes('429') ||
+    lower.includes('rate limit') ||
+    lower.includes('too many requests')
+  ) {
     return {
       kind: 'rate_limited',
       userMessage: "Couldn't make a song right now. Try again in a few minutes.",

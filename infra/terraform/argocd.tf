@@ -192,11 +192,25 @@ resource "kubernetes_manifest" "argocd_app" {
     metadata = {
       name      = "abaci-app"
       namespace = kubernetes_namespace.argocd.metadata[0].name
+      # Image-updater config (digest write-back via the ArgoCD API). Ignored by
+      # computed_fields below (image-updater owns these at runtime); codified
+      # here only to document intent.
+      annotations = {
+        "argocd-image-updater.argoproj.io/image-list"          = "app=ghcr.io/antialias/abaci-one:main"
+        "argocd-image-updater.argoproj.io/app.update-strategy" = "digest"
+      }
     }
     spec = {
       project = "default"
       source = {
-        repoURL        = "https://github.com/antialias/abaci-one"
+        # ArgoCD pulls abaci-app manifests from the IN-CLUSTER Gitea, NOT GitHub.
+        # The live Deployment matches the Gitea manifest exactly (init container
+        # "migrate", 5 PVC mounts incl. generated-images-data & dev-artifacts,
+        # 1536Mi limit). The GitHub abaci-one copy is STALE and would regress the
+        # app on sync (prunes 2 PVCs, drops the init container, lowers memory).
+        # Do not "consolidate" to GitHub without first reconciling that manifest
+        # to live. See drift accounting 2026-06-14.
+        repoURL        = "http://gitea.gitea.svc.cluster.local:3000/antialias/soroban-abacus-flashcards"
         targetRevision = "main"
         path           = "infra/k8s/abaci-app"
       }
@@ -213,6 +227,11 @@ resource "kubernetes_manifest" "argocd_app" {
       }
     }
   }
+
+  # image-updater writes the resolved digest into spec.source.kustomize.images at
+  # runtime; TF must not revert it. (annotations/labels are computed by default —
+  # re-listed here because setting computed_fields overrides the default list.)
+  computed_fields = ["metadata.annotations", "metadata.labels", "spec.source.kustomize"]
 
   depends_on = [time_sleep.wait_for_argocd_crds]
 }

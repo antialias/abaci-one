@@ -103,17 +103,17 @@ resource "helm_release" "kube_prometheus_stack" {
       enabled = true
       config = {
         global = {
-          smtp_smarthost    = "smtp.gmail.com:587"
-          smtp_from         = "hallock@gmail.com"
+          smtp_smarthost     = "smtp.gmail.com:587"
+          smtp_from          = "hallock@gmail.com"
           smtp_auth_username = "hallock@gmail.com"
           smtp_auth_password = var.smtp_password
           smtp_require_tls   = true
         }
         route = {
-          receiver       = "email"
-          group_by       = ["alertname"]
-          group_wait     = "30s"
-          group_interval = "5m"
+          receiver        = "email"
+          group_by        = ["alertname"]
+          group_wait      = "30s"
+          group_interval  = "5m"
           repeat_interval = "4h"
         }
         # NOTE: Claude Code usage/quota alerts are NOT routed here. They carry
@@ -127,8 +127,8 @@ resource "helm_release" "kube_prometheus_stack" {
             name = "email"
             email_configs = [
               {
-                to             = "hallock@gmail.com"
-                send_resolved  = true
+                to            = "hallock@gmail.com"
+                send_resolved = true
                 headers = {
                   Subject = "{{ template \"custom_subject\" . }}"
                 }

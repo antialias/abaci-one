@@ -101,6 +101,12 @@ variable "grafana_admin_password" {
   sensitive   = true
 }
 
+variable "smtp_password" {
+  description = "Gmail app password for AlertManager SMTP notifications"
+  type        = string
+  sensitive   = true
+}
+
 # Gitea Configuration
 variable "gitea_admin_user" {
   description = "Gitea admin username"

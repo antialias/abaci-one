@@ -36,10 +36,7 @@ export const GET = withAuth(
       })
       .from(schema.sessionSongs)
       .where(
-        and(
-          eq(schema.sessionSongs.status, 'failed'),
-          gte(schema.sessionSongs.createdAt, oneDayAgo)
-        )
+        and(eq(schema.sessionSongs.status, 'failed'), gte(schema.sessionSongs.createdAt, oneDayAgo))
       )
       .groupBy(schema.sessionSongs.failureKind)
 

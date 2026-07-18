@@ -92,8 +92,8 @@ export function SystemHealthBanner() {
         })}
       >
         {escalating.reduce((acc, g) => acc + g.count, 0)} failed song{' '}
-        {escalating.reduce((acc, g) => acc + g.count, 0) === 1 ? 'request' : 'requests'} in the
-        last {data.windowHours}h.
+        {escalating.reduce((acc, g) => acc + g.count, 0) === 1 ? 'request' : 'requests'} in the last{' '}
+        {data.windowHours}h.
       </p>
       <ul
         className={css({

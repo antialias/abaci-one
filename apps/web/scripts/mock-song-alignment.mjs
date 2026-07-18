@@ -85,6 +85,4 @@ const out = {
 
 const outPath = join(process.cwd(), 'data', 'audio', 'songs', `${songId}.json`)
 writeFileSync(outPath, JSON.stringify(out, null, 2))
-console.log(
-  `Wrote ${allWords.length} words across ${sections.length} sections → ${outPath}`
-)
+console.log(`Wrote ${allWords.length} words across ${sections.length} sections → ${outPath}`)

@@ -385,11 +385,7 @@ export function SyncedLyricsPlayer({
                 Keeps the collapsed row from going lyric-less while the song
                 plays in the background. */}
             {!expanded && model.hasAlignment && active != null ? (
-              <ActiveLyricStrip
-                model={model}
-                active={active}
-                onSeekToWord={seekToMs}
-              />
+              <ActiveLyricStrip model={model} active={active} onSeekToWord={seekToMs} />
             ) : (
               <div
                 data-element="song-time"

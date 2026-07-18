@@ -20,11 +20,7 @@ interface SongFailureCardProps {
  * admin), an expandable second block surfaces the underlying problem and a
  * direct remediation link.
  */
-export function SongFailureCard({
-  failureKind,
-  errorDetail,
-  viewerIsOwner,
-}: SongFailureCardProps) {
+export function SongFailureCard({ failureKind, errorDetail, viewerIsOwner }: SongFailureCardProps) {
   // Use the classifier to rebuild the messages from the kind. We also pass any
   // raw error string so the classifier's defaults match what the server stored.
   const classified = classifySongFailure(errorDetail ?? failureKind ?? 'unknown')
