@@ -11,7 +11,7 @@
 // OpenSCAD — client WASM only.
 
 import { useAbacusConfig } from '@soroban/abacus-react'
-import { useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
@@ -31,11 +31,24 @@ import {
   type ShellInfo,
   tokenCenters,
 } from './abacus-model'
+import { DEFAULT_PROFILE_ID, PRINTER_PROFILES, profileById, solve } from './abacus-solver'
 import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
 
 const SCHEMES = ['monochrome', 'place-value', 'heaven-earth', 'alternating']
 const PALETTES = ['default', 'colorblind', 'mnemonic', 'grayscale', 'nature']
 const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
+
+// shared style for the one-click solver-fix buttons (sit inside the red error box)
+const FIX_BTN: CSSProperties = {
+  padding: '5px 9px',
+  borderRadius: 6,
+  border: '1px solid rgba(248,113,113,0.6)',
+  background: 'rgba(254,226,226,0.12)',
+  color: 'rgba(254,226,226,0.98)',
+  fontSize: 11,
+  fontWeight: 600,
+  cursor: 'pointer',
+}
 
 type DrawApi = {
   /** parse + shell-classify + recolor a fresh geometry STL; returns tri count */
@@ -58,6 +71,9 @@ export function AbacusStudioViewer() {
   // sliders/selects live behind a "Customize" disclosure so the print tool leads
   // with its Download action instead of a wall of dev controls.
   const [customizeOpen, setCustomizeOpen] = useState(false)
+  // printer profile: a print setting (Common / Wide / Fine), NOT part of the
+  // abacus identity — changing it must not detach `synced`.
+  const [profileId, setProfileId] = useState<string>(DEFAULT_PROFILE_ID)
   const paramsRef = useRef(params)
   paramsRef.current = params
   const [status, setStatus] = useState<StatusUpdate>({ text: 'booting…' })
@@ -449,6 +465,22 @@ export function AbacusStudioViewer() {
     setParams((prev) => ({ ...prev, [k]: v }))
   }
 
+  // ---- printability gate ----------------------------------------------------
+  // Run the pure solver against the selected profile; errors block Export, the
+  // inlay warning does not. See abacus-solver.ts.
+  const profile = profileById(profileId)
+  const solveResult = useMemo(() => solve(params, profile), [params, profile])
+  const errors = solveResult.reasons.filter((r) => r.severity === 'error')
+  const warnings = solveResult.reasons.filter((r) => r.severity === 'warning')
+  const exportBlocked = errors.length > 0
+  // the two mechanical one-click fixes derivable from the errors: scale up to
+  // clear all proportional floors at once, and/or raise the absolute fit gap.
+  const proportionalScales = errors
+    .map((r) => r.suggestedScale)
+    .filter((s): s is number => typeof s === 'number')
+  const scaleFix = proportionalScales.length ? Math.max(...proportionalScales) : null
+  const clearanceFix = errors.find((r) => r.dim === 'clearance')?.floorMm ?? null
+
   const onExport = () =>
     scad.exportStl(paramsRef.current, (stl) => {
       const blob = new Blob([stl], { type: 'model/stl' })
@@ -522,21 +554,119 @@ export function AbacusStudioViewer() {
           )}
         </div>
 
+        {/* printer profile — a first-class print setting (drives the gate below) */}
+        <Select
+          label="printer profile"
+          value={profileId}
+          options={PRINTER_PROFILES.map((p) => ({ value: p.id, label: p.label }))}
+          onChange={setProfileId}
+          dataElement="abacus-studio-profile"
+          dataAction="select-profile"
+        />
+
+        {/* printability verdict: red errors block Export (with one-click fixes),
+            amber warnings inform but don't block */}
+        {solveResult.reasons.length > 0 && (
+          <div
+            data-element="abacus-studio-solver-reasons"
+            style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+          >
+            {errors.length > 0 && (
+              <div
+                data-element="abacus-studio-solver-errors"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  background: 'rgba(127,29,29,0.35)',
+                  border: '1px solid rgba(248,113,113,0.5)',
+                  color: 'rgba(254,226,226,0.96)',
+                  fontSize: 11,
+                  lineHeight: 1.45,
+                }}
+              >
+                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span aria-hidden="true">⛔</span> Won&apos;t print on {profile.label}
+                </div>
+                {errors.map((r) => (
+                  <div key={r.dim}>{r.message}</div>
+                ))}
+                {(scaleFix != null || clearanceFix != null) && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+                    {scaleFix != null && (
+                      <button
+                        type="button"
+                        data-action="apply-solver-fix"
+                        onClick={() => set('scale_factor', scaleFix)}
+                        style={FIX_BTN}
+                      >
+                        ⤢ Scale up to {scaleFix}×
+                      </button>
+                    )}
+                    {clearanceFix != null && (
+                      <button
+                        type="button"
+                        data-action="apply-solver-fix"
+                        onClick={() => set('clearance', clearanceFix)}
+                        style={FIX_BTN}
+                      >
+                        ↕ Raise fit gap to {clearanceFix.toFixed(2)} mm
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {warnings.length > 0 && (
+              <div
+                data-element="abacus-studio-solver-warnings"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  background: 'rgba(120,53,15,0.30)',
+                  border: '1px solid rgba(251,191,36,0.45)',
+                  color: 'rgba(254,243,199,0.96)',
+                  fontSize: 11,
+                  lineHeight: 1.45,
+                }}
+              >
+                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span aria-hidden="true">⚠️</span> Heads up
+                </div>
+                {warnings.map((r) => (
+                  <div key={r.dim}>{r.message}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* primary action — the whole point of the print path */}
         <button
           type="button"
           data-action="export-stl"
           onClick={onExport}
+          disabled={exportBlocked}
+          title={
+            exportBlocked
+              ? `Fix the errors above to print on ${profile.label}`
+              : 'Download a print-ready STL'
+          }
           style={{
             padding: '11px 12px',
             borderRadius: 8,
             border: 'none',
-            background: CYAN_GRADIENT,
-            color: '#fff',
+            background: exportBlocked ? 'rgba(75,85,99,0.55)' : CYAN_GRADIENT,
+            color: exportBlocked ? 'rgba(209,213,219,0.7)' : '#fff',
             fontSize: 13,
             fontWeight: 700,
-            cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(6,182,212,0.35)',
+            cursor: exportBlocked ? 'not-allowed' : 'pointer',
+            boxShadow: exportBlocked ? 'none' : '0 4px 14px rgba(6,182,212,0.35)',
           }}
         >
           ⬇ Download STL to print
@@ -664,26 +794,33 @@ export function AbacusStudioViewer() {
   )
 }
 
-// tiny labeled <select> (the app's debug panel has no select primitive)
+// tiny labeled <select> (the app's debug panel has no select primitive). Options
+// are plain strings (value === label) or {value,label} pairs for id→label menus.
 function Select({
   label,
   value,
   options,
   onChange,
+  dataElement = 'abacus-studio-select',
+  dataAction,
 }: {
   label: string
   value: string
-  options: string[]
+  options: Array<string | { value: string; label: string }>
   onChange: (v: string) => void
+  dataElement?: string
+  dataAction?: string
 }) {
+  const opts = options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o))
   return (
     <label
-      data-element="abacus-studio-select"
+      data-element={dataElement}
       style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, fontWeight: 500 }}
     >
       {label}
       <select
         value={value}
+        data-action={dataAction}
         onChange={(e) => onChange(e.target.value)}
         style={{
           background: 'rgba(255,255,255,0.08)',
@@ -694,9 +831,9 @@ function Select({
           fontSize: 12,
         }}
       >
-        {options.map((o) => (
-          <option key={o} value={o} style={{ color: '#111' }}>
-            {o}
+        {opts.map((o) => (
+          <option key={o.value} value={o.value} style={{ color: '#111' }}>
+            {o.label}
           </option>
         ))}
       </select>
