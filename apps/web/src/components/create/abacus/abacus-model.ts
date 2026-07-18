@@ -91,6 +91,39 @@ export const defaultParams = {
 
 export type Params = typeof defaultParams
 
+// ---- project the app's AbacusDisplayConfig onto print params ----------------
+// The toy opens showing the user's ACTUAL abacus: its column count and color
+// identity carry over from their AbacusDisplayConfig (abacus_settings). This is
+// a READ-ONLY projection — tweaking the toy never writes back to display
+// settings. Only the abacus's IDENTITY maps (columns + colors); physical print
+// size is intentionally NOT projected. The display `scaleFactor` is an on-screen
+// zoom (someone who zoomed in for readability didn't ask for a giant print), so
+// print size stays a deliberate fabrication choice made with the size knob.
+//
+// The input is a narrow structural type, not the react package's
+// `AbacusDisplayConfig` — this module stays framework-free, and the caller
+// passes just the four fields it reads.
+export type DisplayConfigInput = {
+  colorScheme: string
+  colorPalette: string
+  physicalAbacusColumns: number
+}
+
+// the scad asserts a 3-column floor; the app allows 1–21, so clamp the low end.
+export const clampCols = (n: number): number => Math.max(3, Math.min(21, Math.round(n)))
+
+export function paramsFromDisplayConfig(
+  cfg: DisplayConfigInput,
+  base: Params = defaultParams
+): Params {
+  return {
+    ...base,
+    cols: clampCols(cfg.physicalAbacusColumns),
+    color_scheme: cfg.colorScheme,
+    color_palette: cfg.colorPalette,
+  }
+}
+
 // ---- perimeter text tokens --------------------------------------------------
 export const TEXT_PRESETS: Record<string, string[]> = {
   'friends-of-10': ['1+9', '2+8', '3+7', '4+6', '5+5'],

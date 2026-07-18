@@ -10,21 +10,22 @@
 // corner overlay and the second-pass inset-text plug preview. No server-side
 // OpenSCAD — client WASM only.
 
+import { useAbacusConfig } from '@soroban/abacus-react'
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
-import { DebugCheckbox, DebugSlider } from '../ToyDebugPanel'
+import { DebugCheckbox, DebugSlider } from '@/components/toys/ToyDebugPanel'
 import {
   analyzeShells,
   COLOR_PALETTES,
   computeFilamentMap,
-  defaultParams,
   frameW,
   MARKER_BITS,
   nearestSlot,
   outerD,
   type Params,
+  paramsFromDisplayConfig,
   PRESET_OPTS,
   shellHex,
   type ShellInfo,
@@ -34,6 +35,7 @@ import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
 
 const SCHEMES = ['monochrome', 'place-value', 'heaven-earth', 'alternating']
 const PALETTES = ['default', 'colorblind', 'mnemonic', 'grayscale', 'nature']
+const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
 
 type DrawApi = {
   /** parse + shell-classify + recolor a fresh geometry STL; returns tri count */
@@ -45,7 +47,17 @@ type DrawApi = {
 }
 
 export function AbacusStudioViewer() {
-  const [params, setParams] = useState<Params>(defaultParams)
+  // the toy opens showing the viewer's OWN abacus (columns + color identity from
+  // their live AbacusDisplayConfig), then follows it until they touch a control.
+  const displayConfig = useAbacusConfig()
+  const [params, setParams] = useState<Params>(() => paramsFromDisplayConfig(displayConfig))
+  // `synced` = params still mirror the display config. Any manual edit detaches
+  // (so a customization is never stomped by a config change), and the
+  // "reset to my abacus" button re-attaches.
+  const [synced, setSynced] = useState(true)
+  // sliders/selects live behind a "Customize" disclosure so the print tool leads
+  // with its Download action instead of a wall of dev controls.
+  const [customizeOpen, setCustomizeOpen] = useState(false)
   const paramsRef = useRef(params)
   paramsRef.current = params
   const [status, setStatus] = useState<StatusUpdate>({ text: 'booting…' })
@@ -417,14 +429,25 @@ export function AbacusStudioViewer() {
     }
   }, [])
 
+  // ---- follow the live abacus config while synced ---------------------------
+  // Re-seeds when the provider hydrates its stored config after mount, and when
+  // the user changes their abacus elsewhere. A no-op once they've customized.
+  useEffect(() => {
+    if (!synced) return
+    setParams(paramsFromDisplayConfig(displayConfig))
+  }, [displayConfig, synced])
+
   // ---- react to param edits: cheap redraw + (deduped) WASM re-render --------
   useEffect(() => {
     drawRef.current?.applyParams()
     scad.render(params)
   }, [params, scad])
 
-  const set = <K extends keyof Params>(k: K, v: Params[K]) =>
+  // any manual edit detaches from the live config (see `synced`).
+  const set = <K extends keyof Params>(k: K, v: Params[K]) => {
+    setSynced(false)
     setParams((prev) => ({ ...prev, [k]: v }))
+  }
 
   const onExport = () =>
     scad.exportStl(paramsRef.current, (stl) => {
@@ -465,94 +488,155 @@ export function AbacusStudioViewer() {
           boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
         }}
       >
-        <div style={{ fontWeight: 700, fontSize: 12, letterSpacing: '0.03em' }}>
-          Abacus Studio · Phase 0
+        <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>Your 3D abacus</div>
+
+        <div
+          data-element="abacus-studio-sync-status"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            fontSize: 11,
+            color: synced ? 'rgba(134,239,172,0.95)' : 'rgba(252,211,77,0.95)',
+          }}
+        >
+          <span>{synced ? '● showing your abacus' : '● customized'}</span>
+          {!synced && (
+            <button
+              type="button"
+              data-action="reset-to-my-abacus"
+              onClick={() => setSynced(true)}
+              style={{
+                padding: '3px 8px',
+                borderRadius: 5,
+                border: '1px solid rgba(148,163,184,0.5)',
+                background: 'transparent',
+                color: 'rgba(226,232,240,1)',
+                fontSize: 11,
+                cursor: 'pointer',
+              }}
+            >
+              reset to my abacus
+            </button>
+          )}
         </div>
 
-        <DebugSlider
-          label="size ×"
-          value={params.scale_factor}
-          min={0.5}
-          max={2}
-          step={0.05}
-          onChange={(v) => set('scale_factor', v)}
-          formatValue={(v) => v.toFixed(2)}
-        />
-        <DebugSlider
-          label="columns"
-          value={params.cols}
-          min={3}
-          max={21}
-          step={1}
-          onChange={(v) => set('cols', v)}
-        />
-        <DebugSlider
-          label="fit gap (mm)"
-          value={params.clearance}
-          min={0.1}
-          max={0.8}
-          step={0.01}
-          onChange={(v) => set('clearance', v)}
-          formatValue={(v) => v.toFixed(2)}
-        />
-        <DebugSlider
-          label="$fn (quality)"
-          value={params.fn}
-          min={8}
-          max={64}
-          step={1}
-          onChange={(v) => set('fn', v)}
-        />
-
-        <Select
-          label="color scheme"
-          value={params.color_scheme}
-          options={SCHEMES}
-          onChange={(v) => set('color_scheme', v)}
-        />
-        <Select
-          label="palette"
-          value={params.color_palette}
-          options={PALETTES}
-          onChange={(v) => set('color_palette', v)}
-        />
-        <Select
-          label="top rail"
-          value={params.top_preset}
-          options={PRESET_OPTS}
-          onChange={(v) => set('top_preset', v)}
-        />
-        <Select
-          label="bottom rail"
-          value={params.bottom_preset}
-          options={PRESET_OPTS}
-          onChange={(v) => set('bottom_preset', v)}
-        />
-
-        <DebugCheckbox
-          label="ArUco corner markers"
-          checked={params.show_markers}
-          onChange={(v) => set('show_markers', v)}
-        />
-
+        {/* primary action — the whole point of the print path */}
         <button
           type="button"
           data-action="export-stl"
           onClick={onExport}
           style={{
-            marginTop: 2,
-            padding: '8px 10px',
-            borderRadius: 6,
-            border: '1px solid rgba(129,140,248,0.6)',
-            background: 'rgba(129,140,248,0.18)',
-            color: 'rgba(243,244,246,1)',
+            padding: '11px 12px',
+            borderRadius: 8,
+            border: 'none',
+            background: CYAN_GRADIENT,
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(6,182,212,0.35)',
+          }}
+        >
+          ⬇ Download STL to print
+        </button>
+
+        {/* customize disclosure — sliders/selects tucked out of the way */}
+        <button
+          type="button"
+          data-action="toggle-customize"
+          aria-expanded={customizeOpen}
+          onClick={() => setCustomizeOpen((v) => !v)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '6px 2px',
+            border: 'none',
+            background: 'transparent',
+            color: 'rgba(203,213,225,0.9)',
             fontSize: 12,
             fontWeight: 600,
             cursor: 'pointer',
           }}
         >
-          Export STL ($fn=64)
+          <span>Customize</span>
+          <span aria-hidden="true">{customizeOpen ? '▾' : '▸'}</span>
         </button>
+
+        {customizeOpen && (
+          <div
+            data-element="abacus-studio-customize"
+            style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+          >
+            <DebugSlider
+              label="size ×"
+              value={params.scale_factor}
+              min={0.5}
+              max={2}
+              step={0.05}
+              onChange={(v) => set('scale_factor', v)}
+              formatValue={(v) => v.toFixed(2)}
+            />
+            <DebugSlider
+              label="columns"
+              value={params.cols}
+              min={3}
+              max={21}
+              step={1}
+              onChange={(v) => set('cols', v)}
+            />
+            <DebugSlider
+              label="fit gap (mm)"
+              value={params.clearance}
+              min={0.1}
+              max={0.8}
+              step={0.01}
+              onChange={(v) => set('clearance', v)}
+              formatValue={(v) => v.toFixed(2)}
+            />
+            <DebugSlider
+              label="$fn (quality)"
+              value={params.fn}
+              min={8}
+              max={64}
+              step={1}
+              onChange={(v) => set('fn', v)}
+            />
+
+            <Select
+              label="color scheme"
+              value={params.color_scheme}
+              options={SCHEMES}
+              onChange={(v) => set('color_scheme', v)}
+            />
+            <Select
+              label="palette"
+              value={params.color_palette}
+              options={PALETTES}
+              onChange={(v) => set('color_palette', v)}
+            />
+            <Select
+              label="top rail"
+              value={params.top_preset}
+              options={PRESET_OPTS}
+              onChange={(v) => set('top_preset', v)}
+            />
+            <Select
+              label="bottom rail"
+              value={params.bottom_preset}
+              options={PRESET_OPTS}
+              onChange={(v) => set('bottom_preset', v)}
+            />
+
+            <DebugCheckbox
+              label="ArUco corner markers"
+              checked={params.show_markers}
+              onChange={(v) => set('show_markers', v)}
+            />
+          </div>
+        )}
       </div>
 
       {/* status HUD */}

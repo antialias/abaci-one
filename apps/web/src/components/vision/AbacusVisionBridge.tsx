@@ -2112,7 +2112,7 @@ export function AbacusVisionBridge({
                     })}
                   >
                     <a
-                      href="/create/vision-markers"
+                      href="/create/abacus"
                       target="_blank"
                       rel="noopener noreferrer"
                       className={css({
