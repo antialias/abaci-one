@@ -1184,7 +1184,8 @@
     {
       "id": 9,
       "type": "table",
-      "title": "Per-model & window limits (with severity via % color)",
+      "title": "All limits — hottest first",
+      "description": "Every quota limit, sorted by utilization (hottest first).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1220,12 +1221,12 @@
               "Time": true,
               "__name__": true,
               "endpoint": true,
+              "group": true,
               "instance": true,
               "job": true,
               "namespace": true,
               "service": true,
-              "tier": true,
-              "group": true
+              "tier": true
             },
             "renameByName": {
               "account": "Account",
@@ -1284,11 +1285,65 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Limit"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "session": {
+                        "text": "5-hour session"
+                      },
+                      "weekly_all": {
+                        "text": "Weekly — everything"
+                      },
+                      "weekly_scoped": {
+                        "text": "Weekly — model cap"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Model"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "": {
+                        "text": "all"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
           }
         ]
       },
       "options": {
-        "showHeader": true
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "% used",
+            "desc": true
+          }
+        ]
       }
     },
     {
