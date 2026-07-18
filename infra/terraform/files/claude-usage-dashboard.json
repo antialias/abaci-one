@@ -357,6 +357,565 @@
       }
     },
     {
+      "id": 201,
+      "type": "stat",
+      "title": "All-targets headroom",
+      "description": "Best headroom across routable Anthropic accounts AND providers (`claude:all_targets_best_headroom:percent`). This is the unified runway for Phase 2 cross-provider routing. It is 0-100; when it hits zero, every account and every provider is exhausted.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 9,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "claude:all_targets_best_headroom:percent",
+          "legendFormat": "headroom",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 10,
+                "color": "orange"
+              },
+              {
+                "value": 25,
+                "color": "yellow"
+              },
+              {
+                "value": 40,
+                "color": "green"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 203,
+      "type": "stat",
+      "title": "Provider effective %",
+      "description": "`provider_effective_percent{provider=\"kimi\"}` — max(5-hour, weekly) utilization. This is the value Phase 2 will route on.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 9,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "provider_effective_percent{provider=\"kimi\"}",
+          "legendFormat": "kimi",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 80,
+                "color": "yellow"
+              },
+              {
+                "value": 90,
+                "color": "orange"
+              },
+              {
+                "value": 95,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 205,
+      "type": "stat",
+      "title": "Provider poll health",
+      "description": "`provider_poll_success` for each provider. 1 = fresh poll, 0 = the last poll failed and the exporter is serving last-good data.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "provider_poll_success",
+          "legendFormat": "{{provider}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "FAIL"
+                },
+                "1": {
+                  "text": "OK"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 207,
+      "type": "stat",
+      "title": "Provider data age",
+      "description": "How stale the served provider numbers are (`provider_data_age_seconds`). Climbs while the provider endpoint is backed off or failing.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 9,
+        "w": 6,
+        "h": 5
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "provider_data_age_seconds",
+          "legendFormat": "{{provider}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1800,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 209,
+      "type": "timeseries",
+      "title": "Provider effective over time",
+      "description": "`provider_effective_percent` trend per provider — the Phase 2 routing signal.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 12,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "provider_effective_percent",
+          "legendFormat": "{{provider}}",
+          "refId": "A",
+          "instant": false,
+          "range": true
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 211,
+      "type": "gauge",
+      "title": "Kimi 5h used",
+      "description": "Kimi 5-hour rolling window utilization.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 14,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "provider_quota_utilization_percent{provider=\"kimi\",window=\"five_hour\"}",
+          "legendFormat": "kimi",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 75,
+                "color": "yellow"
+              },
+              {
+                "value": 90,
+                "color": "orange"
+              },
+              {
+                "value": 98,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 213,
+      "type": "gauge",
+      "title": "Kimi weekly used",
+      "description": "Kimi weekly window utilization.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 14,
+        "w": 6,
+        "h": 6
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "provider_quota_utilization_percent{provider=\"kimi\",window=\"seven_day\"}",
+          "legendFormat": "kimi",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 70,
+                "color": "yellow"
+              },
+              {
+                "value": 85,
+                "color": "orange"
+              },
+              {
+                "value": 95,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 215,
+      "type": "stat",
+      "title": "Provider metadata",
+      "description": "`provider_parallel_limit` and `provider_membership_level` per provider. Informational; may explain why requests are refused when utilization looks low.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 24,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "provider_parallel_limit{provider=\"kimi\"}",
+          "legendFormat": "parallel — {{provider}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "provider_membership_level{provider=\"kimi\"}",
+          "legendFormat": "membership — {{level}}",
+          "refId": "A",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "blue"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
       "id": 1,
       "type": "gauge",
       "title": "Weekly (7d) used",
@@ -366,7 +925,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 26,
         "w": 8,
         "h": 8
       },
@@ -434,7 +993,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 9,
+        "y": 26,
         "w": 16,
         "h": 8
       },
@@ -507,7 +1066,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 17,
+        "y": 34,
         "w": 8,
         "h": 7
       },
@@ -575,7 +1134,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 17,
+        "y": 34,
         "w": 16,
         "h": 7
       },
@@ -632,7 +1191,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 41,
         "w": 12,
         "h": 8
       },
@@ -740,7 +1299,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 24,
+        "y": 41,
         "w": 6,
         "h": 4
       },
@@ -795,7 +1354,7 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 24,
+        "y": 41,
         "w": 6,
         "h": 4
       },
@@ -850,7 +1409,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 28,
+        "y": 45,
         "w": 6,
         "h": 4
       },
@@ -913,7 +1472,7 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 28,
+        "y": 45,
         "w": 6,
         "h": 4
       },
@@ -976,7 +1535,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 32,
+        "y": 49,
         "w": 8,
         "h": 4
       },
@@ -1048,7 +1607,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 32,
+        "y": 49,
         "w": 8,
         "h": 4
       },
@@ -1103,7 +1662,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 32,
+        "y": 49,
         "w": 8,
         "h": 4
       },
@@ -1167,6 +1726,6 @@
   "timezone": "browser",
   "title": "Claude Code Usage — quota, burn & switchover",
   "uid": "claude-usage",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }

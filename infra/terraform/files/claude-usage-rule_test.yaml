@@ -203,3 +203,130 @@ tests:
       - eval_time: 15m
         alertname: ClaudeUsageDataStale
         exp_alerts: []
+
+  # ===================================================================
+  # 7. PROVIDER QUOTAS: a single provider exhausting is Telegram only.
+  #    The critical page fires only when no Anthropic account AND no
+  #    provider has headroom.
+  # ===================================================================
+  - interval: 1m
+    name: provider exhaustion alone does not page
+    input_series:
+      - series: 'claude_usage_window_utilization_percent{account="native@x",window="seven_day",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "41+0x30"
+      - series: 'claude_usage_data_age_seconds{account="native@x",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "120+0x30"
+      - series: 'provider_effective_percent{provider="kimi",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "96+0x30"
+      - series: 'provider_data_age_seconds{provider="kimi",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "120+0x30"
+      - series: 'provider_poll_success{provider="kimi",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "1+0x30"
+      - series: 'up{job="claude-usage-exporter",namespace="monitoring"}'
+        values: "1+0x30"
+    promql_expr_test:
+      - expr: claude:provider_effective_routable:percent
+        eval_time: 12m
+        exp_samples:
+          - labels: '{__name__="claude:provider_effective_routable:percent", job="claude-usage-exporter", namespace="monitoring", provider="kimi"}'
+            value: 96
+      - expr: claude:all_targets_best_headroom:percent
+        eval_time: 12m
+        exp_samples:
+          - labels: '{__name__="claude:all_targets_best_headroom:percent"}'
+            value: 59
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: ClaudeProviderExhausted
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              alertroute: claude-usage
+              delivery: telegram
+              namespace: monitoring
+              provider: kimi
+              job: claude-usage-exporter
+            exp_annotations:
+              summary: "kimi exhausted (96%)"
+              description: "kimi effective utilization is ≥96%. This provider is effectively out of rotation, but Claude accounts may still have headroom. Phase 2 will let the proxy fail over across providers automatically; for now this is informational."
+      - eval_time: 12m
+        alertname: ClaudeAllTargetsExhausted
+        exp_alerts: []
+
+  # ===================================================================
+  # 8. THE CROSS-PROVIDER CRITICAL PAGE: every account AND provider hot.
+  # ===================================================================
+  - interval: 1m
+    name: all targets exhausted triggers critical page
+    input_series:
+      - series: 'claude_usage_window_utilization_percent{account="native@x",window="seven_day",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "96+0x30"
+      - series: 'claude_usage_data_age_seconds{account="native@x",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "120+0x30"
+      - series: 'provider_effective_percent{provider="kimi",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "96+0x30"
+      - series: 'provider_data_age_seconds{provider="kimi",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "120+0x30"
+      - series: 'provider_poll_success{provider="kimi",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "1+0x30"
+      - series: 'up{job="claude-usage-exporter",namespace="monitoring"}'
+        values: "1+0x30"
+    promql_expr_test:
+      - expr: claude:all_targets_best_headroom:percent
+        eval_time: 12m
+        exp_samples:
+          - labels: '{__name__="claude:all_targets_best_headroom:percent"}'
+            value: 4
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: ClaudeAllTargetsExhausted
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              alertroute: claude-usage
+              delivery: critical
+              namespace: monitoring
+            exp_annotations:
+              title: "🔴 Claude: no usable target anywhere"
+              summary: "All Claude accounts and providers are ≥4% headroom — routing cannot save you"
+              description: "The best headroom across all routable Anthropic accounts and providers is only 4%. There is nowhere left to route. What still works: (1) downshift the model; (2) buy extra-usage / top-up credits; (3) stop until the relevant window rolls."
+
+  # ===================================================================
+  # 9. PROVIDER POLL FAILURE surfaces as Telegram, not critical.
+  # ===================================================================
+  - interval: 1m
+    name: provider poll broken fires telegram only
+    input_series:
+      - series: 'provider_poll_success{provider="kimi",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "0+0x30"
+      - series: 'provider_data_age_seconds{provider="kimi",namespace="monitoring",job="claude-usage-exporter"}'
+        values: "2400+0x30"
+      - series: 'up{job="claude-usage-exporter",namespace="monitoring"}'
+        values: "1+0x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ClaudeProviderPollBroken
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              alertroute: claude-usage
+              delivery: telegram
+              namespace: monitoring
+              provider: kimi
+              job: claude-usage-exporter
+            exp_annotations:
+              summary: "kimi quota poll failing — kimi"
+              description: "The exporter has not successfully polled kimi for >15m. provider_poll_http_code = kimi may show why (e.g. 401 = key revoked, 429 = rate-limited). Provider quota alerting is blind until this clears."
+      - eval_time: 20m
+        alertname: ClaudeProviderDataStale
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              alertroute: claude-usage
+              delivery: telegram
+              namespace: monitoring
+              provider: kimi
+              job: claude-usage-exporter
+            exp_annotations:
+              summary: "kimi quota data stale (40m 0s)"
+              description: "The exporter is serving a last-good kimi snapshot older than 30m. This provider is excluded from the routable set until the poll recovers. Check provider_poll_http_code and provider_poll_success."

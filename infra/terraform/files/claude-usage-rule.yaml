@@ -296,6 +296,124 @@ spec:
               account still work, and the switch-proxy still routes here.
 
         # =====================================================================
+        # PROVIDER QUOTA (Phase 1: Kimi) — brain-only metrics
+        #
+        # These are additive; providers are NOT yet part of the live switchover
+        # policy (that is Phase 2, #24-#27). For now we surface them and alert
+        # on exhaustion, but a single provider tapping out is recoverable by
+        # routing to Claude — so only "no usable target anywhere" is critical.
+        # =====================================================================
+        - record: claude:provider_effective_routable:percent
+          expr: |
+            provider_effective_percent{provider!=""}
+            and on(provider) (provider_data_age_seconds < 1800)
+
+        - record: claude:provider_effective_routable:min
+          expr: min(claude:provider_effective_routable:percent) or vector(100)
+
+        # Best headroom across Anthropic accounts AND providers — the unified
+        # runway number. `or vector(100)` keeps the comparison honest when one
+        # side has no samples: if providers are absent, headroom is just the
+        # account side; if accounts are absent, it is just providers.
+        # Best headroom across Anthropic accounts AND providers — the unified
+        # runway number. When one side has no samples we fall back to the other:
+        # if providers are absent, headroom is just the account side; if accounts
+        # are absent, it is just providers. `clamp_min(..., 0)` guards against
+        # the theoretical case where utilization somehow exceeds 100.
+        - record: claude:all_targets_best_headroom:percent
+          expr: |
+            clamp_min(
+              100 - (
+                (min without() (claude:weekly_utilization_routable:min) or vector(100))
+                or
+                (min without() (claude:provider_effective_routable:min) or vector(100))
+              ),
+              0
+            )
+
+        - alert: ClaudeProviderEffectiveHigh
+          expr: claude:provider_effective_routable:percent >= 80
+          for: 10m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: 'Kimi effective {{ $value | printf "%.0f" }}% — {{ $labels.provider }}'
+            description: >-
+              {{ $labels.provider }} is at {{ $value | printf "%.0f" }}% effective
+              utilization (max of 5-hour and weekly). This provider still has headroom,
+              but it is getting warm. Routing to Claude accounts is still available.
+
+        - alert: ClaudeProviderExhausted
+          expr: claude:provider_effective_routable:percent >= 95
+          for: 5m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: '{{ $labels.provider }} exhausted ({{ $value | printf "%.0f" }}%)'
+            description: >-
+              {{ $labels.provider }} effective utilization is ≥{{ $value | printf "%.0f" }}%.
+              This provider is effectively out of rotation, but Claude accounts may still
+              have headroom. Phase 2 will let the proxy fail over across providers
+              automatically; for now this is informational.
+
+        # THE cross-provider critical page: no Anthropic account AND no provider
+        # has meaningful headroom. This is the provider-era equivalent of
+        # ClaudeAllAccountsWeeklyExhausted.
+        - alert: ClaudeAllTargetsExhausted
+          expr: claude:all_targets_best_headroom:percent < 10
+          for: 10m
+          labels:
+            severity: critical
+            alertroute: claude-usage
+            delivery: critical
+            namespace: monitoring
+          annotations:
+            title: "🔴 Claude: no usable target anywhere"
+            summary: 'All Claude accounts and providers are ≥{{ $value | printf "%.0f" }}% headroom — routing cannot save you'
+            description: >-
+              The best headroom across all routable Anthropic accounts and providers is
+              only {{ $value | printf "%.0f" }}%. There is nowhere left to route. What
+              still works: (1) downshift the model; (2) buy extra-usage / top-up credits;
+              (3) stop until the relevant window rolls.
+
+        - alert: ClaudeProviderPollBroken
+          expr: provider_poll_success == 0
+          for: 15m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: '{{ $labels.provider }} quota poll failing — {{ $labels.provider }}'
+            description: >-
+              The exporter has not successfully polled {{ $labels.provider }} for >15m.
+              provider_poll_http_code = {{ $labels.provider }} may show why (e.g. 401 =
+              key revoked, 429 = rate-limited). Provider quota alerting is blind until
+              this clears.
+
+        - alert: ClaudeProviderDataStale
+          expr: provider_data_age_seconds > 1800
+          for: 15m
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: '{{ $labels.provider }} quota data stale ({{ $value | humanizeDuration }})'
+            description: >-
+              The exporter is serving a last-good {{ $labels.provider }} snapshot older
+              than 30m. This provider is excluded from the routable set until the poll
+              recovers. Check provider_poll_http_code and provider_poll_success.
+
+        # =====================================================================
         # EXPORTER / POLL HEALTH (Telegram)
         # =====================================================================
         - alert: ClaudeUsageExporterDown

@@ -27,10 +27,11 @@ HERE = pathlib.Path(__file__).resolve().parent
 DASH = HERE / ".." / "terraform" / "files" / "claude-usage-dashboard.json"
 
 DS = {"type": "prometheus", "uid": "prometheus"}
-OURS = {101, 103, 105, 107, 109}  # panel ids this script owns
-ROW_H = 9                         # height of the switchover row we prepend (5 + 4)
+OURS = {101, 103, 105, 107, 109, 201, 203, 205, 207, 209, 211, 213, 215}  # panel ids this script owns
+SWITCH_ROW_H = 9                         # height of the switchover row we prepend (5 + 4)
+PROVIDER_ROW_H = 17                      # height of the provider quota row (8 + 4 + 5)
 ANN = "Account switchover"
-VERSION = 2
+VERSION = 3
 TITLE = "Claude Code Usage — quota, burn & switchover"
 
 
@@ -42,6 +43,26 @@ def tgt(expr, legend="{{account}}", instant=True, ref="A"):
 def steps(*pairs):
     return {"mode": "absolute",
             "steps": [{"value": v, "color": c} for v, c in pairs]}
+
+
+def timeseries_options():
+    return {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": True,
+                   "calcs": ["lastNotNull"]},
+        "tooltip": {"mode": "multi", "sort": "desc"},
+    }
+
+
+def ts_field_config(unit="percent", min_val=0, max_val=100):
+    return {
+        "defaults": {
+            "unit": unit, "min": min_val, "max": max_val, "decimals": 0,
+            "custom": {"lineWidth": 2, "fillOpacity": 0, "showPoints": "never",
+                       "spanNulls": True},
+            "color": {"mode": "palette-classic"},
+        },
+        "overrides": [],
+    }
 
 
 # --- the switchover row -------------------------------------------------------
@@ -155,6 +176,146 @@ ANNOTATION = {
 }
 
 
+# --- the provider quota row ---------------------------------------------------
+# Phase 1: Kimi. These panels are additive; they do not alter the Anthropic
+# account panels below. The "all targets" headroom stat is the unified runway
+# that will drive Phase 2 cross-provider class switching.
+PROVIDER_PANELS = [
+    {
+        "id": 201, "type": "stat", "title": "All-targets headroom",
+        "description": (
+            "Best headroom across routable Anthropic accounts AND providers "
+            "(`claude:all_targets_best_headroom:percent`). This is the unified "
+            "runway for Phase 2 cross-provider routing. It is 0-100; when it "
+            "hits zero, every account and every provider is exhausted."
+        ),
+        "datasource": DS, "gridPos": {"x": 0, "y": 9, "w": 6, "h": 5},
+        "targets": [tgt("claude:all_targets_best_headroom:percent", "headroom")],
+        "options": {"colorMode": "background", "graphMode": "area",
+                    "textMode": "value", "reduceOptions": {
+                        "calcs": ["lastNotNull"], "fields": "", "values": False}},
+        "fieldConfig": {"defaults": {
+            "unit": "percent", "min": 0, "max": 100, "decimals": 0,
+            "color": {"mode": "thresholds"},
+            "thresholds": steps((None, "red"), (10, "orange"), (25, "yellow"),
+                                (40, "green")),
+        }, "overrides": []},
+    },
+    {
+        "id": 203, "type": "stat", "title": "Provider effective %",
+        "description": (
+            "`provider_effective_percent{provider=\"kimi\"}` — max(5-hour, "
+            "weekly) utilization. This is the value Phase 2 will route on."
+        ),
+        "datasource": DS, "gridPos": {"x": 6, "y": 9, "w": 6, "h": 5},
+        "targets": [tgt("provider_effective_percent{provider=\"kimi\"}", "kimi")],
+        "options": {"colorMode": "background", "graphMode": "area",
+                    "textMode": "value", "reduceOptions": {
+                        "calcs": ["lastNotNull"], "fields": "", "values": False}},
+        "fieldConfig": {"defaults": {
+            "unit": "percent", "min": 0, "max": 100, "decimals": 0,
+            "color": {"mode": "thresholds"},
+            "thresholds": steps((None, "green"), (80, "yellow"), (90, "orange"),
+                                (95, "red")),
+        }, "overrides": []},
+    },
+    {
+        "id": 205, "type": "stat", "title": "Provider poll health",
+        "description": (
+            "`provider_poll_success` for each provider. 1 = fresh poll, 0 = "
+            "the last poll failed and the exporter is serving last-good data."
+        ),
+        "datasource": DS, "gridPos": {"x": 12, "y": 9, "w": 6, "h": 5},
+        "targets": [tgt("provider_poll_success", "{{provider}}")],
+        "options": {"colorMode": "background", "graphMode": "none",
+                    "textMode": "value_and_name", "reduceOptions": {
+                        "calcs": ["lastNotNull"], "fields": "", "values": False}},
+        "fieldConfig": {"defaults": {
+            "unit": "short", "decimals": 0,
+            "color": {"mode": "thresholds"},
+            "thresholds": steps((None, "red"), (1, "green")),
+            "mappings": [{"type": "value", "options": {
+                "0": {"text": "FAIL"}, "1": {"text": "OK"}}}],
+        }, "overrides": []},
+    },
+    {
+        "id": 207, "type": "stat", "title": "Provider data age",
+        "description": (
+            "How stale the served provider numbers are (`provider_data_age_seconds`). "
+            "Climbs while the provider endpoint is backed off or failing."
+        ),
+        "datasource": DS, "gridPos": {"x": 18, "y": 9, "w": 6, "h": 5},
+        "targets": [tgt("provider_data_age_seconds", "{{provider}}")],
+        "options": {"colorMode": "value", "graphMode": "none",
+                    "textMode": "value_and_name", "reduceOptions": {
+                        "calcs": ["lastNotNull"], "fields": "", "values": False}},
+        "fieldConfig": {"defaults": {
+            "unit": "s", "decimals": 0, "color": {"mode": "thresholds"},
+            "thresholds": steps((None, "green"), (1800, "red")),
+        }, "overrides": []},
+    },
+    {
+        "id": 209, "type": "timeseries", "title": "Provider effective over time",
+        "description": (
+            "`provider_effective_percent` trend per provider — the Phase 2 "
+            "routing signal."
+        ),
+        "datasource": DS, "gridPos": {"x": 0, "y": 14, "w": 12, "h": 6},
+        "targets": [tgt("provider_effective_percent", "{{provider}}", instant=False)],
+        "options": timeseries_options(),
+        "fieldConfig": ts_field_config(),
+    },
+    {
+        "id": 211, "type": "gauge", "title": "Kimi 5h used",
+        "description": "Kimi 5-hour rolling window utilization.",
+        "datasource": DS, "gridPos": {"x": 12, "y": 14, "w": 6, "h": 6},
+        "targets": [tgt("provider_quota_utilization_percent{provider=\"kimi\",window=\"five_hour\"}", "kimi")],
+        "options": {"showThresholdLabels": False, "showThresholdMarkers": True,
+                    "reduceOptions": {"calcs": ["lastNotNull"], "fields": "",
+                                      "values": False}},
+        "fieldConfig": {"defaults": {
+            "unit": "percent", "min": 0, "max": 100,
+            "thresholds": steps((None, "green"), (75, "yellow"), (90, "orange"),
+                                (98, "red")),
+        }, "overrides": []},
+    },
+    {
+        "id": 213, "type": "gauge", "title": "Kimi weekly used",
+        "description": "Kimi weekly window utilization.",
+        "datasource": DS, "gridPos": {"x": 18, "y": 14, "w": 6, "h": 6},
+        "targets": [tgt("provider_quota_utilization_percent{provider=\"kimi\",window=\"seven_day\"}", "kimi")],
+        "options": {"showThresholdLabels": False, "showThresholdMarkers": True,
+                    "reduceOptions": {"calcs": ["lastNotNull"], "fields": "",
+                                      "values": False}},
+        "fieldConfig": {"defaults": {
+            "unit": "percent", "min": 0, "max": 100,
+            "thresholds": steps((None, "green"), (70, "yellow"), (85, "orange"),
+                                (95, "red")),
+        }, "overrides": []},
+    },
+    {
+        "id": 215, "type": "stat", "title": "Provider metadata",
+        "description": (
+            "`provider_parallel_limit` and `provider_membership_level` per provider. "
+            "Informational; may explain why requests are refused when utilization "
+            "looks low."
+        ),
+        "datasource": DS, "gridPos": {"x": 0, "y": 20, "w": 24, "h": 4},
+        "targets": [
+            tgt("provider_parallel_limit{provider=\"kimi\"}", "parallel — {{provider}}"),
+            tgt("provider_membership_level{provider=\"kimi\"}", "membership — {{level}}"),
+        ],
+        "options": {"colorMode": "value", "graphMode": "none",
+                    "textMode": "value_and_name", "reduceOptions": {
+                        "calcs": ["lastNotNull"], "fields": "", "values": False}},
+        "fieldConfig": {"defaults": {
+            "decimals": 0, "color": {"mode": "fixed", "fixedColor": "blue"},
+            "thresholds": steps((None, "blue")),
+        }, "overrides": []},
+    },
+]
+
+
 def patch(d):
     # 1. strip our panels so this is a re-runnable transform, not an append
     keep = [p for p in d["panels"] if p.get("id") not in OURS]
@@ -164,11 +325,11 @@ def patch(d):
         top = min(p["gridPos"]["y"] for p in keep)
         for p in keep:
             p["gridPos"]["y"] -= top
-    # 3. ...then push them down by exactly one switchover row
+    # 3. ...then push them down by exactly the rows we prepend
     for p in keep:
-        p["gridPos"]["y"] += ROW_H
+        p["gridPos"]["y"] += SWITCH_ROW_H + PROVIDER_ROW_H
 
-    d["panels"] = [json.loads(json.dumps(p)) for p in PANELS] + keep
+    d["panels"] = [json.loads(json.dumps(p)) for p in PANELS + PROVIDER_PANELS] + keep
 
     anns = d.setdefault("annotations", {}).setdefault("list", [])
     anns[:] = [a for a in anns if a.get("name") != ANN]
