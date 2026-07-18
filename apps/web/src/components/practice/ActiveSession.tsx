@@ -455,10 +455,13 @@ export function ActiveSession({
     return null
   }, [redoState, plan.parts, plan.currentPartIndex, currentProblemInfo])
 
-  // LINEAR parts put the abacus fully away: no on-screen abacus (already gated by
-  // showAbacusDock) AND no prefix-sum/bead-help scaffolding. Keyed off the part of
-  // the problem actually loaded into the interaction hook (activeProblem.partIndex),
-  // which matches the problem on screen even in redo mode.
+  // LINEAR parts drop the bead-help scaffolding (prefix-sum / disambiguation / help
+  // coach): the horizontal number sentence uses free digit entry + a forced submit.
+  // The working abacus itself is a SEPARATE concern (see showAbacusDock / useAbacus):
+  // it stays ON during the linear-with-abacus ramp and only goes away for mental
+  // (post-gate) linear. Keyed off the part of the problem actually loaded into the
+  // interaction hook (activeProblem.partIndex), which matches the on-screen problem
+  // even in redo mode.
   const activePartIndex = activeProblem?.partIndex ?? plan.currentPartIndex
   const isLinearActive = plan.parts[activePartIndex]?.format === 'linear'
 
@@ -1835,8 +1838,11 @@ export function ActiveSession({
     )
   }
 
-  // Check if we should show the abacus dock
-  const showAbacusDock = currentPart.type === 'abacus' && !showHelpOverlay
+  // Check if we should show the abacus dock. The working abacus shows for abacus mode
+  // AND the linear-with-abacus ramp phase — the planner sets useAbacus on ramp-linear
+  // parts and clears it for mental (post-gate) linear, so keying off useAbacus covers
+  // all three cases (abacus / ramp-linear = on, visualization / mental-linear = off).
+  const showAbacusDock = currentPart.useAbacus && !showHelpOverlay
 
   return (
     <div

@@ -68,7 +68,13 @@ import {
   recordSkillAttemptsWithHelp,
 } from './progress-manager'
 import { deriveLinearReadySkills } from './linear-readiness'
-import { isEnabled } from '@/lib/feature-flags'
+import {
+  deriveLinearGateState,
+  resolveLinearGateThresholds,
+  linearPartUsesAbacus,
+} from './linear-gate'
+import { getSkillCategory, type SkillCategoryKey } from '@/constants/skillCategories'
+import { getFlag } from '@/lib/feature-flags'
 import { getWeakSkillIds, type SessionMode } from './session-mode'
 import { revokeSharesForSession } from '@/lib/session-share'
 import {
@@ -258,7 +264,7 @@ export async function generateSessionPlan(
     problemHistory,
     dbSettings,
     linearVetoes,
-    linearReadinessEnabled,
+    linearReadinessFlag,
   ] = await Promise.all([
     getPlayerCurriculum(playerId),
     getAllSkillMastery(playerId),
@@ -271,13 +277,19 @@ export async function generateSessionPlan(
     db.select().from(appSettings).where(eq(appSettings.id, 'default')).limit(1),
     // L3: teacher vetoes + feature gate for derived linear-readiness
     getLinearReadinessVetoes(playerId),
-    isEnabled('linear_readiness.enabled', false),
+    getFlag('linear_readiness.enabled'),
   ])
 
   const loadDataMs = performance.now() - loadDataStart
 
   // Parse DB term count scaling config (falls back to defaults if null/invalid)
   const termCountScalingConfig = parseTermCountScaling(dbSettings[0]?.termCountScaling ?? null)
+
+  // The L3 flag carries the ramp-gate thresholds in its JSON `config` (tunable live via
+  // /admin/feature-flags, no redeploy). One flag read yields both the on/off gate and
+  // the thresholds; a null/missing config falls back to DEFAULT_LINEAR_GATE_THRESHOLDS.
+  const linearReadinessEnabled = linearReadinessFlag?.enabled ?? false
+  const linearGateThresholds = resolveLinearGateThresholds(linearReadinessFlag?.config)
 
   // Compute BKT if in adaptive modes and we have problem history
   const bktStart = performance.now()
@@ -420,6 +432,22 @@ export async function generateSessionPlan(
       })
     : new Set<string>()
   const linearReadySkills = skillMastery.filter((s) => linearReadyIds.has(s.skillId))
+
+  // Ramp gate (linear-with-abacus): linear-ready categories keep the working abacus
+  // until their first-attempt linear accuracy passes the tunable gate. Single
+  // homogeneous linear part → the abacus stays on until EVERY linear category has
+  // passed, then the linear part becomes pure mental math.
+  const linearReadyCategories = new Set<SkillCategoryKey>()
+  for (const s of linearReadySkills) {
+    const category = getSkillCategory(s.skillId)
+    if (category) linearReadyCategories.add(category)
+  }
+  const linearGateByCategory = deriveLinearGateState({
+    problemHistory,
+    categories: linearReadyCategories,
+    thresholds: linearGateThresholds,
+  })
+  const linearUsesAbacus = linearPartUsesAbacus(linearGateByCategory)
 
   const abacusConstraints = buildConstraintsFromPracticingSkills(activeSkills)
   const visualConstraints =
@@ -566,7 +594,7 @@ export async function generateSessionPlan(
           ? visualConstraints
           : (linearConstraints ?? visualConstraints)
 
-    const part = await buildSessionPartAsync(
+    const rawPart = await buildSessionPartAsync(
       partNumber,
       partType,
       durationMinutes,
@@ -605,6 +633,9 @@ export async function generateSessionPlan(
         : undefined
     )
 
+    // Ramp: keep the working abacus on a linear part until the gate opens (every
+    // linear category passed). Non-linear parts keep the useAbacus the builder set.
+    const part = partType === 'linear' ? { ...rawPart, useAbacus: linearUsesAbacus } : rawPart
     parts.push(part)
 
     const partMs = performance.now() - partStartTime
