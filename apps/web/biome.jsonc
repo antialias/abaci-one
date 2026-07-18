@@ -57,6 +57,7 @@
       "**",
       "!**/public/js-aruco2",
       "!**/public/opencv.js",
+      "!**/public/openscad",
       "!**/public/games",
       "!**/public/gallery-demo.html",
       "!**/public/test-interactive-with-data-attrs.html",
