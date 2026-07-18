@@ -177,10 +177,9 @@ export async function generateMusic(request: GenerateMusicRequest): Promise<Gene
   // Fallback: if the response isn't multipart for some reason, treat the
   // whole body as audio with no alignment data.
   if (!boundary) {
-    console.warn(
-      '[elevenlabs-music] Detailed endpoint returned non-multipart response',
-      { contentType }
-    )
+    console.warn('[elevenlabs-music] Detailed endpoint returned non-multipart response', {
+      contentType,
+    })
     return { audioBuffer: raw, alignment: null }
   }
 
@@ -215,10 +214,7 @@ export async function generateMusic(request: GenerateMusicRequest): Promise<Gene
   // schema once we know exactly what ElevenLabs sends. Cheap and runs once
   // per song; remove after we've persisted real responses.
   if (alignment && process.env.NODE_ENV !== 'production') {
-    console.log(
-      '[elevenlabs-music] Alignment JSON top-level keys:',
-      Object.keys(alignment)
-    )
+    console.log('[elevenlabs-music] Alignment JSON top-level keys:', Object.keys(alignment))
   }
 
   return { audioBuffer, alignment }

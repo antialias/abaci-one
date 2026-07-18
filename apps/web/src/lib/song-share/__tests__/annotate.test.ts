@@ -123,10 +123,10 @@ describe('annotateSections — story / game / skill', () => {
   })
 
   it('attaches a skill note when the display skill is literally in the lyric', () => {
-    const out = annotateSections(
-      [section('Hook', ['Direct Addition (1-4), smooth move'])],
-      { playerName: 'Fern', skillSpotlights: FULL_FACTS.skillSpotlights }
-    )
+    const out = annotateSections([section('Hook', ['Direct Addition (1-4), smooth move'])], {
+      playerName: 'Fern',
+      skillSpotlights: FULL_FACTS.skillSpotlights,
+    })
     expect(out[0].annotations ?? []).toContain('This part leans on Direct Addition (1-4).')
   })
 

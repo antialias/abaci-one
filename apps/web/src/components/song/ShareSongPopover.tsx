@@ -16,10 +16,7 @@ import * as Popover from '@radix-ui/react-popover'
 import { useState } from 'react'
 import { Z_INDEX } from '@/constants/zIndex'
 import { usePortalContainer } from '@/contexts/PortalContainerContext'
-import {
-  DEFAULT_SONG_SHARE_VISIBILITY,
-  type SongShareVisibility,
-} from '@/db/schema/song-shares'
+import { DEFAULT_SONG_SHARE_VISIBILITY, type SongShareVisibility } from '@/db/schema/song-shares'
 import { type SongShareInfo, useSongShares } from '@/hooks/useSongShares'
 import { css } from '../../../styled-system/css'
 import { AbacusQRCode } from '../common/AbacusQRCode'
@@ -306,7 +303,11 @@ export function ShareSongPopover({
             type="button"
             data-action="create-song-share"
             disabled={createShare.isPending}
-            onClick={() => createShare.mutate(draft, { onSuccess: () => setDraft(DEFAULT_SONG_SHARE_VISIBILITY) })}
+            onClick={() =>
+              createShare.mutate(draft, {
+                onSuccess: () => setDraft(DEFAULT_SONG_SHARE_VISIBILITY),
+              })
+            }
             className={css({
               px: '14px',
               py: '10px',
