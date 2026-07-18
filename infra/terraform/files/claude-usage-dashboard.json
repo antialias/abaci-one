@@ -1231,13 +1231,15 @@
               "account": "Account",
               "kind": "Limit",
               "scope_model": "Model",
-              "Value": "% used"
+              "Value": "% used",
+              "claude_usage_limit_percent": "% used"
             },
             "indexByName": {
               "account": 0,
               "kind": 1,
               "scope_model": 2,
-              "Value": 3
+              "Value": 3,
+              "claude_usage_limit_percent": 3
             }
           }
         }
