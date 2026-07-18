@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   clampCols,
   defaultParams,
+  derived,
   type DisplayConfigInput,
+  type Params,
   paramsFromDisplayConfig,
 } from '../abacus-model'
 
@@ -71,5 +73,63 @@ describe('paramsFromDisplayConfig', () => {
     const base = { ...defaultParams }
     paramsFromDisplayConfig(cfg({ physicalAbacusColumns: 9 }), base)
     expect(base.cols).toBe(defaultParams.cols)
+  })
+})
+
+describe('mixed scaling — clearance is absolute, size is proportional (#6 spine)', () => {
+  // Every print size we care to prove the joint tolerances hold at.
+  const SIZES = [0.6, 1.0, 1.5, 2.0, 3.0]
+  const at = (S: number): Params => ({ ...defaultParams, scale_factor: S })
+
+  // The bead↔track channel is `bead_dia + 2*clearance` wide (one wall = `web`),
+  // so the effective clearance recovers from the derived column pitch as
+  //   (col_pitch − wall − bead) / 2.
+  const channelClearance = (p: Params): number => {
+    const S = p.scale_factor
+    return (derived(p).sCp - p.web * S - p.bead_dia * S) / 2
+  }
+
+  it('holds bead↔track clearance at the absolute value across every print size', () => {
+    // If clearance scaled with size (the dead scale([3,3,3]) bug), this would
+    // grow with S. It must stay flat at defaultParams.clearance.
+    for (const S of SIZES) {
+      expect(channelClearance(at(S))).toBeCloseTo(defaultParams.clearance, 10)
+    }
+  })
+
+  it('keeps the printed inter-bead air gap absolute (print_gap), not scaled', () => {
+    // rest pitch = bead_len*S + print_gap  →  gap = pitch − bead_len*S = print_gap
+    for (const S of SIZES) {
+      const p = at(S)
+      expect(derived(p).sEp - p.bead_len * S).toBeCloseTo(defaultParams.print_gap, 10)
+    }
+  })
+
+  it('grows the whole frame with size, so a fixed clearance is a shrinking fraction', () => {
+    const base = derived(at(1))
+    const big = derived(at(2))
+    expect(big.frameW).toBeGreaterThan(base.frameW)
+    expect(big.outerD).toBeGreaterThan(base.outerD)
+    // same absolute clearance occupies a smaller share of a bigger frame — the
+    // point of the whole locked/proportional split.
+    expect(defaultParams.clearance / big.frameW).toBeLessThan(
+      defaultParams.clearance / base.frameW,
+    )
+  })
+
+  it('column pitch is S·(bead+web) + a constant 2·clearance intercept (the mixed-scale fingerprint)', () => {
+    // A uniform scale() would make pitch a pure S·k line through the origin.
+    // Mixed scaling adds a non-zero intercept = 2·clearance. Recover slope +
+    // intercept from two sizes and check both.
+    const cp = (S: number) => derived(at(S)).sCp
+    const slope = (cp(2) - cp(1)) / (2 - 1)
+    const intercept = cp(1) - slope * 1
+    expect(slope).toBeCloseTo(defaultParams.bead_dia + defaultParams.web, 10)
+    expect(intercept).toBeCloseTo(2 * defaultParams.clearance, 10)
+  })
+
+  it('reproduces the master abacus 90mm field depth at scale 1', () => {
+    // sanity anchor to the reverse-engineered master (~/projects/abacus STL).
+    expect(derived(at(1)).sFd).toBeCloseTo(90, 6)
   })
 })
