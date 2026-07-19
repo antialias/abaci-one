@@ -326,12 +326,12 @@ export const beadRoleNames = (scheme: string): string[] =>
         ? ['even col', 'odd col']
         : ['1s', '10s', '100s', '1k', '10k']
 
-// ---- filament mapping (screen colors → AMS slots) ---------------------------
-// The printer has filament_count loaded spools; every printed color region must
-// ride one of them. Mapping is role-aware: markers first (CV reads them — black
-// gets the darkest-fit slot, white the lightest-fit DISTINCT slot), then frame =
-// nearest, then bead roles pick nearest UNUSED-by-beads slots (distinct-first),
-// reusing only once slots run out.
+// ---- filament mapping primitives (screen colors → AMS slots) ----------------
+// The role-aware quantizer that consumes these — markers first, then frame, then
+// bead roles distinct-first — moved to abacus-plan.ts (`materialize`); its legacy
+// `computeFilamentMap` shape re-exports from there. This file keeps only the pure
+// color primitives (distance, luminance, contrast, nearest-slot) that both the
+// plan and the viewer's plug pass still share.
 export const hexRGB = (h: string): [number, number, number] => {
   let s = h.replace('#', '')
   if (s.length === 3)
@@ -383,39 +383,8 @@ export const nearestSlot = (slots: string[], target: string, exclude = -1): numb
   })
   return best
 }
-export function computeFilamentMap(p: Params): FilamentMap {
-  const slots: string[] = []
-  for (let n = 1; n <= Math.max(1, Math.min(8, p.filament_count)); n++)
-    slots.push(p[`filament_${n}` as 'filament_1'])
-  const nearest = (target: string, exclude = -1): number => nearestSlot(slots, target, exclude)
-  const markerBlack = nearest('#000000')
-  const markerWhite = slots.length > 1 ? nearest('#ffffff', markerBlack) : markerBlack
-  const frame = nearest(p.frame_color)
-  const usedByBeads = new Set<number>()
-  const beadRoles = beadRoleColors(p.color_scheme, p.color_palette).map((target) => {
-    let best = -1
-    let bd = Number.POSITIVE_INFINITY
-    slots.forEach((s, idx) => {
-      if (usedByBeads.has(idx)) return
-      const d = colorDist(target, s)
-      if (d < bd) {
-        bd = d
-        best = idx
-      }
-    })
-    if (best < 0) best = nearest(target) // more roles than slots → reuse nearest
-    usedByBeads.add(best)
-    return best
-  })
-  return {
-    slots,
-    frame,
-    markerWhite,
-    markerBlack,
-    beadRoles,
-    markerContrast: contrastRatio(slots[markerWhite], slots[markerBlack]),
-  }
-}
+// `computeFilamentMap` (the role → slot map) now lives in abacus-plan.ts as an
+// adapter over `materialize`; import it from there.
 
 // ---- ArUco corner marker bits (js-aruco2 'ARUCO' codeList) -------------------
 // The abaci.one detector reads these; '1' → white cell, row 0 = top. IDs land on
@@ -557,7 +526,14 @@ export function tokenCenters(p: Params): TokenCenter[] {
     [slotTokens(p.top_preset, p.top_text), mkEnd, D - stripY / 2, W - mkEnd, D - stripY / 2, zTop],
     [slotTokens(p.bottom_preset, p.bottom_text), mkEnd, stripY / 2, W - mkEnd, stripY / 2, zTop],
     [slotTokens(p.left_preset, p.left_text), stripX / 2, mkEnd, stripX / 2, D - mkEnd, zTop],
-    [slotTokens(p.right_preset, p.right_text), W - stripX / 2, D - mkEnd, W - stripX / 2, mkEnd, zTop],
+    [
+      slotTokens(p.right_preset, p.right_text),
+      W - stripX / 2,
+      D - mkEnd,
+      W - stripX / 2,
+      mkEnd,
+      zTop,
+    ],
     [tokenize(p.edge_front), r + 2, 0, W - r - 2, 0, zEdge],
     [tokenize(p.edge_back), W - r - 2, D, r + 2, D, zEdge],
     [tokenize(p.edge_left), 0, D - r - 2, 0, r + 2, zEdge],
