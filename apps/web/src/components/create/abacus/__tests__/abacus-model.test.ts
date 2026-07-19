@@ -1,6 +1,10 @@
+import { BEAD_COLOR_PALETTES, beadColorActive } from '@soroban/abacus-react/color'
 import { describe, expect, it } from 'vitest'
 import {
+  beadRoleColors,
+  beadRoleIndex,
   clampCols,
+  COLOR_PALETTES,
   defaultParams,
   derived,
   type DisplayConfigInput,
@@ -131,5 +135,60 @@ describe('mixed scaling — clearance is absolute, size is proportional (#6 spin
   it('reproduces the master abacus 90mm field depth at scale 1', () => {
     // sanity anchor to the reverse-engineered master (~/projects/abacus STL).
     expect(derived(at(1)).sFd).toBeCloseTo(90, 6)
+  })
+})
+
+describe('print-path color dedup — role table sources from the canonical resolver', () => {
+  const SCHEMES = ['monochrome', 'heaven-earth', 'alternating', 'place-value'] as const
+  const PALETTES = ['default', 'colorblind', 'mnemonic', 'grayscale', 'nature'] as const
+
+  it('re-exports the shared palette table by reference (no hand-copied fork)', () => {
+    // #7 replaced abacus-model's own COLOR_PALETTES copy with a re-export of the
+    // single shared table; identity (not just equality) proves there is no fork.
+    expect(COLOR_PALETTES).toBe(BEAD_COLOR_PALETTES)
+  })
+
+  it('composes (role index → role hex) back to the resolver for every bead', () => {
+    // For each scheme/palette, walk every column of a full 13-wide abacus and both
+    // bead types: the print path's role→hex must equal beadColorActive for that
+    // bead's (placeValue, type). This is the whole point of the de-duplication —
+    // the printed object matches the on-screen abacus bead for bead.
+    const cols = 13
+    for (const scheme of SCHEMES) {
+      for (const palette of PALETTES) {
+        const roleColors = beadRoleColors(scheme, palette)
+        for (let i = 0; i < cols; i++) {
+          for (const isHeaven of [true, false]) {
+            const hex = roleColors[beadRoleIndex(i, isHeaven, scheme, cols, palette)]
+            const expected = beadColorActive(
+              { placeValue: cols - 1 - i, type: isHeaven ? 'heaven' : 'earth' },
+              scheme,
+              palette,
+            )
+            expect(hex).toBe(expected)
+          }
+        }
+      }
+    }
+  })
+
+  it('gives place-value one role per palette slot (the %len, not hardcoded %5, invariant)', () => {
+    // Every shipped palette is length 5 today, but beadRoleIndex derives the wrap
+    // from palette length — so this holds by construction, not by coincidence.
+    for (const palette of PALETTES) {
+      expect(beadRoleColors('place-value', palette)).toHaveLength(
+        BEAD_COLOR_PALETTES[palette].length,
+      )
+    }
+  })
+
+  it('wraps place-value roles by palette length past the last slot (21-wide abacus)', () => {
+    const cols = 21 // reaches place value 20
+    // rightmost column i = cols-1 → placeValue 0 → role 0
+    expect(beadRoleIndex(cols - 1, false, 'place-value', cols, 'default')).toBe(0)
+    // placeValue 5 → role 0 again (5 % 5)
+    expect(beadRoleIndex(cols - 1 - 5, false, 'place-value', cols, 'default')).toBe(0)
+    // placeValue 6 → role 1
+    expect(beadRoleIndex(cols - 1 - 6, false, 'place-value', cols, 'default')).toBe(1)
   })
 })

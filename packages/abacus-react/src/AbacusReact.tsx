@@ -8,6 +8,7 @@ import * as Abacus3DUtils from "./Abacus3DUtils";
 import { AbacusAnimatedBead } from "./AbacusAnimatedBead";
 import { getDefaultAbacusConfig, useAbacusConfig } from "./AbacusContext";
 import { AbacusSVGRenderer } from "./AbacusSVGRenderer";
+import { BEAD_COLOR_PALETTES as COLOR_PALETTES, beadColorActive } from "./color";
 import {
   type CropPadding,
   calculateBeadPosition,
@@ -974,14 +975,10 @@ function calculateOverlayPosition(
   return { x, y };
 }
 
-// Color palettes
-const COLOR_PALETTES = {
-  default: ["#2E86AB", "#A23B72", "#F18F01", "#6A994E", "#BC4B51"],
-  colorblind: ["#0173B2", "#DE8F05", "#CC78BC", "#029E73", "#D55E00"],
-  mnemonic: ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"],
-  grayscale: ["#000000", "#404040", "#808080", "#b0b0b0", "#d0d0d0"],
-  nature: ["#4E79A7", "#F28E2C", "#E15759", "#76B7B2", "#59A14F"],
-};
+// Color palettes + the intrinsic-color branches now live in the shared,
+// React-free ./color module (single source of truth reused by the 3D-print
+// studio). COLOR_PALETTES is re-imported above under its historical name so
+// getArrowColors keeps working unchanged.
 
 // Utility functions
 function getBeadColor(
@@ -999,20 +996,12 @@ function getBeadColor(
 
   if (!bead.active) return inactiveColor;
 
-  switch (colorScheme) {
-    case "place-value": {
-      const colors =
-        COLOR_PALETTES[colorPalette as keyof typeof COLOR_PALETTES] ||
-        COLOR_PALETTES.default;
-      return colors[bead.placeValue % colors.length];
-    }
-    case "alternating":
-      return bead.placeValue % 2 === 0 ? "#1E88E5" : "#43A047";
-    case "heaven-earth":
-      return bead.type === "heaven" ? "#F18F01" : "#2E86AB"; // Exact Typst colors (lines 228, 265)
-    default:
-      return "#000000";
-  }
+  // Intrinsic (active) color for this (placeValue, type) — the canonical resolver.
+  return beadColorActive(
+    { placeValue: bead.placeValue, type: bead.type },
+    colorScheme,
+    colorPalette,
+  );
 }
 
 // Get arrow colors that respect color schemes and accessibility

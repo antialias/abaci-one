@@ -23,12 +23,24 @@
       "types": "./dist/static.d.ts",
       "import": "./dist/static.es.js",
       "require": "./dist/static.cjs.js"
+    },
+    "./color": {
+      "@soroban/source": {
+        "types": "./src/color.ts",
+        "default": "./src/color.ts"
+      },
+      "types": "./dist/color.d.ts",
+      "import": "./dist/color.es.js",
+      "require": "./dist/color.cjs.js"
     }
   },
   "typesVersions": {
     "*": {
       "static": [
         "./dist/static.d.ts"
+      ],
+      "color": [
+        "./dist/color.d.ts"
       ]
     }
   },

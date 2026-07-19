@@ -38,6 +38,9 @@ export type { StandaloneBeadProps } from "./StandaloneBead";
 export { AbacusStatic } from "./AbacusStatic";
 export type { AbacusStaticConfig } from "./AbacusStatic";
 
+// Canonical bead-color resolver (also available React-free at the ./color subpath).
+export { beadColorActive, BEAD_COLOR_PALETTES } from "./color";
+
 export { ABACUS_THEMES } from "./AbacusThemes";
 export type { AbacusThemeName } from "./AbacusThemes";
 

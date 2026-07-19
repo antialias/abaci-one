@@ -11,6 +11,7 @@ export default defineConfig(async () => {
         entry: {
           index: resolve(__dirname, "src/index.ts"),
           static: resolve(__dirname, "src/static.ts"),
+          color: resolve(__dirname, "src/color.ts"),
         },
         formats: ["es", "cjs"],
         fileName: (format, entryName) =>
