@@ -19,6 +19,10 @@
 // else scales with `scale_factor`), which is what keeps the printed fit constant
 // across sizes — the load-bearing result Phase 0 set out to prove.
 
+// The canonical bead-color resolver, shared with the on-screen abacus. Imported
+// from the React-free `./color` subpath so this module stays framework-free.
+import { BEAD_COLOR_PALETTES, beadColorActive } from '@soroban/abacus-react/color'
+
 // ---- parameters -------------------------------------------------------------
 export const defaultParams = {
   // frame
@@ -276,36 +280,43 @@ export const definesFrom = (p: Params): string[] => [
   `-Dedge_right=${JSON.stringify(tokenize(p.edge_right))}`,
 ]
 
-// ---- myabacus color model (mirror of abacus.scad bead_color / AbacusReact) ---
-export const COLOR_PALETTES: Record<string, string[]> = {
-  default: ['#2E86AB', '#A23B72', '#F18F01', '#6A994E', '#BC4B51'],
-  colorblind: ['#0173B2', '#DE8F05', '#CC78BC', '#029E73', '#D55E00'],
-  mnemonic: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'],
-  grayscale: ['#000000', '#404040', '#808080', '#b0b0b0', '#d0d0d0'],
-  nature: ['#4E79A7', '#F28E2C', '#E15759', '#76B7B2', '#59A14F'],
-}
+// ---- myabacus color model ---------------------------------------------------
+// Bead colors come from the shared canonical resolver (beadColorActive, imported
+// above); this module only adds the print-side role → filament-slot mapping on
+// top of it — no copied color tables. Re-export the palette table under its
+// historical name so the viewer's plugRecolor keeps importing it from here.
+export const COLOR_PALETTES: Record<string, string[]> = BEAD_COLOR_PALETTES
+// The place-value role count = palette length. Deriving it (instead of a
+// hardcoded 5) keeps beadRoleIndex in lockstep with the resolver's
+// `placeValue % colors.length` by construction, not by coincidence.
+const paletteLen = (palette: string): number =>
+  (BEAD_COLOR_PALETTES[palette] ?? BEAD_COLOR_PALETTES.default).length
 // A bead resolves role → intended hex → filament slot. Column i runs left→right;
 // the rightmost column is the ones place (placeValue 0).
 export const beadRoleIndex = (
   i: number,
   isHeaven: boolean,
   scheme: string,
-  cols: number
+  cols: number,
+  palette: string
 ): number => {
   const pv = cols - 1 - i
   if (scheme === 'monochrome') return 0
   if (scheme === 'heaven-earth') return isHeaven ? 0 : 1
   if (scheme === 'alternating') return pv % 2 === 0 ? 0 : 1
-  return pv % 5
+  return pv % paletteLen(palette)
 }
-export const beadRoleColors = (scheme: string, palette: string): string[] =>
-  scheme === 'monochrome'
-    ? ['#000000']
-    : scheme === 'heaven-earth'
-      ? ['#F18F01', '#2E86AB']
-      : scheme === 'alternating'
-        ? ['#1E88E5', '#43A047']
-        : (COLOR_PALETTES[palette] ?? COLOR_PALETTES.default)
+// Intended hex per role, sourced from the canonical resolver via a representative
+// (placeValue, type) for each role — one role per palette entry for place-value,
+// two for heaven-earth/alternating, one for monochrome. Feeds computeFilamentMap.
+export const beadRoleColors = (scheme: string, palette: string): string[] => {
+  const c = (placeValue: number, type: 'heaven' | 'earth'): string =>
+    beadColorActive({ placeValue, type }, scheme, palette)
+  if (scheme === 'monochrome') return [c(0, 'earth')]
+  if (scheme === 'heaven-earth') return [c(0, 'heaven'), c(0, 'earth')]
+  if (scheme === 'alternating') return [c(0, 'earth'), c(1, 'earth')]
+  return Array.from({ length: paletteLen(palette) }, (_, pv) => c(pv, 'earth'))
+}
 export const beadRoleNames = (scheme: string): string[] =>
   scheme === 'monochrome'
     ? ['bead']
@@ -523,7 +534,9 @@ export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAna
 export const shellHex = (info: ShellInfo, p: Params, fm: FilamentMap): string =>
   info.isFrame
     ? fm.slots[fm.frame]
-    : fm.slots[fm.beadRoles[beadRoleIndex(info.i, info.isHeaven, p.color_scheme, p.cols)]]
+    : fm.slots[
+        fm.beadRoles[beadRoleIndex(info.i, info.isHeaven, p.color_scheme, p.cols, p.color_palette)]
+      ]
 
 // ---- inset text-plug layout (QA for inlay fill colors) ----------------------
 // mirror of the scad rails()/walls() layout: token k of a slot sits at

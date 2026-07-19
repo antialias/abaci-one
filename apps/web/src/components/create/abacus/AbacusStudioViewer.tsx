@@ -27,10 +27,10 @@ import {
   type Params,
   paramsFromDisplayConfig,
   PRESET_OPTS,
-  shellHex,
   type ShellInfo,
   tokenCenters,
 } from './abacus-model'
+import { toAbacusDesign } from './abacus-design'
 import { DEFAULT_PROFILE_ID, PRINTER_PROFILES, profileById, solve } from './abacus-solver'
 import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
 
@@ -76,6 +76,13 @@ export function AbacusStudioViewer() {
   const [profileId, setProfileId] = useState<string>(DEFAULT_PROFILE_ID)
   const paramsRef = useRef(params)
   paramsRef.current = params
+  // the serializable design projection — the studio's Phase-2 handoff and the
+  // single source of truth for the preview's bead/frame colors. Baking it here
+  // (instead of re-deriving hexes in recolor) keeps the on-screen preview and
+  // the exported design in lockstep. Intrinsic colors, not AMS-snapped.
+  const design = useMemo(() => toAbacusDesign(params, profileId), [params, profileId])
+  const designRef = useRef(design)
+  designRef.current = design
   const [status, setStatus] = useState<StatusUpdate>({ text: 'booting…' })
   const [meta, setMeta] = useState<{ ms?: number; tris?: number }>({})
   const mountRef = useRef<HTMLDivElement | null>(null)
@@ -155,12 +162,25 @@ export function AbacusStudioViewer() {
 
     function recolor() {
       const p = paramsRef.current
-      const fm = computeFilamentMap(p)
       if (!renderMesh || !triShell) return
       const geo = renderMesh.geometry
       const nVert = geo.attributes.position.count
+      // Paint from the design's INTRINSIC colors so the preview matches the
+      // user's on-screen abacus exactly — the old filament snap quantized the
+      // alternating/colorblind/mnemonic/grayscale/nature palettes to spool
+      // approximations. Columns are keyed by place value (ones = index 0);
+      // shellInfo.i counts left→right, so place value = cols-1-i. The AMS snap
+      // still governs the ArUco markers + text plug via plugRecolor (the #10 seam).
+      const rc = designRef.current.resolvedColors
       const shellRGB = shellInfo.map((info) => {
-        _c.set(shellHex(info, p, fm))
+        let hex: string
+        if (info.isFrame) {
+          hex = rc.frame
+        } else {
+          const col = rc.columns[p.cols - 1 - info.i]
+          hex = (info.isHeaven ? col?.heaven : col?.earth) ?? rc.frame
+        }
+        _c.set(hex)
         return [_c.r, _c.g, _c.b] as const
       })
       const colors = new Float32Array(nVert * 3)
