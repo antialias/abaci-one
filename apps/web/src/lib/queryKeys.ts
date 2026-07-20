@@ -226,6 +226,12 @@ export const postcardKeys = {
   unreadCount: (playerId?: string) => [...postcardKeys.all, 'unread', playerId ?? 'all'] as const,
 }
 
+// Abacus Studio filament catalog (the THH loaded-AMS snapshot; epic #5 P3)
+export const abacusFilamentKeys = {
+  all: ['abacus-filaments'] as const,
+  catalog: () => [...abacusFilamentKeys.all, 'catalog'] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player

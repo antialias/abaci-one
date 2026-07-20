@@ -42,6 +42,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // `server-only` has no real npm package (Next injects it at build time);
+      // stub it so server modules importing it are transformable under vitest.
+      'server-only': path.resolve(__dirname, './src/test/server-only-stub.ts'),
       '@soroban/llm-client': path.resolve(__dirname, '../../packages/llm-client/src/index.ts'),
       '@styled/css': path.resolve(__dirname, './styled-system/css'),
       '@styled/jsx': path.resolve(__dirname, './styled-system/jsx'),

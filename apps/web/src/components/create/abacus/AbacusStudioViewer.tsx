@@ -16,6 +16,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { DebugCheckbox, DebugSlider } from '@/components/toys/ToyDebugPanel'
+import { useThhFilamentCatalog } from '@/hooks/useThhFilamentCatalog'
 import { catalogFromParams } from './abacus-catalog'
 import { toAbacusDesign } from './abacus-design'
 import {
@@ -134,10 +135,16 @@ export function AbacusStudioViewer() {
   // ignored by materialize, so its row falls back to Auto.
   const [overrides, setOverrides] = useState<Record<string, string>>({})
   // the print plan = the design projected onto the loaded filaments, honoring the
-  // user's pins. The catalog is params-derived for now (the THH AMS catalog arrives
-  // in P3). It is the single source of truth for BOTH the reduction warnings and
-  // the per-shell recolor below.
-  const catalog = useMemo(() => catalogFromParams(params), [params])
+  // user's pins. The catalog is the live THH AMS snapshot when the gateway is
+  // reachable (real colors, names, and material families), falling back to the
+  // params-derived color-only catalog when it isn't — the studio never blocks on
+  // THH. Either way it's the single source of truth for BOTH the reduction
+  // warnings and the per-shell recolor below.
+  const thhFilaments = useThhFilamentCatalog()
+  const catalog = useMemo(
+    () => thhFilaments.catalog ?? catalogFromParams(params),
+    [thhFilaments.catalog, params]
+  )
   const plan = useMemo(
     () => materialize(design, catalog, { overrides }),
     [design, catalog, overrides]
