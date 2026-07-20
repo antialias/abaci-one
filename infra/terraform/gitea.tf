@@ -797,7 +797,7 @@ resource "kubernetes_config_map" "gitea_runner_config" {
         capacity: 1
         timeout: 3h
         fetch_timeout: 5s
-        fetch_interval: 2s
+        fetch_interval: 30s  # codified from live 2026-07-20 (was 2s in config; runner is retired anyway — see gitea_runner_token)
 
       cache:
         enabled: true

@@ -186,6 +186,15 @@ resource "time_sleep" "wait_for_argocd_crds" {
 }
 
 resource "kubernetes_manifest" "argocd_app" {
+  # spec.source.repoURL was hand-migrated to GitHub via kubectl patch (2026-07-18),
+  # so that field is owned by the "kubectl-patch" field manager and SSA refuses the
+  # apply even though our value is identical. force_conflicts transfers ownership
+  # back to Terraform (one-time adoption; annotations stay image-updater's via
+  # computed_fields below).
+  field_manager {
+    force_conflicts = true
+  }
+
   manifest = {
     apiVersion = "argoproj.io/v1alpha1"
     kind       = "Application"
@@ -203,14 +212,14 @@ resource "kubernetes_manifest" "argocd_app" {
     spec = {
       project = "default"
       source = {
-        # ArgoCD pulls abaci-app manifests from the IN-CLUSTER Gitea, NOT GitHub.
-        # The live Deployment matches the Gitea manifest exactly (init container
-        # "migrate", 5 PVC mounts incl. generated-images-data & dev-artifacts,
-        # 1536Mi limit). The GitHub abaci-one copy is STALE and would regress the
-        # app on sync (prunes 2 PVCs, drops the init container, lowers memory).
-        # Do not "consolidate" to GitHub without first reconciling that manifest
-        # to live. See drift accounting 2026-06-14.
-        repoURL        = "http://gitea.gitea.svc.cluster.local:3000/antialias/soroban-abacus-flashcards"
+        # ArgoCD pulls abaci-app manifests from GitHub abaci-one (the canonical
+        # repo) — migrated from the in-cluster Gitea copy by 2026-07-18, when app
+        # rollouts moved to argocd-image-updater + kustomize (ghcr.io digests, see
+        # the image-updater annotations above). The old warning about GitHub being
+        # stale predates that reconciliation. Codified from live during the
+        # 2026-07-20 drift accounting — reverting this URL would repoint deploys
+        # at the retired Gitea copy.
+        repoURL        = "https://github.com/antialias/abaci-one"
         targetRevision = "main"
         path           = "infra/k8s/abaci-app"
       }

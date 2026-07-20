@@ -177,6 +177,14 @@ resource "kubernetes_deployment" "woodpecker_server" {
             value = "https://git.dev.${var.app_domain}"
           }
 
+          # Codified from live 2026-07-20 (was a hand-applied kubectl edit):
+          # without this, clones of public repos go unauthenticated and pipeline
+          # steps that hit Gitea anonymously get rate-limited/denied.
+          env {
+            name  = "WOODPECKER_AUTHENTICATE_PUBLIC_REPOS"
+            value = "true"
+          }
+
           env {
             name  = "WOODPECKER_GITEA_CLIENT"
             value = var.woodpecker_gitea_client
