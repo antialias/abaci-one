@@ -1,0 +1,90 @@
+# k3s node-health alerts — the "abaci.one is 502ing" pager.
+#
+# Born from the 2026-07-18 outage (home-infra memory
+# project_k3s_notready_502_2026_07_18): an eink-photo-frame CI vitest run on
+# this VM + hypervisor steal (the VM's 4 vCPUs are ALL of the DS923+'s
+# hardware threads) starved kine (SQLite) until the kubelet missed heartbeats,
+# the node went NotReady for ~3 minutes, svclb withdrew the traefik LB IP, and
+# NAS Traefik 502'd every *.abaci.one route.
+#
+# The stock KubeNodeNotReady rule has `for: 15m` — structurally blind to these
+# 3-5 minute collapses. These rules exist to (a) page fast when the node is
+# actually down, (b) warn on the leading indicator (steal) ~15 min ahead.
+#
+# Delivery tiering (same philosophy as claude-usage-rule.yaml — exactly one
+# delivery=critical rule per concern, warnings go to Telegram only):
+#   K3sNodeNotReadyFast  -> delivery=critical (Telegram + HA iOS critical push)
+#   K3sHighCpuSteal      -> delivery=telegram (heads-up, not a page)
+#
+# The static `namespace: monitoring` label is REQUIRED on every rule: the
+# operator's default AlertmanagerConfig matcher strategy (OnNamespace) adds a
+# namespace="monitoring" matcher to the k3s-node route, and neither
+# kube_node_status_condition (kube-state-metrics) nor node_cpu_seconds_total
+# (node-exporter) carries a namespace label of its own.
+#
+# Loaded by the kube-prometheus-stack Prometheus via the release ruleSelector —
+# the app/release labels below are required or the rule is ignored.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: k3s-node-health-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: k3s-node-health
+      rules:
+        # =====================================================================
+        # THE PAGE — node NotReady means every *.abaci.one route is 502ing NOW.
+        # for: 1m + groupWait 30s => pages ~2 min into an event; the Jul-18
+        # collapse lasted ~3-4 min and would have been caught mid-outage.
+        # A single missed kubelet heartbeat does not flip the Ready condition,
+        # so 1m here is not flappy in practice; if it ever is, tier it down
+        # rather than slowing it (see KubeNodeReadinessFlapping for chronic).
+        # =====================================================================
+        - alert: K3sNodeNotReadyFast
+          expr: kube_node_status_condition{condition="Ready", status="true"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            alertroute: k3s-node
+            delivery: critical
+            namespace: monitoring
+          annotations:
+            summary: "k3s node {{ $labels.node }} is NotReady — abaci.one is 502ing"
+            description: >-
+              Node {{ $labels.node }} has been NotReady for 1m+. svclb withdraws
+              the traefik LB IP while NotReady, so NAS Traefik gets connection
+              refused and every *.abaci.one route returns 502. Usual cause on
+              this single-node cluster: CPU starvation (CI on the VM + host
+              steal) stalling kine — check `avg(rate(node_cpu_seconds_total{mode="steal"}[5m]))`
+              and the Woodpecker sqlite on the NAS for a pipeline overlapping
+              the window (home-infra memory project_k3s_notready_502_2026_07_18).
+
+        # =====================================================================
+        # LEADING INDICATOR — hypervisor steal. 0.4 avg across the 4 vCPUs
+        # means ~1.6 vCPUs' worth of runtime is being taken by the host.
+        # Chronic baseline observed 2026-07-20 peaks ~0.27; the Jul-18 incident
+        # crossed 0.4 ~25 min before the node collapsed and stayed above it.
+        # Telegram-only: this is "look at the NAS / cancel the CI run", not a
+        # 3am page.
+        # =====================================================================
+        - alert: K3sHighCpuSteal
+          expr: avg(rate(node_cpu_seconds_total{mode="steal"}[5m])) > 0.4
+          for: 10m
+          labels:
+            severity: warning
+            alertroute: k3s-node
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: "k3s VM losing {{ $value | humanize }}x4 vCPUs to hypervisor steal"
+            description: >-
+              Hypervisor steal has averaged >40% across all 4 vCPUs for 10m —
+              the NAS host is starving the k3s VM. Historically precedes a node
+              NotReady collapse (2026-07-18). Check: a Woodpecker CI run on this
+              VM (step containers are cpuset-pinned to vCPUs 0-1, but dockerd
+              image builds are not), plus NAS-side hogs (`ps aux --sort=-%cpu`
+              on the NAS — e.g. the things fakefleet camera-render ffmpeg).

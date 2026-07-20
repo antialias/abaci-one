@@ -296,6 +296,41 @@ spec:
               account still work, and the switch-proxy still routes here.
 
         # =====================================================================
+        # LANE SCOPED-CAP JOIN HEALTH (Telegram)
+        #
+        # The per-model routing lanes join a lane's configured scope_model (e.g.
+        # "Fable") against limits[].scope.model.display_name in the usage payload.
+        # If Anthropic renames the display name ("Fable" -> "Fable 5") or drops the
+        # limits[] entry, the join SILENTLY collapses that lane's effective
+        # utilization to overall-weekly-only — the lane keeps routing, just on the
+        # wrong number, and nothing errors. cap_found goes 1 -> 0 in that case.
+        #
+        # The max_over_time guard makes this fire only on join LOSS: lanes that
+        # never had a scoped cap (today: opus/sonnet/haiku) sit at a permanent 0
+        # and must not alert.
+        # =====================================================================
+        - alert: ClaudeLaneScopedCapJoinLost
+          expr: |
+            max_over_time(claude_usage_lane_scoped_cap_found[7d]) == 1
+            and claude_usage_lane_scoped_cap_found == 0
+          for: 1h
+          labels:
+            severity: warning
+            alertroute: claude-usage
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: "Claude {{ $labels.lane }} lane lost its scoped-cap join — {{ $labels.account }}"
+            description: >-
+              The {{ $labels.lane }} lane's scope_model no longer matches any
+              weekly_scoped limit in {{ $labels.account }}'s usage payload, but it
+              did within the last 7 days. Its lane-effective utilization has quietly
+              fallen back to overall weekly, so a hot model cap would no longer move
+              this lane off the account. Check the display_name in the API payload
+              vs the lane config (/creds/lanes.json on the NAS, or DEFAULT_LANES in
+              claude_usage_exporter.py).
+
+        # =====================================================================
         # EXPORTER / POLL HEALTH (Telegram)
         # =====================================================================
         - alert: ClaudeUsageExporterDown
