@@ -1,0 +1,32 @@
+# Routes alertroute=k3s-node alerts (k3s-node-health-rule.yaml) to the NAS
+# alert-bridge, which fans out to Telegram DM and — for delivery=critical —
+# an HA iOS critical push. Mirrors claude-usage-alertmanagerconfig.yaml.
+#
+# NOTE: the operator's default matcher strategy (OnNamespace) silently ANDs a
+# namespace="monitoring" matcher onto this route; the rules carry a static
+# namespace: monitoring label to satisfy it.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: k3s-node-health
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  route:
+    receiver: k3s-node-bridge
+    groupBy: ["alertname"]
+    groupWait: 30s
+    groupInterval: 5m
+    # NotReady resolves fast; 1h repeat keeps a still-broken node loud without
+    # spamming during a long recovery.
+    repeatInterval: 1h
+    matchers:
+      - name: alertroute
+        value: k3s-node
+        matchType: "="
+  receivers:
+    - name: k3s-node-bridge
+      webhookConfigs:
+        - url: http://192.168.86.51:9116/alert
+          sendResolved: true

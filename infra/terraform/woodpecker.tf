@@ -344,6 +344,22 @@ resource "kubernetes_deployment" "woodpecker_agent" {
             value = "1"
           }
 
+          # Pin every pipeline STEP container to vCPUs 0-1, reserving 2-3 for
+          # the k3s control plane (kine, kubelet, apiserver). Root cause of the
+          # 2026-07-18 abaci.one 502 storm: eink #488 unit-tests (vitest) ran
+          # unpinned across all 4 vCPUs — which are ALL of the DS923+'s
+          # hardware threads — and together with hypervisor steal starved kine
+          # until the node went NotReady and svclb dropped the traefik LB IP.
+          # Vitest v4 sizes its pool via os.availableParallelism(), which
+          # respects this affinity, so tests self-limit to 2 workers. Known
+          # gap: `docker build` runs in the host dockerd, OUTSIDE this cpuset —
+          # accepted for now (builds are IO-heavy, tests were the killer).
+          # K3sHighCpuSteal / K3sNodeNotReadyFast alerts watch the residual.
+          env {
+            name  = "WOODPECKER_BACKEND_DOCKER_LIMIT_CPU_SET"
+            value = "0,1"
+          }
+
           env {
             name  = "WOODPECKER_LOG_LEVEL"
             value = "info"
@@ -425,6 +441,15 @@ resource "kubernetes_deployment" "woodpecker_agent_packages" {
           env {
             name  = "WOODPECKER_MAX_WORKFLOWS"
             value = "2"
+          }
+
+          # Same cpuset pin as the default agent (see comment there): step
+          # containers stay off vCPUs 2-3 so the k3s control plane keeps
+          # breathing room. Applies per-step, so even 2 concurrent
+          # weather-display workflows share vCPUs 0-1.
+          env {
+            name  = "WOODPECKER_BACKEND_DOCKER_LIMIT_CPU_SET"
+            value = "0,1"
           }
 
           env {
