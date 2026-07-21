@@ -382,6 +382,36 @@ async function notifyAdminsOfSongFailure({
   failureKind: string
 }) {
   try {
+    // Suppress noise from throwaway players (daily smoke test / debug / e2e).
+    // The smoke CronJob completes a debug session — which triggers this async
+    // song task — then the debug cleanup deletes the throwaway player. The task
+    // then fails with "player not found" and would otherwise email every admin
+    // once or twice every morning. Mirror the cleanup's own throwaway criteria
+    // (see api/debug/cleanup) so only these synthetic failures are silenced;
+    // real students are never expungeable/deleted, so their failures still page.
+    const [player] = await db
+      .select({
+        name: schema.players.name,
+        emoji: schema.players.emoji,
+        isExpungeable: schema.players.isExpungeable,
+      })
+      .from(schema.players)
+      .where(eq(schema.players.id, input.playerId))
+      .limit(1)
+
+    const isThrowawayPlayer =
+      !player || // already deleted by the smoke/debug cleanup before the task resolved
+      player.isExpungeable ||
+      (player.name.startsWith('Debug-') && player.emoji === '🐛') ||
+      player.name.endsWith(' Test Child')
+
+    if (isThrowawayPlayer) {
+      console.info(
+        `[session-song] Skipping admin failure notification for throwaway player (song ${songId}, player ${input.playerId})`
+      )
+      return
+    }
+
     const admins = await db
       .select({ id: schema.users.id })
       .from(schema.users)
