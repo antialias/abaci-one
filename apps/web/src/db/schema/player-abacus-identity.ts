@@ -45,10 +45,7 @@ export type PlayerAbacusIdentity = typeof playerAbacusIdentity.$inferSelect
 export type NewPlayerAbacusIdentity = typeof playerAbacusIdentity.$inferInsert
 
 /** The identity triple the studio and API exchange */
-export type AbacusIdentity = Pick<
-  PlayerAbacusIdentity,
-  'colorScheme' | 'colorPalette' | 'columns'
->
+export type AbacusIdentity = Pick<PlayerAbacusIdentity, 'colorScheme' | 'colorPalette' | 'columns'>
 
 /** What a player without a saved row shows: the stock abacus */
 export const DEFAULT_ABACUS_IDENTITY: AbacusIdentity = {

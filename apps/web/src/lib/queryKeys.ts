@@ -104,6 +104,12 @@ export const sessionPreferencesKeys = {
   detail: (playerId: string) => [...sessionPreferencesKeys.all, playerId] as const,
 }
 
+// Player abacus identity query keys (the player-bound "my abacus" style/form)
+export const playerAbacusIdentityKeys = {
+  all: ['player-abacus-identity'] as const,
+  detail: (playerId: string) => [...playerAbacusIdentityKeys.all, playerId] as const,
+}
+
 // Collected clips query keys (admin audio TTS generation)
 export const collectedClipKeys = {
   all: ['collected-clips'] as const,
