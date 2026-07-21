@@ -88,7 +88,35 @@ export const printJobs = sqliteTable(
   })
 )
 
+/**
+ * Per-user print-settings overlay for the abacus print dialog.
+ *
+ * ONE row per user (not per printer): the `style` column stores the user's
+ * TicketStyle edits verbatim as JSON — base preset id + sparse process
+ * overrides — never the service's `applied` clamp echoes. Absent row = unset;
+ * there is no honest server-side default because the default intent lives in
+ * each printer's capability doc, and `resolveIntentId` degrades a saved
+ * basePreset gracefully against whatever doc the paired printer serves.
+ * Filament overrides and printer profile are device/view state, not part of
+ * the overlay.
+ */
+export const abacusPrintSettings = sqliteTable('abacus_print_settings', {
+  /** Owning account (primary key — one settings row per user) */
+  userId: text('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+
+  /** TicketStyle JSON, stored verbatim (validated by parseTicketStyle on write) */
+  style: text('style').notNull(),
+
+  updatedAt: integer('updated_at', { mode: 'timestamp' })
+    .notNull()
+    .$defaultFn(() => new Date()),
+})
+
 export type PrintServiceConnection = typeof printServiceConnections.$inferSelect
 export type NewPrintServiceConnection = typeof printServiceConnections.$inferInsert
 export type PrintJob = typeof printJobs.$inferSelect
 export type NewPrintJob = typeof printJobs.$inferInsert
+export type AbacusPrintSettings = typeof abacusPrintSettings.$inferSelect
+export type NewAbacusPrintSettings = typeof abacusPrintSettings.$inferInsert
