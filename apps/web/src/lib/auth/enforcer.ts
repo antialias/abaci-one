@@ -1,6 +1,6 @@
-import { newEnforcer, newModelFromString, StringAdapter, type Enforcer } from 'casbin'
-import { DrizzleCasbinAdapter } from './casbin-adapter'
+import { type Enforcer, newEnforcer, newModelFromString, StringAdapter } from 'casbin'
 import { createRedisClient } from '@/lib/redis'
+import { DrizzleCasbinAdapter } from './casbin-adapter'
 
 /**
  * Inline model/policy definitions.
@@ -101,6 +101,11 @@ p, guest, /api/flowcharts/*, *
 p, guest, /api/flowchart-workshop/*, *
 p, guest, /api/abacus-settings, *
 p, guest, /api/scanner-settings, *
+# Abacus Studio print proxy — pairing, discovery, jobs, print settings (gh#160).
+# Guest-first like the rest of the studio: an anonymous account can pair, and
+# the guest→user merge carries its print rows along on sign-in. The doorbell
+# ring route is unaffected (no withAuth — it authenticates by ring secret).
+p, guest, /api/abacus/print/*, *
 p, guest, /api/arcade/*, *
 p, guest, /api/arcade-session, *
 p, guest, /api/realtime/*, *
