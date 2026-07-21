@@ -290,6 +290,39 @@ resource "kubernetes_service" "woodpecker_server" {
 }
 
 # ===========================================================================
+# Woodpecker Server gRPC — LAN NodePort for out-of-cluster agents
+# ===========================================================================
+# CI VM migration (platform#1 / platform#5): agents are moving off the k3s VM
+# onto the dedicated ci-node VM, which reaches the server over the LAN instead
+# of cluster DNS. Additive service — in-cluster agents keep using the ClusterIP
+# service above; this exposes ONLY the gRPC port on 192.168.86.37:30900.
+# Trust model unchanged: plaintext gRPC + shared WOODPECKER_AGENT_SECRET,
+# LAN-only (no ingress/port-forward publishes 30900 externally).
+# Contract recorded in platform repo CONTRACTS.md.
+
+resource "kubernetes_service" "woodpecker_server_grpc_lan" {
+  metadata {
+    name      = "woodpecker-server-grpc-lan"
+    namespace = kubernetes_namespace.gitea.metadata[0].name
+  }
+
+  spec {
+    selector = {
+      app = "woodpecker-server"
+    }
+
+    port {
+      name        = "grpc"
+      port        = 9000
+      target_port = 9000
+      node_port   = 30900
+    }
+
+    type = "NodePort"
+  }
+}
+
+# ===========================================================================
 # Woodpecker Agent (Docker backend)
 # ===========================================================================
 

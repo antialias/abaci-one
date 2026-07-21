@@ -31,6 +31,11 @@ output "ingress_info" {
 
 output "stripe_info" {
   description = "Stripe resource IDs (empty when Stripe is disabled)"
+  # terraform >=1.6 propagates provider-declared sensitivity through these
+  # attributes and refuses unmarked outputs (first hit on the 1.5.7 -> 1.15.8
+  # upgrade, 2026-07-21). Marking the whole map keeps `terraform output`
+  # behavior otherwise unchanged (view with -json).
+  sensitive   = true
   value = local.stripe_enabled ? {
     product_id       = stripe_product.family[0].id
     monthly_price_id = stripe_price.family_monthly[0].id
