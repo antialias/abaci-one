@@ -27,6 +27,7 @@ import { type AbacusIdentity, parseAbacusIdentity } from '@/lib/abacus/identity'
 import { buildAbacusThreeMf } from './abacus-3mf'
 import { catalogFromParams } from './abacus-catalog'
 import { toAbacusDesign } from './abacus-design'
+import { selectSourceIdentity } from './abacus-identity-source'
 import {
   analyzeShells,
   COLOR_PALETTES,
@@ -133,23 +134,10 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
   const playerName = playerId ? (allPlayers?.find((p) => p.id === playerId)?.name ?? null) : null
   // The identity source `synced` mirrors. Null while a selected player's row
   // is still loading — the follow-effect holds rather than seeding a fake.
-  const sourceIdentity: DisplayConfigInput | null = useMemo(() => {
-    if (playerId) {
-      const row = playerIdentity.data
-      return row
-        ? {
-            colorScheme: row.colorScheme,
-            colorPalette: row.colorPalette,
-            physicalAbacusColumns: row.columns,
-          }
-        : null
-    }
-    return {
-      colorScheme: displayConfig.colorScheme,
-      colorPalette: displayConfig.colorPalette,
-      physicalAbacusColumns: displayConfig.physicalAbacusColumns,
-    }
-  }, [playerId, playerIdentity.data, displayConfig])
+  const sourceIdentity: DisplayConfigInput | null = useMemo(
+    () => selectSourceIdentity(playerId, playerIdentity.data, displayConfig),
+    [playerId, playerIdentity.data, displayConfig]
+  )
   const [params, setParams] = useState<Params>(() => paramsFromDisplayConfig(displayConfig))
   // `synced` = params still mirror the identity source. Any manual edit
   // detaches (so a customization is never stomped by a config change), and
