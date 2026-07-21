@@ -12,6 +12,7 @@ import {
   LogOut,
   Mail,
   Palette,
+  Printer,
   Settings as SettingsIcon,
   Smartphone,
   UserPlus,
@@ -38,9 +39,17 @@ import {
   notificationSubscriptionKeys,
 } from '@/lib/queryKeys'
 import { api } from '@/lib/queryClient'
+import { PrintConnectionsManager } from '@/components/create/abacus/PrintConnectionsManager'
 import { css } from '../../../styled-system/css'
 
-type TabId = 'general' | 'abacus' | 'billing' | 'household' | 'notifications' | 'mcp-keys'
+type TabId =
+  | 'general'
+  | 'abacus'
+  | 'billing'
+  | 'household'
+  | 'notifications'
+  | 'printing'
+  | 'mcp-keys'
 
 interface Tab {
   id: TabId
@@ -54,6 +63,7 @@ const TABS: Tab[] = [
   { id: 'billing', label: 'Billing', icon: <CreditCard size={16} /> },
   { id: 'household', label: 'Household', icon: <Home size={16} /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell size={16} /> },
+  { id: 'printing', label: 'Printing', icon: <Printer size={16} /> },
   { id: 'mcp-keys', label: 'MCP Keys', icon: <Key size={16} /> },
 ]
 
@@ -172,6 +182,7 @@ export default function SettingsPage() {
           {activeTab === 'billing' && <BillingTab isDark={isDark} />}
           {activeTab === 'household' && <HouseholdTab isDark={isDark} />}
           {activeTab === 'notifications' && <NotificationsTab isDark={isDark} />}
+          {activeTab === 'printing' && <PrintingTab isDark={isDark} />}
           {activeTab === 'mcp-keys' && <McpKeysTab isDark={isDark} />}
         </div>
       </main>
@@ -2066,6 +2077,14 @@ async function revokeApiKey(keyId: string): Promise<void> {
     method: 'DELETE',
   })
   if (!res.ok) throw new Error('Failed to revoke API key')
+}
+
+function PrintingTab({ isDark }: { isDark: boolean }) {
+  return (
+    <div data-section="printing-tab">
+      <PrintConnectionsManager isDark={isDark} />
+    </div>
+  )
 }
 
 function McpKeysTab({ isDark }: { isDark: boolean }) {

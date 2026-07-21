@@ -38,6 +38,7 @@ import { api } from '@/lib/queryClient'
 import { abacusPrintKeys } from '@/lib/queryKeys'
 import { buildAbacusThreeMf } from './abacus-3mf'
 import type { FilamentCatalog } from './abacus-catalog'
+import { PairPrinterPrompt } from './PrintConnectionsManager'
 import type { FilamentMap, Params } from './abacus-model'
 import { buildAbacusTicket } from './abacus-ticket'
 
@@ -303,6 +304,31 @@ export function PrintPanel(props: PrintPanelProps) {
       {unavailable !== null ? (
         <div data-element="print-service-unavailable" style={{ color: 'rgba(148,163,184,0.95)' }}>
           {UNAVAILABLE_COPY[unavailable]}
+          {/* not-configured means zero connections — inline quick-pair is
+              unambiguous (0 → 1) and the studio's sole-connection proxy
+              fallback keeps working. unauthorized means a broken connection
+              already exists; re-pairing inline would make a SECOND one and
+              break that fallback, so send those to Settings › Printing to
+              remove the dead one first. unreachable / no-printer are
+              service-side — pairing won't help — so they stay copy-only. */}
+          {unavailable === 'not-configured' ? (
+            <PairPrinterPrompt />
+          ) : unavailable === 'unauthorized' ? (
+            <a
+              data-action="manage-print-connections"
+              href="/settings?tab=printing"
+              style={{
+                display: 'inline-block',
+                marginTop: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                color: 'rgba(196,181,253,0.95)',
+                textDecoration: 'underline',
+              }}
+            >
+              Manage printers in Settings →
+            </a>
+          ) : null}
         </div>
       ) : (
         <>
