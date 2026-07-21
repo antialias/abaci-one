@@ -16,8 +16,10 @@
 //   • Submission is v2-discipline: the ticket carries the editor's style
 //     verbatim; per-key rejects render through `parseInvalidTicket` and the
 //     service's `applied` clamp echoes feed straight back into the editor.
-//   • The doorbell (#8.4) is a hint: rings invalidate the job queries and the
-//     slow refetch below backstops missed rings (the ticket-sanctioned poll).
+//   • Job state moves on events, not a timer: doorbell rings invalidate the
+//     job queries, and `usePrintJobRing`'s reconnect reconcile repairs
+//     anything missed during a disconnect. Progress % between phase rings is
+//     deliberately coarse until THH ships throttled progress rings.
 
 import {
   type InvalidTicketDetail,
@@ -299,7 +301,6 @@ export function PrintPanel(props: PrintPanelProps) {
       return (await res.json()) as unknown
     },
     enabled: visible && serviceReady,
-    refetchInterval: 15_000,
     staleTime: 5_000,
   })
   const jobRows = useMemo(() => normalizeJobs(jobs.data), [jobs.data])

@@ -16,9 +16,12 @@ import { createSocket } from '@/lib/socket'
  * state through the authenticated proxy. The ring payload itself is never
  * trusted as state — it's identifiers only.
  *
- * Mount once per surface that shows job state (the #9 print panel). The
- * slow safety-net poll on active-job queries backstops missed rings and
- * carries progress %, which never rings.
+ * Mount once per surface that shows job state (the #9 print panel). This
+ * socket is the ONLY push channel — there is no backstop poll. Rings missed
+ * while disconnected are repaired by the reconcile invalidate on every
+ * (re)connect below. Progress % never rings (the eink#486 doorbell contract
+ * rings on phase transitions only), so between phases it's coarse until THH
+ * ships throttled progress rings.
  *
  * @param userId - The viewer's user id (undefined = don't connect)
  */
@@ -40,6 +43,10 @@ export function usePrintJobRing(userId: string | undefined): { connected: boolea
     socket.on('connect', () => {
       setConnected(true)
       socket.emit('join-user-channel', { userId })
+      // Reconcile on every (re)connect: any ring that fired while this socket
+      // was down is gone for good, so re-read the roster once. Bounded — one
+      // invalidate per connect edge, no timers.
+      queryClient.invalidateQueries({ queryKey: abacusPrintKeys.jobs() })
     })
 
     socket.on('disconnect', () => {
