@@ -69,6 +69,12 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
+      '@eink/frames-engine':
+        specifier: 1.1147.0
+        version: 1.1147.0
+      '@eink/print-dialog':
+        specifier: 1.1147.0
+        version: 1.1147.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@flatten-js/core':
         specifier: ^1.6.8
         version: 1.6.8
@@ -1552,6 +1558,15 @@ packages:
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
+
+  '@eink/frames-engine@1.1147.0':
+    resolution: {integrity: sha512-7zGvXZOXpQSvP3tji7ni5XzNV9MZL98rC16oH4TVZKsjZ+rPBYIlL3r7W3uSLwpshOV5rwPXldbs6fBoO7YS4w==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40eink%2Fframes-engine/-/1.1147.0/frames-engine-1.1147.0.tgz}
+
+  '@eink/print-dialog@1.1147.0':
+    resolution: {integrity: sha512-muBeIh3nprLfSpSlEA9FU/b3nqtuakxRCUSx4CvQTXhzc9YA447E0eBfNxnFn70WrL5NmPNVjlq+0FppMftXXg==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40eink%2Fprint-dialog/-/1.1147.0/print-dialog-1.1147.0.tgz}
+    peerDependencies:
+      react: ^18.3 || ^19
+      react-dom: ^18.3 || ^19
 
   '@emnapi/core@1.5.0':
     resolution: {integrity: sha512-sbP8GzB1WDzacS8fgNPpHlp6C9VZe+SJP3F90W9rLemaQj2PzIuTEl1qDOYQf58YIpyjViI24y9aPWCjEzY2cg==}
@@ -8349,6 +8364,9 @@ packages:
   fflate@0.8.2:
     resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
 
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+
   figures@2.0.0:
     resolution: {integrity: sha512-Oa2M9atig69ZkfwiApY8F2Yy+tzMbazyvqv21R0NsSC8floSOC09BbT1ITWAdoMGQvJ/aZnR1KMwdx9tvHnTNA==}
     engines: {node: '>=4'}
@@ -14675,6 +14693,16 @@ snapshots:
       tslib: 2.8.1
 
   '@drizzle-team/brocli@0.10.2': {}
+
+  '@eink/frames-engine@1.1147.0':
+    dependencies:
+      fflate: 0.8.3
+      qrcode: 1.5.4
+
+  '@eink/print-dialog@1.1147.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
 
   '@emnapi/core@1.5.0':
     dependencies:
@@ -22966,6 +22994,8 @@ snapshots:
   fflate@0.6.10: {}
 
   fflate@0.8.2: {}
+
+  fflate@0.8.3: {}
 
   figures@2.0.0:
     dependencies:
