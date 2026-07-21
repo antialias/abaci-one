@@ -13,9 +13,13 @@
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { AbacusMarkerSheet } from '@/components/create/abacus/AbacusMarkerSheet'
 import { PageWithNav } from '@/components/PageWithNav'
+import { PlayerPicker } from '@/components/shared/PlayerPicker'
+import { usePlayerAbacusIdentity } from '@/hooks/usePlayerAbacusIdentity'
+import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { css } from '../../../../styled-system/css'
 
 // three.js + OpenSCAD-WASM is heavy; only load it when the "print a new one"
@@ -74,7 +78,47 @@ const SCHEME_LABEL: Record<string, string> = {
 export default function CreateAbacusPage() {
   const config = useAbacusConfig()
   const [path, setPath] = useState<MakePath>('markers')
-  const columns = config.physicalAbacusColumns
+
+  // Whose abacus is being made real: ?player=<id> selects a player (the
+  // default use case — the studio manifests a student's "my abacus"), absent
+  // = the signed-in user's own config, exactly the pre-player behavior. URL
+  // carries the selection so links shared across a family/classroom open on
+  // the same student.
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const selectedPlayerId = searchParams.get('player')
+  const playerIdentity = usePlayerAbacusIdentity(selectedPlayerId)
+  const { data: players } = useUserPlayers()
+  const selectedPlayer = selectedPlayerId
+    ? players?.find((p) => p.id === selectedPlayerId)
+    : undefined
+  // A failed player fetch (revoked share, bad link) degrades to the user's
+  // own abacus with a notice — the page never dead-ends.
+  const playerUnavailable = selectedPlayerId !== null && playerIdentity.isError
+  const identity =
+    selectedPlayerId && !playerUnavailable
+      ? (playerIdentity.data ?? null) // null while the fetch is in flight
+      : {
+          colorScheme: config.colorScheme,
+          colorPalette: config.colorPalette,
+          columns: config.physicalAbacusColumns,
+        }
+  const columns = identity?.columns ?? config.physicalAbacusColumns
+  const colorScheme = identity?.colorScheme ?? config.colorScheme
+  const colorPalette = identity?.colorPalette ?? config.colorPalette
+
+  const ownerLabel = playerUnavailable
+    ? 'This is your abacus'
+    : selectedPlayer
+      ? `This is ${selectedPlayer.name}'s abacus`
+      : selectedPlayerId
+        ? 'This is their abacus'
+        : 'This is your abacus'
+
+  const selectPlayer = (playerId: string | null) => {
+    router.replace(playerId ? `${pathname}?player=${playerId}` : pathname, { scroll: false })
+  }
 
   return (
     <PageWithNav navTitle="Your Abacus" navEmoji="🧮">
@@ -148,8 +192,8 @@ export default function CreateAbacusPage() {
               <AbacusReact
                 value={0}
                 columns={columns}
-                colorScheme={config.colorScheme}
-                colorPalette={config.colorPalette}
+                colorScheme={colorScheme}
+                colorPalette={colorPalette}
                 scaleFactor={0.7}
                 interactive={false}
                 animated={false}
@@ -165,7 +209,9 @@ export default function CreateAbacusPage() {
                 textAlign: { base: 'center', sm: 'left' },
               })}
             >
+              <PlayerPicker selectedPlayerId={selectedPlayerId} onSelect={selectPlayer} />
               <span
+                data-element="abacus-identity-owner"
                 className={css({
                   fontSize: 'xs',
                   fontWeight: 'bold',
@@ -174,28 +220,38 @@ export default function CreateAbacusPage() {
                   color: 'text.secondary',
                 })}
               >
-                This is your abacus
+                {ownerLabel}
               </span>
+              {playerUnavailable && (
+                <span
+                  data-element="abacus-identity-unavailable"
+                  className={css({ fontSize: 'sm', color: 'text.secondary' })}
+                >
+                  Couldn't load that player's abacus — showing yours instead.
+                </span>
+              )}
               <div className={css({ display: 'flex', gap: 2, flexWrap: 'wrap' })}>
                 <span data-element="abacus-chip-columns" className={chip}>
                   {columns} columns
                 </span>
                 <span data-element="abacus-chip-colors" className={chip}>
-                  {SCHEME_LABEL[config.colorScheme] ?? 'Custom colors'}
+                  {SCHEME_LABEL[colorScheme] ?? 'Custom colors'}
                 </span>
               </div>
-              <Link
-                href="/settings"
-                data-action="edit-abacus-settings"
-                className={css({
-                  fontSize: 'sm',
-                  fontWeight: 'medium',
-                  color: 'cyan.600',
-                  _hover: { textDecoration: 'underline' },
-                })}
-              >
-                Change in Settings →
-              </Link>
+              {selectedPlayerId === null && (
+                <Link
+                  href="/settings"
+                  data-action="edit-abacus-settings"
+                  className={css({
+                    fontSize: 'sm',
+                    fontWeight: 'medium',
+                    color: 'cyan.600',
+                    _hover: { textDecoration: 'underline' },
+                  })}
+                >
+                  Change in Settings →
+                </Link>
+              )}
             </div>
           </section>
 
@@ -247,7 +303,7 @@ export default function CreateAbacusPage() {
                     bg: '#15181c',
                   })}
                 >
-                  <AbacusStudioViewer />
+                  <AbacusStudioViewer playerId={playerUnavailable ? null : selectedPlayerId} />
                 </div>
                 <p
                   className={css({

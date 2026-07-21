@@ -16,13 +16,21 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { DebugCheckbox, DebugSlider } from '@/components/toys/ToyDebugPanel'
+import {
+  usePlayerAbacusIdentity,
+  useSavePlayerAbacusIdentity,
+} from '@/hooks/usePlayerAbacusIdentity'
+import { usePlayerAccess } from '@/hooks/usePlayerAccess'
 import { useThhFilamentCatalog } from '@/hooks/useThhFilamentCatalog'
+import { useUserPlayers } from '@/hooks/useUserPlayers'
+import { type AbacusIdentity, parseAbacusIdentity } from '@/lib/abacus/identity'
 import { buildAbacusThreeMf } from './abacus-3mf'
 import { catalogFromParams } from './abacus-catalog'
 import { toAbacusDesign } from './abacus-design'
 import {
   analyzeShells,
   COLOR_PALETTES,
+  type DisplayConfigInput,
   frameW,
   MARKER_BITS,
   nearestSlot,
@@ -42,6 +50,16 @@ import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
 const SCHEMES = ['monochrome', 'place-value', 'heaven-earth', 'alternating']
 const PALETTES = ['default', 'colorblind', 'mnemonic', 'grayscale', 'nature']
 const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
+
+// The identity slice of the current params, or null when a custom scheme/
+// palette string can't be expressed as a saved identity (save stays disabled).
+function identityFromParams(p: Params): AbacusIdentity | null {
+  return parseAbacusIdentity({
+    colorScheme: p.color_scheme,
+    colorPalette: p.color_palette,
+    columns: p.cols,
+  })
+}
 
 // shared style for the one-click solver-fix buttons (sit inside the red error box)
 const FIX_BTN: CSSProperties = {
@@ -98,14 +116,44 @@ type DrawApi = {
   applyParams: () => void
 }
 
-export function AbacusStudioViewer() {
-  // the toy opens showing the viewer's OWN abacus (columns + color identity from
-  // their live AbacusDisplayConfig), then follows it until they touch a control.
+export interface AbacusStudioViewerProps {
+  /** Selected player whose "my abacus" the studio manifests; null = the viewer's own config */
+  playerId?: string | null
+}
+
+export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps = {}) {
+  // the toy opens showing an abacus IDENTITY and follows it until the user
+  // touches a control. With a player selected, that identity is the player's
+  // saved "my abacus" row; otherwise it's the viewer's own live
+  // AbacusDisplayConfig — exactly the pre-player behavior.
   const displayConfig = useAbacusConfig()
+  const playerIdentity = usePlayerAbacusIdentity(playerId)
+  const playerAccess = usePlayerAccess(playerId)
+  const { data: allPlayers } = useUserPlayers()
+  const playerName = playerId ? (allPlayers?.find((p) => p.id === playerId)?.name ?? null) : null
+  // The identity source `synced` mirrors. Null while a selected player's row
+  // is still loading — the follow-effect holds rather than seeding a fake.
+  const sourceIdentity: DisplayConfigInput | null = useMemo(() => {
+    if (playerId) {
+      const row = playerIdentity.data
+      return row
+        ? {
+            colorScheme: row.colorScheme,
+            colorPalette: row.colorPalette,
+            physicalAbacusColumns: row.columns,
+          }
+        : null
+    }
+    return {
+      colorScheme: displayConfig.colorScheme,
+      colorPalette: displayConfig.colorPalette,
+      physicalAbacusColumns: displayConfig.physicalAbacusColumns,
+    }
+  }, [playerId, playerIdentity.data, displayConfig])
   const [params, setParams] = useState<Params>(() => paramsFromDisplayConfig(displayConfig))
-  // `synced` = params still mirror the display config. Any manual edit detaches
-  // (so a customization is never stomped by a config change), and the
-  // "reset to my abacus" button re-attaches.
+  // `synced` = params still mirror the identity source. Any manual edit
+  // detaches (so a customization is never stomped by a config change), and
+  // the "reset to …" button re-attaches.
   const [synced, setSynced] = useState(true)
   // sliders/selects live behind a "Customize" disclosure so the print tool leads
   // with its Download action instead of a wall of dev controls.
@@ -864,13 +912,17 @@ export function AbacusStudioViewer() {
     }
   }, [])
 
-  // ---- follow the live abacus config while synced ---------------------------
-  // Re-seeds when the provider hydrates its stored config after mount, and when
-  // the user changes their abacus elsewhere. A no-op once they've customized.
+  // ---- follow the identity source while synced ------------------------------
+  // Re-seeds when the provider hydrates its stored config after mount, when
+  // the user changes their abacus elsewhere, and when the selected player (or
+  // their saved identity) changes. Holds while a player's row is in flight
+  // (sourceIdentity null), and is a no-op once the user has customized —
+  // switching players while detached keeps the scratch work and only
+  // retargets reset/save.
   useEffect(() => {
-    if (!synced) return
-    setParams(paramsFromDisplayConfig(displayConfig))
-  }, [displayConfig, synced])
+    if (!synced || !sourceIdentity) return
+    setParams(paramsFromDisplayConfig(sourceIdentity))
+  }, [sourceIdentity, synced])
 
   // ---- react to param edits: cheap redraw + (deduped) WASM re-render --------
   useEffect(() => {
@@ -891,6 +943,25 @@ export function AbacusStudioViewer() {
     setSynced(false)
     setParams((prev) => ({ ...prev, [k]: v }))
   }
+
+  // ---- player identity save -------------------------------------------------
+  // Explicit act, not auto-save: the synced/detach model already separates
+  // scratch work from identity, and write access is narrower than read (a
+  // teacher can view without the student present, but not write). Saving the
+  // identity slice of the current params re-syncs — the optimistic cache
+  // makes the follow-effect's re-seed a visual no-op.
+  const saveIdentity = useSavePlayerAbacusIdentity(playerId ?? 'anonymous')
+  const canWriteIdentity = playerAccess.data
+    ? playerAccess.data.isParent || playerAccess.data.isPresent
+    : false
+  const savableIdentity = identityFromParams(params)
+  const saveAsPlayerAbacus = () => {
+    if (!playerId || !savableIdentity) return
+    saveIdentity.mutate(savableIdentity, { onSuccess: () => setSynced(true) })
+  }
+  // Possessive for pill/buttons: a roster player's name, or a neutral
+  // fallback for shared deep links outside the viewer's own roster.
+  const playerPossessive = playerName ? `${playerName}'s` : "this student's"
 
   // ---- printability gate ----------------------------------------------------
   // Run the pure solver against the selected profile; errors block Export, the
@@ -984,33 +1055,81 @@ export function AbacusStudioViewer() {
 
         <div
           data-element="abacus-studio-sync-status"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-            fontSize: 11,
-            color: synced ? 'rgba(134,239,172,0.95)' : 'rgba(252,211,77,0.95)',
-          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
         >
-          <span>{synced ? '● showing your abacus' : '● customized'}</span>
-          {!synced && (
-            <button
-              type="button"
-              data-action="reset-to-my-abacus"
-              onClick={() => setSynced(true)}
-              style={{
-                padding: '3px 8px',
-                borderRadius: 5,
-                border: '1px solid rgba(148,163,184,0.5)',
-                background: 'transparent',
-                color: 'rgba(226,232,240,1)',
-                fontSize: 11,
-                cursor: 'pointer',
-              }}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 8,
+              fontSize: 11,
+              color: synced ? 'rgba(134,239,172,0.95)' : 'rgba(252,211,77,0.95)',
+            }}
+          >
+            <span>
+              {synced
+                ? `● showing ${playerId ? `${playerPossessive} abacus` : 'your abacus'}`
+                : '● customized'}
+            </span>
+            {!synced && (
+              <div
+                style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}
+              >
+                {playerId && (
+                  <button
+                    type="button"
+                    data-action="save-as-player-abacus"
+                    onClick={saveAsPlayerAbacus}
+                    disabled={!canWriteIdentity || !savableIdentity || saveIdentity.isPending}
+                    title={
+                      canWriteIdentity
+                        ? undefined
+                        : `Only a parent — or a teacher while ${playerName ?? 'this student'} is in class — can change their abacus`
+                    }
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: 5,
+                      border: '1px solid rgba(6,182,212,0.6)',
+                      background: 'rgba(6,182,212,0.15)',
+                      color: 'rgba(165,243,252,1)',
+                      fontSize: 11,
+                      cursor:
+                        !canWriteIdentity || !savableIdentity || saveIdentity.isPending
+                          ? 'default'
+                          : 'pointer',
+                      opacity: !canWriteIdentity || !savableIdentity ? 0.55 : 1,
+                    }}
+                  >
+                    {saveIdentity.isPending ? 'saving…' : `make this ${playerPossessive} abacus`}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  data-action="reset-to-my-abacus"
+                  onClick={() => setSynced(true)}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: 5,
+                    border: '1px solid rgba(148,163,184,0.5)',
+                    background: 'transparent',
+                    color: 'rgba(226,232,240,1)',
+                    fontSize: 11,
+                    cursor: 'pointer',
+                  }}
+                >
+                  reset to {playerId ? `${playerPossessive} abacus` : 'my abacus'}
+                </button>
+              </div>
+            )}
+          </div>
+          {saveIdentity.isError && (
+            <span
+              data-element="abacus-identity-save-error"
+              style={{ fontSize: 11, color: 'rgba(252,165,165,0.95)' }}
             >
-              reset to my abacus
-            </button>
+              Couldn't save — check your access and try again.
+            </span>
           )}
         </div>
 

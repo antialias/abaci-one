@@ -1,4 +1,5 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { ABACUS_COLOR_PALETTES, ABACUS_COLOR_SCHEMES } from '@/lib/abacus/identity'
 import { players } from './players'
 
 /**
@@ -11,6 +12,9 @@ import { players } from './players'
  * stay per-USER in abacus_settings — they are how an account likes abaci
  * rendered, not who a student's abacus is.
  *
+ * Shared vocabulary (enums, AbacusIdentity type, defaults, parse guard)
+ * lives drizzle-free in @/lib/abacus/identity for client-side reuse.
+ *
  * Cascade-deletes when the player is deleted; rides along on guest→user
  * merges because players themselves are reparented.
  */
@@ -21,18 +25,12 @@ export const playerAbacusIdentity = sqliteTable('player_abacus_identity', {
     .references(() => players.id, { onDelete: 'cascade' }),
 
   /** Color scheme for beads */
-  colorScheme: text('color_scheme', {
-    enum: ['monochrome', 'place-value', 'heaven-earth', 'alternating'],
-  })
+  colorScheme: text('color_scheme', { enum: ABACUS_COLOR_SCHEMES })
     .notNull()
     .default('place-value'),
 
   /** Color palette */
-  colorPalette: text('color_palette', {
-    enum: ['default', 'colorblind', 'mnemonic', 'grayscale', 'nature'],
-  })
-    .notNull()
-    .default('default'),
+  colorPalette: text('color_palette', { enum: ABACUS_COLOR_PALETTES }).notNull().default('default'),
 
   /** Physical column count (1-21; the studio clamps its own floor to 3) */
   columns: integer('columns').notNull().default(4),
@@ -43,13 +41,3 @@ export const playerAbacusIdentity = sqliteTable('player_abacus_identity', {
 
 export type PlayerAbacusIdentity = typeof playerAbacusIdentity.$inferSelect
 export type NewPlayerAbacusIdentity = typeof playerAbacusIdentity.$inferInsert
-
-/** The identity triple the studio and API exchange */
-export type AbacusIdentity = Pick<PlayerAbacusIdentity, 'colorScheme' | 'colorPalette' | 'columns'>
-
-/** What a player without a saved row shows: the stock abacus */
-export const DEFAULT_ABACUS_IDENTITY: AbacusIdentity = {
-  colorScheme: 'place-value',
-  colorPalette: 'default',
-  columns: 4,
-}

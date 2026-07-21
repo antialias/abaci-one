@@ -35,9 +35,9 @@ export const playerAccessKeys = {
  * - isTeacher: true if player is enrolled in viewer's classroom
  * - isPresent: true if player is currently present in viewer's classroom
  */
-export function usePlayerAccess(playerId: string) {
+export function usePlayerAccess(playerId: string | null) {
   return useQuery({
-    queryKey: playerAccessKeys.detail(playerId),
+    queryKey: playerAccessKeys.detail(playerId ?? 'anonymous'),
     queryFn: async (): Promise<PlayerAccessData> => {
       const response = await api(`players/${playerId}/access`)
       if (!response.ok) {
@@ -45,6 +45,7 @@ export function usePlayerAccess(playerId: string) {
       }
       return response.json()
     },
+    enabled: Boolean(playerId),
     // Refetch on window focus to catch presence changes
     refetchOnWindowFocus: true,
     // Keep data fresh - presence can change anytime

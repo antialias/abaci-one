@@ -14,32 +14,15 @@
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
+import { playerAbacusIdentity } from '@/db/schema/player-abacus-identity'
 import {
   type AbacusIdentity,
   DEFAULT_ABACUS_IDENTITY,
-  playerAbacusIdentity,
-} from '@/db/schema/player-abacus-identity'
+  parseAbacusIdentity,
+} from '@/lib/abacus/identity'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getUserId } from '@/lib/viewer'
-
-const COLOR_SCHEMES = ['monochrome', 'place-value', 'heaven-earth', 'alternating'] as const
-const COLOR_PALETTES = ['default', 'colorblind', 'mnemonic', 'grayscale', 'nature'] as const
-
-function parseIdentity(input: unknown): AbacusIdentity | null {
-  if (typeof input !== 'object' || input === null) return null
-  const { colorScheme, colorPalette, columns } = input as Record<string, unknown>
-  if (!COLOR_SCHEMES.includes(colorScheme as (typeof COLOR_SCHEMES)[number])) return null
-  if (!COLOR_PALETTES.includes(colorPalette as (typeof COLOR_PALETTES)[number])) return null
-  if (typeof columns !== 'number' || !Number.isInteger(columns) || columns < 1 || columns > 21) {
-    return null
-  }
-  return {
-    colorScheme: colorScheme as AbacusIdentity['colorScheme'],
-    colorPalette: colorPalette as AbacusIdentity['colorPalette'],
-    columns,
-  }
-}
 
 export const GET = withAuth(async (_request, { params }) => {
   try {
@@ -87,7 +70,7 @@ export const PUT = withAuth(async (request, { params }) => {
     }
 
     const body = (await request.json().catch(() => null)) as { identity?: unknown } | null
-    const identity = parseIdentity(body?.identity)
+    const identity = parseAbacusIdentity(body?.identity)
     if (!identity) {
       return NextResponse.json({ error: 'Invalid abacus identity' }, { status: 400 })
     }

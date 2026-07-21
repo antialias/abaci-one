@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { AbacusIdentity } from '@/db/schema/player-abacus-identity'
+import type { AbacusIdentity } from '@/lib/abacus/identity'
 import { api } from '@/lib/queryClient'
 import { playerAbacusIdentityKeys } from '@/lib/queryKeys'
 
