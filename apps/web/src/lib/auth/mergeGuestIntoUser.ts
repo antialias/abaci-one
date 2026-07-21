@@ -100,6 +100,11 @@ export async function mergeGuestIntoUser(
   // Notification subscriptions
   await reparent('practice_notification_subscriptions', 'user_id')
 
+  // Print service (Abacus Studio): paired connections and job ownership rows
+  // must follow the person, or a guest's paired printer vanishes on sign-in.
+  await reparent('print_service_connections', 'user_id')
+  await reparent('print_jobs', 'user_id')
+
   // Delete the source user (CASCADE will clean up auth_accounts and any remaining FKs)
   await db.delete(schema.users).where(eq(schema.users.id, sourceUserId))
 
