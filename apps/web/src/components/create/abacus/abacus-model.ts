@@ -497,15 +497,18 @@ export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAna
   return { triShell: ts, shellInfo }
 }
 
-// The intended hex for a shell under the current scheme/palette + filament map —
-// the viewer converts this to a linear rgb triple via THREE.Color. Frame rides
-// its frame slot; each bead rides its role slot.
-export const shellHex = (info: ShellInfo, p: Params, fm: FilamentMap): string =>
+// The filament slot a shell rides under the current scheme/palette + filament
+// map. Frame rides its frame slot; each bead rides its role slot. Shared by the
+// viewer's recolor pass (via shellHex) and the 3MF per-spool body split.
+export const shellSlotIndex = (info: ShellInfo, p: Params, fm: FilamentMap): number =>
   info.isFrame
-    ? fm.slots[fm.frame]
-    : fm.slots[
-        fm.beadRoles[beadRoleIndex(info.i, info.isHeaven, p.color_scheme, p.cols, p.color_palette)]
-      ]
+    ? fm.frame
+    : fm.beadRoles[beadRoleIndex(info.i, info.isHeaven, p.color_scheme, p.cols, p.color_palette)]
+
+// The intended hex for a shell under the current scheme/palette + filament map —
+// the viewer converts this to a linear rgb triple via THREE.Color.
+export const shellHex = (info: ShellInfo, p: Params, fm: FilamentMap): string =>
+  fm.slots[shellSlotIndex(info, p, fm)]
 
 // ---- inset text-plug layout (QA for inlay fill colors) ----------------------
 // mirror of the scad rails()/walls() layout: token k of a slot sits at

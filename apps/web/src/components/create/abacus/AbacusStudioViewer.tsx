@@ -16,6 +16,8 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { DebugCheckbox, DebugSlider } from '@/components/toys/ToyDebugPanel'
+import { useThhFilamentCatalog } from '@/hooks/useThhFilamentCatalog'
+import { buildAbacusThreeMf } from './abacus-3mf'
 import { catalogFromParams } from './abacus-catalog'
 import { toAbacusDesign } from './abacus-design'
 import {
@@ -34,6 +36,7 @@ import {
 } from './abacus-model'
 import { materialize, planToFilamentMap, type RoleAssignment } from './abacus-plan'
 import { DEFAULT_PROFILE_ID, PRINTER_PROFILES, profileById, solve } from './abacus-solver'
+import { PrintPanel } from './PrintPanel'
 import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
 
 const SCHEMES = ['monochrome', 'place-value', 'heaven-earth', 'alternating']
@@ -134,10 +137,16 @@ export function AbacusStudioViewer() {
   // ignored by materialize, so its row falls back to Auto.
   const [overrides, setOverrides] = useState<Record<string, string>>({})
   // the print plan = the design projected onto the loaded filaments, honoring the
-  // user's pins. The catalog is params-derived for now (the THH AMS catalog arrives
-  // in P3). It is the single source of truth for BOTH the reduction warnings and
-  // the per-shell recolor below.
-  const catalog = useMemo(() => catalogFromParams(params), [params])
+  // user's pins. The catalog is the live AMS snapshot when a print service is
+  // paired and reachable (real colors, names, and material families), falling
+  // back to the params-derived color-only catalog when it isn't — the studio
+  // never blocks on the print service. Either way it's the single source of
+  // truth for BOTH the reduction warnings and the per-shell recolor below.
+  const thhFilaments = useThhFilamentCatalog()
+  const catalog = useMemo(
+    () => thhFilaments.catalog ?? catalogFromParams(params),
+    [thhFilaments.catalog, params]
+  )
   const plan = useMemo(
     () => materialize(design, catalog, { overrides }),
     [design, catalog, overrides]
@@ -899,15 +908,44 @@ export function AbacusStudioViewer() {
   const scaleFix = proportionalScales.length ? Math.max(...proportionalScales) : null
   const clearanceFix = errors.find((r) => r.dim === 'clearance')?.floorMm ?? null
 
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  // primary export: the multi-material 3MF — the print projection's colors baked
+  // in as one co-registered body per filament slot (#9). Falls back to the raw
+  // colorless STL below for anyone whose slicer wants that.
   const onExport = () =>
     scad.exportStl(paramsRef.current, (stl) => {
-      const blob = new Blob([stl], { type: 'model/stl' })
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = `abacus-${params.cols}col-x${params.scale_factor}.stl`
-      a.click()
-      URL.revokeObjectURL(a.href)
+      const p = paramsRef.current
+      const { bytes } = buildAbacusThreeMf({
+        stl,
+        params: p,
+        filamentMap: filamentMapRef.current,
+        slotLabels: catalog.spools.map((s) => s.name),
+      })
+      downloadBlob(
+        new Blob([bytes as BlobPart], { type: 'model/3mf' }),
+        `abacus-${p.cols}col-x${p.scale_factor}.3mf`
+      )
     })
+
+  const onExportPlainStl = () =>
+    scad.exportStl(paramsRef.current, (stl) => {
+      const p = paramsRef.current
+      downloadBlob(
+        new Blob([stl], { type: 'model/stl' }),
+        `abacus-${p.cols}col-x${p.scale_factor}.stl`
+      )
+    })
+
+  // the print panel's export path: same one-shot render, promise-shaped
+  const requestExportStl = () =>
+    new Promise<ArrayBuffer>((resolve) => scad.exportStl(paramsRef.current, resolve))
 
   return (
     <div
@@ -1281,13 +1319,13 @@ export function AbacusStudioViewer() {
         {/* primary action — the whole point of the print path */}
         <button
           type="button"
-          data-action="export-stl"
+          data-action="export-3mf"
           onClick={onExport}
           disabled={exportBlocked}
           title={
             exportBlocked
               ? `Fix the errors above to print on ${profile.label}`
-              : 'Download a print-ready STL'
+              : 'Download a print-ready multi-material 3MF'
           }
           style={{
             padding: '11px 12px',
@@ -1301,7 +1339,25 @@ export function AbacusStudioViewer() {
             boxShadow: exportBlocked ? 'none' : '0 4px 14px rgba(6,182,212,0.35)',
           }}
         >
-          ⬇ Download STL to print
+          ⬇ Download 3MF to print
+        </button>
+        <button
+          type="button"
+          data-action="export-stl"
+          onClick={onExportPlainStl}
+          disabled={exportBlocked}
+          style={{
+            alignSelf: 'center',
+            padding: '2px 4px',
+            border: 'none',
+            background: 'transparent',
+            color: exportBlocked ? 'rgba(148,163,184,0.5)' : 'rgba(148,163,184,0.9)',
+            fontSize: 11,
+            cursor: exportBlocked ? 'not-allowed' : 'pointer',
+            textDecoration: 'underline',
+          }}
+        >
+          plain STL instead
         </button>
 
         {/* customize disclosure — sliders/selects tucked out of the way */}
@@ -1400,6 +1456,19 @@ export function AbacusStudioViewer() {
           </div>
         )}
       </div>
+
+      {/* print-service panel (Gitea #9) — sibling of the controls so the
+          settings editor never gets clipped by the 250px controls column */}
+      <PrintPanel
+        visible={viewMode === 'print'}
+        params={params}
+        filamentMap={filamentMap}
+        catalog={catalog}
+        printerId={thhFilaments.printerId}
+        unavailable={thhFilaments.unavailable}
+        exportBlocked={exportBlocked}
+        requestExportStl={requestExportStl}
+      />
 
       {/* status HUD */}
       <div

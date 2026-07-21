@@ -259,8 +259,8 @@ export default function CreateAbacusPage() {
                   })}
                 >
                   Rotate to inspect, adjust it under <strong>Customize</strong>, then hit{' '}
-                  <strong>Download STL to print</strong>. The four corner markers are baked into the
-                  frame — nothing to stick on.
+                  <strong>Download 3MF to print</strong> — colors ride along in the file. The four
+                  corner markers are baked into the frame — nothing to stick on.
                 </p>
               </div>
             ) : (
@@ -390,7 +390,10 @@ function ForkCard({
         overflow: 'hidden',
         transition: 'all 0.2s ease',
         boxShadow: selected ? '0 8px 24px rgba(6, 182, 212, 0.18)' : 'none',
-        _hover: { borderColor: selected ? 'cyan.500' : 'border.emphasized', transform: 'translateY(-2px)' },
+        _hover: {
+          borderColor: selected ? 'cyan.500' : 'border.emphasized',
+          transform: 'translateY(-2px)',
+        },
       })}
     >
       {/* selected accent bar */}
@@ -401,7 +404,9 @@ function ForkCard({
           style={{ background: CYAN_GRADIENT }}
         />
       )}
-      <div className={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}>
+      <div
+        className={css({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' })}
+      >
         <span className={css({ fontSize: '2xl' })}>{emoji}</span>
         <span
           data-element="fork-check"
@@ -423,7 +428,9 @@ function ForkCard({
           ✓
         </span>
       </div>
-      <h3 className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'text.primary' })}>{title}</h3>
+      <h3 className={css({ fontSize: 'lg', fontWeight: 'bold', color: 'text.primary' })}>
+        {title}
+      </h3>
       <p className={css({ fontSize: 'sm', color: 'text.secondary', lineHeight: '1.5', flex: 1 })}>
         {blurb}
       </p>
