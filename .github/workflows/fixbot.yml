@@ -29,6 +29,13 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
+      - name: Configure Gitea npm auth
+        # The committed .npmrc declares @tidepool/@eink registries at
+        # https://git.dev.abaci.one/... but commits no credentials. Append the
+        # matching _authToken from the GITEA_NPM_TOKEN secret so pnpm can fetch
+        # those packages (the Gitea instance requires sign-in for all API reads).
+        run: echo "//git.dev.abaci.one/api/packages/antialias/npm/:_authToken=${{ secrets.GITEA_NPM_TOKEN }}" >> .npmrc
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
