@@ -166,8 +166,9 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
   const viewModeRef = useRef(viewMode)
   viewModeRef.current = viewMode
   // manual filament mapping: roleKey → spoolId. Auto-snap picks each role's spool
-  // by nearest color; this is the user's override (and the seam where, once THH
-  // supplies material families, incompatible picks get flagged — P4/P5). Pure view
+  // by nearest color; this is the user's override. A pick that mixes material
+  // families is flagged live by the plan's material-mix warning (gh#163); the
+  // weld-interface constraint on auto-snap itself remains P4. Pure view
   // state like viewMode: it only reshapes the PRINT projection, so a pin never
   // detaches `synced` or touches the design. A pin onto an unloaded spool is
   // ignored by materialize, so its row falls back to Auto.
@@ -211,10 +212,11 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
   const filamentMapRef = useRef(filamentMap)
   filamentMapRef.current = filamentMap
   // the lossy-reduction heads-up shown in print mode: contrast the camera can't
-  // read + a palette that outruns the loaded spools. The per-role collision detail
-  // lives in the filament-mapping panel below.
+  // read, a palette that outruns the loaded spools, and a mapping that mixes
+  // material families (the slicer's temp guard refuses mixed plates — gh#163).
+  // The per-role collision detail lives in the filament-mapping panel below.
   const reductionWarnings = plan.warnings.filter(
-    (w) => w.code === 'marker-contrast' || w.code === 'budget-exceeded'
+    (w) => w.code === 'marker-contrast' || w.code === 'budget-exceeded' || w.code === 'material-mix'
   )
   // override rows, grouped frame → ArUco pair → beads. `activeOverrides` counts
   // pins that actually took (an ignored, unloaded-spool pin has overridden=false).
@@ -1232,9 +1234,10 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
               )}
 
               {/* manual override — pin any role to a specific loaded filament.
-                  Auto-snap picks by nearest color; this is the escape hatch. Once
-                  THH supplies material families, incompatible picks get flagged
-                  here (P4/P5); today every spool is PLA, so all picks are valid. */}
+                  Auto-snap picks by nearest color; this is the escape hatch. A
+                  pick that mixes material families lights the warning strip above
+                  (material-mix, gh#163); constraining auto-snap itself at the
+                  welds (material-interface) remains P4. */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <button
                   type="button"

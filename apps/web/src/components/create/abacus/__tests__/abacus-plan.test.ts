@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { catalogFromParams, type FilamentCatalog } from '../abacus-catalog'
+import { catalogFromParams, type FilamentCatalog, type FilamentSpool } from '../abacus-catalog'
 import { toAbacusDesign } from '../abacus-design'
-import { defaultParams, type Params } from '../abacus-model'
+import { beadRoleColors, defaultParams, type Params } from '../abacus-model'
 import {
   computeFilamentMap,
   materialize,
@@ -131,6 +131,118 @@ describe('materialize — warnings', () => {
     const result = plan(paramsFor('place-value', 'default', 8)) // 5 roles ≤ 8 slots
     expect(result.warnings.some((w) => w.code === 'budget-exceeded')).toBe(false)
     expect(result.warnings.some((w) => w.code === 'role-collision')).toBe(false)
+  })
+})
+
+describe('materialize — material-mix (gh#163)', () => {
+  // heaven-earth = the smallest scheme whose bead colors are distinct from the
+  // marker/frame anchors (monochrome's bead is intrinsically #000000 and would
+  // collide with the ArUco black spool). Five roles: marker pair, frame, heaven,
+  // earth. Every catalog below loads an EXACT-match spool per role so
+  // auto-snap's landing spots are fixed by construction.
+  const p = paramsFor('heaven-earth', 'default', 8)
+  const design = toAbacusDesign(p, '')
+  const [heavenHex, earthHex] = beadRoleColors(p.color_scheme, p.color_palette)
+  const spool = (id: string, name: string, hex: string, material: string): FilamentSpool => ({
+    id,
+    name,
+    hex,
+    material,
+  })
+  const thh = (spools: FilamentSpool[]): FilamentCatalog => ({
+    source: 'thh-ams',
+    fetchedAt: '2026-07-16T00:00:00Z',
+    spools,
+  })
+  const mixOf = (catalog: FilamentCatalog, overrides?: Record<string, string>) =>
+    materialize(design, catalog, { overrides }).warnings.find((w) => w.code === 'material-mix')
+
+  it('warns when auto-snap lands a bead on the odd-family spool (the real prod failure)', () => {
+    // four PLAs + the one PETG the heaven bead color chases — the exact shape
+    // that slipped through to Orca's temp guard in prod.
+    const result = materialize(
+      design,
+      thh([
+        spool('s-black', 'Matte Black', '#000000', 'PLA'),
+        spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+        spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+        spool('s-petg', 'Bambu PETG Basic', heavenHex, 'PETG'),
+        spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
+      ])
+    )
+    const w = result.warnings.find((x) => x.code === 'material-mix')
+    expect(w).toBeDefined()
+    expect(w?.severity).toBe('warning')
+    expect(result.ok).toBe(true) // heuristic, never a block — the slicer stays the authority
+    // names the odd-one-out pick, not the majority
+    expect(w?.roleKeys).toEqual(['bead-0'])
+    expect(w?.message).toContain('PLA and PETG')
+    expect(w?.message).toContain('heaven prints on Bambu PETG Basic (PETG)')
+  })
+
+  it('warns when the mix is created by an override pin, and only counts USED spools', () => {
+    // all-PLA auto-snap with a PETG loaded but unmapped: harmless until pinned.
+    const catalog = thh([
+      spool('s-black', 'Matte Black', '#000000', 'PLA'),
+      spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+      spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
+      spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
+      spool('s-petg', 'Bambu PETG Basic', '#ff00ff', 'PETG'),
+    ])
+    expect(mixOf(catalog)).toBeUndefined()
+    const pinned = mixOf(catalog, { 'bead-0': 's-petg' })
+    expect(pinned).toBeDefined()
+    expect(pinned?.roleKeys).toEqual(['bead-0'])
+  })
+
+  it('stays silent when every used spool shares one family', () => {
+    expect(
+      mixOf(
+        thh([
+          spool('s-black', 'Matte Black', '#000000', 'PLA'),
+          spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+          spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+          spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
+          spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
+        ])
+      )
+    ).toBeUndefined()
+  })
+
+  it('stays inert on the manual-params catalog (fabricated families never warn)', () => {
+    // same mixed spools, but the source gate must win — the params catalog's
+    // families are made up, so warning on them would be a lie.
+    const catalog: FilamentCatalog = {
+      source: 'manual-params',
+      spools: [
+        spool('s-black', 'Matte Black', '#000000', 'PLA'),
+        spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+        spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+        spool('s-petg', 'Bambu PETG Basic', heavenHex, 'PETG'),
+        spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
+      ],
+    }
+    expect(mixOf(catalog)).toBeUndefined()
+  })
+
+  it('names every group when no family holds a majority (a tie has no odd one out)', () => {
+    // markers on PLA, frame + heaven on PETG, earth on TPU → 2 / 2 / 1.
+    const w = mixOf(
+      thh([
+        spool('s-black', 'Matte Black', '#000000', 'PLA'),
+        spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+        spool('s-frame', 'PETG Oak', defaultParams.frame_color, 'PETG'),
+        spool('s-heaven', 'Bambu PETG Basic', heavenHex, 'PETG'),
+        spool('s-earth', 'Flex Blue', earthHex, 'TPU'),
+      ])
+    )
+    expect(w).toBeDefined()
+    expect(w?.roleKeys).toEqual(['marker-black', 'marker-white', 'frame', 'bead-0', 'bead-1'])
+    expect(w?.message).toContain('PLA, PETG, and TPU')
+    expect(w?.message).toContain('ArUco black prints on Matte Black (PLA)')
+    expect(w?.message).toContain('Frame prints on PETG Oak (PETG)')
+    expect(w?.message).toContain('earth prints on Flex Blue (TPU)')
   })
 })
 

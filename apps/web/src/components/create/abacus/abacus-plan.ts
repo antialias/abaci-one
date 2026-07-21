@@ -31,7 +31,7 @@
 // captive on a print clearance gap, never welded, so they chase best color on any
 // material. The viewer's manual filament-mapping panel overrides all of this.
 
-import { catalogFromParams, type FilamentCatalog } from './abacus-catalog'
+import { catalogFromParams, type FilamentCatalog, type FilamentSpool } from './abacus-catalog'
 import type { AbacusDesign } from './abacus-design'
 import { toAbacusDesign } from './abacus-design'
 import {
@@ -76,7 +76,8 @@ export type PlanWarningCode =
   | 'marker-contrast'
   | 'role-collision'
   | 'budget-exceeded'
-  | 'material-interface' // reserved for P4 (needs THH material families)
+  | 'material-mix' // plate-wide family mix — the slicer's temp guard likely refuses it (gh#163)
+  | 'material-interface' // reserved for P4 (the weld-adhesion rule; distinct from material-mix)
   | 'rainbow-unrealizable' // reserved for P4 (the only 'error' — multi-material text)
 
 export type PlanWarning = {
@@ -183,16 +184,79 @@ export function materialize(
   })
 
   const markerContrast = contrastRatio(hexes[whiteIdx], hexes[blackIdx])
+  const assignments = [markerBlack, markerWhite, frame, ...beadAssignments]
   const warnings = planWarnings(markerContrast, beadAssignments, roleHexes.length)
+  const mixWarning = materialMixWarning(assignments, spools, catalog.source)
+  if (mixWarning) warnings.push(mixWarning)
   const ok = !warnings.some((w) => w.severity === 'error')
 
   return {
     schemaVersion: PRINT_PLAN_SCHEMA_VERSION,
     catalogSource: catalog.source,
-    assignments: [markerBlack, markerWhite, frame, ...beadAssignments],
+    assignments,
     markerContrast,
     warnings,
     ok,
+  }
+}
+
+// material-mix (gh#163): the plate-wide temperature heuristic. The first real
+// print failed at the slicer, not here — auto-snap chased a bead color onto the
+// one PETG spool alongside three PLAs, and Orca refused the whole plate
+// ("temperature difference of the filaments used is too large"). A family mix
+// across the mapping is a strong signal for that guard but not proof, so this
+// warns and never blocks — the slicer stays the authority. Distinct from the
+// reserved 'material-interface' weld rule: that one constrains which spools the
+// welded frame/marker/text cluster may share; this one just looks at the whole
+// plate, beads included. Only the THH catalog carries real families; the params
+// catalog fabricates PLA everywhere and stays inert by design (abacus-catalog.ts).
+function materialMixWarning(
+  assignments: RoleAssignment[],
+  spools: FilamentSpool[],
+  source: FilamentCatalog['source']
+): PlanWarning | null {
+  if (source !== 'thh-ams') return null
+
+  // Group roles by their mapped spool's family — only spools actually used by
+  // the mapping count (a lone PETG sitting unmapped in the AMS is harmless).
+  const byFamily = new Map<string, RoleAssignment[]>()
+  for (const a of assignments) {
+    const material = spools[a.spoolIndex].material
+    const group = byFamily.get(material) ?? []
+    group.push(a)
+    byFamily.set(material, group)
+  }
+  if (byFamily.size <= 1) return null
+
+  // Call out the roles off the majority family — those are the picks to fix.
+  // With no majority (a tie) there's no "odd one out", so name everything.
+  const groups = [...byFamily.values()]
+  const top = Math.max(...groups.map((g) => g.length))
+  const tie = groups.filter((g) => g.length === top).length > 1
+  const named = tie ? assignments : groups.filter((g) => g.length !== top).flat()
+
+  const families = [...byFamily.keys()].sort(
+    (a, b) =>
+      (byFamily.get(b) as RoleAssignment[]).length - (byFamily.get(a) as RoleAssignment[]).length
+  )
+  const familyProse =
+    families.length === 2
+      ? `${families[0]} and ${families[1]}`
+      : `${families.slice(0, -1).join(', ')}, and ${families[families.length - 1]}`
+  const callouts = named
+    .map(
+      (a) =>
+        `${a.role.label} prints on ${spools[a.spoolIndex].name} (${spools[a.spoolIndex].material})`
+    )
+    .join('; ')
+
+  return {
+    code: 'material-mix',
+    severity: 'warning',
+    message: `This print mixes ${familyProse} filaments. ${callouts} — if their temperatures are too far apart the slicer will refuse the whole plate. Pick ${
+      named.length === 1 ? 'a same-type spool for that role' : 'same-type spools for those roles'
+    }, or change what's loaded.`,
+    roleKeys: named.map((a) => a.role.key),
   }
 }
 
