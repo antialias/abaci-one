@@ -44,6 +44,7 @@ import type { FilamentCatalog } from './abacus-catalog'
 import type { FilamentMap, Params } from './abacus-model'
 import { buildAbacusTicket } from './abacus-ticket'
 import { PairPrinterPrompt } from './PrintConnectionsManager'
+import { normalizeJobs } from './print-jobs'
 
 export interface PrintPanelProps {
   /** Rendered but hidden when false — internal state (style edits) survives. */
@@ -110,36 +111,6 @@ function extractApplied(body: unknown): Record<string, ParamScalarValue> | undef
     }
   }
   return Object.keys(out).length > 0 ? out : undefined
-}
-
-type JobRow = { id: string; name: string; phase: string; progress: number | null }
-
-/** Defensive projection of the proxy's pass-through jobs read (open wire shape). */
-function normalizeJobs(data: unknown): JobRow[] {
-  const list = Array.isArray(data)
-    ? data
-    : typeof data === 'object' && data !== null && Array.isArray((data as { jobs?: unknown }).jobs)
-      ? ((data as { jobs: unknown[] }).jobs as unknown[])
-      : []
-  const rows: JobRow[] = []
-  for (const item of list) {
-    if (typeof item !== 'object' || item === null) continue
-    const rec = item as Record<string, unknown>
-    const id = [rec.jobId, rec.id].find((v): v is string => typeof v === 'string' && v.length > 0)
-    if (!id) continue
-    rows.push({
-      id,
-      name: typeof rec.name === 'string' ? rec.name : id,
-      phase:
-        typeof rec.phase === 'string'
-          ? rec.phase
-          : typeof rec.status === 'string'
-            ? rec.status
-            : '—',
-      progress: typeof rec.progress === 'number' ? rec.progress : null,
-    })
-  }
-  return rows
 }
 
 export function PrintPanel(props: PrintPanelProps) {
@@ -292,7 +263,7 @@ export function PrintPanel(props: PrintPanelProps) {
     submit.error instanceof PrintSubmitError ? (submit.error.detail ?? undefined) : undefined
   const applied = useMemo(() => extractApplied(submit.data), [submit.data])
 
-  // ---- jobs roster (ring-invalidated; slow poll is the sanctioned backstop) --
+  // ---- jobs roster (ring-invalidated; reconcile on reconnect — no poll) -----
   const jobs = useQuery({
     queryKey: abacusPrintKeys.jobs(),
     queryFn: async () => {
@@ -546,26 +517,43 @@ export function PrintPanel(props: PrintPanelProps) {
                   data-element="print-job-row"
                   style={{
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: 8,
+                    flexDirection: 'column',
+                    gap: 3,
                     padding: '5px 8px',
                     borderRadius: 6,
                     background: 'rgba(255,255,255,0.05)',
                   }}
                 >
-                  <span
-                    style={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {job.name}
-                  </span>
-                  <span style={{ color: 'rgba(148,163,184,0.95)', whiteSpace: 'nowrap' }}>
-                    {job.phase}
-                    {job.progress !== null && ` · ${Math.round(job.progress)}%`}
-                  </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {job.name}
+                    </span>
+                    <span style={{ color: 'rgba(148,163,184,0.95)', whiteSpace: 'nowrap' }}>
+                      {job.phase}
+                      {job.progress !== null && ` · ${Math.round(job.progress)}%`}
+                    </span>
+                  </div>
+                  {job.error && (
+                    // The service's own explanation, verbatim and never
+                    // truncated — the actionable part is often the tail.
+                    <div
+                      data-element="print-job-error"
+                      style={{
+                        color: 'rgba(251,191,36,0.95)',
+                        whiteSpace: 'normal',
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      <span aria-hidden="true">✕ </span>
+                      {job.error.message ?? job.error.code}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
