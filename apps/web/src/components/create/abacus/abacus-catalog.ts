@@ -19,6 +19,7 @@
 //
 // Framework-free (no React, no three): a plain projection over `Params`.
 
+import type { ThhFilamentRow } from '@/lib/abacus/print/filament-wire'
 import type { Params } from './abacus-model'
 
 // The Bambu material families that matter for interface adhesion (PLA↔PETG↔TPU
@@ -57,4 +58,40 @@ export function catalogFromParams(p: Params): FilamentCatalog {
     })
   }
   return { source: 'manual-params', spools }
+}
+
+// Normalize THH's 8-digit RGBA hex (no '#', e.g. "A0A0A0FF") to the catalog's
+// "#RRGGBB". Tolerates a leading '#' and an already-6-digit value; falls back to
+// a neutral grey when the field is missing or malformed, so a spool still gets a
+// renderable swatch rather than breaking the color math.
+function normalizeThhHex(raw: string | undefined): string {
+  const hex = (raw ?? '').replace(/^#/, '')
+  if (!/^[0-9a-fA-F]{6,8}$/.test(hex)) return '#808080'
+  return `#${hex.slice(0, 6).toUpperCase()}`
+}
+
+// Project the proxy's filaments read onto the studio's FilamentCatalog. Spools
+// keep the AMS order THH reports (slot 0.1, 0.2, …) — the order the picker shows.
+// This is the 'thh-ams' source: spools carry a real `material` family, so once
+// the design has mixed materials the material-interface checks (P4) come alive;
+// today the studio just gets true colors + names instead of the params stand-in.
+// `fetchedAt` stamps the snapshot for cache/debugging. Rows are loaded AMS
+// slots only — the read never returns external (no-slot) spools.
+export function thhFilamentsToCatalog(rows: ThhFilamentRow[], fetchedAt: string): FilamentCatalog {
+  const spools: FilamentSpool[] = rows.map((row, i) => {
+    const name =
+      [row.brand, row.product].filter(Boolean).join(' ').trim() ||
+      row.family ||
+      row.slotId ||
+      `Slot ${i + 1}`
+    return {
+      // slotId is how a print ticket references the spool; the positional
+      // fallback only guards against a degenerate row within this snapshot.
+      id: row.slotId ?? `slot-${i}`,
+      name,
+      hex: normalizeThhHex(row.colorHex),
+      material: (row.family as FilamentMaterial) || 'PLA',
+    }
+  })
+  return { source: 'thh-ams', spools, fetchedAt }
 }

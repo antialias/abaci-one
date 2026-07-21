@@ -226,6 +226,19 @@ export const postcardKeys = {
   unreadCount: (playerId?: string) => [...postcardKeys.all, 'unread', playerId ?? 'all'] as const,
 }
 
+// Abacus Studio print proxy (connections, printer discovery, filament roster,
+// job tracking — Gitea epic #5, ticket #8)
+export const abacusPrintKeys = {
+  all: ['abacus-print'] as const,
+  connections: () => [...abacusPrintKeys.all, 'connections'] as const,
+  printers: () => [...abacusPrintKeys.all, 'printers'] as const,
+  filaments: (printerId: string) => [...abacusPrintKeys.all, 'filaments', printerId] as const,
+  jobs: () => [...abacusPrintKeys.all, 'jobs'] as const,
+  job: (jobId: string) => [...abacusPrintKeys.all, 'job', jobId] as const,
+  capabilities: (connectionId?: string) =>
+    [...abacusPrintKeys.all, 'capabilities', connectionId ?? 'sole'] as const,
+}
+
 // Attachment query keys (for practice photos and worksheet parsing)
 export const attachmentKeys = {
   // All attachments for a player
