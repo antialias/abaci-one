@@ -243,6 +243,7 @@ export const abacusPrintKeys = {
   job: (jobId: string) => [...abacusPrintKeys.all, 'job', jobId] as const,
   capabilities: (connectionId?: string) =>
     [...abacusPrintKeys.all, 'capabilities', connectionId ?? 'sole'] as const,
+  settings: () => [...abacusPrintKeys.all, 'settings'] as const,
 }
 
 // Attachment query keys (for practice photos and worksheet parsing)

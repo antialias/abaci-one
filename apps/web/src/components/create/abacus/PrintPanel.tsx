@@ -29,7 +29,8 @@ import {
 import { PrintSettingsEditor } from '@eink/print-dialog/ui'
 import '@eink/print-dialog/ui/style.css'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useAbacusPrintSettings, useSaveAbacusPrintSettings } from '@/hooks/useAbacusPrintSettings'
 import { usePrintJobRing } from '@/hooks/usePrintJobRing'
 import { useUserId } from '@/hooks/useUserId'
 import { createAbacusPrintClient } from '@/lib/abacus/print/browser-transport'
@@ -38,9 +39,9 @@ import { api } from '@/lib/queryClient'
 import { abacusPrintKeys } from '@/lib/queryKeys'
 import { buildAbacusThreeMf } from './abacus-3mf'
 import type { FilamentCatalog } from './abacus-catalog'
-import { PairPrinterPrompt } from './PrintConnectionsManager'
 import type { FilamentMap, Params } from './abacus-model'
 import { buildAbacusTicket } from './abacus-ticket'
+import { PairPrinterPrompt } from './PrintConnectionsManager'
 
 export interface PrintPanelProps {
   /** Rendered but hidden when false — internal state (style edits) survives. */
@@ -169,14 +170,54 @@ export function PrintPanel(props: PrintPanelProps) {
   })
 
   // ---- the controlled ticket style (single source of truth) -----------------
+  // Three-tier seed: this session's edits > the user's persisted overlay >
+  // the capability doc's default intent. The overlay stores the user's edits
+  // verbatim — the service's `applied` clamp echoes are never persisted.
   const [styleEdits, setStyleEdits] = useState<TicketStyle | null>(null)
+  const savedSettings = useAbacusPrintSettings(visible && serviceReady)
   const seededStyle = useMemo<TicketStyle | null>(() => {
     const presets = caps.data?.basePresets
     if (!presets) return null
     const preset = presets.intents[presets.defaultIntent]?.preset
     return preset ? { basePreset: preset, process: {} } : null
   }, [caps.data])
-  const style = styleEdits ?? seededStyle
+  const style = styleEdits ?? savedSettings.data ?? seededStyle
+
+  // Persist edits with a 600ms trailing debounce (event-driven — armed only by
+  // onChange), deduped against the last-saved snapshot, flushed on unmount so
+  // a tune-then-navigate never drops the last edit.
+  const saveSettings = useSaveAbacusPrintSettings()
+  const saveSettingsRef = useRef(saveSettings.mutate)
+  saveSettingsRef.current = saveSettings.mutate
+  const lastSavedRef = useRef<string | null>(null)
+  const pendingSaveRef = useRef<{
+    timer: ReturnType<typeof setTimeout>
+    style: TicketStyle
+  } | null>(null)
+  if (lastSavedRef.current === null && savedSettings.data) {
+    lastSavedRef.current = JSON.stringify(savedSettings.data)
+  }
+  const flushPendingSave = () => {
+    const pending = pendingSaveRef.current
+    if (!pending) return
+    clearTimeout(pending.timer)
+    pendingSaveRef.current = null
+    const snapshot = JSON.stringify(pending.style)
+    if (snapshot === lastSavedRef.current) return
+    lastSavedRef.current = snapshot
+    saveSettingsRef.current(pending.style)
+  }
+  const flushPendingSaveRef = useRef(flushPendingSave)
+  flushPendingSaveRef.current = flushPendingSave
+  const handleStyleChange = (next: TicketStyle) => {
+    setStyleEdits(next)
+    if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current.timer)
+    pendingSaveRef.current = {
+      style: next,
+      timer: setTimeout(() => flushPendingSaveRef.current(), 600),
+    }
+  }
+  useEffect(() => () => flushPendingSaveRef.current(), [])
 
   const [settingsOpen, setSettingsOpen] = useState(false)
   // mount-once: after the first open the editor stays mounted, only hidden
@@ -470,7 +511,7 @@ export function PrintPanel(props: PrintPanelProps) {
                 <PrintSettingsEditor
                   doc={caps.data}
                   value={style}
-                  onChange={setStyleEdits}
+                  onChange={handleStyleChange}
                   errors={invalidDetail}
                   applied={applied}
                   theme="dark"
