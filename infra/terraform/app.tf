@@ -27,6 +27,7 @@ resource "kubernetes_secret" "app_env" {
     STRIPE_FAMILY_ANNUAL_PRICE_ID  = local.stripe_enabled ? stripe_price.family_annual[0].id : ""
     STRIPE_WEBHOOK_SECRET          = local.stripe_enabled ? stripe_webhook_endpoint.app[0].secret : ""
     VAPID_PRIVATE_KEY              = var.vapid_private_key
+    SECRET_BOX_KEY                 = var.secret_box_key
   }
 }
 

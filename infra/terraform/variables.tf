@@ -254,3 +254,10 @@ variable "argocd_domain" {
   type        = string
   default     = ""
 }
+
+# Print service (Abacus Studio)
+variable "secret_box_key" {
+  description = "AES-256-GCM key sealing print-service credentials at rest (base64, must decode to exactly 32 bytes). Codifies the key already live in the cluster — set it to that value, never a fresh one: rotation orphans every sealed credential and forces re-pairing. No default on purpose: an unset value must fail the plan, not silently wipe the key."
+  type        = string
+  sensitive   = true
+}
