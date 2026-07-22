@@ -27,10 +27,8 @@ import {
   COLOR_PALETTES,
   frameW,
   MARKER_BITS,
-  nearestSlot,
   outerD,
   type ShellInfo,
-  shellHex,
   tokenCenters,
 } from './abacus-model'
 import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
@@ -45,10 +43,12 @@ type DrawApi = {
 }
 
 export function AbacusStudioViewer() {
-  // Only the three.js/worker-bound slice of the shared studio store: the design +
-  // print projection the mount-once closures mirror, plus the export-handle
-  // registrar. Every control that edits these lives in the docked rails.
-  const { params, design, viewMode, filamentMap, registerExportStl } = useAbacusStudio()
+  // Only the three.js/worker-bound slice of the shared studio store: the design
+  // the mount-once closures mirror, plus the export-handle registrar. Every
+  // control that edits these lives in the docked rails. The model ALWAYS renders
+  // the user's designed colors — how those colors land on the loaded filament is
+  // communicated in the rail (FilamentReconcileStrip), not by recoloring the show.
+  const { params, design, registerExportStl } = useAbacusStudio()
 
   // live mirrors read by the mount-once three.js closures (which can't re-close
   // over changing state). Kept in lockstep with the store on every render.
@@ -56,10 +56,6 @@ export function AbacusStudioViewer() {
   paramsRef.current = params
   const designRef = useRef(design)
   designRef.current = design
-  const viewModeRef = useRef(viewMode)
-  viewModeRef.current = viewMode
-  const filamentMapRef = useRef(filamentMap)
-  filamentMapRef.current = filamentMap
 
   const [status, setStatus] = useState<StatusUpdate>({ text: 'booting…' })
   const [meta, setMeta] = useState<{ ms?: number; tris?: number }>({})
@@ -147,20 +143,14 @@ export function AbacusStudioViewer() {
       if (!renderMesh || !triShell) return
       const geo = renderMesh.geometry
       const nVert = geo.attributes.position.count
-      // Two lenses on the same design:
-      //  • 'design' → the user's INTRINSIC colors (matches their on-screen abacus
-      //    exactly). Columns are keyed by place value (ones = index 0); shellInfo.i
-      //    counts left→right, so place value = cols-1-i.
-      //  • 'print'  → those same colors QUANTIZED onto the loaded filaments
-      //    (shellHex over the filament map), i.e. what actually prints.
-      const printMode = viewModeRef.current === 'print'
-      const fm = printMode ? filamentMapRef.current : null
+      // The model always shows the user's INTRINSIC colors (matches their on-screen
+      // abacus exactly). Columns are keyed by place value (ones = index 0);
+      // shellInfo.i counts left→right, so place value = cols-1-i. How those colors
+      // quantize onto the loaded filaments is surfaced in the rail, not here.
       const rc = designRef.current.resolvedColors
       const shellRGB = shellInfo.map((info) => {
         let hex: string
-        if (printMode && fm) {
-          hex = shellHex(info, p, fm)
-        } else if (info.isFrame) {
+        if (info.isFrame) {
           hex = rc.frame
         } else {
           const col = rc.columns[p.cols - 1 - info.i]
@@ -287,13 +277,11 @@ export function AbacusStudioViewer() {
       const u = r - inset
       const R = r - ch
       const trim = R > 0 && u > R / Math.SQRT2 ? { u, R, T: p.marker_mm } : null
-      // markers are black/white CV fiducials: 'design' shows their ideal pure
-      // pair, 'print' shows the actual filaments they snap to (whose contrast the
-      // plan warns about when it drops below the camera's floor).
-      const printMode = viewModeRef.current === 'print'
-      const fm = printMode ? filamentMapRef.current : null
-      const white = fm ? fm.slots[fm.markerWhite] : '#ffffff'
-      const black = fm ? fm.slots[fm.markerBlack] : '#000000'
+      // markers are black/white CV fiducials — always previewed as their ideal pure
+      // pair (the plan warns separately when the loaded filaments' contrast drops
+      // below the camera's floor).
+      const white = '#ffffff'
+      const black = '#000000'
       pos.forEach(([x, y], k) => {
         const quad = new THREE.Mesh(
           new THREE.PlaneGeometry(p.marker_mm, p.marker_mm),
@@ -324,10 +312,8 @@ export function AbacusStudioViewer() {
     function plugRecolor() {
       if (!plugMesh || !plugTriTok) return
       const p = paramsRef.current
-      // 'design' shows the intended inlay ink (rainbow palette or the single text
-      // color); 'print' snaps it to the nearest loaded filament.
-      const printMode = viewModeRef.current === 'print'
-      const fm = printMode ? filamentMapRef.current : null
+      // always the intended inlay ink (rainbow palette or the single text color) —
+      // the model previews the user's designed colors, not the filament snap.
       const pal = COLOR_PALETTES[p.color_palette] ?? COLOR_PALETTES.default
       const geo = plugMesh.geometry
       const colors = new Float32Array(geo.attributes.position.count * 3)
@@ -337,7 +323,7 @@ export function AbacusStudioViewer() {
         let rgb = cache.get(k)
         if (!rgb) {
           const intended = p.text_fill === 'rainbow' ? pal[k % 5] : p.text_color
-          _c.set(fm ? fm.slots[nearestSlot(fm.slots, intended)] : intended)
+          _c.set(intended)
           rgb = [_c.r, _c.g, _c.b] as const
           cache.set(k, rgb)
         }
@@ -459,14 +445,6 @@ export function AbacusStudioViewer() {
     drawRef.current?.applyParams()
     scad.render(params)
   }, [params, scad])
-
-  // flipping the preview lens OR editing the filament mapping is geometry-free:
-  // recolor + rebuild the markers from the new plan, no WASM re-render (the closures
-  // read viewModeRef + filamentMapRef). filamentMap changes on every param edit too,
-  // so the param effect's redraw is harmlessly deduped by this one.
-  useEffect(() => {
-    drawRef.current?.applyParams()
-  }, [viewMode, filamentMap])
 
   // publish the worker-bound STL exporter into the store so the fabrication rail's
   // Export buttons + the print panel can trigger a one-shot high-quality render.

@@ -10,8 +10,8 @@
 //
 // The `set()` detach chokepoint lives here and is the ONLY exposed param writer
 // (the context type omits raw setParams) — every design edit routes through it so
-// the synced/identity follow model can never be bypassed. viewMode / overrides /
-// profileId are pure view state and never detach.
+// the synced/identity follow model can never be bypassed. overrides / profileId /
+// fabrication are pure view state and never detach.
 
 import { useAbacusConfig } from '@soroban/abacus-react'
 import {
@@ -79,14 +79,12 @@ function useStudioController(playerId: string | null) {
   // printer profile: a print setting (Common / Wide / Fine), NOT part of the
   // abacus identity — changing it must not detach `synced`.
   const [profileId, setProfileId] = useState<string>(DEFAULT_PROFILE_ID)
-  // preview lens: 'design' shows the user's INTRINSIC colors, 'print' shows the
-  // same design QUANTIZED onto the loaded filaments. A pure view concern.
-  const [viewMode, setViewMode] = useState<'design' | 'print'>('design')
-  // manual filament mapping: roleKey → spoolId. Pure view state like viewMode —
-  // it only reshapes the PRINT projection, so a pin never detaches `synced`.
+  // manual filament mapping: roleKey → spoolId. Pure view state — it only reshapes
+  // the PRINT projection (the reconcile strip + the 3MF), so a pin never detaches
+  // `synced`. The 3D model always renders the user's designed colors, unmapped.
   const [overrides, setOverrides] = useState<Record<string, string>>({})
   // which physical output the shared design is being made into — a studio-state
-  // axis (like viewMode), NOT part of the abacus identity, so switching it never
+  // axis, NOT part of the abacus identity, so switching it never
   // detaches `synced`. It gates the 3D-only cost below: on 'paper' the filament
   // catalog read is disabled (no printer discovery, no AMS poll), and the page
   // never mounts the three.js viewer.
@@ -204,8 +202,6 @@ function useStudioController(playerId: string | null) {
     profileId,
     setProfileId,
     profile,
-    viewMode,
-    setViewMode,
     overrides,
     setOverrides,
     fabrication,

@@ -57,6 +57,14 @@ const supportCatalog = thh([
   spool('s-sup', 'Bambu Lab Support for PLA', '#FEFEFE', 'PLA-S'),
 ])
 
+// A bare black + white plate: no spool comes close to either bead color, so both
+// beads snap onto a far-off filament and each earns a corner fleck in the strip,
+// while the black frame + markers still print true (the fleck's silent case).
+const limitedCatalog = thh([
+  spool('s-black', 'Bambu Lab PLA Basic Black', '#101010', 'PLA'),
+  spool('s-white', 'Bambu Lab PLA Basic Jade White', '#F2F2F2', 'PLA'),
+])
+
 // ---- harness -------------------------------------------------------------------
 // The panel is controlled (the studio owns `overrides` so its recolor pipeline
 // sees the same pins); stories own that state with a plain useState.
@@ -120,6 +128,19 @@ export const PitOfSuccess: Story = {
 }
 
 /**
+ * The reconcile strip, both of its states in one shot. Every designed color is a
+ * prominent swatch; a color only earns a corner fleck of its filament when it
+ * prints as a *noticeably different* color. On this bare black+white plate the two
+ * bead colors have nowhere true to land, so each flecks and the caption reads "2
+ * colors shift" — while the black frame prints true (no fleck). Compare with
+ * PitOfSuccess above, whose exact-match plate leaves the strip fleckless ("prints
+ * true"). Clicking a swatch opens that role's picker (the mapping deep link).
+ */
+export const ColorsShiftFleck: Story = {
+  render: () => <Harness catalog={limitedCatalog} />,
+}
+
+/**
  * Layer 3, a temperature mix answered: the heaven beads are pinned onto the
  * PETG spool, so the plate now splits across PLA and PETG temperatures. The
  * warning names the offender as a chip (intrinsic color → role → spool +
@@ -166,13 +187,13 @@ export const GroupedPicker: Story = {
 }
 
 /**
- * Layer 1, visibility: every spool here starts with "Bambu Lab", so rows strip
- * that shared brand prefix and spend their characters on the distinguishing
- * words (full name stays in the tooltip). Material tags ride the rows, and the
- * "6 filaments loaded" legend clusters its swatches by family — PLA, PETG, and
- * the amber support tag read at a glance.
+ * Layer 1, visibility: every spool here starts with "Bambu Lab", so the mapping
+ * rows strip that shared brand prefix and spend their characters on the
+ * distinguishing words (full name stays in the tooltip). Material tags ride the
+ * rows, and the reconcile strip's caption reports the loaded count ("6 filaments
+ * loaded") while its swatches show how the design lands on this plate.
  */
-export const BrandPrefixAndLegend: Story = {
+export const BrandPrefixAndMapping: Story = {
   render: () => <Harness catalog={supportCatalog} defaultMappingOpen={true} />,
 }
 

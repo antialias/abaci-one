@@ -29,6 +29,7 @@ import {
 } from './abacus-catalog'
 import type { AbacusDesign } from './abacus-design'
 import { materialize, type RoleAssignment } from './abacus-plan'
+import { FilamentReconcileStrip } from './FilamentReconcileStrip'
 
 // gh#163 UX: mapping rows truncate spool names, and every spool from one brand
 // starts with the same words ("Bambu Lab …") — the ellipsis was eating exactly
@@ -199,31 +200,6 @@ export function FilamentPlanPanel({
       </span>
     )
   }
-  // one legend swatch — shared by the flat and family-clustered legend layouts
-  const legendSwatch = (s: FilamentSpool) => (
-    <span
-      key={s.id}
-      title={showMaterial ? `${s.name} · ${s.material} · ${s.hex}` : `${s.name} · ${s.hex}`}
-      style={{
-        width: 16,
-        height: 16,
-        borderRadius: 4,
-        background: s.hex,
-        border: '1px solid rgba(255,255,255,0.25)',
-      }}
-    />
-  )
-  // legend clusters: spools bucketed by raw family (AMS order preserved within
-  // each) so "what's loaded" reads as materials, not just colors.
-  const legendGroups = useMemo(() => {
-    const m = new Map<string, FilamentSpool[]>()
-    for (const s of catalog.spools) {
-      const arr = m.get(s.material)
-      if (arr) arr.push(s)
-      else m.set(s.material, [s])
-    }
-    return [...m.entries()].map(([material, spools]) => ({ material, spools }))
-  }, [catalog])
   // gh#163 Layer 2 — the picker's swatches, sectioned by co-print group when the
   // catalog knows materials. The plan's anchor group leads undimmed; other
   // temperature families and support media follow, dimmed but fully clickable —
@@ -608,38 +584,7 @@ export function FilamentPlanPanel({
       data-element="abacus-studio-print-preview"
       style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <span
-          style={{
-            fontSize: 10,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
-            color: 'rgba(148,163,184,0.9)',
-          }}
-        >
-          {catalog.spools.length} filament{catalog.spools.length === 1 ? '' : 's'} loaded
-        </span>
-        <div
-          data-element="abacus-studio-filament-legend"
-          style={{ display: 'flex', flexWrap: 'wrap', gap: showMaterial ? 10 : 4, rowGap: 4 }}
-        >
-          {/* mixed-material catalogs cluster the swatches by family so
-                      "what's loaded" reads as materials, not just colors (gh#163) */}
-          {showMaterial
-            ? legendGroups.map(({ material, spools }) => (
-                <span
-                  key={material}
-                  data-element="abacus-studio-legend-family"
-                  data-material={material}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                >
-                  {materialTag(material)}
-                  {spools.map(legendSwatch)}
-                </span>
-              ))
-            : catalog.spools.map(legendSwatch)}
-        </div>
-      </div>
+      <FilamentReconcileStrip plan={plan} catalog={catalog} onPickRole={revealRole} />
 
       {reductionWarnings.length > 0 && (
         <div

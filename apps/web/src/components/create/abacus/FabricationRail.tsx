@@ -2,10 +2,11 @@
 
 // FabricationRail — the studio's RIGHT docked rail (Gitea epic #5, full-bleed
 // CP1a). Everything specific to turning the shared design into a 3D print lives
-// here: the preview lens (my colors vs. what the loaded filaments print), the
-// filament plan, the printer profile + printability verdict, the Export actions,
-// and the print-service panel. Mounted only on the 3D-print target, so the paper
-// lane pays for none of it.
+// here: the filament reconcile strip (how the designed colors land on the loaded
+// filaments), the printer profile + printability verdict, the Export actions, and
+// the print-service panel. Mounted only on the 3D-print target, so the paper lane
+// pays for none of it. The 3D model always shows the user's designed colors — the
+// design→filament reconciliation is whispered by the strip, not a preview toggle.
 //
 // The heavy STL render stays bound to the three.js viewer; this rail calls the
 // store's registered `requestExportStl()` and assembles the 3MF from the store's
@@ -13,7 +14,6 @@
 // viewer chunk is still loading.
 
 import type { CSSProperties } from 'react'
-import { SegmentedControl } from '@/components/studio/SegmentedControl'
 import { StudioSelect } from '@/components/studio/StudioSelect'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { buildAbacusThreeMf } from './abacus-3mf'
@@ -50,8 +50,6 @@ export function FabricationRail() {
     profileId,
     setProfileId,
     profile,
-    viewMode,
-    setViewMode,
     overrides,
     setOverrides,
     design,
@@ -118,32 +116,15 @@ export function FabricationRail() {
     >
       <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>3D print</div>
 
-      {/* preview lens: the identity the user built vs. what the loaded filaments
-          will actually print. Flipping it recolors the model in place. */}
-      <div
-        data-element="abacus-studio-view-mode"
-        style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-      >
-        <SegmentedControl<'design' | 'print'>
-          ariaLabel="preview colors"
-          options={[
-            { value: 'design', label: 'My colors' },
-            { value: 'print', label: 'Print preview' },
-          ]}
-          value={viewMode}
-          onChange={setViewMode}
-          dataElement="abacus-view-mode-toggle"
-          dataAction="set-view-mode"
-        />
-        {viewMode === 'print' && (
-          <FilamentPlanPanel
-            design={design}
-            catalog={catalog}
-            overrides={overrides}
-            onOverridesChange={setOverrides}
-          />
-        )}
-      </div>
+      {/* how the designed colors land on the loaded filaments — a prominent swatch
+          strip that only flecks a color's corner when it prints noticeably
+          differently. The model itself always keeps the user's designed colors. */}
+      <FilamentPlanPanel
+        design={design}
+        catalog={catalog}
+        overrides={overrides}
+        onOverridesChange={setOverrides}
+      />
 
       {/* printer profile — a first-class print setting (drives the gate below) */}
       <StudioSelect
@@ -286,7 +267,7 @@ export function FabricationRail() {
       {/* print-service panel (Gitea #9) — embedded (normal flow) in the rail */}
       <PrintPanel
         embedded
-        visible={viewMode === 'print'}
+        visible={true}
         params={params}
         filamentMap={filamentMap}
         catalog={catalog}

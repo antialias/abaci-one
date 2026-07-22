@@ -561,3 +561,57 @@ export function computeFilamentMap(p: Params): FilamentMap {
     catalog.spools.map((s) => s.hex)
   )
 }
+
+// ---- swatch-strip projection ------------------------------------------------
+// The design→filament reconciliation the studio's rail shows as a prominent
+// swatch strip: one entry per role the USER actually colored (frame + beads +
+// inset text). The ArUco markers are pure black/white ink — a fiducial channel,
+// not a chosen color — so they're excluded. `shifted` is the ambient signal the
+// corner-fleck reads: true when the spool the role auto-snapped (or was pinned)
+// onto is far enough from the intrinsic color to read as a *different* color on
+// the print. Self-erasing by construction — a role whose filament reproduces its
+// design color reports `shifted: false` and the strip stays silent for it.
+
+export type ReconciledRole = {
+  key: string
+  label: string
+  intrinsicHex: string // the color the user designed
+  filamentHex: string // the spool it prints on
+  filamentName: string
+  shifted: boolean
+  overridden: boolean
+}
+
+// redmean distance (see `colorDist`, ~0–800) above which a role's spool reads as a
+// genuinely different color rather than a near-match. Calibrated so a same-hue
+// near-match like #dc2626→#c1272d (~46) stays silent while a real hue change like
+// teal→green (~113) flecks. Tune here if the flecks feel too eager / too shy.
+export const SHIFT_DISTANCE_THRESHOLD = 85
+
+// beads (the colorful stars) lead; frame + text are structure and follow.
+const STRIP_ROLE_ORDER: Partial<Record<PrintRoleKind, number>> = { bead: 0, frame: 1, text: 2 }
+
+export function reconciledRoles(
+  plan: PrintPlan,
+  catalog: FilamentCatalog,
+  shiftThreshold: number = SHIFT_DISTANCE_THRESHOLD
+): ReconciledRole[] {
+  return (
+    plan.assignments
+      .filter((a) => a.role.kind === 'frame' || a.role.kind === 'bead' || a.role.kind === 'text')
+      // stable sort keeps bead order within the group (place-value / heaven-earth)
+      .sort((x, y) => (STRIP_ROLE_ORDER[x.role.kind] ?? 9) - (STRIP_ROLE_ORDER[y.role.kind] ?? 9))
+      .map((a) => {
+        const spool = catalog.spools[a.spoolIndex]
+        return {
+          key: a.role.key,
+          label: a.role.label,
+          intrinsicHex: a.role.intrinsicHex,
+          filamentHex: spool?.hex ?? a.role.intrinsicHex,
+          filamentName: spool?.name ?? 'filament',
+          shifted: a.distance > shiftThreshold,
+          overridden: a.overridden,
+        }
+      })
+  )
+}
