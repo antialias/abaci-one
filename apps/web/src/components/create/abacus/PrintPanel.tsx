@@ -21,13 +21,7 @@
 //     anything missed during a disconnect. Progress % between phase rings is
 //     deliberately coarse until THH ships throttled progress rings.
 
-import {
-  type InvalidTicketDetail,
-  type ParamScalarValue,
-  parseInvalidTicket,
-  type TicketStartPolicy,
-  type TicketStyle,
-} from '@eink/print-dialog'
+import type { ParamScalarValue, TicketStartPolicy, TicketStyle } from '@eink/print-dialog'
 import { PrintSettingsEditor } from '@eink/print-dialog/ui'
 import '@eink/print-dialog/ui/style.css'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -44,7 +38,9 @@ import type { FilamentCatalog } from './abacus-catalog'
 import type { FilamentMap, Params } from './abacus-model'
 import { buildAbacusTicket } from './abacus-ticket'
 import { PairPrinterPrompt } from './PrintConnectionsManager'
+import { PrintSubmitErrorNotice } from './PrintSubmitErrorNotice'
 import { normalizeJobs } from './print-jobs'
+import { describeSubmitFailure, type SubmitFailure } from './print-submit-failure'
 
 export interface PrintPanelProps {
   /** Rendered but hidden when false — internal state (style edits) survives. */
@@ -81,19 +77,16 @@ const UNAVAILABLE_COPY: Record<PrintUnavailableReason, string> = {
   'no-printer': 'The print service has no printers.',
 }
 
-/** A submit rejection, with the per-key detail when the body was invalid_ticket. */
+/** A submit rejection carrying the service's honest, coded explanation. */
 class PrintSubmitError extends Error {
   readonly status: number
-  readonly detail: InvalidTicketDetail | null
+  readonly failure: SubmitFailure
   constructor(status: number, body: unknown) {
-    const detail = parseInvalidTicket(body)
-    super(
-      detail
-        ? 'The print service rejected some settings — highlighted below.'
-        : `Submit failed (${status}). Try again.`
-    )
+    const failure = describeSubmitFailure(status, body)
+    super(failure.headline)
+    this.name = 'PrintSubmitError'
     this.status = status
-    this.detail = detail
+    this.failure = failure
   }
 }
 
@@ -259,8 +252,8 @@ export function PrintPanel(props: PrintPanelProps) {
     },
   })
 
-  const invalidDetail =
-    submit.error instanceof PrintSubmitError ? (submit.error.detail ?? undefined) : undefined
+  const submitFailure = submit.error instanceof PrintSubmitError ? submit.error.failure : null
+  const invalidDetail = submitFailure?.invalidTicket ?? undefined
   const applied = useMemo(() => extractApplied(submit.data), [submit.data])
 
   // ---- jobs roster (ring-invalidated; reconcile on reconnect — no poll) -----
@@ -275,6 +268,16 @@ export function PrintPanel(props: PrintPanelProps) {
     staleTime: 5_000,
   })
   const jobRows = useMemo(() => normalizeJobs(jobs.data), [jobs.data])
+
+  // When the service refused because the printer is busy, name the job that's
+  // holding it — correlate its id against the roster we already read.
+  const blockingJob = useMemo(
+    () =>
+      submitFailure?.blockingJobId
+        ? (jobRows.find((j) => j.id === submitFailure.blockingJobId) ?? null)
+        : null,
+    [submitFailure, jobRows]
+  )
 
   const submitBlocked =
     exportBlocked || !serviceReady || !style || catalog.source !== 'thh-ams' || submit.isPending
@@ -432,19 +435,13 @@ export function PrintPanel(props: PrintPanelProps) {
           )}
 
           {submit.isError && (
-            <div
-              data-element="print-submit-error"
-              style={{
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: 'rgba(127,29,29,0.35)',
-                border: '1px solid rgba(248,113,113,0.5)',
-                color: 'rgba(254,226,226,0.96)',
-                lineHeight: 1.45,
-              }}
-            >
-              {submit.error instanceof Error ? submit.error.message : 'Submit failed.'}
-            </div>
+            <PrintSubmitErrorNotice
+              failure={submitFailure}
+              blockingJob={blockingJob}
+              fallbackMessage={
+                submit.error instanceof Error ? submit.error.message : 'Submit failed.'
+              }
+            />
           )}
 
           {/* settings disclosure — the editor mounts once and stays mounted */}
