@@ -133,8 +133,14 @@ resource "kubernetes_deployment" "registry" {
               memory = "64Mi"
               cpu    = "50m"
             }
+            # 2Gi, not 256Mi: blob uploads dirty NFS page cache charged to this
+            # cgroup, and writeback to the NAS drains slower than a LAN-speed
+            # upload fills — a 700MB push OOMKilled the pod at 256Mi (platform#6,
+            # 2026-07-22). This was the REAL cause of the legendary ">150MB pushes
+            # fail" ceiling, not Traefik. Limit must exceed the largest blob we
+            # push (OpenClaw base node_modules layer ~670MB) with headroom.
             limits = {
-              memory = "256Mi"
+              memory = "2Gi"
               cpu    = "500m"
             }
           }
@@ -177,6 +183,33 @@ resource "kubernetes_service" "registry" {
     }
 
     type = "ClusterIP"
+  }
+}
+
+# Registry LAN NodePort — the org registry-push contract (platform#6).
+# Pushes with blobs >~150MB 499 through the Traefik ingress below, and the old
+# workaround (push straight to the ClusterIP :5000) only works from inside the
+# cluster. This exposes the same registry on 192.168.86.37:30500 for LAN
+# builders (ci-node). Plain HTTP like the ClusterIP path — clients declare it
+# in dockerd's insecure-registries. LAN-only; 30500 is never published.
+resource "kubernetes_service" "registry_lan" {
+  metadata {
+    name      = "registry-lan"
+    namespace = kubernetes_namespace.gitea.metadata[0].name
+  }
+
+  spec {
+    selector = {
+      app = "registry"
+    }
+
+    port {
+      port        = 5000
+      target_port = 5000
+      node_port   = 30500
+    }
+
+    type = "NodePort"
   }
 }
 
