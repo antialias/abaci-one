@@ -20,7 +20,12 @@ import {
   AbacusStudioProvider,
   useAbacusStudio,
 } from '@/components/create/abacus/AbacusStudioContext'
-import { DesignInspectorRail, type MakePath } from '@/components/create/abacus/DesignInspectorRail'
+import {
+  DEFAULT_FABRICATION,
+  type FabricationKind,
+  intentOf,
+} from '@/components/create/abacus/abacus-fabrication'
+import { DesignInspectorRail } from '@/components/create/abacus/DesignInspectorRail'
 import { FabricationRail } from '@/components/create/abacus/FabricationRail'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StudioShell } from '@/components/studio/StudioShell'
@@ -66,7 +71,7 @@ export default function CreateAbacusPage() {
 
   // which output the shared design is being made into. The left rail owns the
   // chooser (the old 2-card fork); the shell swaps center + right accordingly.
-  const [target, setTarget] = useState<MakePath>('markers')
+  const [target, setTarget] = useState<FabricationKind>(DEFAULT_FABRICATION.kind)
 
   const selectPlayer = (playerId: string | null) => {
     router.replace(playerId ? `${pathname}?player=${playerId}` : pathname, { scroll: false })
@@ -95,8 +100,8 @@ export default function CreateAbacusPage() {
                 onTargetChange={setTarget}
               />
             }
-            center={target === 'print' ? <AbacusStudioViewer /> : <PaperMarkerCenter />}
-            right={target === 'print' ? <FabricationRail /> : null}
+            center={target === 'fdm' ? <AbacusStudioViewer /> : <PaperMarkerCenter />}
+            right={target === 'fdm' ? <FabricationRail /> : null}
           />
         </AbacusStudioProvider>
       </div>
@@ -108,7 +113,12 @@ export default function CreateAbacusPage() {
 // design's live column count so it can't drift from the 3D preview. (CP3 wires
 // the rest of the design — marker size, B/W channel — into this realizer.)
 function PaperMarkerCenter() {
-  const { params } = useAbacusStudio()
+  // Read the marker sheet's column count through the fabrication-neutral seam
+  // (intentOf), not straight off params — so the paper output is provably the
+  // same shared design the 3D print renders. CP3 pulls marker size + the B/W
+  // channel through this same intent.
+  const { design } = useAbacusStudio()
+  const intent = intentOf(design)
   return (
     <div
       data-element="abacus-tool-markers"
@@ -120,7 +130,7 @@ function PaperMarkerCenter() {
         py: { base: 4, md: 6 },
       })}
     >
-      <AbacusMarkerSheet columnCount={params.cols} />
+      <AbacusMarkerSheet columnCount={intent.columns} />
     </div>
   )
 }

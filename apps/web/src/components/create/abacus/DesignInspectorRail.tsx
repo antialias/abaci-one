@@ -24,10 +24,8 @@ import {
   type AbacusColorScheme,
 } from '@/lib/abacus/identity'
 import { useAbacusStudio } from './AbacusStudioContext'
+import { FABRICATION_OPTIONS, type FabricationKind } from './abacus-fabrication'
 import { PRESET_OPTS } from './abacus-model'
-
-/** The two first-class outputs of one shared design. laser = SVG export, not a target. */
-export type MakePath = 'markers' | 'print'
 
 const SCHEME_LABEL: Record<string, string> = {
   monochrome: 'Monochrome',
@@ -42,8 +40,8 @@ export interface DesignInspectorRailProps {
   onSelectPlayer: (playerId: string | null) => void
   /** the selected player's row failed to load → we're showing the user's own */
   playerUnavailable: boolean
-  target: MakePath
-  onTargetChange: (t: MakePath) => void
+  target: FabricationKind
+  onTargetChange: (t: FabricationKind) => void
 }
 
 export function DesignInspectorRail({
@@ -239,13 +237,14 @@ export function DesignInspectorRail({
         >
           Make it as
         </span>
-        <SegmentedControl<MakePath>
+        <SegmentedControl<FabricationKind>
           ariaLabel="How to make your abacus"
           size="md"
-          options={[
-            { value: 'markers', label: 'Paper markers', icon: '🏷️' },
-            { value: 'print', label: '3D print', icon: '🖨️' },
-          ]}
+          options={FABRICATION_OPTIONS.map((o) => ({
+            value: o.kind,
+            label: o.label,
+            icon: o.icon,
+          }))}
           value={target}
           onChange={onTargetChange}
           dataElement="abacus-target-chooser"
