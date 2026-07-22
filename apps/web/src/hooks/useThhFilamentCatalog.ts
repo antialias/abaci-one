@@ -49,11 +49,20 @@ async function fetchDegradable<T>(path: string): Promise<Degradable<T>> {
  * the service isn't paired or reachable — the studio then falls back to the
  * params-derived, color-only catalog. AMS state changes slowly, so reads are
  * cached for a minute; doorbell invalidations (#8.4) refresh them early.
+ *
+ * `enabled` gates the whole read: the paper/express fabrication lane passes
+ * false so it never touches the print service (no printer discovery, no AMS
+ * poll) — only the 3D-print target pays for the filament roster.
  */
-export function useThhFilamentCatalog() {
+export interface UseThhFilamentCatalogOptions {
+  enabled?: boolean
+}
+
+export function useThhFilamentCatalog({ enabled = true }: UseThhFilamentCatalogOptions = {}) {
   const printers = useQuery({
     queryKey: abacusPrintKeys.printers(),
     queryFn: () => fetchDegradable<ThhPrintersResponse>('abacus/print/printers'),
+    enabled,
     staleTime: 60_000,
   })
 
@@ -69,7 +78,7 @@ export function useThhFilamentCatalog() {
       fetchDegradable<ThhFilamentsResponse>(
         `abacus/print/printers/${encodeURIComponent(printerId ?? '')}/filaments`
       ),
-    enabled: printerId !== null,
+    enabled: enabled && printerId !== null,
     staleTime: 60_000,
   })
 

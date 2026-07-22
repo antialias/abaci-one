@@ -14,17 +14,12 @@
 
 import dynamic from 'next/dynamic'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
 import { AbacusMarkerSheet } from '@/components/create/abacus/AbacusMarkerSheet'
 import {
   AbacusStudioProvider,
   useAbacusStudio,
 } from '@/components/create/abacus/AbacusStudioContext'
-import {
-  DEFAULT_FABRICATION,
-  type FabricationKind,
-  intentOf,
-} from '@/components/create/abacus/abacus-fabrication'
+import { intentOf } from '@/components/create/abacus/abacus-fabrication'
 import { DesignInspectorRail } from '@/components/create/abacus/DesignInspectorRail'
 import { FabricationRail } from '@/components/create/abacus/FabricationRail'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -69,10 +64,6 @@ export default function CreateAbacusPage() {
   const playerIdentity = usePlayerAbacusIdentity(selectedPlayerId)
   const playerUnavailable = selectedPlayerId !== null && playerIdentity.isError
 
-  // which output the shared design is being made into. The left rail owns the
-  // chooser (the old 2-card fork); the shell swaps center + right accordingly.
-  const [target, setTarget] = useState<FabricationKind>(DEFAULT_FABRICATION.kind)
-
   const selectPlayer = (playerId: string | null) => {
     router.replace(playerId ? `${pathname}?player=${playerId}` : pathname, { scroll: false })
   }
@@ -90,18 +81,10 @@ export default function CreateAbacusPage() {
         })}
       >
         <AbacusStudioProvider playerId={playerUnavailable ? null : selectedPlayerId}>
-          <StudioShell
-            left={
-              <DesignInspectorRail
-                selectedPlayerId={selectedPlayerId}
-                onSelectPlayer={selectPlayer}
-                playerUnavailable={playerUnavailable}
-                target={target}
-                onTargetChange={setTarget}
-              />
-            }
-            center={target === 'fdm' ? <AbacusStudioViewer /> : <PaperMarkerCenter />}
-            right={target === 'fdm' ? <FabricationRail /> : null}
+          <StudioBody
+            selectedPlayerId={selectedPlayerId}
+            onSelectPlayer={selectPlayer}
+            playerUnavailable={playerUnavailable}
           />
         </AbacusStudioProvider>
       </div>
@@ -109,15 +92,41 @@ export default function CreateAbacusPage() {
   )
 }
 
-// The paper target's center: the stick-on marker sheet, driven by the shared
-// design's live column count so it can't drift from the 3D preview. (CP3 wires
-// the rest of the design — marker size, B/W channel — into this realizer.)
+interface StudioBodyProps {
+  selectedPlayerId: string | null
+  onSelectPlayer: (playerId: string | null) => void
+  playerUnavailable: boolean
+}
+
+// Inside the provider, so the shell's center/right can switch on the shared
+// design's fabrication axis. The left rail owns the chooser (the old 2-card
+// fork, now a first-class output axis); the shell swaps outputs accordingly.
+// Only the 3D-print target mounts the heavy three.js viewer + fabrication rail.
+function StudioBody({ selectedPlayerId, onSelectPlayer, playerUnavailable }: StudioBodyProps) {
+  const { fabrication } = useAbacusStudio()
+  const isFdm = fabrication.kind === 'fdm'
+  return (
+    <StudioShell
+      left={
+        <DesignInspectorRail
+          selectedPlayerId={selectedPlayerId}
+          onSelectPlayer={onSelectPlayer}
+          playerUnavailable={playerUnavailable}
+        />
+      }
+      center={isFdm ? <AbacusStudioViewer /> : <PaperMarkerCenter />}
+      right={isFdm ? <FabricationRail /> : null}
+    />
+  )
+}
+
+// The paper target's center: the stick-on marker sheet, driven wholly by the
+// shared design through the fabrication-neutral seam (intentOf) — column count
+// AND marker size — so the paper output is provably the same design the 3D
+// print renders, and cannot drift from it. Size edits route back into the
+// design (set('marker_mm', …)), reshaping the FDM frame recess too.
 function PaperMarkerCenter() {
-  // Read the marker sheet's column count through the fabrication-neutral seam
-  // (intentOf), not straight off params — so the paper output is provably the
-  // same shared design the 3D print renders. CP3 pulls marker size + the B/W
-  // channel through this same intent.
-  const { design } = useAbacusStudio()
+  const { design, set } = useAbacusStudio()
   const intent = intentOf(design)
   return (
     <div
@@ -130,7 +139,11 @@ function PaperMarkerCenter() {
         py: { base: 4, md: 6 },
       })}
     >
-      <AbacusMarkerSheet columnCount={intent.columns} />
+      <AbacusMarkerSheet
+        columnCount={intent.columns}
+        markerSizeMm={intent.markers.sizeMm}
+        onMarkerSizeChange={(mm) => set('marker_mm', mm)}
+      />
     </div>
   )
 }

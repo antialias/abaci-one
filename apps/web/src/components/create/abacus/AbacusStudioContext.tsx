@@ -34,6 +34,11 @@ import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { type AbacusIdentity, parseAbacusIdentity } from '@/lib/abacus/identity'
 import { catalogFromParams } from './abacus-catalog'
 import { toAbacusDesign } from './abacus-design'
+import {
+  DEFAULT_FABRICATION,
+  type FabricationKind,
+  type FabricationTarget,
+} from './abacus-fabrication'
 import { selectSourceIdentity } from './abacus-identity-source'
 import { type DisplayConfigInput, type Params, paramsFromDisplayConfig } from './abacus-model'
 import { materialize, planToFilamentMap } from './abacus-plan'
@@ -80,6 +85,13 @@ function useStudioController(playerId: string | null) {
   // manual filament mapping: roleKey → spoolId. Pure view state like viewMode —
   // it only reshapes the PRINT projection, so a pin never detaches `synced`.
   const [overrides, setOverrides] = useState<Record<string, string>>({})
+  // which physical output the shared design is being made into — a studio-state
+  // axis (like viewMode), NOT part of the abacus identity, so switching it never
+  // detaches `synced`. It gates the 3D-only cost below: on 'paper' the filament
+  // catalog read is disabled (no printer discovery, no AMS poll), and the page
+  // never mounts the three.js viewer.
+  const [fabrication, setFabrication] = useState<FabricationTarget>(DEFAULT_FABRICATION)
+  const setFabricationKind = useCallback((kind: FabricationKind) => setFabrication({ kind }), [])
 
   // the serializable design projection — the single source of truth for the
   // preview's bead/frame colors. Intrinsic colors, not AMS-snapped.
@@ -88,8 +100,9 @@ function useStudioController(playerId: string | null) {
   // the print plan = the design projected onto the loaded filaments, honoring the
   // user's pins. The catalog is the live AMS snapshot when a print service is
   // paired and reachable, falling back to the params-derived color-only catalog
-  // when it isn't — the studio never blocks on the print service.
-  const thhFilaments = useThhFilamentCatalog()
+  // when it isn't — the studio never blocks on the print service. Only read when
+  // the design is being made as a 3D print; the paper lane needs no filaments.
+  const thhFilaments = useThhFilamentCatalog({ enabled: fabrication.kind === 'fdm' })
   const catalog = useMemo(
     () => thhFilaments.catalog ?? catalogFromParams(params),
     [thhFilaments.catalog, params]
@@ -195,6 +208,8 @@ function useStudioController(playerId: string | null) {
     setViewMode,
     overrides,
     setOverrides,
+    fabrication,
+    setFabricationKind,
     design,
     thhFilaments,
     catalog,

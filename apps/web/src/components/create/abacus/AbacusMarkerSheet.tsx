@@ -48,14 +48,41 @@ export interface AbacusMarkerSheetProps {
   /** Columns on the abacus these markers get attached to — the count the camera
    *  read-back rectifies against. Purely informational copy here. */
   columnCount?: number
+  /** Marker edge length (mm) from the shared design (params.marker_mm), so the
+   *  paper markers are the exact size the 3D print bakes into its frame — one
+   *  design, two outputs, which cannot drift. Omit for standalone use (the sheet
+   *  then manages its own size, seeded from a paper-friendly default). */
+  markerSizeMm?: number
+  /** Route size edits back into the shared design (→ set('marker_mm', …)); the
+   *  same value reshapes the FDM frame recess. Omit to keep edits local. */
+  onMarkerSizeChange?: (mm: number) => void
 }
 
 /**
  * Printable ArUco corner markers for turning an existing abacus into a
  * camera-trackable one. PDF for paper printing, SVGs for laser/inlay use.
+ *
+ * The markers are the pure black/white fiducial channel of the shared design —
+ * printed as ink, never mapped onto filaments the way the FDM realizer maps the
+ * same markers onto two spools. Size comes from the design so both outputs agree.
  */
-export function AbacusMarkerSheet({ columnCount }: AbacusMarkerSheetProps) {
-  const [markerSize, setMarkerSize] = useState(MARKER_SIZE_MM)
+export function AbacusMarkerSheet({
+  columnCount,
+  markerSizeMm,
+  onMarkerSizeChange,
+}: AbacusMarkerSheetProps) {
+  // Controlled by the shared design when markerSizeMm is provided (the studio's
+  // paper lane), so the printed marker size is the SAME design property the FDM
+  // frame bakes in; otherwise self-managed for standalone use.
+  const [localSize, setLocalSize] = useState(markerSizeMm ?? MARKER_SIZE_MM)
+  const markerSize = markerSizeMm ?? localSize
+  const setMarkerSize = useCallback(
+    (mm: number) => {
+      if (onMarkerSizeChange) onMarkerSizeChange(mm)
+      else setLocalSize(mm)
+    },
+    [onMarkerSizeChange]
+  )
   const [isLibraryLoaded, setIsLibraryLoaded] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
 
@@ -103,9 +130,14 @@ export function AbacusMarkerSheet({ columnCount }: AbacusMarkerSheetProps) {
 
       pdf.setFontSize(10)
       pdf.setFont('helvetica', 'normal')
-      pdf.text('Cut out and place on abacus corners. Print at 100% scale.', pageWidth / 2, margin + 8, {
-        align: 'center',
-      })
+      pdf.text(
+        'Cut out and place on abacus corners. Print at 100% scale.',
+        pageWidth / 2,
+        margin + 8,
+        {
+          align: 'center',
+        }
+      )
 
       // 2×2 grid of markers
       const spacing = 15
@@ -158,9 +190,14 @@ export function AbacusMarkerSheet({ columnCount }: AbacusMarkerSheetProps) {
 
       pdf.setFontSize(7)
       pdf.setTextColor(128)
-      pdf.text(`Marker size: ${markerSize}mm × ${markerSize}mm | abaci.one`, pageWidth / 2, pageHeight - 10, {
-        align: 'center',
-      })
+      pdf.text(
+        `Marker size: ${markerSize}mm × ${markerSize}mm | abaci.one`,
+        pageWidth / 2,
+        pageHeight - 10,
+        {
+          align: 'center',
+        }
+      )
 
       pdf.save(`abacus-vision-markers-${paperSize}.pdf`)
     },
@@ -246,7 +283,11 @@ export function AbacusMarkerSheet({ columnCount }: AbacusMarkerSheetProps) {
               abacus has a different number of columns,{' '}
               <a
                 href="/settings"
-                className={css({ color: 'cyan.600', fontWeight: 'medium', _hover: { textDecoration: 'underline' } })}
+                className={css({
+                  color: 'cyan.600',
+                  fontWeight: 'medium',
+                  _hover: { textDecoration: 'underline' },
+                })}
               >
                 update it in Settings
               </a>{' '}
@@ -299,7 +340,9 @@ export function AbacusMarkerSheet({ columnCount }: AbacusMarkerSheetProps) {
                       lineHeight: '0',
                     })}
                   />
-                  <span className={css({ fontSize: 'xs', fontWeight: 'medium', color: 'text.primary' })}>
+                  <span
+                    className={css({ fontSize: 'xs', fontWeight: 'medium', color: 'text.primary' })}
+                  >
                     {getMarkerPositionLabel(id)}
                   </span>
                 </div>
@@ -418,8 +461,8 @@ export function AbacusMarkerSheet({ columnCount }: AbacusMarkerSheetProps) {
             with a 2–3mm white margin around each marker.
           </li>
           <li>
-            <strong className={css({ color: 'text.primary' })}>Match the corners</strong> —
-            top-left → top-left, and so on around the frame (IDs 0·1·2·3).
+            <strong className={css({ color: 'text.primary' })}>Match the corners</strong> — top-left
+            → top-left, and so on around the frame (IDs 0·1·2·3).
           </li>
           <li>
             <strong className={css({ color: 'text.primary' })}>Keep them flat</strong> — flat,
@@ -466,7 +509,9 @@ export function AbacusMarkerSheet({ columnCount }: AbacusMarkerSheetProps) {
         </button>
         {advancedOpen && (
           <div className={css({ px: { base: 5, md: 6 }, pb: 5, pt: 1 })}>
-            <p className={css({ fontSize: 'sm', color: 'text.secondary', mb: 4, lineHeight: '1.6' })}>
+            <p
+              className={css({ fontSize: 'sm', color: 'text.secondary', mb: 4, lineHeight: '1.6' })}
+            >
               Individual SVGs — an alternative to paper or to the baked-in markers on a 3D-printed
               frame.
             </p>

@@ -40,16 +40,12 @@ export interface DesignInspectorRailProps {
   onSelectPlayer: (playerId: string | null) => void
   /** the selected player's row failed to load → we're showing the user's own */
   playerUnavailable: boolean
-  target: FabricationKind
-  onTargetChange: (t: FabricationKind) => void
 }
 
 export function DesignInspectorRail({
   selectedPlayerId,
   onSelectPlayer,
   playerUnavailable,
-  target,
-  onTargetChange,
 }: DesignInspectorRailProps) {
   const {
     params,
@@ -64,6 +60,8 @@ export function DesignInspectorRail({
     saveAsPlayerAbacus,
     saveIsPending,
     saveIsError,
+    fabrication,
+    setFabricationKind,
   } = useAbacusStudio()
 
   const ownerLabel = playerUnavailable
@@ -245,8 +243,8 @@ export function DesignInspectorRail({
             label: o.label,
             icon: o.icon,
           }))}
-          value={target}
-          onChange={onTargetChange}
+          value={fabrication.kind}
+          onChange={setFabricationKind}
           dataElement="abacus-target-chooser"
           dataAction="choose-abacus-path"
         />
