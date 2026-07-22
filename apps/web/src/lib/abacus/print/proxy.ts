@@ -11,7 +11,7 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { getOwnedConnection, resolveConnection } from './connections'
-import { getOwnedJob } from './job-ownership'
+import { getOwnedJob, listOwnedJobIds } from './job-ownership'
 import { PrintServiceError, printServiceFetch } from './print-service-fetch'
 
 /** Request headers forwarded upstream (conditional reads + content negotiation). */
@@ -84,6 +84,80 @@ export async function proxyPass(
       { method, headers, body, timeoutMs: init.timeoutMs }
     )
     return relayResponse(upstream)
+  } catch (error) {
+    return proxyErrorResponse(error)
+  }
+}
+
+/** The service job id, matched the way the client projection (`normalizeJobs`)
+ *  keys on it — `jobId` first, then `id` — so the ownership intersection lines
+ *  up exactly with the rows the panel renders. */
+function rosterJobId(job: unknown): string | undefined {
+  if (typeof job !== 'object' || job === null) return undefined
+  const rec = job as Record<string, unknown>
+  return [rec.jobId, rec.id].find((v): v is string => typeof v === 'string' && v.length > 0)
+}
+
+/**
+ * Intersect an upstream roster payload with the caller's owned job ids,
+ * preserving the payload's outer shape (a bare array or a `{jobs: [...]}`
+ * envelope) so the client's `normalizeJobs` sees the exact structure it already
+ * parses — just scoped to jobs this user submitted through abaci.
+ */
+export function filterRosterToOwned(body: unknown, owned: Set<string>): unknown {
+  const keep = (job: unknown): boolean => {
+    const id = rosterJobId(job)
+    return id !== undefined && owned.has(id)
+  }
+  if (Array.isArray(body)) return body.filter(keep)
+  if (typeof body === 'object' && body !== null) {
+    const rec = body as Record<string, unknown>
+    if (Array.isArray(rec.jobs)) return { ...rec, jobs: rec.jobs.filter(keep) }
+  }
+  // Unknown shape ⇒ fail closed: an ownership filter must never leak the raw list.
+  return []
+}
+
+/**
+ * Ownership-scoped roster read for `GET /jobs`.
+ *
+ * Unlike {@link proxyPass}, this CANNOT relay byte-faithfully. The print
+ * service's bearer token is shared by every app paired to that service, so its
+ * raw `/jobs` list includes jobs abaci never submitted (other integrators) and
+ * jobs owned by other abaci users. We fetch the upstream list, intersect it
+ * with THIS user's ownership rows, and return only their jobs — the same
+ * tenancy rule {@link proxyPassForJob} enforces per job, applied to the list.
+ *
+ * ETag/conditional relay is intentionally dropped: the upstream validators
+ * describe the *unfiltered* list, so honoring them would leak or stale the
+ * scoped view. The roster is small and React Query caches it client-side.
+ */
+export async function proxyRosterForOwner(
+  request: NextRequest,
+  userId: string,
+  init: { timeoutMs?: number } = {}
+): Promise<Response> {
+  try {
+    const connection = await resolveConnection(
+      userId,
+      request.nextUrl.searchParams.get('connectionId')
+    )
+
+    const upstream = await printServiceFetch(
+      { origin: connection.origin, tokenSealed: connection.tokenSealed },
+      '/jobs',
+      { method: 'GET', timeoutMs: init.timeoutMs }
+    )
+
+    // Upstream non-2xx: relay raw — there's no list to scope, and the client's
+    // `!res.ok` path wants the real status.
+    if (!upstream.ok) return relayResponse(upstream)
+
+    const [owned, body] = await Promise.all([
+      listOwnedJobIds(userId),
+      upstream.json() as Promise<unknown>,
+    ])
+    return NextResponse.json(filterRosterToOwned(body, owned))
   } catch (error) {
     return proxyErrorResponse(error)
   }

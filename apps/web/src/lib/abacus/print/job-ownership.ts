@@ -23,3 +23,18 @@ export async function getOwnedJob(userId: string, jobId: string): Promise<PrintJ
     where: and(eq(schema.printJobs.jobId, jobId), eq(schema.printJobs.userId, userId)),
   })
 }
+
+/**
+ * Every print-service job id THIS user submitted through abaci, as a Set for
+ * O(1) roster intersection (#16). The print-service token is shared across
+ * every app paired to it, so the raw `/jobs` list is over-broad; this is the
+ * scope that narrows it. An empty set ⇒ the user owns nothing ⇒ an empty
+ * roster (never the unfiltered list).
+ */
+export async function listOwnedJobIds(userId: string): Promise<Set<string>> {
+  const rows = await db.query.printJobs.findMany({
+    columns: { jobId: true },
+    where: eq(schema.printJobs.userId, userId),
+  })
+  return new Set(rows.map((row) => row.jobId))
+}

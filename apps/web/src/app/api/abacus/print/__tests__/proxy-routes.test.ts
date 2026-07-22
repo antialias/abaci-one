@@ -34,6 +34,7 @@ vi.mock('@/lib/viewer', () => ({
 
 import { GET as getCapabilities } from '../capabilities/route'
 import { GET as getJob } from '../jobs/[id]/route'
+import { GET as getJobs } from '../jobs/route'
 import { POST as submitJob } from '../printers/[id]/jobs/route'
 
 const KEY = randomBytes(32).toString('base64')
@@ -227,6 +228,82 @@ describe('print proxy routes', () => {
       expect(res.status).toBe(200)
       expect(await res.json()).toEqual({ id: 'job-42', phase: 'printing' })
       expect(fetchMock.mock.calls[0][0]).toBe('https://things.haunt.house/api/print/v1/jobs/job-42')
+    })
+  })
+
+  describe('GET jobs (roster ownership scope)', () => {
+    async function ownJob(connectionId: string, jobId: string) {
+      await db.insert(schema.printJobs).values({
+        jobId,
+        connectionId,
+        userId: USER,
+        printerId: 'printer-1',
+      })
+    }
+
+    it('scopes the list to jobs the user submitted through abaci', async () => {
+      const connection = await insertConnection()
+      await ownJob(connection.id, 'job-mine')
+      // The shared token also sees another integrator's job — it must not leak.
+      fetchMock.mockResolvedValue(
+        new Response(
+          JSON.stringify([
+            { jobId: 'job-mine', phase: 'printing' },
+            { jobId: 'job-other-app', phase: 'printing' },
+          ]),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      )
+
+      const request = new NextRequest('http://localhost:3000/api/abacus/print/jobs')
+      const res = await getJobs(request)
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual([{ jobId: 'job-mine', phase: 'printing' }])
+      expect(fetchMock.mock.calls[0][0]).toBe('https://things.haunt.house/api/print/v1/jobs')
+    })
+
+    it('preserves a {jobs:[…]} envelope while filtering it (id keyed like the client)', async () => {
+      const connection = await insertConnection()
+      await ownJob(connection.id, 'job-mine')
+      fetchMock.mockResolvedValue(
+        new Response(
+          JSON.stringify({ jobs: [{ id: 'job-mine' }, { id: 'job-other-user' }], nextCursor: 'c1' }),
+          { status: 200 }
+        )
+      )
+
+      const request = new NextRequest('http://localhost:3000/api/abacus/print/jobs')
+      const res = await getJobs(request)
+      expect(await res.json()).toEqual({ jobs: [{ id: 'job-mine' }], nextCursor: 'c1' })
+    })
+
+    it('returns an empty roster (no leak) when the user owns nothing', async () => {
+      await insertConnection()
+      fetchMock.mockResolvedValue(
+        new Response(JSON.stringify([{ jobId: 'someone-elses' }]), { status: 200 })
+      )
+
+      const request = new NextRequest('http://localhost:3000/api/abacus/print/jobs')
+      const res = await getJobs(request)
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual([])
+    })
+
+    it('relays an upstream error status instead of a scoped list', async () => {
+      await insertConnection()
+      fetchMock.mockResolvedValue(new Response('nope', { status: 502 }))
+
+      const request = new NextRequest('http://localhost:3000/api/abacus/print/jobs')
+      const res = await getJobs(request)
+      expect(res.status).toBe(502)
+    })
+
+    it('404s when the user has no connection', async () => {
+      const request = new NextRequest('http://localhost:3000/api/abacus/print/jobs')
+      const res = await getJobs(request)
+      expect(res.status).toBe(404)
+      expect(fetchMock).not.toHaveBeenCalled()
     })
   })
 })
