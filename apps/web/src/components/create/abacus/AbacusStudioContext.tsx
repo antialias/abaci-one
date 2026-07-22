@@ -191,6 +191,20 @@ function useStudioController(playerId: string | null) {
     []
   )
 
+  // The 3D model previews the REAL print (filament colors) by default; hovering a
+  // tile's true-color fleck in the reconcile strip momentarily flips the whole
+  // model to the user's designed colors. The strip (a rail sibling) can't reach
+  // the viewer's mount-once recolor closure, so the viewer registers an imperative
+  // reveal handle here (like the exporter) and the strip pokes it on hover — no
+  // full-studio re-render per hover. No-op on the paper lane (viewer unmounted).
+  const revealIntrinsicRef = useRef<((v: boolean) => void) | null>(null)
+  const registerRevealIntrinsic = useCallback((fn: ((v: boolean) => void) | null) => {
+    revealIntrinsicRef.current = fn
+  }, [])
+  const setRevealIntrinsic = useCallback((v: boolean) => {
+    revealIntrinsicRef.current?.(v)
+  }, [])
+
   return {
     playerId,
     playerName,
@@ -225,6 +239,8 @@ function useStudioController(playerId: string | null) {
     exporterReady,
     registerExportStl,
     requestExportStl,
+    registerRevealIntrinsic,
+    setRevealIntrinsic,
   }
 }
 

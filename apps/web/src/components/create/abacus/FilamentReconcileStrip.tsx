@@ -1,13 +1,15 @@
 'use client'
 
-// The studio's ambient design→filament reconciliation (Gitea epic #5). Replaces
-// the old "My colors / Print preview" toggle: the 3D model always keeps the
-// user's designed colors, and THIS strip whispers how those colors land on the
-// filament actually loaded. Each swatch is a designed color; a role only earns a
-// corner fleck of its filament when it prints as a *different* color (see
-// `reconciledRoles` / `SHIFT_DISTANCE_THRESHOLD`). When everything prints true the
-// strip is just the user's palette — nothing to read. Clicking a swatch opens
-// that role's picker (the parent's `revealRole` deep link).
+// The studio's ambient design→filament reconciliation (Gitea epic #5), reality-
+// first. The 3D model previews what will actually PRINT (the loaded filament
+// colors); THIS strip shows the same reality as swatches. Each swatch's base is
+// the filament a role prints on; when that differs noticeably from the color the
+// user designed, a corner fleck of their *true* color appears (see
+// `reconciledRoles` / `SHIFT_DISTANCE_THRESHOLD`). Hovering that fleck momentarily
+// flips the whole model to the user's designed colors (`onRevealIntrinsic`).
+// Clicking a swatch opens that role's picker (the parent's `revealRole` deep
+// link). When everything prints true there are no flecks — the strip is just the
+// plate.
 
 import type { CSSProperties } from 'react'
 import type { FilamentCatalog } from './abacus-catalog'
@@ -17,9 +19,16 @@ export interface FilamentReconcileStripProps {
   plan: PrintPlan
   catalog: FilamentCatalog
   onPickRole: (roleKey: string) => void
+  /** hover the true-color fleck → preview the designed colors on the 3D model */
+  onRevealIntrinsic?: (reveal: boolean) => void
 }
 
-export function FilamentReconcileStrip({ plan, catalog, onPickRole }: FilamentReconcileStripProps) {
+export function FilamentReconcileStrip({
+  plan,
+  catalog,
+  onPickRole,
+  onRevealIntrinsic,
+}: FilamentReconcileStripProps) {
   const roles = reconciledRoles(plan, catalog)
   // one spool → nothing to choose, so the swatches are informational, not buttons
   const interactive = catalog.spools.length > 1
@@ -30,11 +39,14 @@ export function FilamentReconcileStrip({ plan, catalog, onPickRole }: FilamentRe
     <div
       data-component="filament-reconcile-strip"
       style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+      // safety: never leave the model stuck in the reveal lens if a fleck's
+      // mouseleave is missed (e.g. the pointer exits the strip diagonally)
+      onMouseLeave={() => onRevealIntrinsic?.(false)}
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         {roles.map((r) => {
           const tip = r.shifted
-            ? `${r.label}: your ${r.intrinsicHex} prints as ${r.filamentName}`
+            ? `${r.label}: prints ${r.filamentName} — your color ${r.intrinsicHex} (hover the corner to preview)`
             : `${r.label}: prints true (${r.filamentName})`
           const swatchStyle: CSSProperties = {
             position: 'relative',
@@ -44,7 +56,8 @@ export function FilamentReconcileStrip({ plan, catalog, onPickRole }: FilamentRe
             border: 'none',
             borderRadius: 9,
             overflow: 'hidden',
-            background: r.intrinsicHex,
+            // reality-first: the swatch shows the FILAMENT the role prints on
+            background: r.filamentHex,
             cursor: interactive ? 'pointer' : 'default',
             boxShadow: r.overridden
               ? 'inset 0 0 0 1px rgba(255,255,255,0.16), 0 0 0 2px rgba(103,232,249,0.9)'
@@ -66,8 +79,13 @@ export function FilamentReconcileStrip({ plan, catalog, onPickRole }: FilamentRe
                 style={swatchStyle}
               >
                 {r.shifted && (
+                  // the corner fleck is the user's TRUE (designed) color; hovering
+                  // it previews the designed colors on the model
                   <span
                     aria-hidden="true"
+                    data-element="filament-reconcile-fleck"
+                    onMouseEnter={() => onRevealIntrinsic?.(true)}
+                    onMouseLeave={() => onRevealIntrinsic?.(false)}
                     style={{
                       position: 'absolute',
                       right: 0,
@@ -75,8 +93,8 @@ export function FilamentReconcileStrip({ plan, catalog, onPickRole }: FilamentRe
                       width: 0,
                       height: 0,
                       borderStyle: 'solid',
-                      borderWidth: '0 0 15px 15px',
-                      borderColor: `transparent transparent ${r.filamentHex} transparent`,
+                      borderWidth: '0 0 16px 16px',
+                      borderColor: `transparent transparent ${r.intrinsicHex} transparent`,
                     }}
                   />
                 )}

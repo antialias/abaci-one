@@ -64,6 +64,7 @@ export function FabricationRail() {
     clearanceFix,
     requestExportStl,
     exporterReady,
+    setRevealIntrinsic,
   } = useAbacusStudio()
 
   const canExport = exporterReady && !exportBlocked
@@ -116,14 +117,16 @@ export function FabricationRail() {
     >
       <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>3D print</div>
 
-      {/* how the designed colors land on the loaded filaments — a prominent swatch
-          strip that only flecks a color's corner when it prints noticeably
-          differently. The model itself always keeps the user's designed colors. */}
+      {/* reality-first: the model previews what actually prints (the loaded
+          filament colors). This strip mirrors that — each swatch is a filament,
+          flecked with the user's true color only where it prints differently.
+          Hovering a fleck previews the designed colors on the model. */}
       <FilamentPlanPanel
         design={design}
         catalog={catalog}
         overrides={overrides}
         onOverridesChange={setOverrides}
+        onRevealIntrinsic={setRevealIntrinsic}
       />
 
       {/* printer profile — a first-class print setting (drives the gate below) */}

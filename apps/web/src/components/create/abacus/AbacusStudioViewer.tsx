@@ -27,8 +27,10 @@ import {
   COLOR_PALETTES,
   frameW,
   MARKER_BITS,
+  nearestSlot,
   outerD,
   type ShellInfo,
+  shellHex,
   tokenCenters,
 } from './abacus-model'
 import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
@@ -43,12 +45,16 @@ type DrawApi = {
 }
 
 export function AbacusStudioViewer() {
-  // Only the three.js/worker-bound slice of the shared studio store: the design
-  // the mount-once closures mirror, plus the export-handle registrar. Every
-  // control that edits these lives in the docked rails. The model ALWAYS renders
-  // the user's designed colors — how those colors land on the loaded filament is
-  // communicated in the rail (FilamentReconcileStrip), not by recoloring the show.
-  const { params, design, registerExportStl } = useAbacusStudio()
+  // Only the three.js/worker-bound slice of the shared studio store: the design +
+  // the filament projection the mount-once closures mirror, plus the export/reveal
+  // registrars. Every control that edits these lives in the docked rails.
+  //
+  // Reality-first: the model previews what will actually PRINT — the design's
+  // colors quantized onto the loaded filaments (`filamentMap`). Hovering a tile's
+  // true-color fleck in the reconcile strip momentarily flips the whole model to
+  // the user's designed colors; the strip pokes `registerRevealIntrinsic` (below).
+  const { params, design, filamentMap, registerExportStl, registerRevealIntrinsic } =
+    useAbacusStudio()
 
   // live mirrors read by the mount-once three.js closures (which can't re-close
   // over changing state). Kept in lockstep with the store on every render.
@@ -56,6 +62,12 @@ export function AbacusStudioViewer() {
   paramsRef.current = params
   const designRef = useRef(design)
   designRef.current = design
+  const filamentMapRef = useRef(filamentMap)
+  filamentMapRef.current = filamentMap
+  // transient hover lens: true → show the user's INTRINSIC colors instead of the
+  // filament projection. Set imperatively (not React state) so a hover never
+  // re-renders the studio tree; the reveal handle below flips it + repaints.
+  const revealIntrinsicRef = useRef(false)
 
   const [status, setStatus] = useState<StatusUpdate>({ text: 'booting…' })
   const [meta, setMeta] = useState<{ ms?: number; tris?: number }>({})
@@ -143,14 +155,18 @@ export function AbacusStudioViewer() {
       if (!renderMesh || !triShell) return
       const geo = renderMesh.geometry
       const nVert = geo.attributes.position.count
-      // The model always shows the user's INTRINSIC colors (matches their on-screen
-      // abacus exactly). Columns are keyed by place value (ones = index 0);
-      // shellInfo.i counts left→right, so place value = cols-1-i. How those colors
-      // quantize onto the loaded filaments is surfaced in the rail, not here.
+      // Reality-first: default to what actually PRINTS — the design's colors
+      // QUANTIZED onto the loaded filaments (shellHex over the filament map). While
+      // a strip fleck is hovered, `fm` goes null and we fall back to the user's
+      // INTRINSIC colors (their on-screen abacus). Columns are keyed by place value
+      // (ones = index 0); shellInfo.i counts left→right, so place value = cols-1-i.
+      const fm = revealIntrinsicRef.current ? null : filamentMapRef.current
       const rc = designRef.current.resolvedColors
       const shellRGB = shellInfo.map((info) => {
         let hex: string
-        if (info.isFrame) {
+        if (fm) {
+          hex = shellHex(info, p, fm)
+        } else if (info.isFrame) {
           hex = rc.frame
         } else {
           const col = rc.columns[p.cols - 1 - info.i]
@@ -277,11 +293,12 @@ export function AbacusStudioViewer() {
       const u = r - inset
       const R = r - ch
       const trim = R > 0 && u > R / Math.SQRT2 ? { u, R, T: p.marker_mm } : null
-      // markers are black/white CV fiducials — always previewed as their ideal pure
-      // pair (the plan warns separately when the loaded filaments' contrast drops
-      // below the camera's floor).
-      const white = '#ffffff'
-      const black = '#000000'
+      // markers are black/white CV fiducials: reality-first shows the actual
+      // filaments they snap to (whose contrast the plan warns about when it drops
+      // below the camera's floor); the intrinsic-reveal hover shows the ideal pair.
+      const fm = revealIntrinsicRef.current ? null : filamentMapRef.current
+      const white = fm ? fm.slots[fm.markerWhite] : '#ffffff'
+      const black = fm ? fm.slots[fm.markerBlack] : '#000000'
       pos.forEach(([x, y], k) => {
         const quad = new THREE.Mesh(
           new THREE.PlaneGeometry(p.marker_mm, p.marker_mm),
@@ -312,8 +329,10 @@ export function AbacusStudioViewer() {
     function plugRecolor() {
       if (!plugMesh || !plugTriTok) return
       const p = paramsRef.current
-      // always the intended inlay ink (rainbow palette or the single text color) —
-      // the model previews the user's designed colors, not the filament snap.
+      // reality-first: the inlay ink snaps to the nearest loaded filament by
+      // default; the intrinsic-reveal hover shows the intended ink (rainbow palette
+      // or the single text color) unquantized.
+      const fm = revealIntrinsicRef.current ? null : filamentMapRef.current
       const pal = COLOR_PALETTES[p.color_palette] ?? COLOR_PALETTES.default
       const geo = plugMesh.geometry
       const colors = new Float32Array(geo.attributes.position.count * 3)
@@ -323,7 +342,7 @@ export function AbacusStudioViewer() {
         let rgb = cache.get(k)
         if (!rgb) {
           const intended = p.text_fill === 'rainbow' ? pal[k % 5] : p.text_color
-          _c.set(intended)
+          _c.set(fm ? fm.slots[nearestSlot(fm.slots, intended)] : intended)
           rgb = [_c.r, _c.g, _c.b] as const
           cache.set(k, rgb)
         }
@@ -446,6 +465,14 @@ export function AbacusStudioViewer() {
     scad.render(params)
   }, [params, scad])
 
+  // editing the filament mapping (a pin, or new spools) is geometry-free: the
+  // default filament projection changed, so recolor without a WASM re-render.
+  // filamentMap also changes on every param edit, so the param effect above
+  // harmlessly dedupes the overlap.
+  useEffect(() => {
+    drawRef.current?.applyParams()
+  }, [filamentMap])
+
   // publish the worker-bound STL exporter into the store so the fabrication rail's
   // Export buttons + the print panel can trigger a one-shot high-quality render.
   // Registered once (scad.exportStl reads a stable ref); torn down on unmount so
@@ -457,6 +484,17 @@ export function AbacusStudioViewer() {
     )
     return () => registerExportStl(null)
   }, [registerExportStl])
+
+  // publish the hover-reveal handle: the reconcile strip flips the model to the
+  // user's designed colors while a true-color fleck is hovered. Imperative (flip a
+  // ref + repaint) so a hover never re-renders the studio tree.
+  useEffect(() => {
+    registerRevealIntrinsic((v: boolean) => {
+      revealIntrinsicRef.current = v
+      drawRef.current?.applyParams()
+    })
+    return () => registerRevealIntrinsic(null)
+  }, [registerRevealIntrinsic])
 
   return (
     <div

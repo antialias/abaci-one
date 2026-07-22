@@ -128,13 +128,14 @@ export const PitOfSuccess: Story = {
 }
 
 /**
- * The reconcile strip, both of its states in one shot. Every designed color is a
- * prominent swatch; a color only earns a corner fleck of its filament when it
- * prints as a *noticeably different* color. On this bare black+white plate the two
- * bead colors have nowhere true to land, so each flecks and the caption reads "2
- * colors shift" — while the black frame prints true (no fleck). Compare with
- * PitOfSuccess above, whose exact-match plate leaves the strip fleckless ("prints
- * true"). Clicking a swatch opens that role's picker (the mapping deep link).
+ * The reconcile strip, reality-first, both states in one shot. Each swatch's base
+ * is the FILAMENT the role prints on; a role only earns a corner fleck of the
+ * user's *true* (designed) color when it prints noticeably differently. On this
+ * bare black+white plate the bead colors have nowhere true to land, so each prints
+ * as black/white with a fleck of its intended color and the caption reads "N
+ * colors shift". Compare with PitOfSuccess above, whose exact-match plate leaves
+ * the strip fleckless ("prints true"). In the studio, hovering a fleck previews
+ * the designed colors on the 3D model; clicking a swatch opens that role's picker.
  */
 export const ColorsShiftFleck: Story = {
   render: () => <Harness catalog={limitedCatalog} />,

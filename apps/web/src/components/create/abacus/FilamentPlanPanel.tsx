@@ -109,6 +109,8 @@ export interface FilamentPlanPanelProps {
   /** initial disclosure state — lets stories and deep links render pre-opened */
   defaultMappingOpen?: boolean
   defaultOpenRole?: string | null
+  /** hover the strip's true-color fleck → preview designed colors on the 3D model */
+  onRevealIntrinsic?: (reveal: boolean) => void
 }
 
 export function FilamentPlanPanel({
@@ -118,6 +120,7 @@ export function FilamentPlanPanel({
   onOverridesChange: setOverrides,
   defaultMappingOpen = false,
   defaultOpenRole = null,
+  onRevealIntrinsic,
 }: FilamentPlanPanelProps) {
   // the design projected onto the loaded filaments, honoring the user's pins —
   // the source of truth for every warning and row below
@@ -584,7 +587,12 @@ export function FilamentPlanPanel({
       data-element="abacus-studio-print-preview"
       style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
     >
-      <FilamentReconcileStrip plan={plan} catalog={catalog} onPickRole={revealRole} />
+      <FilamentReconcileStrip
+        plan={plan}
+        catalog={catalog}
+        onPickRole={revealRole}
+        onRevealIntrinsic={onRevealIntrinsic}
+      />
 
       {reductionWarnings.length > 0 && (
         <div
