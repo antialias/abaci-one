@@ -5,7 +5,7 @@
  * is how the first real print failure rendered as a bare `failed`).
  */
 import { describe, expect, it } from 'vitest'
-import { normalizeJobs } from '../print-jobs'
+import { isParked, normalizeJobs, PARKED_PHASES } from '../print-jobs'
 
 /** The real THH failed-job shape from prod, 2026-07-21 (trimmed to wire fields). */
 const failedJob = {
@@ -32,14 +32,34 @@ describe('normalizeJobs', () => {
     })
   })
 
-  it('healthy jobs project with error null', () => {
+  it('healthy jobs project with error null and empty resolve fields', () => {
     const rows = normalizeJobs([
       { jobId: 'j1', name: 'one', phase: 'printing', progress: 40 },
       { id: 'j2', status: 'sliced' },
     ])
     expect(rows).toEqual([
-      { id: 'j1', name: 'one', phase: 'printing', progress: 40, error: null },
-      { id: 'j2', name: 'j2', phase: 'sliced', progress: null, error: null },
+      {
+        id: 'j1',
+        name: 'one',
+        phase: 'printing',
+        progress: 40,
+        error: null,
+        attention: [],
+        startPolicy: null,
+        acknowledged: [],
+        updatedAt: null,
+      },
+      {
+        id: 'j2',
+        name: 'j2',
+        phase: 'sliced',
+        progress: null,
+        error: null,
+        attention: [],
+        startPolicy: null,
+        acknowledged: [],
+        updatedAt: null,
+      },
     ])
   })
 
@@ -82,5 +102,102 @@ describe('normalizeJobs', () => {
     expect(normalizeJobs('nope')).toEqual([])
     expect(normalizeJobs({ jobs: 'nope' })).toEqual([])
     expect(normalizeJobs([null, 'x', { name: 'no id' }])).toEqual([])
+  })
+})
+
+/** The resolve fields (gh#9): why a job parked + how to release it. The proxy
+ *  is a pass-through, so dropping these here is exactly how a parked job would
+ *  become a dead-end with no way to start or cancel it. */
+describe('normalizeJobs — resolve fields', () => {
+  /** A real needs_attention shape: a bed-vision reason + policy + updatedAt. */
+  const parkedJob = {
+    jobId: 'j-parked',
+    phase: 'needs_attention',
+    startPolicy: 'auto',
+    acknowledged: ['prior_code'],
+    updatedAt: 1_784_700_000.5,
+    attention: {
+      reasons: [
+        { code: 'bed_not_clear', detail: 'The bed does not look clear.', frameRef: 'frame-7' },
+        { code: 'verdict:x', detail: 'A verdict failed.' },
+      ],
+    },
+  }
+
+  it('projects attention reasons, startPolicy, acknowledged, and updatedAt', () => {
+    const [row] = normalizeJobs([parkedJob])
+    expect(row.phase).toBe('needs_attention')
+    expect(row.startPolicy).toBe('auto')
+    expect(row.acknowledged).toEqual(['prior_code'])
+    expect(row.updatedAt).toBe(1_784_700_000.5)
+    expect(row.attention).toEqual([
+      { code: 'bed_not_clear', detail: 'The bed does not look clear.', frameRef: 'frame-7' },
+      { code: 'verdict:x', detail: 'A verdict failed.' },
+    ])
+  })
+
+  it('drops reasons without a usable code but keeps the well-formed ones', () => {
+    const [row] = normalizeJobs([
+      {
+        jobId: 'j',
+        attention: {
+          reasons: [
+            { detail: 'no code' },
+            { code: '', detail: 'empty code' },
+            { code: 7, detail: 'numeric code' },
+            'not-an-object',
+            { code: 'good', detail: 'kept' },
+          ],
+        },
+      },
+    ])
+    expect(row.attention).toEqual([{ code: 'good', detail: 'kept' }])
+  })
+
+  it('a reason with a missing/blank detail keeps the code, detail null', () => {
+    const [row] = normalizeJobs([
+      {
+        jobId: 'j',
+        attention: { reasons: [{ code: 'bed_not_clear' }, { code: 'x', detail: '' }] },
+      },
+    ])
+    expect(row.attention).toEqual([
+      { code: 'bed_not_clear', detail: null },
+      { code: 'x', detail: null },
+    ])
+  })
+
+  it('tolerates malformed attention/policy shapes without dropping the job', () => {
+    const cases: unknown[] = [
+      { jobId: 'j', attention: 'boom' },
+      { jobId: 'j', attention: 42 },
+      { jobId: 'j', attention: null },
+      { jobId: 'j', attention: {} },
+      { jobId: 'j', attention: { reasons: 'nope' } },
+      { jobId: 'j', startPolicy: 9, acknowledged: 'nope', updatedAt: 'soon' },
+    ]
+    for (const item of cases) {
+      const [row] = normalizeJobs([item])
+      expect(row.attention, JSON.stringify(item)).toEqual([])
+      expect(row.acknowledged, JSON.stringify(item)).toEqual([])
+    }
+    // A non-number updatedAt / non-string startPolicy fall back to null.
+    const [row] = normalizeJobs([{ jobId: 'j', startPolicy: 9, updatedAt: 'soon' }])
+    expect(row.startPolicy).toBeNull()
+    expect(row.updatedAt).toBeNull()
+  })
+})
+
+describe('isParked / PARKED_PHASES', () => {
+  it('the two non-terminal parked phases are startable/cancelable', () => {
+    expect(PARKED_PHASES).toEqual(['ready', 'needs_attention'])
+    expect(isParked('ready')).toBe(true)
+    expect(isParked('needs_attention')).toBe(true)
+  })
+
+  it('running and terminal phases are not parked', () => {
+    for (const phase of ['queued', 'slicing', 'printing', 'completed', 'failed', 'canceled']) {
+      expect(isParked(phase), phase).toBe(false)
+    }
   })
 })

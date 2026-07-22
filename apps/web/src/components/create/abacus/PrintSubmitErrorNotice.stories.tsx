@@ -38,12 +38,14 @@ export default meta
 
 type Story = StoryObj<typeof PrintSubmitErrorNotice>
 
+const resolveDefaults = { attention: [], startPolicy: null, acknowledged: [], updatedAt: null }
 const heldJob: JobRow = {
   id: 'j0',
   name: 'Abacus — 4 columns',
   phase: 'ready',
   progress: null,
   error: null,
+  ...resolveDefaults,
 }
 const printingJob: JobRow = {
   id: 'j1',
@@ -51,6 +53,7 @@ const printingJob: JobRow = {
   phase: 'printing',
   progress: 42,
   error: null,
+  ...resolveDefaults,
 }
 
 /**

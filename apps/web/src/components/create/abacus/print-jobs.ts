@@ -6,9 +6,22 @@
  * error carries the service's own explanation of a failure — it must survive
  * the projection verbatim (dropping it is exactly how the first real print
  * failure rendered as a bare `failed`).
+ *
+ * Beyond the error, the service also ships each job's `attention` reasons (why
+ * it parked), its `startPolicy`, and what's already been `acknowledged`. Those
+ * are what let the panel RESOLVE a parked job in place instead of leaving it a
+ * dead-end — so they must survive the projection too (dropping them is exactly
+ * why a held job used to block every later submit with no way out).
  */
 
 export type JobError = { code: string; message: string | null }
+
+/** One reason the service parked a job, from `attention.reasons[]`. `detail`
+ *  is the service's own human sentence; `code` is what {@link isParked} jobs
+ *  must acknowledge to start. `frameRef` (when present) marks the reason that
+ *  carries the bed photo — informational; the photo loads from the job-level
+ *  `attention-frame` endpoint, not this ref. */
+export type AttentionReason = { code: string; detail: string | null; frameRef?: string | null }
 
 export type JobRow = {
   id: string
@@ -16,6 +29,25 @@ export type JobRow = {
   phase: string
   progress: number | null
   error: JobError | null
+  /** Reasons the service is holding this job (empty unless it parked). */
+  attention: AttentionReason[]
+  /** `'auto'` | `'hold'` as the service recorded it, or null. */
+  startPolicy: string | null
+  /** Reason codes already confirmed on this job. */
+  acknowledged: string[]
+  /** The service's last-touched epoch (seconds); a cache-buster for the frame. */
+  updatedAt: number | null
+}
+
+/** The two non-terminal phases a job rests in while it waits for a human: a
+ *  clean `hold` slice (`ready`) or a preflight that found something to confirm
+ *  (`needs_attention`). Both count as busy upstream — so both are what the
+ *  panel must be able to start or cancel. */
+export const PARKED_PHASES = ['ready', 'needs_attention'] as const
+
+/** Whether a phase is one the panel can start or cancel (see {@link PARKED_PHASES}). */
+export function isParked(phase: string): boolean {
+  return (PARKED_PHASES as readonly string[]).includes(phase)
 }
 
 /** The service's `error: {code, message}` — attached only when the job failed. */
@@ -27,6 +59,34 @@ function normalizeJobError(value: unknown): JobError | null {
     code: rec.code,
     message: typeof rec.message === 'string' && rec.message.length > 0 ? rec.message : null,
   }
+}
+
+/** The service's `attention: {reasons: [{code, detail, frameRef?}]}` — a job is
+ *  only actionable through the reasons it reports, so a reason without a usable
+ *  `code` is dropped rather than guessed at. */
+function normalizeAttention(value: unknown): AttentionReason[] {
+  if (typeof value !== 'object' || value === null) return []
+  const reasons = (value as { reasons?: unknown }).reasons
+  if (!Array.isArray(reasons)) return []
+  const out: AttentionReason[] = []
+  for (const item of reasons) {
+    if (typeof item !== 'object' || item === null) continue
+    const rec = item as Record<string, unknown>
+    if (typeof rec.code !== 'string' || rec.code.length === 0) continue
+    const reason: AttentionReason = {
+      code: rec.code,
+      detail: typeof rec.detail === 'string' && rec.detail.length > 0 ? rec.detail : null,
+    }
+    if (typeof rec.frameRef === 'string' && rec.frameRef.length > 0) reason.frameRef = rec.frameRef
+    out.push(reason)
+  }
+  return out
+}
+
+/** A list of non-empty strings (e.g. `acknowledged` reason codes), or []. */
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((v): v is string => typeof v === 'string' && v.length > 0)
 }
 
 /** Defensive projection of the proxy's pass-through jobs read (open wire shape). */
@@ -55,6 +115,13 @@ export function normalizeJobs(data: unknown): JobRow[] {
       // Carried whenever the service attached one, regardless of the phase
       // word — if the service says why, the panel must be able to say why.
       error: normalizeJobError(rec.error),
+      // Why the job is parked + how to release it — the data the resolver card
+      // needs. Absent/healthy jobs project to empty, so the card simply won't
+      // render for them.
+      attention: normalizeAttention(rec.attention),
+      startPolicy: typeof rec.startPolicy === 'string' ? rec.startPolicy : null,
+      acknowledged: normalizeStringArray(rec.acknowledged),
+      updatedAt: typeof rec.updatedAt === 'number' ? rec.updatedAt : null,
     })
   }
   return rows

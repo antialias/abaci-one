@@ -110,6 +110,24 @@ export function describeSubmitFailure(status: number, body: unknown): SubmitFail
   }
 }
 
+/**
+ * An Error wrapping a non-OK print-service response, carrying the parsed
+ * {@link SubmitFailure} so any surface — the submit panel, a parked-job
+ * resolver — renders the same honest, coded copy from one place. Throw it from
+ * a mutation's `mutationFn`; read `.failure` off `mutation.error`.
+ */
+export class PrintServiceError extends Error {
+  readonly status: number
+  readonly failure: SubmitFailure
+  constructor(status: number, body: unknown) {
+    const failure = describeSubmitFailure(status, body)
+    super(failure.headline)
+    this.name = 'PrintServiceError'
+    this.status = status
+    this.failure = failure
+  }
+}
+
 function httpFallbackHeadline(status: number): string {
   if (status === 0) return 'The print service is unreachable right now.'
   if (status === 409) return 'The print service says this job conflicts with its current state.'

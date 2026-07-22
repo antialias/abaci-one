@@ -219,15 +219,17 @@ vi.mock('@soroban/abacus-react', () => ({
   calculateAbacusCrop: vi.fn(() => ({})),
 }))
 
-// Mock canvas Image constructor to prevent jsdom errors when rendering
-// images with data URIs (e.g., data:image/jpeg;base64,...)
-// This works by patching HTMLImageElement.prototype before jsdom uses it
-// Guard for node environment where HTMLImageElement doesn't exist
+// Prevent jsdom errors when rendering images. Setting any <img> src makes
+// jsdom decode it through canvas (`new Canvas.Image()`), which canvas-mock
+// doesn't provide — it throws "Canvas.Image is not a constructor". This fires
+// for every src scheme (data: URIs AND endpoint URLs like /api/.../frame.jpg),
+// so intercept all of them: stash the value on the element so `.src` reads
+// back, but skip jsdom's image loading. Patches the prototype before jsdom
+// uses it; guarded for the node environment where HTMLImageElement is absent.
 if (typeof HTMLImageElement !== 'undefined') {
   const originalSetAttribute = HTMLImageElement.prototype.setAttribute
   HTMLImageElement.prototype.setAttribute = function (name: string, value: string) {
-    if (name === 'src' && value.startsWith('data:image/')) {
-      // Store the value but don't trigger jsdom's image loading
+    if (name === 'src') {
       Object.defineProperty(this, 'src', {
         value,
         writable: true,
