@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { ThhFilamentRow } from '@/lib/abacus/print/filament-wire'
-import { catalogFromParams, thhFilamentsToCatalog } from '../abacus-catalog'
+import {
+  catalogFromParams,
+  coPrintGroup,
+  isSupportMaterial,
+  thhFilamentsToCatalog,
+} from '../abacus-catalog'
 import { defaultParams, type Params } from '../abacus-model'
 
 const withCount = (filament_count: number): Params => ({ ...defaultParams, filament_count })
@@ -92,5 +97,33 @@ describe('thhFilamentsToCatalog', () => {
       '0.2',
       '1.1',
     ])
+  })
+})
+
+describe('family knowledge (gh#163)', () => {
+  it('flags breakaway support families, case-insensitively', () => {
+    expect(isSupportMaterial('PLA-S')).toBe(true)
+    expect(isSupportMaterial('PA-S')).toBe(true)
+    expect(isSupportMaterial('PVA')).toBe(true)
+    expect(isSupportMaterial('HIPS')).toBe(true)
+    expect(isSupportMaterial('pla-s')).toBe(true)
+    expect(isSupportMaterial('PLA')).toBe(false)
+    expect(isSupportMaterial('PETG')).toBe(false)
+  })
+
+  it('groups families by shared plate-temperature window', () => {
+    // support-for-X and filled variants ride with X; ASA/HIPS ride with ABS
+    expect(coPrintGroup('PLA-S')).toBe('PLA')
+    expect(coPrintGroup('PLA-CF')).toBe('PLA')
+    expect(coPrintGroup('PVA')).toBe('PLA')
+    expect(coPrintGroup('PETG-HF')).toBe('PETG')
+    expect(coPrintGroup('ASA')).toBe('ABS')
+    expect(coPrintGroup('HIPS')).toBe('ABS')
+    expect(coPrintGroup('PA-CF')).toBe('PA')
+  })
+
+  it('never assumes compatibility for an unknown family — it forms its own group', () => {
+    expect(coPrintGroup('PPA-XYZ')).toBe('PPA-XYZ')
+    expect(coPrintGroup('TPU')).toBe('TPU')
   })
 })

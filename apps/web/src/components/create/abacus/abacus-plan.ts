@@ -17,21 +17,30 @@
 // now re-exports it as a thin adapter over `materialize`, byte-for-byte identical
 // (see __tests__/filament-map-snapshot.json).
 //
-// P1 scope: frame + ArUco markers + bead roles. Perimeter text roles, the
-// material-family interface check, and the rainbow multi-material hard gate are
-// deferred to P4 — hence every warning here is severity 'warning' and `ok` stays
-// true. Framework-free (no React, no three).
+// P1 scope: frame + ArUco markers + bead roles. Perimeter text roles and the
+// rainbow multi-material hard gate are deferred to P4 — hence every warning here
+// is severity 'warning' and `ok` stays true. Framework-free (no React, no three).
 //
-// Compatibility rule (P4 — activates once the THH catalog carries material
-// families; today's params catalog is all-PLA, so it's trivially satisfied): the
-// welded same-part cluster — frame + ArUco markers + inset text — must resolve to
-// ONE compatible material family. Auto-snap never crosses an incompatible material
-// at those welds; when the compatible spools force a poor color match it warns
-// (material-interface) rather than silently breaking the bond. BEADS ARE EXEMPT —
-// captive on a print clearance gap, never welded, so they chase best color on any
-// material. The viewer's manual filament-mapping panel overrides all of this.
+// Material compatibility (gh#163 + the P4 weld rule's auto half, landed): with a
+// THH catalog (real families), auto-snap is ANCHOR-RESTRICTED — it picks one
+// co-print temperature group (support media excluded) and keeps every automatic
+// assignment inside it, so the default mapping can never mix plate temperatures
+// or put a visible part on breakaway support. The welded same-part cluster —
+// frame + ArUco markers + inset text — therefore lands on one family by
+// construction. User PINS from the viewer's filament-mapping panel may cross any
+// of these lines deliberately; the plan answers with warnings, never blocks
+// (material-mix for plate temperature, support-material for breakaway media,
+// material-interface for a mixed weld) — the slicer stays the final authority.
+// BEADS ARE EXEMPT from the weld rule — captive on a print clearance gap, never
+// welded — but they ride the plate's temperature anchor like everything else.
 
-import { catalogFromParams, type FilamentCatalog, type FilamentSpool } from './abacus-catalog'
+import {
+  catalogFromParams,
+  coPrintGroup,
+  type FilamentCatalog,
+  type FilamentSpool,
+  isSupportMaterial,
+} from './abacus-catalog'
 import type { AbacusDesign } from './abacus-design'
 import { toAbacusDesign } from './abacus-design'
 import {
@@ -40,7 +49,6 @@ import {
   colorDist,
   contrastRatio,
   type FilamentMap,
-  nearestSlot,
   type Params,
 } from './abacus-model'
 
@@ -76,8 +84,9 @@ export type PlanWarningCode =
   | 'marker-contrast'
   | 'role-collision'
   | 'budget-exceeded'
-  | 'material-mix' // plate-wide family mix — the slicer's temp guard likely refuses it (gh#163)
-  | 'material-interface' // reserved for P4 (the weld-adhesion rule; distinct from material-mix)
+  | 'material-mix' // plate-wide temperature mix — the slicer's temp guard likely refuses it (gh#163)
+  | 'support-material' // a visible role pinned onto breakaway support filament
+  | 'material-interface' // the weld-adhesion rule: the fused frame/marker/text cluster mixes families
   | 'rainbow-unrealizable' // reserved for P4 (the only 'error' — multi-material text)
 
 export type PlanWarning = {
@@ -93,6 +102,11 @@ export type PrintPlan = {
   assignments: RoleAssignment[]
   markerContrast: number // WCAG ratio of the mapped ArUco pair (camera wants ≥3)
   warnings: PlanWarning[]
+  // The co-print temperature group auto-snap anchored the plate to (e.g. "PLA").
+  // Present only for a thh-ams catalog with at least one non-support spool —
+  // the params catalog fabricates families, so it never claims an anchor. The
+  // viewer's picker groups compatible-vs-not around this.
+  anchorGroup?: string
   // true iff no error-severity warning — mirrors the solver's export gate. In P1
   // nothing is an error, so this is always true; the rainbow hard gate (P4) is the
   // first thing that can flip it.
@@ -104,10 +118,98 @@ export type PrintPlan = {
 // snapshot). Pins onto an unloaded spool are ignored — the role stays auto-snapped.
 export type MaterializeOpts = { overrides?: Record<string, string> }
 
+// Weighting for the anchor-group choice: the ArUco markers are CV-critical (the
+// detector must read them), so a group that serves them poorly pays triple.
+const MARKER_COST_WEIGHT = 3
+
+// One full auto-snap pass restricted to the `allowed` spool indexes, in catalog
+// order — the exact algorithm that always ran (markers first: black darkest-fit,
+// white lightest-fit distinct; then frame nearest; then beads distinct-first),
+// now parameterized by the set it may choose from. `allowed` = every index
+// reproduces the historical mapping byte-for-byte (the snapshot test pins it).
+// Returns the chosen slots plus the weighted total color error, so anchor
+// selection compares groups by running the REAL assignment, not an
+// approximation of it.
+type AutoSnap = {
+  blackIdx: number
+  whiteIdx: number
+  frameIdx: number
+  beadIdxs: number[]
+  cost: number
+}
+
+function snapWithin(
+  hexes: string[],
+  frameHex: string,
+  roleHexes: string[],
+  allowed: number[]
+): AutoSnap {
+  const nearestIn = (target: string, exclude = -1): number => {
+    let best = allowed[0]
+    let bd = Number.POSITIVE_INFINITY
+    for (const idx of allowed) {
+      if (idx === exclude) continue
+      const d = colorDist(target, hexes[idx])
+      if (d < bd) {
+        bd = d
+        best = idx
+      }
+    }
+    return best
+  }
+  const blackIdx = nearestIn('#000000')
+  // with one allowed spool there's no distinct white, so both markers collapse
+  const whiteIdx = allowed.length > 1 ? nearestIn('#ffffff', blackIdx) : blackIdx
+  const frameIdx = nearestIn(frameHex)
+  const usedByBeads = new Set<number>()
+  const beadIdxs = roleHexes.map((intrinsicHex) => {
+    let best = -1
+    let bd = Number.POSITIVE_INFINITY
+    for (const idx of allowed) {
+      if (usedByBeads.has(idx)) continue
+      const d = colorDist(intrinsicHex, hexes[idx])
+      if (d < bd) {
+        bd = d
+        best = idx
+      }
+    }
+    if (best < 0) best = nearestIn(intrinsicHex) // more roles than slots → reuse
+    usedByBeads.add(best)
+    return best
+  })
+  const cost =
+    MARKER_COST_WEIGHT *
+      (colorDist('#000000', hexes[blackIdx]) + colorDist('#ffffff', hexes[whiteIdx])) +
+    colorDist(frameHex, hexes[frameIdx]) +
+    beadIdxs.reduce((sum, idx, r) => sum + colorDist(roleHexes[r], hexes[idx]), 0)
+  return { blackIdx, whiteIdx, frameIdx, beadIdxs, cost }
+}
+
+// The co-print groups automatic assignment may anchor to: THH spools bucketed by
+// temperature group, support media excluded (breakaway filament is never an
+// automatic pick for a visible part). null = no restriction — the params catalog
+// fabricates families, and an all-support AMS has nothing sensible to prefer.
+function candidateGroups(catalog: FilamentCatalog): Map<string, number[]> | null {
+  if (catalog.source !== 'thh-ams') return null
+  const groups = new Map<string, number[]>()
+  catalog.spools.forEach((s, i) => {
+    if (isSupportMaterial(s.material)) return
+    const g = coPrintGroup(s.material)
+    const idxs = groups.get(g) ?? []
+    idxs.push(i)
+    groups.set(g, idxs)
+  })
+  return groups.size > 0 ? groups : null
+}
+
 // Project a design onto a catalog. Role assignment order matches the bench's
 // historical precedence EXACTLY (markers first — they're CV-critical — then
 // frame, then bead roles distinct-first), so `computeFilamentMap` can adapt this
-// back to the legacy `FilamentMap` shape without drift.
+// back to the legacy `FilamentMap` shape without drift. With a THH catalog the
+// pass is anchor-restricted (see candidateGroups): the cheapest co-print group
+// wins the whole plate, so the default mapping never mixes temperatures and
+// never lands a visible part on support media — the pit of success. Pins go
+// wherever the user says; the warnings answer.
 export function materialize(
   design: AbacusDesign,
   catalog: FilamentCatalog,
@@ -137,57 +239,77 @@ export function materialize(
     }
   }
 
-  // 1. ArUco markers — assigned first (the detector reads them): black takes the
-  //    darkest-fit slot, white the lightest-fit DISTINCT slot. With one spool
-  //    loaded there's no distinct white, so both collapse onto it.
-  const blackIdx = nearestSlot(hexes, '#000000')
-  const whiteIdx = hexes.length > 1 ? nearestSlot(hexes, '#ffffff', blackIdx) : blackIdx
+  const roleHexes = beadRoleColors(design.params.color_scheme, design.params.color_palette)
+  const roleNames = beadRoleNames(design.params.color_scheme)
+  const frameHex = design.resolvedColors.frame
+
+  // Anchor choice: run the real assignment inside each candidate group and keep
+  // the cheapest (ties → the bigger group, then AMS order). No groups → the
+  // historical unrestricted pass.
+  const groups = candidateGroups(catalog)
+  let snap: AutoSnap
+  let anchorGroup: string | undefined
+  if (!groups) {
+    snap = snapWithin(
+      hexes,
+      frameHex,
+      roleHexes,
+      spools.map((_, i) => i)
+    )
+  } else {
+    let bestIdxs: number[] = []
+    let bestSnap: AutoSnap | null = null
+    for (const [g, idxs] of groups) {
+      const s = snapWithin(hexes, frameHex, roleHexes, idxs)
+      if (
+        !bestSnap ||
+        s.cost < bestSnap.cost ||
+        (s.cost === bestSnap.cost && idxs.length > bestIdxs.length)
+      ) {
+        anchorGroup = g
+        bestIdxs = idxs
+        bestSnap = s
+      }
+    }
+    snap = bestSnap as AutoSnap
+  }
+
   const markerBlack = assign(
     { kind: 'markerBlack', key: 'marker-black', label: 'ArUco black', intrinsicHex: '#000000' },
-    blackIdx
+    snap.blackIdx
   )
   const markerWhite = assign(
     { kind: 'markerWhite', key: 'marker-white', label: 'ArUco white', intrinsicHex: '#ffffff' },
-    whiteIdx
+    snap.whiteIdx
   )
-
-  // 2. Frame = nearest spool (no exclusion — the frame may legitimately share a
-  //    filament with a marker or bead).
   const frame = assign(
-    { kind: 'frame', key: 'frame', label: 'Frame', intrinsicHex: design.resolvedColors.frame },
-    nearestSlot(hexes, design.resolvedColors.frame)
+    { kind: 'frame', key: 'frame', label: 'Frame', intrinsicHex: frameHex },
+    snap.frameIdx
+  )
+  const beadAssignments: RoleAssignment[] = snap.beadIdxs.map((idx, r) =>
+    assign(
+      {
+        kind: 'bead',
+        key: `bead-${r}`,
+        label: roleNames[r] ?? `bead ${r}`,
+        intrinsicHex: roleHexes[r],
+      },
+      idx
+    )
   )
 
-  // 3. Bead roles — distinct-first: each role claims the nearest slot no other
-  //    BEAD role has taken (markers/frame don't block beads), reusing the global
-  //    nearest only once distinct slots run out.
-  const roleHexes = beadRoleColors(design.params.color_scheme, design.params.color_palette)
-  const roleNames = beadRoleNames(design.params.color_scheme)
-  const usedByBeads = new Set<number>()
-  const beadAssignments: RoleAssignment[] = roleHexes.map((intrinsicHex, r) => {
-    let best = -1
-    let bd = Number.POSITIVE_INFINITY
-    hexes.forEach((h, idx) => {
-      if (usedByBeads.has(idx)) return
-      const d = colorDist(intrinsicHex, h)
-      if (d < bd) {
-        bd = d
-        best = idx
-      }
-    })
-    if (best < 0) best = nearestSlot(hexes, intrinsicHex) // more roles than slots → reuse
-    usedByBeads.add(best)
-    return assign(
-      { kind: 'bead', key: `bead-${r}`, label: roleNames[r] ?? `bead ${r}`, intrinsicHex },
-      best
-    )
-  })
-
-  const markerContrast = contrastRatio(hexes[whiteIdx], hexes[blackIdx])
+  // Contrast of the FINAL marker pair (pins included) — the camera reads what
+  // actually prints, so a pinned marker must move this warning too.
+  const markerContrast = contrastRatio(hexes[markerWhite.spoolIndex], hexes[markerBlack.spoolIndex])
   const assignments = [markerBlack, markerWhite, frame, ...beadAssignments]
   const warnings = planWarnings(markerContrast, beadAssignments, roleHexes.length)
-  const mixWarning = materialMixWarning(assignments, spools, catalog.source)
-  if (mixWarning) warnings.push(mixWarning)
+  for (const w of [
+    materialMixWarning(assignments, spools, catalog.source),
+    supportMaterialWarning(assignments, spools, catalog.source),
+    weldMixWarning(assignments, spools, catalog.source),
+  ]) {
+    if (w) warnings.push(w)
+  }
   const ok = !warnings.some((w) => w.severity === 'error')
 
   return {
@@ -196,66 +318,162 @@ export function materialize(
     assignments,
     markerContrast,
     warnings,
+    anchorGroup,
     ok,
   }
 }
 
+// Oxford-comma prose for a short list of family names.
+const listProse = (xs: string[]): string =>
+  xs.length === 1
+    ? xs[0]
+    : xs.length === 2
+      ? `${xs[0]} and ${xs[1]}`
+      : `${xs.slice(0, -1).join(', ')}, and ${xs[xs.length - 1]}`
+
+// Bucket assignments by a key of their mapped spool, preserving assignment
+// order, and split majority vs. the callout set (with no majority — a tie —
+// there is no "odd one out", so everything is named). Shared by the material
+// warnings below, which differ only in the key and the prose.
+function splitByKey(
+  assignments: RoleAssignment[],
+  keyOf: (a: RoleAssignment) => string
+): { keys: string[]; named: RoleAssignment[]; tie: boolean } | null {
+  const buckets = new Map<string, RoleAssignment[]>()
+  for (const a of assignments) {
+    const k = keyOf(a)
+    const arr = buckets.get(k) ?? []
+    arr.push(a)
+    buckets.set(k, arr)
+  }
+  if (buckets.size <= 1) return null
+  const groups = [...buckets.values()]
+  const top = Math.max(...groups.map((g) => g.length))
+  const tie = groups.filter((g) => g.length === top).length > 1
+  const named = tie ? assignments : groups.filter((g) => g.length !== top).flat()
+  const keys = [...buckets.keys()].sort(
+    (a, b) =>
+      (buckets.get(b) as RoleAssignment[]).length - (buckets.get(a) as RoleAssignment[]).length
+  )
+  return { keys, named, tie }
+}
+
 // material-mix (gh#163): the plate-wide temperature heuristic. The first real
-// print failed at the slicer, not here — auto-snap chased a bead color onto the
-// one PETG spool alongside three PLAs, and Orca refused the whole plate
-// ("temperature difference of the filaments used is too large"). A family mix
-// across the mapping is a strong signal for that guard but not proof, so this
-// warns and never blocks — the slicer stays the authority. Distinct from the
-// reserved 'material-interface' weld rule: that one constrains which spools the
-// welded frame/marker/text cluster may share; this one just looks at the whole
-// plate, beads included. Only the THH catalog carries real families; the params
-// catalog fabricates PLA everywhere and stays inert by design (abacus-catalog.ts).
+// print failed at the slicer, not here — color-blind auto-snap chased a bead
+// onto the one PETG spool alongside three PLAs, and Orca refused the whole
+// plate ("temperature difference of the filaments used is too large"). Auto-
+// snap is anchor-restricted now, so it can no longer create that state; this
+// is the backstop for user PINS that cross temperature groups. Buckets by
+// CO-PRINT group, not raw family — Support-for-PLA prints at PLA temperatures
+// by design, so PLA + PLA-S is not a temperature mix (the support-material
+// warning owns that case). Warns and never blocks — the slicer stays the
+// authority. Only the THH catalog carries real families; the params catalog
+// fabricates PLA everywhere and stays inert by design (abacus-catalog.ts).
+// Only spools actually used by the mapping count (a lone PETG sitting unmapped
+// in the AMS is harmless).
 function materialMixWarning(
   assignments: RoleAssignment[],
   spools: FilamentSpool[],
   source: FilamentCatalog['source']
 ): PlanWarning | null {
   if (source !== 'thh-ams') return null
+  const split = splitByKey(assignments, (a) => coPrintGroup(spools[a.spoolIndex].material))
+  if (!split) return null
+  const { keys, named, tie } = split
 
-  // Group roles by their mapped spool's family — only spools actually used by
-  // the mapping count (a lone PETG sitting unmapped in the AMS is harmless).
-  const byFamily = new Map<string, RoleAssignment[]>()
-  for (const a of assignments) {
-    const material = spools[a.spoolIndex].material
-    const group = byFamily.get(material) ?? []
-    group.push(a)
-    byFamily.set(material, group)
+  if (tie) {
+    return {
+      code: 'material-mix',
+      severity: 'warning',
+      message: `This plate splits across ${listProse(keys)} temperatures — the slicer will likely refuse the mix. Keep every part in one temperature family.`,
+      roleKeys: named.map((a) => a.role.key),
+    }
   }
-  if (byFamily.size <= 1) return null
-
-  // Call out the roles off the majority family — those are the picks to fix.
-  // With no majority (a tie) there's no "odd one out", so name everything.
-  const groups = [...byFamily.values()]
-  const top = Math.max(...groups.map((g) => g.length))
-  const tie = groups.filter((g) => g.length === top).length > 1
-  const named = tie ? assignments : groups.filter((g) => g.length !== top).flat()
-
-  const families = [...byFamily.keys()].sort(
-    (a, b) =>
-      (byFamily.get(b) as RoleAssignment[]).length - (byFamily.get(a) as RoleAssignment[]).length
-  )
-  const familyProse =
-    families.length === 2
-      ? `${families[0]} and ${families[1]}`
-      : `${families.slice(0, -1).join(', ')}, and ${families[families.length - 1]}`
+  const majority = keys[0]
   const callouts = named
     .map(
-      (a) =>
-        `${a.role.label} prints on ${spools[a.spoolIndex].name} (${spools[a.spoolIndex].material})`
+      (a) => `${a.role.label} is on ${spools[a.spoolIndex].name} (${spools[a.spoolIndex].material})`
     )
     .join('; ')
-
   return {
     code: 'material-mix',
     severity: 'warning',
-    message: `This print mixes ${familyProse} filaments. ${callouts} — if their temperatures are too far apart the slicer will refuse the whole plate. Pick ${
-      named.length === 1 ? 'a same-type spool for that role' : 'same-type spools for those roles'
-    }, or change what's loaded.`,
+    message: `${callouts} — the rest of this plate prints at ${majority} temperatures, and the slicer will likely refuse the mix. Move ${
+      named.length === 1 ? 'it' : 'them'
+    } onto ${majority}, or change what's loaded.`,
+    roleKeys: named.map((a) => a.role.key),
+  }
+}
+
+// support-material: a visible role mapped onto breakaway support filament.
+// Every studio role IS a visible part (an abacus has no support geometry), and
+// support media is engineered to bond weakly and print chalky. Auto-snap never
+// picks it, so this fires only on user pins. Deliberately distinct from the
+// temperature story — Support-for-PLA co-prints with PLA just fine; it still
+// looks and holds up wrong.
+function supportMaterialWarning(
+  assignments: RoleAssignment[],
+  spools: FilamentSpool[],
+  source: FilamentCatalog['source']
+): PlanWarning | null {
+  if (source !== 'thh-ams') return null
+  const named = assignments.filter((a) => isSupportMaterial(spools[a.spoolIndex].material))
+  if (named.length === 0) return null
+  const callouts = named
+    .map(
+      (a) => `${a.role.label} is on ${spools[a.spoolIndex].name} (${spools[a.spoolIndex].material})`
+    )
+    .join('; ')
+  const one = named.length === 1
+  return {
+    code: 'support-material',
+    severity: 'warning',
+    message: `${callouts} — that's breakaway support filament. It prints weak and chalky, so ${
+      one ? 'this visible part' : 'these visible parts'
+    } will look wrong and may crumble. Move ${one ? 'it' : 'them'} onto a regular spool.`,
+    roleKeys: named.map((a) => a.role.key),
+  }
+}
+
+// material-interface (the P4 weld rule — its warning half): frame + ArUco
+// markers (+ inset text when it lands) fuse into ONE printed piece, so they
+// must share a weldable material. Auto-snap satisfies this by construction (one
+// anchor group, support excluded); this is the backstop for pins. The weld test
+// is RAW family equality among non-support members — PLA↔PLA-CF welds, but
+// PLA↔PETG delaminates even when the slicer would print it. Support members are
+// excluded here (bonding weakly is their whole design) so the support-material
+// warning owns them without double-reporting. Beads are exempt: captive on a
+// clearance gap, never welded.
+function weldMixWarning(
+  assignments: RoleAssignment[],
+  spools: FilamentSpool[],
+  source: FilamentCatalog['source']
+): PlanWarning | null {
+  if (source !== 'thh-ams') return null
+  const weldedKinds: PrintRoleKind[] = ['frame', 'markerBlack', 'markerWhite', 'text']
+  const welded = assignments.filter(
+    (a) => weldedKinds.includes(a.role.kind) && !isSupportMaterial(spools[a.spoolIndex].material)
+  )
+  const split = splitByKey(welded, (a) => spools[a.spoolIndex].material)
+  if (!split) return null
+  const { keys, named, tie } = split
+
+  const remedy = 'Keep the frame and ArUco markers on one material.'
+  if (tie) {
+    return {
+      code: 'material-interface',
+      severity: 'warning',
+      message: `The frame and ArUco markers print as one welded piece, but the mapping splits them across ${listProse(keys)} — mixed joints delaminate. ${remedy}`,
+      roleKeys: named.map((a) => a.role.key),
+    }
+  }
+  const callouts = named
+    .map((a) => `${a.role.label} is on ${spools[a.spoolIndex].material}`)
+    .join('; ')
+  return {
+    code: 'material-interface',
+    severity: 'warning',
+    message: `The frame and ArUco markers print as one welded piece, but ${callouts} while the rest is ${keys[0]} — mixed joints delaminate. ${remedy}`,
     roleKeys: named.map((a) => a.role.key),
   }
 }

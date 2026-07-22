@@ -43,8 +43,9 @@ import {
   shellHex,
   tokenCenters,
 } from './abacus-model'
-import { materialize, planToFilamentMap, type RoleAssignment } from './abacus-plan'
+import { materialize, planToFilamentMap } from './abacus-plan'
 import { DEFAULT_PROFILE_ID, PRINTER_PROFILES, profileById, solve } from './abacus-solver'
+import { FilamentPlanPanel } from './FilamentPlanPanel'
 import { PrintPanel } from './PrintPanel'
 import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
 
@@ -73,40 +74,6 @@ const FIX_BTN: CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
 }
-
-// filament-mapping panel — a calm summary at rest, one inline picker at a time.
-// Section eyebrow above each role group (beads first, structure below).
-const GROUP_LABEL: CSSProperties = {
-  fontSize: 9.5,
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  fontWeight: 700,
-  color: 'rgba(148,163,184,0.9)',
-  padding: '6px 6px 2px',
-}
-const RESET_BTN: CSSProperties = {
-  padding: '3px 8px',
-  borderRadius: 5,
-  border: '1px solid rgba(148,163,184,0.5)',
-  background: 'transparent',
-  color: 'rgba(226,232,240,1)',
-  fontSize: 11,
-  cursor: 'pointer',
-}
-// Hover/focus + the one-at-a-time reveal, plus the reduced-motion opt-out — none
-// of which inline styles can express. Namespaced (abx-) so it can't collide.
-const MAPPING_CSS = `
-.abx-map-row { background: transparent; transition: background 120ms ease; }
-.abx-map-row:hover { background: rgba(255,255,255,0.05); }
-.abx-map-row:focus-visible { outline: 2px solid rgba(103,232,249,0.9); outline-offset: -2px; }
-.abx-swatch:focus-visible { outline: 2px solid rgba(103,232,249,0.9); outline-offset: 2px; }
-.abx-chevron { transition: transform 120ms ease; }
-.abx-reveal { animation: abxReveal 140ms ease; }
-@keyframes abxReveal { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) {
-  .abx-map-row, .abx-chevron, .abx-reveal { transition: none; animation: none; }
-}
-`
 
 type DrawApi = {
   /** parse + shell-classify + recolor a fresh geometry STL; returns tri count */
@@ -165,20 +132,22 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
   const [viewMode, setViewMode] = useState<'design' | 'print'>('design')
   const viewModeRef = useRef(viewMode)
   viewModeRef.current = viewMode
-  // manual filament mapping: roleKey → spoolId. Auto-snap picks each role's spool
-  // by nearest color; this is the user's override. A pick that mixes material
-  // families is flagged live by the plan's material-mix warning (gh#163); the
-  // weld-interface constraint on auto-snap itself remains P4. Pure view
+  // manual filament mapping: roleKey → spoolId. Auto-snap picks each role's
+  // spool by nearest color within the plate's co-print anchor group (gh#163), so
+  // the default can never mix temperatures; this is the user's override. A pin
+  // that leaves the anchor, lands on support media, or splits the frame/marker
+  // weld is allowed but answered live by the plan's material warnings. Pure view
   // state like viewMode: it only reshapes the PRINT projection, so a pin never
   // detaches `synced` or touches the design. A pin onto an unloaded spool is
   // ignored by materialize, so its row falls back to Auto.
   const [overrides, setOverrides] = useState<Record<string, string>>({})
-  // the print plan = the design projected onto the loaded filaments, honoring the
-  // user's pins. The catalog is the live AMS snapshot when a print service is
-  // paired and reachable (real colors, names, and material families), falling
+  // the print plan = the design projected onto the loaded filaments, honoring
+  // the user's pins. The catalog is the live AMS snapshot when a print service
+  // is paired and reachable (real colors, names, and material families), falling
   // back to the params-derived color-only catalog when it isn't — the studio
-  // never blocks on the print service. Either way it's the single source of
-  // truth for BOTH the reduction warnings and the per-shell recolor below.
+  // never blocks on the print service. This copy of the plan feeds the per-shell
+  // recolor + export; FilamentPlanPanel re-derives the identical plan (pure fn,
+  // same inputs) for the warning strip and mapping UI it renders.
   const thhFilaments = useThhFilamentCatalog()
   const catalog = useMemo(
     () => thhFilaments.catalog ?? catalogFromParams(params),
@@ -188,16 +157,6 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
     () => materialize(design, catalog, { overrides }),
     [design, catalog, overrides]
   )
-  // roleKey → the spool auto-snap PREFERS, ignoring the user's pins: the closest
-  // color today, and (once the THH catalog carries material families in P4) the
-  // closest color that also welds compatibly. The picker badges this so someone
-  // who has pinned a worse-matching filament still sees the recommendation.
-  // Depends only on design + catalog, so a pin doesn't recompute it.
-  const preferredByRole = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const a of materialize(design, catalog).assignments) m.set(a.role.key, a.spoolIndex)
-    return m
-  }, [design, catalog])
   // the legacy FilamentMap the recolor passes color through, derived FROM the plan
   // so overrides flow into the live preview for free. Mirrored to a ref for the
   // mount-once three.js closures (like designRef).
@@ -211,308 +170,6 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
   )
   const filamentMapRef = useRef(filamentMap)
   filamentMapRef.current = filamentMap
-  // the lossy-reduction heads-up shown in print mode: contrast the camera can't
-  // read, a palette that outruns the loaded spools, and a mapping that mixes
-  // material families (the slicer's temp guard refuses mixed plates — gh#163).
-  // The per-role collision detail lives in the filament-mapping panel below.
-  const reductionWarnings = plan.warnings.filter(
-    (w) => w.code === 'marker-contrast' || w.code === 'budget-exceeded' || w.code === 'material-mix'
-  )
-  // override rows, grouped frame → ArUco pair → beads. `activeOverrides` counts
-  // pins that actually took (an ignored, unloaded-spool pin has overridden=false).
-  const orderedAssignments = useMemo(() => {
-    const order = { frame: 0, markerBlack: 1, markerWhite: 2, bead: 3, text: 4 } as const
-    return [...plan.assignments].sort((a, b) => order[a.role.kind] - order[b.role.kind])
-  }, [plan])
-  const activeOverrides = plan.assignments.filter((a) => a.overridden).length
-  // grouped for the panel: beads first (what users actually tweak), then the
-  // welded structure (frame + ArUco markers), which is rarely retargeted.
-  const beadRows = orderedAssignments.filter((a) => a.role.kind === 'bead')
-  const structureRows = orderedAssignments.filter((a) => a.role.kind !== 'bead')
-  // show each spool's material only when it's informative (a mixed-material THH
-  // catalog); the all-PLA params catalog would just print "PLA" on every row.
-  const showMaterial = useMemo(
-    () => new Set(catalog.spools.map((s) => s.material)).size > 1,
-    [catalog]
-  )
-  const [mappingOpen, setMappingOpen] = useState(false)
-  // which role's picker is expanded (at most one — opening a row collapses the
-  // rest). Kept out here rather than per-row so the accordion is single-open by
-  // construction, and an inline expand dodges the click-outside/positioning traps
-  // of a floating popover over the WebGL canvas.
-  const [openRole, setOpenRole] = useState<string | null>(null)
-  const setRoleSpool = (roleKey: string, spoolId: string) =>
-    setOverrides((prev) => {
-      const next = { ...prev }
-      if (spoolId) next[roleKey] = spoolId
-      else delete next[roleKey]
-      return next
-    })
-
-  // One role row: a calm summary line (intended color → the filament it prints on)
-  // that expands in place to a filament picker. Shared by both groups so the two
-  // never drift. A pinned row earns the panel's only accent (cyan rail + ring).
-  const renderMappingRow = (a: RoleAssignment) => {
-    const interactive = catalog.spools.length > 1
-    const assigned = catalog.spools[a.spoolIndex]
-    const preferred = preferredByRole.get(a.role.key)
-    const isOpen = interactive && openRole === a.role.key
-    const rowStyle: CSSProperties = {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 7,
-      width: '100%',
-      padding: '5px 6px',
-      textAlign: 'left',
-      border: 'none',
-      borderLeft: `2px solid ${a.overridden ? 'rgba(103,232,249,0.95)' : 'transparent'}`,
-      borderRadius: 6,
-      background: isOpen ? 'rgba(255,255,255,0.05)' : undefined,
-      color: 'rgba(203,213,225,0.9)',
-      fontSize: 11,
-      cursor: interactive ? 'pointer' : 'default',
-    }
-    const header = (
-      <>
-        <span
-          style={{
-            flex: '1 1 auto',
-            minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {a.role.label}
-        </span>
-        <span
-          title={assigned.hex}
-          style={{
-            width: 16,
-            height: 16,
-            borderRadius: 4,
-            flex: '0 0 auto',
-            background: assigned.hex,
-            border: '1px solid rgba(255,255,255,0.25)',
-            boxShadow: a.overridden
-              ? '0 0 0 1px #111827, 0 0 0 2px rgba(103,232,249,0.95)'
-              : 'none',
-          }}
-        />
-        <span
-          title={showMaterial ? `${assigned.name} · ${assigned.material}` : assigned.name}
-          style={{
-            flex: '0 1 auto',
-            minWidth: 0,
-            maxWidth: 74,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontSize: 10.5,
-            color: 'rgba(148,163,184,0.95)',
-          }}
-        >
-          {assigned.name}
-        </span>
-        {interactive && (
-          <span
-            aria-hidden="true"
-            className="abx-chevron"
-            style={{
-              flex: '0 0 auto',
-              fontSize: 10,
-              color: 'rgba(148,163,184,0.7)',
-              transform: isOpen ? 'rotate(90deg)' : 'none',
-            }}
-          >
-            ▸
-          </span>
-        )}
-      </>
-    )
-    return (
-      <div
-        key={a.role.key}
-        data-element="abacus-studio-mapping-row"
-        data-role={a.role.key}
-        style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}
-      >
-        {interactive ? (
-          <button
-            type="button"
-            className="abx-map-row"
-            data-action="toggle-mapping-row"
-            aria-expanded={isOpen}
-            onClick={() => setOpenRole((prev) => (prev === a.role.key ? null : a.role.key))}
-            style={rowStyle}
-          >
-            {header}
-          </button>
-        ) : (
-          <div style={rowStyle}>{header}</div>
-        )}
-
-        {isOpen && (
-          <div
-            className="abx-reveal"
-            data-element="abacus-studio-role-picker"
-            style={{
-              // float over the rows below instead of pushing them down — opening a
-              // picker must not reflow the panel. Anchored to this (relative) row.
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              right: 0,
-              zIndex: 2,
-              marginTop: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 7,
-              padding: '8px 10px',
-              borderRadius: 8,
-              background: 'rgba(17,24,39,0.98)',
-              border: '1px solid rgba(148,163,184,0.25)',
-              boxShadow: '0 8px 20px rgba(0,0,0,0.45)',
-            }}
-          >
-            {/* the designed (intrinsic) color lives here, on-demand, instead of
-                doubling every resting row — this is what the ✓ is matching to. */}
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span
-                aria-hidden="true"
-                title={`designed ${a.role.intrinsicHex}`}
-                style={{
-                  width: 13,
-                  height: 13,
-                  borderRadius: 3,
-                  flex: '0 0 auto',
-                  background: a.role.intrinsicHex,
-                  border: '1px solid rgba(255,255,255,0.3)',
-                }}
-              />
-              <span
-                style={{
-                  fontSize: 9.5,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: 'rgba(148,163,184,0.75)',
-                }}
-              >
-                Match {a.role.label}
-              </span>
-            </span>
-            <div
-              role="group"
-              aria-label={`filament for ${a.role.label}`}
-              style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
-            >
-              {catalog.spools.map((s, idx) => {
-                const isAssigned = idx === a.spoolIndex
-                const isPreferred = idx === preferred
-                const ring = a.overridden ? 'rgba(103,232,249,0.95)' : 'rgba(226,232,240,0.9)'
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className="abx-swatch"
-                    data-action="override-role-spool"
-                    aria-label={`${a.role.label} uses ${s.name}${showMaterial ? ` ${s.material}` : ''} ${s.hex}${isPreferred ? ' (best match)' : ''}`}
-                    aria-pressed={isAssigned}
-                    title={`${showMaterial ? `${s.name} · ${s.material} · ${s.hex}` : `${s.name} · ${s.hex}`}${isPreferred ? ' · best match' : ''}`}
-                    onClick={() => setRoleSpool(a.role.key, s.id)}
-                    style={{
-                      position: 'relative',
-                      width: 22,
-                      height: 22,
-                      borderRadius: 5,
-                      flex: '0 0 auto',
-                      padding: 0,
-                      background: s.hex,
-                      border: '1px solid rgba(255,255,255,0.25)',
-                      cursor: 'pointer',
-                      boxShadow: isAssigned ? `0 0 0 2px #111827, 0 0 0 4px ${ring}` : 'none',
-                    }}
-                  >
-                    {isPreferred && (
-                      <span
-                        aria-hidden="true"
-                        style={{
-                          position: 'absolute',
-                          top: -5,
-                          right: -5,
-                          width: 13,
-                          height: 13,
-                          borderRadius: '50%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: 'rgba(17,24,39,0.95)',
-                          border: '1px solid rgba(226,232,240,0.8)',
-                          color: 'rgba(226,232,240,0.95)',
-                          fontSize: 8,
-                          lineHeight: 1,
-                        }}
-                      >
-                        ✓
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                fontSize: 9.5,
-                color: 'rgba(148,163,184,0.7)',
-              }}
-            >
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: '50%',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flex: '0 0 auto',
-                  background: 'rgba(17,24,39,0.95)',
-                  border: '1px solid rgba(226,232,240,0.8)',
-                  color: 'rgba(226,232,240,0.95)',
-                  fontSize: 8,
-                }}
-              >
-                ✓
-              </span>
-              best match — closest color{showMaterial ? ' & compatible material' : ''}
-            </span>
-            {a.overridden && (
-              <button
-                type="button"
-                data-action="clear-role-override"
-                onClick={() => setRoleSpool(a.role.key, '')}
-                style={{
-                  alignSelf: 'flex-start',
-                  padding: '2px 8px',
-                  borderRadius: 5,
-                  border: '1px solid rgba(148,163,184,0.5)',
-                  background: 'transparent',
-                  color: 'rgba(226,232,240,0.95)',
-                  fontSize: 10,
-                  cursor: 'pointer',
-                }}
-              >
-                ↺ Back to auto
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
   const [status, setStatus] = useState<StatusUpdate>({ text: 'booting…' })
   const [meta, setMeta] = useState<{ ms?: number; tris?: number }>({})
   const mountRef = useRef<HTMLDivElement | null>(null)
@@ -1172,165 +829,12 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
           </div>
 
           {viewMode === 'print' && (
-            <div
-              data-element="abacus-studio-print-preview"
-              style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span
-                  style={{
-                    fontSize: 10,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    color: 'rgba(148,163,184,0.9)',
-                  }}
-                >
-                  {catalog.spools.length} filament{catalog.spools.length === 1 ? '' : 's'} loaded
-                </span>
-                <div
-                  data-element="abacus-studio-filament-legend"
-                  style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}
-                >
-                  {catalog.spools.map((s) => (
-                    <span
-                      key={s.id}
-                      title={
-                        showMaterial
-                          ? `${s.name} · ${s.material} · ${s.hex}`
-                          : `${s.name} · ${s.hex}`
-                      }
-                      style={{
-                        width: 16,
-                        height: 16,
-                        borderRadius: 4,
-                        background: s.hex,
-                        border: '1px solid rgba(255,255,255,0.25)',
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {reductionWarnings.length > 0 && (
-                <div
-                  data-element="abacus-studio-plan-warnings"
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 4,
-                    padding: '8px 10px',
-                    borderRadius: 8,
-                    background: 'rgba(120,53,15,0.30)',
-                    border: '1px solid rgba(251,191,36,0.45)',
-                    color: 'rgba(254,243,199,0.96)',
-                    fontSize: 11,
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {reductionWarnings.map((w) => (
-                    <div key={w.code}>{w.message}</div>
-                  ))}
-                </div>
-              )}
-
-              {/* manual override — pin any role to a specific loaded filament.
-                  Auto-snap picks by nearest color; this is the escape hatch. A
-                  pick that mixes material families lights the warning strip above
-                  (material-mix, gh#163); constraining auto-snap itself at the
-                  welds (material-interface) remains P4. */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <button
-                  type="button"
-                  data-action="toggle-filament-mapping"
-                  aria-expanded={mappingOpen}
-                  onClick={() => setMappingOpen((v) => !v)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '4px 2px',
-                    border: 'none',
-                    background: 'transparent',
-                    color: 'rgba(203,213,225,0.9)',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <span>
-                    Filament mapping
-                    {activeOverrides > 0 && (
-                      <span style={{ marginLeft: 6, color: 'rgba(103,232,249,0.95)' }}>
-                        · {activeOverrides} pinned
-                      </span>
-                    )}
-                  </span>
-                  <span aria-hidden="true">{mappingOpen ? '▾' : '▸'}</span>
-                </button>
-
-                {mappingOpen && (
-                  <div
-                    data-element="abacus-studio-filament-mapping"
-                    style={{ display: 'flex', flexDirection: 'column', gap: 2 }}
-                  >
-                    <style>{MAPPING_CSS}</style>
-
-                    {catalog.spools.length === 1 && (
-                      <div
-                        style={{
-                          fontSize: 10.5,
-                          lineHeight: 1.4,
-                          color: 'rgba(148,163,184,0.85)',
-                          padding: '0 6px 4px',
-                        }}
-                      >
-                        One filament loaded — load more to remap roles.
-                      </div>
-                    )}
-
-                    {beadRows.length > 0 && (
-                      <>
-                        <div
-                          data-element="abacus-studio-mapping-group"
-                          data-group="beads"
-                          style={GROUP_LABEL}
-                        >
-                          Beads
-                        </div>
-                        {beadRows.map(renderMappingRow)}
-                      </>
-                    )}
-
-                    {structureRows.length > 0 && (
-                      <>
-                        <div
-                          data-element="abacus-studio-mapping-group"
-                          data-group="structure"
-                          style={{ ...GROUP_LABEL, color: 'rgba(148,163,184,0.7)' }}
-                        >
-                          Structure{' '}
-                          <span style={{ fontWeight: 400, color: 'rgba(148,163,184,0.5)' }}>
-                            · rarely changed
-                          </span>
-                        </div>
-                        {structureRows.map(renderMappingRow)}
-                      </>
-                    )}
-
-                    {activeOverrides > 0 && (
-                      <button
-                        type="button"
-                        data-action="clear-all-overrides"
-                        onClick={() => setOverrides({})}
-                        style={{ ...RESET_BTN, alignSelf: 'flex-start', marginTop: 4 }}
-                      >
-                        ↺ Reset all to auto
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+            <FilamentPlanPanel
+              design={design}
+              catalog={catalog}
+              overrides={overrides}
+              onOverridesChange={setOverrides}
+            />
           )}
         </div>
 

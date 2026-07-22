@@ -134,12 +134,12 @@ describe('materialize — warnings', () => {
   })
 })
 
-describe('materialize — material-mix (gh#163)', () => {
-  // heaven-earth = the smallest scheme whose bead colors are distinct from the
-  // marker/frame anchors (monochrome's bead is intrinsically #000000 and would
-  // collide with the ArUco black spool). Five roles: marker pair, frame, heaven,
-  // earth. Every catalog below loads an EXACT-match spool per role so
-  // auto-snap's landing spots are fixed by construction.
+// Shared fixtures for the material suites: heaven-earth = the smallest scheme
+// whose bead colors are distinct from the marker/frame anchors (monochrome's
+// bead is intrinsically #000000 and would collide with the ArUco black spool).
+// Five roles: marker pair, frame, heaven, earth. Catalogs load an EXACT-match
+// spool per role so auto-snap's landing spots are fixed by construction.
+const materialFixtures = () => {
   const p = paramsFor('heaven-earth', 'default', 8)
   const design = toAbacusDesign(p, '')
   const [heavenHex, earthHex] = beadRoleColors(p.color_scheme, p.color_palette)
@@ -154,12 +154,16 @@ describe('materialize — material-mix (gh#163)', () => {
     fetchedAt: '2026-07-16T00:00:00Z',
     spools,
   })
-  const mixOf = (catalog: FilamentCatalog, overrides?: Record<string, string>) =>
-    materialize(design, catalog, { overrides }).warnings.find((w) => w.code === 'material-mix')
+  return { p, design, heavenHex, earthHex, spool, thh }
+}
 
-  it('warns when auto-snap lands a bead on the odd-family spool (the real prod failure)', () => {
+describe('materialize — material-aware auto-snap (gh#163: the pit of success)', () => {
+  const { design, heavenHex, earthHex, spool, thh } = materialFixtures()
+
+  it('keeps every role inside one anchor group — the prod failure cannot happen by default', () => {
     // four PLAs + the one PETG the heaven bead color chases — the exact shape
-    // that slipped through to Orca's temp guard in prod.
+    // that slipped through to Orca's temp guard in prod. Color-blind snapping
+    // would land heaven on the PETG; the anchor restriction must not.
     const result = materialize(
       design,
       thh([
@@ -170,35 +174,110 @@ describe('materialize — material-mix (gh#163)', () => {
         spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
       ])
     )
+    expect(result.anchorGroup).toBe('PLA')
+    expect(result.warnings.find((w) => w.code === 'material-mix')).toBeUndefined()
+    const heaven = result.assignments.find((a) => a.role.key === 'bead-0')
+    expect(heaven?.spoolId).not.toBe('s-petg') // stays in-group, at a color cost
+    expect(result.assignments.find((a) => a.spoolId === 's-petg')).toBeUndefined()
+    expect(result.assignments.every((a) => !a.overridden)).toBe(true)
+  })
+
+  it('never auto-assigns breakaway support media, even on an exact color match', () => {
+    // the support spool is EXACTLY ArUco black; the honest PLA is slightly off.
+    const result = materialize(
+      design,
+      thh([
+        spool('s-sup', 'Bambu Support for PLA', '#000000', 'PLA-S'),
+        spool('s-black', 'Matte Black', '#101010', 'PLA'),
+        spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+        spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+        spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
+        spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
+      ])
+    )
+    const black = result.assignments.find((a) => a.role.key === 'marker-black')
+    expect(black?.spoolId).toBe('s-black')
+    expect(result.warnings.find((w) => w.code === 'support-material')).toBeUndefined()
+    // PLA-S rides the PLA temperature window, so the anchor is still plain PLA
+    expect(result.anchorGroup).toBe('PLA')
+  })
+
+  it('claims no anchor for the params catalog (fabricated families) and one for THH', () => {
+    const p = paramsFor('heaven-earth', 'default', 8)
+    expect(materialize(design, catalogFromParams(p)).anchorGroup).toBeUndefined()
+    expect(
+      materialize(design, thh([spool('s-white', 'Matte White', '#ffffff', 'PLA')])).anchorGroup
+    ).toBe('PLA')
+  })
+})
+
+describe('materialize — material warnings answer pins (gh#163)', () => {
+  const { design, heavenHex, earthHex, spool, thh } = materialFixtures()
+  const warnOf = (code: string, catalog: FilamentCatalog, overrides?: Record<string, string>) =>
+    materialize(design, catalog, { overrides }).warnings.find((w) => w.code === code)
+
+  // all-PLA auto-snap with odd-family spools loaded but unmapped: harmless
+  // until the user pins onto them.
+  const catalog = thh([
+    spool('s-black', 'Matte Black', '#000000', 'PLA'),
+    spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+    spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+    spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
+    spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
+    spool('s-petg', 'Bambu PETG Basic', '#ff00ff', 'PETG'),
+    spool('s-sup', 'Bambu Support for PLA', '#fefefe', 'PLA-S'),
+  ])
+
+  it('material-mix: fires only once a pin crosses temperature groups, and only counts USED spools', () => {
+    expect(warnOf('material-mix', catalog)).toBeUndefined()
+    const result = materialize(design, catalog, { overrides: { 'bead-0': 's-petg' } })
     const w = result.warnings.find((x) => x.code === 'material-mix')
     expect(w).toBeDefined()
     expect(w?.severity).toBe('warning')
     expect(result.ok).toBe(true) // heuristic, never a block — the slicer stays the authority
     // names the odd-one-out pick, not the majority
     expect(w?.roleKeys).toEqual(['bead-0'])
-    expect(w?.message).toContain('PLA and PETG')
-    expect(w?.message).toContain('heaven prints on Bambu PETG Basic (PETG)')
+    expect(w?.message).toContain('heaven is on Bambu PETG Basic (PETG)')
+    expect(w?.message).toContain('the rest of this plate prints at PLA temperatures')
+    expect(w?.message).toContain('Move it onto PLA')
   })
 
-  it('warns when the mix is created by an override pin, and only counts USED spools', () => {
-    // all-PLA auto-snap with a PETG loaded but unmapped: harmless until pinned.
-    const catalog = thh([
-      spool('s-black', 'Matte Black', '#000000', 'PLA'),
-      spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-      spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
-      spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
-      spool('s-petg', 'Bambu PETG Basic', '#ff00ff', 'PETG'),
-    ])
-    expect(mixOf(catalog)).toBeUndefined()
-    const pinned = mixOf(catalog, { 'bead-0': 's-petg' })
-    expect(pinned).toBeDefined()
-    expect(pinned?.roleKeys).toEqual(['bead-0'])
+  it('material-mix: a PLA-S pin is NOT a temperature mix (support rides the PLA window)', () => {
+    expect(warnOf('material-mix', catalog, { 'marker-white': 's-sup' })).toBeUndefined()
+  })
+
+  it('support-material: fires when a visible role is pinned onto breakaway support', () => {
+    const w = warnOf('support-material', catalog, { 'marker-white': 's-sup' })
+    expect(w).toBeDefined()
+    expect(w?.roleKeys).toEqual(['marker-white'])
+    expect(w?.message).toContain('ArUco white is on Bambu Support for PLA (PLA-S)')
+    expect(w?.message).toContain('breakaway support filament')
+    // the weld rule does not double-report the support member
+    expect(warnOf('material-interface', catalog, { 'marker-white': 's-sup' })).toBeUndefined()
+  })
+
+  it('material-interface: a pin that splits the welded frame/marker piece warns about delamination', () => {
+    const overrides = { frame: 's-petg' }
+    const weld = warnOf('material-interface', catalog, overrides)
+    expect(weld).toBeDefined()
+    expect(weld?.severity).toBe('warning')
+    expect(weld?.roleKeys).toEqual(['frame'])
+    expect(weld?.message).toContain('Frame is on PETG while the rest is PLA')
+    expect(weld?.message).toContain('delaminate')
+    // the temperature warning fires too — different consequence, same fix
+    expect(warnOf('material-mix', catalog, overrides)?.roleKeys).toEqual(['frame'])
+  })
+
+  it('marker-contrast: tracks the FINAL pair, so pinning a marker dark kills the warning-free state', () => {
+    expect(warnOf('marker-contrast', catalog)).toBeUndefined()
+    const w = warnOf('marker-contrast', catalog, { 'marker-white': 's-black' })
+    expect(w).toBeDefined()
   })
 
   it('stays silent when every used spool shares one family', () => {
     expect(
-      mixOf(
+      warnOf(
+        'material-mix',
         thh([
           spool('s-black', 'Matte Black', '#000000', 'PLA'),
           spool('s-white', 'Matte White', '#ffffff', 'PLA'),
@@ -213,7 +292,7 @@ describe('materialize — material-mix (gh#163)', () => {
   it('stays inert on the manual-params catalog (fabricated families never warn)', () => {
     // same mixed spools, but the source gate must win — the params catalog's
     // families are made up, so warning on them would be a lie.
-    const catalog: FilamentCatalog = {
+    const manual: FilamentCatalog = {
       source: 'manual-params',
       spools: [
         spool('s-black', 'Matte Black', '#000000', 'PLA'),
@@ -223,26 +302,29 @@ describe('materialize — material-mix (gh#163)', () => {
         spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
       ],
     }
-    expect(mixOf(catalog)).toBeUndefined()
+    expect(warnOf('material-mix', manual)).toBeUndefined()
+    expect(warnOf('support-material', manual)).toBeUndefined()
+    expect(warnOf('material-interface', manual)).toBeUndefined()
   })
 
-  it('names every group when no family holds a majority (a tie has no odd one out)', () => {
-    // markers on PLA, frame + heaven on PETG, earth on TPU → 2 / 2 / 1.
-    const w = mixOf(
-      thh([
-        spool('s-black', 'Matte Black', '#000000', 'PLA'),
-        spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-        spool('s-frame', 'PETG Oak', defaultParams.frame_color, 'PETG'),
-        spool('s-heaven', 'Bambu PETG Basic', heavenHex, 'PETG'),
-        spool('s-earth', 'Flex Blue', earthHex, 'TPU'),
-      ])
-    )
+  it('names every group when pins leave no majority (a tie has no odd one out)', () => {
+    // pins split the plate PLA / PETG / TPU with no winner: markers stay PLA,
+    // frame + heaven pinned PETG, earth pinned TPU → 2 / 2 / 1.
+    const tied = thh([
+      spool('s-black', 'Matte Black', '#000000', 'PLA'),
+      spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+      spool('s-frame', 'PETG Oak', defaultParams.frame_color, 'PETG'),
+      spool('s-heaven', 'Bambu PETG Basic', heavenHex, 'PETG'),
+      spool('s-earth', 'Flex Blue', earthHex, 'TPU'),
+    ])
+    const w = warnOf('material-mix', tied, {
+      frame: 's-frame',
+      'bead-0': 's-heaven',
+      'bead-1': 's-earth',
+    })
     expect(w).toBeDefined()
     expect(w?.roleKeys).toEqual(['marker-black', 'marker-white', 'frame', 'bead-0', 'bead-1'])
-    expect(w?.message).toContain('PLA, PETG, and TPU')
-    expect(w?.message).toContain('ArUco black prints on Matte Black (PLA)')
-    expect(w?.message).toContain('Frame prints on PETG Oak (PETG)')
-    expect(w?.message).toContain('earth prints on Flex Blue (TPU)')
+    expect(w?.message).toContain('This plate splits across PLA, PETG, and TPU temperatures')
   })
 })
 

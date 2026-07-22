@@ -27,6 +27,31 @@ import type { Params } from './abacus-model'
 // enumerate yet without a type break.
 export type FilamentMaterial = 'PLA' | 'PETG' | 'TPU' | 'ABS' | 'ASA' | (string & {})
 
+// ---- family knowledge -------------------------------------------------------
+// Two orthogonal facts about a family string, both deliberately approximate:
+// the THH wire carries `family` only (no nozzle temps), and the slicer stays
+// the final authority on what actually prints together.
+
+// Support families are engineered to bond WEAKLY (that's how they break away)
+// and print chalky — never a sensible pick for a visible role. Bambu reports
+// them as the base family + "-S" (PLA-S, PA-S); PVA and HIPS are the classic
+// dissolvable/breakaway supports.
+export function isSupportMaterial(material: FilamentMaterial): boolean {
+  const m = material.toUpperCase()
+  return m.endsWith('-S') || m === 'PVA' || m === 'HIPS'
+}
+
+// Co-print group: families that share a plate temperature window. Support-for-X
+// and filled variants (X-CF/GF/HF) print alongside X by design; ASA and HIPS
+// ride with ABS; PVA rides with PLA. An unknown family forms its own group —
+// compatibility is never assumed.
+export function coPrintGroup(material: FilamentMaterial): string {
+  const base = material.toUpperCase().replace(/-(S|CF|GF|HF)$/, '')
+  if (base === 'ASA' || base === 'HIPS') return 'ABS'
+  if (base === 'PVA') return 'PLA'
+  return base
+}
+
 export type FilamentSpool = {
   id: string // stable within a catalog; the plan references spools by this
   name: string
