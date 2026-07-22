@@ -584,7 +584,15 @@ resource "kubernetes_deployment" "gitea" {
               cpu    = "100m"
             }
             limits = {
-              memory = "512Mi"
+              # 512Mi OOMKilled gitea's built-in OCI registry on THH's blob-commit
+              # (flaky 1-in-4 at the ceiling). The unreclaimable spike is the NFS
+              # dirty-page burst while committing the pushed layer to the RWX PVC
+              # (same failure class as the standalone registry, now 2Gi). The LAN
+              # hairpin fix made the burst faster/larger, which tipped it over.
+              # 1Gi validated against the real worst case: organic THH push #293
+              # (57-min build, largest layer) rode the ceiling with oom_kill=0,
+              # restartCount=0. request stays 256Mi so scheduling is unchanged.
+              memory = "1Gi"
               cpu    = "1000m"
             }
           }
