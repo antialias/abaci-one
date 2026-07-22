@@ -42,6 +42,25 @@ const config: StorybookConfig = {
         '../styled-system/patterns': join(__dirname, '../styled-system/patterns/index.mjs'),
       }
     }
+
+    // @tidepool/debug-panel ships raw TypeScript (its `main`/`exports` resolve to
+    // src/index.ts with no build step). next.config's transpilePackages covers it
+    // for `next build`, but @storybook/nextjs's webpack does not, so its
+    // `export type { … }` reaches webpack unparsed and breaks the preview build.
+    // Transpile just this package's source with the already-installed
+    // babel-loader + next/babel preset.
+    const debugPanelSrc = dirname(require.resolve('@tidepool/debug-panel'))
+    config.module?.rules?.push({
+      test: /\.(ts|tsx)$/,
+      include: [debugPanelSrc],
+      use: [
+        {
+          loader: require.resolve('babel-loader'),
+          options: { presets: [require.resolve('next/babel')] },
+        },
+      ],
+    })
+
     return config
   },
 }

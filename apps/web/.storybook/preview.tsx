@@ -1,11 +1,11 @@
 import { AbacusDisplayProvider } from '@soroban/abacus-react'
 import type { Preview } from '@storybook/nextjs'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { DeploymentInfoProvider } from '@tidepool/debug-panel'
 import { SessionProvider } from 'next-auth/react'
 import { NextIntlClientProvider } from 'next-intl'
 import { ToastProvider } from '../src/components/common/ToastContext'
 import { AudioManagerProvider } from '../src/contexts/AudioManagerContext'
-import { DeploymentInfoProvider } from '../src/contexts/DeploymentInfoContext'
 import { FullscreenProvider } from '../src/contexts/FullscreenContext'
 import { HomeHeroProvider } from '../src/contexts/HomeHeroContext'
 import { LocaleProvider } from '../src/contexts/LocaleContext'
@@ -46,6 +46,13 @@ const messages = {
  */
 const preview: Preview = {
   parameters: {
+    // This app is entirely Next app-router; global providers (e.g.
+    // PageTransitionProvider) call useRouter from 'next/navigation'. Without
+    // this, @storybook/nextjs assumes pages-router and those hooks throw
+    // NextjsRouterMocksNotAvailable, breaking every story at render.
+    nextjs: {
+      appDirectory: true,
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,
