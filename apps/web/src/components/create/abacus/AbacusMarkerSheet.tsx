@@ -60,7 +60,8 @@ export interface AbacusMarkerSheetProps {
 
 /**
  * Printable ArUco corner markers for turning an existing abacus into a
- * camera-trackable one. PDF for paper printing, SVGs for laser/inlay use.
+ * camera-trackable one. A PDF for paper printing, plus per-marker vector (SVG)
+ * downloads for anyone who wants a crisp, scalable copy of a single marker.
  *
  * The markers are the pure black/white fiducial channel of the shared design —
  * printed as ink, never mapped onto filaments the way the FDM realizer maps the
@@ -204,7 +205,7 @@ export function AbacusMarkerSheet({
     [markerSize, svgToDataUrl]
   )
 
-  // Individual marker SVG (for laser engraving / inlays)
+  // Individual marker as a crisp vector (SVG) — scales to any size
   const handleDownloadMarkerSVG = useCallback(
     (markerId: number) => {
       const svg = generateMarkerSVG(markerId, markerSize * 10) // 10× for good resolution
@@ -471,7 +472,7 @@ export function AbacusMarkerSheet({
         </ul>
       </div>
 
-      {/* Advanced: vector files for laser / inlay (tucked away) */}
+      {/* Advanced: per-marker vector (SVG) downloads (tucked away) */}
       <div
         data-element="marker-advanced"
         className={css({
@@ -502,7 +503,7 @@ export function AbacusMarkerSheet({
             color: 'text.primary',
           })}
         >
-          <span>Vector files for laser cutting / inlays</span>
+          <span>Individual vector files (SVG)</span>
           <span aria-hidden="true" className={css({ color: 'text.secondary' })}>
             {advancedOpen ? '▾' : '▸'}
           </span>

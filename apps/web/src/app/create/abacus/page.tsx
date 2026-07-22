@@ -22,6 +22,7 @@ import {
 import { intentOf } from '@/components/create/abacus/abacus-fabrication'
 import { DesignInspectorRail } from '@/components/create/abacus/DesignInspectorRail'
 import { FabricationRail } from '@/components/create/abacus/FabricationRail'
+import { FabricationSwitch } from '@/components/create/abacus/FabricationSwitch'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StudioShell } from '@/components/studio/StudioShell'
 import { usePlayerAbacusIdentity } from '@/hooks/usePlayerAbacusIdentity'
@@ -99,14 +100,16 @@ interface StudioBodyProps {
 }
 
 // Inside the provider, so the shell's center/right can switch on the shared
-// design's fabrication axis. The left rail owns the chooser (the old 2-card
-// fork, now a first-class output axis); the shell swaps outputs accordingly.
-// Only the 3D-print target mounts the heavy three.js viewer + fabrication rail.
+// design's fabrication axis. The headline chooser (paper ↔ 3D print) rides in the
+// shell's persistent top toolbar so it reads on every breakpoint; the shell swaps
+// the center output (and the FDM-only fabrication rail) accordingly. Only the
+// 3D-print target mounts the heavy three.js viewer + fabrication rail.
 function StudioBody({ selectedPlayerId, onSelectPlayer, playerUnavailable }: StudioBodyProps) {
   const { fabrication } = useAbacusStudio()
   const isFdm = fabrication.kind === 'fdm'
   return (
     <StudioShell
+      toolbar={<FabricationSwitch />}
       left={
         <DesignInspectorRail
           selectedPlayerId={selectedPlayerId}

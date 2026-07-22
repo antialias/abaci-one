@@ -12,11 +12,11 @@ const params = (over: Partial<Params> = {}): Params => ({ ...defaultParams, ...o
 const design = (over: Partial<Params> = {}) => toAbacusDesign(params(over), 'common')
 
 describe('fabrication axis', () => {
-  it('defaults to paper — the express, no-3D lane', () => {
-    expect(DEFAULT_FABRICATION.kind).toBe<FabricationKind>('paper')
+  it('defaults to fdm — the studio leads with the 3D print (paper is one tap away)', () => {
+    expect(DEFAULT_FABRICATION.kind).toBe<FabricationKind>('fdm')
   })
 
-  it('offers exactly paper + fdm, each with a label and icon (laser is not a target)', () => {
+  it('offers exactly paper + fdm, each with a label and icon', () => {
     expect(FABRICATION_OPTIONS.map((o) => o.kind)).toEqual(['paper', 'fdm'])
     for (const o of FABRICATION_OPTIONS) {
       expect(o.label.length).toBeGreaterThan(0)

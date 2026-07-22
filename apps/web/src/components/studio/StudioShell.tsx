@@ -28,6 +28,13 @@ export interface StudioShellProps {
   center: ReactNode
   /** null on the paper/express lane → no fabrication rail is mounted */
   right?: ReactNode | null
+  /**
+   * Persistent bar pinned above the center on EVERY breakpoint — the studio's
+   * headline control (the fabrication switch). Kept out of the rails so it never
+   * hides in the mobile drawer; sits directly over the canvas as the "what am I
+   * making?" header.
+   */
+  toolbar?: ReactNode | null
   autoSaveId?: string
 }
 
@@ -38,6 +45,10 @@ const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
 // floating button. (Its counterpart on the worksheets layout is a draggable,
 // summary-bearing FAB coupled to that feature; the studio's is deliberately
 // plain — one tap to the same rails the desktop docks.)
+//
+// Anchored bottom-LEFT on purpose: the global MyAbacus dock is fixed bottom-right
+// (z-102), so a right-anchored FAB collides with it. Left also matches the drawer
+// it opens, which slides in from the left — the control lives at its own origin.
 function StudioRailFab({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -48,7 +59,7 @@ function StudioRailFab({ onClick }: { onClick: () => void }) {
       aria-label="Open design controls"
       className={css({
         position: 'fixed',
-        right: '16px',
+        left: '16px',
         bottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
         zIndex: 30,
         display: 'flex',
@@ -114,10 +125,25 @@ function StudioResizeHandle() {
   )
 }
 
+// The persistent header bar that hosts the toolbar slot, above the canvas on
+// both layouts. Centered so a capped-width control (the fabrication switch)
+// reads as a deliberate header rather than a stretched strip.
+const toolbarBar = css({
+  flexShrink: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  px: '12px',
+  py: '10px',
+  bg: '#0b0f14',
+  borderBottom: '1px solid rgba(148,163,184,0.14)',
+})
+
 export function StudioShell({
   left,
   center,
   right = null,
+  toolbar = null,
   autoSaveId = 'abacus-studio-layout',
 }: StudioShellProps) {
   const isMobile = useIsMobile()
@@ -135,9 +161,24 @@ export function StudioShell({
       <div
         data-component="studio-shell"
         data-mobile="true"
-        className={css({ position: 'relative', h: 'full', minHeight: 0 })}
+        className={css({
+          position: 'relative',
+          h: 'full',
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: 'column',
+        })}
       >
-        <div data-element="studio-canvas-slot" className={css({ position: 'absolute', inset: 0 })}>
+        {toolbar != null && (
+          <div data-element="studio-toolbar" className={toolbarBar}>
+            {toolbar}
+          </div>
+        )}
+
+        <div
+          data-element="studio-canvas-slot"
+          className={css({ position: 'relative', flex: 1, minHeight: 0 })}
+        >
           {center}
         </div>
 
@@ -182,10 +223,24 @@ export function StudioShell({
 
         <Panel id="center" order={2} minSize={38}>
           <div
-            data-element="studio-canvas-slot"
-            className={css({ h: 'full', position: 'relative' })}
+            className={css({
+              h: 'full',
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+            })}
           >
-            {center}
+            {toolbar != null && (
+              <div data-element="studio-toolbar" className={toolbarBar}>
+                {toolbar}
+              </div>
+            )}
+            <div
+              data-element="studio-canvas-slot"
+              className={css({ flex: 1, minHeight: 0, position: 'relative' })}
+            >
+              {center}
+            </div>
           </div>
         </Panel>
 

@@ -3,7 +3,7 @@
 // Disclosure — a self-contained "Customize ▸/▾" collapsible for the dark studio
 // rails (Gitea epic #5, full-bleed CP1a). Factored from the viewer's inline
 // Customize toggle so the same primitive tucks away the design sliders, the print
-// settings editor, and the marker sheet's "advanced" (laser SVG) section behind
+// settings editor, and the marker sheet's "advanced" (vector SVG) section behind
 // progressive disclosure. Owns its own open state; inline-styled to match the
 // surrounding dark panels.
 

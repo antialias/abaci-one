@@ -1,20 +1,21 @@
 'use client'
 
 // DesignInspectorRail — the studio's LEFT docked rail (Gitea epic #5, full-bleed
-// CP1a). "What am I making, and for whom" lives here, fabrication-neutral:
+// CP1a). "For whom, and the design details" live here, fabrication-neutral:
 //   • a live 2D mini-preview of the current design (tracks every edit),
 //   • the player picker + owner/identity chips (the shared identity both outputs
 //     make real),
 //   • the sync/save/reset controls (lifted out of the viewer overlay), and
-//   • the fabrication-target chooser — the replacement for the old 2-card fork.
 //   • the Customize disclosure (design sliders/selects).
-// It reads the shared studio store; the page owns only the ?player= URL, so it
-// passes the picker's selection + the target axis down.
+// The headline fabrication chooser (paper ↔ 3D print) does NOT live here anymore —
+// it was promoted to the shell's persistent top toolbar (FabricationSwitch) so it
+// reads on every breakpoint instead of hiding in the mobile drawer. This rail
+// reads the shared studio store; the page owns only the ?player= URL, so it
+// passes the picker's selection down.
 
 import { AbacusReact } from '@soroban/abacus-react'
 import { PlayerPicker } from '@/components/shared/PlayerPicker'
 import { Disclosure } from '@/components/studio/Disclosure'
-import { SegmentedControl } from '@/components/studio/SegmentedControl'
 import { StudioSelect } from '@/components/studio/StudioSelect'
 import { DebugCheckbox, DebugSlider } from '@/components/toys/ToyDebugPanel'
 import {
@@ -24,7 +25,6 @@ import {
   type AbacusColorScheme,
 } from '@/lib/abacus/identity'
 import { useAbacusStudio } from './AbacusStudioContext'
-import { FABRICATION_OPTIONS, type FabricationKind } from './abacus-fabrication'
 import { PRESET_OPTS } from './abacus-model'
 
 const SCHEME_LABEL: Record<string, string> = {
@@ -60,8 +60,6 @@ export function DesignInspectorRail({
     saveAsPlayerAbacus,
     saveIsPending,
     saveIsError,
-    fabrication,
-    setFabricationKind,
   } = useAbacusStudio()
 
   const ownerLabel = playerUnavailable
@@ -222,33 +220,8 @@ export function DesignInspectorRail({
         )}
       </div>
 
-      {/* the fork, promoted to a first-class output axis of one shared design */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            color: 'rgba(148,163,184,0.95)',
-          }}
-        >
-          Make it as
-        </span>
-        <SegmentedControl<FabricationKind>
-          ariaLabel="How to make your abacus"
-          size="md"
-          options={FABRICATION_OPTIONS.map((o) => ({
-            value: o.kind,
-            label: o.label,
-            icon: o.icon,
-          }))}
-          value={fabrication.kind}
-          onChange={setFabricationKind}
-          dataElement="abacus-target-chooser"
-          dataAction="choose-abacus-path"
-        />
-      </div>
+      {/* the fabrication chooser (paper ↔ 3D print) now lives in the shell's
+          persistent top toolbar (FabricationSwitch), not here */}
 
       {/* design knobs, tucked behind progressive disclosure */}
       <Disclosure label="Customize" dataElement="abacus-studio-customize">

@@ -16,18 +16,22 @@
 import type { AbacusDesign, ResolvedColors } from './abacus-design'
 
 // The output axis. 'paper' = stick-on ArUco corner markers for an abacus you
-// already own — the express default, loads none of the 3D stack. 'fdm' = a
-// printed frame with the markers baked in. (laser = an SVG export, not a
-// fabrication target, so it is deliberately absent.)
+// already own — the express lane, loads none of the 3D stack. 'fdm' = a printed
+// frame with the markers baked in. These two are the whole axis.
 export type FabricationKind = 'paper' | 'fdm'
 
 export interface FabricationTarget {
   kind: FabricationKind
 }
 
-// Paper is the default: it fits the far larger no-3D-printer audience, and the
-// express lane it drives never mounts three.js.
-export const DEFAULT_FABRICATION: FabricationTarget = { kind: 'paper' }
+// 3D print is the default: the studio leads with its most compelling output — a
+// spinnable printed frame — rather than opening on the utilitarian marker sheet.
+// This is a deliberate product trade: the no-3D-printer majority now pays the
+// three.js/OpenSCAD download on first paint, in exchange for the exciting path
+// being the star instead of hidden behind a control. Paper stays one tap away
+// and, when selected, still mounts none of the 3D stack (the express lane and
+// its code-split are unchanged — see the express-lane-isolation guard).
+export const DEFAULT_FABRICATION: FabricationTarget = { kind: 'fdm' }
 
 // One source of truth for the axis chooser's presentation, so the label/icon
 // can't fork across the surfaces that render it (left rail today, more later).
