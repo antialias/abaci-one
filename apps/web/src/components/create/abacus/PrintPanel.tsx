@@ -26,6 +26,7 @@ import { PrintSettingsEditor } from '@eink/print-dialog/ui'
 import '@eink/print-dialog/ui/style.css'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useAbacusPrintJobs, useCancelPrintJob, useStartPrintJob } from '@/hooks/useAbacusPrintJobs'
 import { useAbacusPrintSettings, useSaveAbacusPrintSettings } from '@/hooks/useAbacusPrintSettings'
 import { usePrintJobRing } from '@/hooks/usePrintJobRing'
 import { useUserId } from '@/hooks/useUserId'
@@ -37,14 +38,26 @@ import { buildAbacusThreeMf } from './abacus-3mf'
 import type { FilamentCatalog } from './abacus-catalog'
 import type { FilamentMap, Params } from './abacus-model'
 import { buildAbacusTicket } from './abacus-ticket'
+import { ParkedJobCard } from './ParkedJobCard'
 import { PairPrinterPrompt } from './PrintConnectionsManager'
 import { PrintSubmitErrorNotice } from './PrintSubmitErrorNotice'
-import { normalizeJobs } from './print-jobs'
-import { describeSubmitFailure, type SubmitFailure } from './print-submit-failure'
+import {
+  abacusPrintSignature,
+  type IdempotencyToken,
+  resolveIdempotencyKey,
+} from './print-idempotency'
+import { isParked } from './print-jobs'
+import { PrintServiceError, type SubmitFailure } from './print-submit-failure'
 
 export interface PrintPanelProps {
   /** Rendered but hidden when false — internal state (style edits) survives. */
   visible: boolean
+  /**
+   * Docked in a normal-flow rail (studio full-bleed CP1a) rather than floated
+   * over the canvas. Switches the root from absolute/top-right to static/full-
+   * width; the `visible` display-toggle (single mount) is unchanged.
+   */
+  embedded?: boolean
   params: Params
   filamentMap: FilamentMap
   catalog: FilamentCatalog
@@ -77,19 +90,6 @@ const UNAVAILABLE_COPY: Record<PrintUnavailableReason, string> = {
   'no-printer': 'The print service has no printers.',
 }
 
-/** A submit rejection carrying the service's honest, coded explanation. */
-class PrintSubmitError extends Error {
-  readonly status: number
-  readonly failure: SubmitFailure
-  constructor(status: number, body: unknown) {
-    const failure = describeSubmitFailure(status, body)
-    super(failure.headline)
-    this.name = 'PrintSubmitError'
-    this.status = status
-    this.failure = failure
-  }
-}
-
 /** The service's clamp echoes (`style.applied`) from a submit response, if any. */
 function extractApplied(body: unknown): Record<string, ParamScalarValue> | undefined {
   if (typeof body !== 'object' || body === null) return undefined
@@ -109,6 +109,7 @@ function extractApplied(body: unknown): Record<string, ParamScalarValue> | undef
 export function PrintPanel(props: PrintPanelProps) {
   const {
     visible,
+    embedded = false,
     params,
     filamentMap,
     catalog,
@@ -190,12 +191,20 @@ export function PrintPanel(props: PrintPanelProps) {
   const settingsEverOpened = useRef(false)
   if (settingsOpen) settingsEverOpened.current = true
 
-  const [startPolicy, setStartPolicy] = useState<TicketStartPolicy>('hold')
+  // Auto-start is the studio default: the print goes the moment THH's preflight
+  // clears (idle printer, clean bed, passing checks). When it can't, THH parks
+  // the job and the roster's ParkedJobCard resolves it in place — so there's no
+  // held-job dead-end, and no reason to make the user choose a policy up front.
+  const startPolicy: TicketStartPolicy = 'auto'
 
   // ---- submit ---------------------------------------------------------------
-  // One idempotency key per submit intent: retries of a failed submit reuse it
-  // (the service dedupes), a success mints fresh for the next job.
-  const idemRef = useRef<string | null>(null)
+  // The idempotency key is bound to the submit's CONTENT, not the panel's
+  // lifetime (see ./print-idempotency): an unchanged resubmit — the lost- or
+  // ambiguous-response retry the key exists for — reuses it so THH replays the
+  // one job, while editing any print-determining input rotates it so the edit
+  // becomes a new job instead of being silently deduped onto the stale one. A
+  // success clears it, so the next print (even an identical one) is fresh.
+  const idemRef = useRef<IdempotencyToken | null>(null)
 
   const submit = useMutation({
     mutationFn: async (): Promise<unknown> => {
@@ -211,13 +220,16 @@ export function PrintPanel(props: PrintPanelProps) {
           )
         ),
       ])
-      const model = buildAbacusThreeMf({
-        stl,
-        params,
-        filamentMap,
-        slotLabels: catalog.spools.map((s) => s.name),
-      })
-      idemRef.current ??= crypto.randomUUID()
+      const slotLabels = catalog.spools.map((s) => s.name)
+      const model = buildAbacusThreeMf({ stl, params, filamentMap, slotLabels })
+
+      // Reuse the key only for an identical resubmit; any edit rotates it.
+      const idem = resolveIdempotencyKey(
+        idemRef.current,
+        abacusPrintSignature({ params, filamentMap, slotLabels, style, startPolicy }),
+        () => crypto.randomUUID()
+      )
+      idemRef.current = idem
       const ticket = buildAbacusTicket({
         name: `Abacus — ${params.cols} columns`,
         source: {
@@ -229,7 +241,7 @@ export function PrintPanel(props: PrintPanelProps) {
         catalog,
         style,
         startPolicy,
-        idempotencyKey: idemRef.current,
+        idempotencyKey: idem.key,
       })
 
       const form = new FormData()
@@ -243,7 +255,7 @@ export function PrintPanel(props: PrintPanelProps) {
         body: form,
       })
       const body: unknown = await res.json().catch(() => null)
-      if (!res.ok) throw new PrintSubmitError(res.status, body)
+      if (!res.ok) throw new PrintServiceError(res.status, body)
       return body
     },
     onSuccess: () => {
@@ -252,22 +264,26 @@ export function PrintPanel(props: PrintPanelProps) {
     },
   })
 
-  const submitFailure = submit.error instanceof PrintSubmitError ? submit.error.failure : null
+  const submitFailure = submit.error instanceof PrintServiceError ? submit.error.failure : null
   const invalidDetail = submitFailure?.invalidTicket ?? undefined
   const applied = useMemo(() => extractApplied(submit.data), [submit.data])
 
-  // ---- jobs roster (ring-invalidated; reconcile on reconnect — no poll) -----
-  const jobs = useQuery({
-    queryKey: abacusPrintKeys.jobs(),
-    queryFn: async () => {
-      const res = await api('abacus/print/jobs')
-      if (!res.ok) throw new Error(`jobs read failed: ${res.status}`)
-      return (await res.json()) as unknown
-    },
-    enabled: visible && serviceReady,
-    staleTime: 5_000,
-  })
-  const jobRows = useMemo(() => normalizeJobs(jobs.data), [jobs.data])
+  // ---- jobs roster + resolve actions (ring-invalidated; no poll) ------------
+  const { jobRows } = useAbacusPrintJobs({ enabled: visible && serviceReady })
+  const startJob = useStartPrintJob()
+  const cancelJob = useCancelPrintJob()
+
+  // One mutation instance backs every row; scope its pending/error to the row
+  // it's acting on by matching the in-flight variables' jobId, so acting on one
+  // parked job never spins or reddens another.
+  const startFailureFor = (jobId: string): SubmitFailure | null =>
+    startJob.error instanceof PrintServiceError && startJob.variables?.jobId === jobId
+      ? startJob.error.failure
+      : null
+  const cancelFailureFor = (jobId: string): SubmitFailure | null =>
+    cancelJob.error instanceof PrintServiceError && cancelJob.variables?.jobId === jobId
+      ? cancelJob.error.failure
+      : null
 
   // When the service refused because the printer is busy, name the job that's
   // holding it — correlate its id against the roster we already read.
@@ -285,13 +301,13 @@ export function PrintPanel(props: PrintPanelProps) {
   return (
     <div
       data-component="abacus-studio-print-panel"
+      data-embedded={embedded || undefined}
       style={{
-        position: 'absolute',
-        top: 12,
-        right: 12,
-        width: settingsOpen ? 380 : 280,
-        maxHeight: 'calc(100% - 24px)',
-        overflowY: 'auto',
+        position: embedded ? 'static' : 'absolute',
+        ...(embedded ? {} : { top: 12, right: 12 }),
+        width: embedded ? '100%' : settingsOpen ? 380 : 280,
+        maxHeight: embedded ? undefined : 'calc(100% - 24px)',
+        overflowY: embedded ? undefined : 'auto',
         display: visible ? 'flex' : 'none',
         flexDirection: 'column',
         gap: 10,
@@ -348,47 +364,6 @@ export function PrintPanel(props: PrintPanelProps) {
         </div>
       ) : (
         <>
-          {/* start policy — hold is the cautious default for a first print */}
-          <div
-            data-element="print-start-policy"
-            role="radiogroup"
-            aria-label="When should the print start"
-            style={{ display: 'flex', gap: 6 }}
-          >
-            {(
-              [
-                { policy: 'hold', label: 'Hold for release' },
-                { policy: 'auto', label: 'Start right away' },
-              ] as const
-            ).map(({ policy, label }) => (
-              <button
-                key={policy}
-                type="button"
-                role="radio"
-                aria-checked={startPolicy === policy}
-                data-action="set-start-policy"
-                data-policy={policy}
-                onClick={() => setStartPolicy(policy)}
-                style={{
-                  flex: 1,
-                  padding: '6px 8px',
-                  borderRadius: 7,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border:
-                    startPolicy === policy
-                      ? '1px solid rgba(34,211,238,0.7)'
-                      : '1px solid rgba(255,255,255,0.14)',
-                  background: startPolicy === policy ? 'rgba(8,145,178,0.35)' : 'transparent',
-                  color: 'inherit',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
           <button
             type="button"
             data-action="submit-print-job"
@@ -429,7 +404,8 @@ export function PrintPanel(props: PrintPanelProps) {
                 lineHeight: 1.45,
               }}
             >
-              Job submitted{startPolicy === 'hold' ? ' — release it from the print service' : ''}.
+              Job submitted — it’ll start on its own once the printer’s ready, or show up below to
+              resolve if the bed needs a look.
               {applied && ' Some settings were adjusted by the printer — see the editor.'}
             </div>
           )}
@@ -550,6 +526,20 @@ export function PrintPanel(props: PrintPanelProps) {
                       <span aria-hidden="true">✕ </span>
                       {job.error.message ?? job.error.code}
                     </div>
+                  )}
+                  {/* Auto-start couldn't just go (or paused mid-print): resolve
+                      it here — bed photo, the service's reasons, start-anyway or
+                      cancel — instead of leaving it a dead-end. */}
+                  {(isParked(job.phase) || job.attention.length > 0) && (
+                    <ParkedJobCard
+                      job={job}
+                      onStart={(acknowledge) => startJob.mutate({ jobId: job.id, acknowledge })}
+                      onCancel={(stopPrint) => cancelJob.mutate({ jobId: job.id, stopPrint })}
+                      startPending={startJob.isPending && startJob.variables?.jobId === job.id}
+                      cancelPending={cancelJob.isPending && cancelJob.variables?.jobId === job.id}
+                      startFailure={startFailureFor(job.id)}
+                      cancelFailure={cancelFailureFor(job.id)}
+                    />
                   )}
                 </div>
               ))}

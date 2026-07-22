@@ -1,12 +1,12 @@
 'use client'
 
+import { css } from '@styled/css'
 import { useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { css } from '@styled/css'
-import { useIsMobile } from '@/hooks/useMediaQuery'
-import { MobileDrawer } from '@/app/create/worksheets/components/MobileDrawer'
-import { SharedSettingsButton } from './SharedSettingsButton'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
+import { MobileDrawer } from '@/components/shared/MobileDrawer'
+import { useIsMobile } from '@/hooks/useMediaQuery'
+import { SharedSettingsButton } from './SharedSettingsButton'
 
 interface ResponsiveSharedLayoutProps {
   config: WorksheetFormState

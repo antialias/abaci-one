@@ -9,71 +9,31 @@
 // myabacus scheme quantized onto the AMS filament slots, plus the floating ArUco
 // corner overlay and the second-pass inset-text plug preview. No server-side
 // OpenSCAD — client WASM only.
+//
+// Full-bleed CP1a: this is now JUST the canvas + status HUD. All design/print
+// controls live in the docked rails (DesignInspectorRail / FabricationRail); the
+// shared state + derivations live in the studio store. The viewer keeps only the
+// three.js/worker-bound pieces — the live-mirror refs, the mount-once scene, the
+// redraw effects — and publishes its worker-bound STL exporter into the store so
+// the fabrication rail's Export buttons can drive it.
 
-import { useAbacusConfig } from '@soroban/abacus-react'
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
-import { DebugCheckbox, DebugSlider } from '@/components/toys/ToyDebugPanel'
-import {
-  usePlayerAbacusIdentity,
-  useSavePlayerAbacusIdentity,
-} from '@/hooks/usePlayerAbacusIdentity'
-import { usePlayerAccess } from '@/hooks/usePlayerAccess'
-import { useThhFilamentCatalog } from '@/hooks/useThhFilamentCatalog'
-import { useUserPlayers } from '@/hooks/useUserPlayers'
-import { type AbacusIdentity, parseAbacusIdentity } from '@/lib/abacus/identity'
-import { buildAbacusThreeMf } from './abacus-3mf'
-import { catalogFromParams } from './abacus-catalog'
-import { toAbacusDesign } from './abacus-design'
-import { selectSourceIdentity } from './abacus-identity-source'
+import { useAbacusStudio } from './AbacusStudioContext'
 import {
   analyzeShells,
   COLOR_PALETTES,
-  type DisplayConfigInput,
   frameW,
   MARKER_BITS,
   nearestSlot,
   outerD,
-  type Params,
-  PRESET_OPTS,
-  paramsFromDisplayConfig,
   type ShellInfo,
   shellHex,
   tokenCenters,
 } from './abacus-model'
-import { materialize, planToFilamentMap } from './abacus-plan'
-import { DEFAULT_PROFILE_ID, PRINTER_PROFILES, profileById, solve } from './abacus-solver'
-import { FilamentPlanPanel } from './FilamentPlanPanel'
-import { PrintPanel } from './PrintPanel'
 import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
-
-const SCHEMES = ['monochrome', 'place-value', 'heaven-earth', 'alternating']
-const PALETTES = ['default', 'colorblind', 'mnemonic', 'grayscale', 'nature']
-const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
-
-// The identity slice of the current params, or null when a custom scheme/
-// palette string can't be expressed as a saved identity (save stays disabled).
-function identityFromParams(p: Params): AbacusIdentity | null {
-  return parseAbacusIdentity({
-    colorScheme: p.color_scheme,
-    colorPalette: p.color_palette,
-    columns: p.cols,
-  })
-}
-
-// shared style for the one-click solver-fix buttons (sit inside the red error box)
-const FIX_BTN: CSSProperties = {
-  padding: '5px 9px',
-  borderRadius: 6,
-  border: '1px solid rgba(248,113,113,0.6)',
-  background: 'rgba(254,226,226,0.12)',
-  color: 'rgba(254,226,226,0.98)',
-  fontSize: 11,
-  fontWeight: 600,
-  cursor: 'pointer',
-}
 
 type DrawApi = {
   /** parse + shell-classify + recolor a fresh geometry STL; returns tri count */
@@ -84,92 +44,23 @@ type DrawApi = {
   applyParams: () => void
 }
 
-export interface AbacusStudioViewerProps {
-  /** Selected player whose "my abacus" the studio manifests; null = the viewer's own config */
-  playerId?: string | null
-}
+export function AbacusStudioViewer() {
+  // Only the three.js/worker-bound slice of the shared studio store: the design +
+  // print projection the mount-once closures mirror, plus the export-handle
+  // registrar. Every control that edits these lives in the docked rails.
+  const { params, design, viewMode, filamentMap, registerExportStl } = useAbacusStudio()
 
-export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps = {}) {
-  // the toy opens showing an abacus IDENTITY and follows it until the user
-  // touches a control. With a player selected, that identity is the player's
-  // saved "my abacus" row; otherwise it's the viewer's own live
-  // AbacusDisplayConfig — exactly the pre-player behavior.
-  const displayConfig = useAbacusConfig()
-  const playerIdentity = usePlayerAbacusIdentity(playerId)
-  const playerAccess = usePlayerAccess(playerId)
-  const { data: allPlayers } = useUserPlayers()
-  const playerName = playerId ? (allPlayers?.find((p) => p.id === playerId)?.name ?? null) : null
-  // The identity source `synced` mirrors. Null while a selected player's row
-  // is still loading — the follow-effect holds rather than seeding a fake.
-  const sourceIdentity: DisplayConfigInput | null = useMemo(
-    () => selectSourceIdentity(playerId, playerIdentity.data, displayConfig),
-    [playerId, playerIdentity.data, displayConfig]
-  )
-  const [params, setParams] = useState<Params>(() => paramsFromDisplayConfig(displayConfig))
-  // `synced` = params still mirror the identity source. Any manual edit
-  // detaches (so a customization is never stomped by a config change), and
-  // the "reset to …" button re-attaches.
-  const [synced, setSynced] = useState(true)
-  // sliders/selects live behind a "Customize" disclosure so the print tool leads
-  // with its Download action instead of a wall of dev controls.
-  const [customizeOpen, setCustomizeOpen] = useState(false)
-  // printer profile: a print setting (Common / Wide / Fine), NOT part of the
-  // abacus identity — changing it must not detach `synced`.
-  const [profileId, setProfileId] = useState<string>(DEFAULT_PROFILE_ID)
+  // live mirrors read by the mount-once three.js closures (which can't re-close
+  // over changing state). Kept in lockstep with the store on every render.
   const paramsRef = useRef(params)
   paramsRef.current = params
-  // the serializable design projection — the studio's Phase-2 handoff and the
-  // single source of truth for the preview's bead/frame colors. Baking it here
-  // (instead of re-deriving hexes in recolor) keeps the on-screen preview and
-  // the exported design in lockstep. Intrinsic colors, not AMS-snapped.
-  const design = useMemo(() => toAbacusDesign(params, profileId), [params, profileId])
   const designRef = useRef(design)
   designRef.current = design
-  // preview lens: 'design' shows the user's INTRINSIC colors (what they built),
-  // 'print' shows the same design QUANTIZED onto the loaded filaments (what will
-  // actually print). A pure view concern — never touches params, so flipping it
-  // doesn't detach `synced`.
-  const [viewMode, setViewMode] = useState<'design' | 'print'>('design')
   const viewModeRef = useRef(viewMode)
   viewModeRef.current = viewMode
-  // manual filament mapping: roleKey → spoolId. Auto-snap picks each role's
-  // spool by nearest color within the plate's co-print anchor group (gh#163), so
-  // the default can never mix temperatures; this is the user's override. A pin
-  // that leaves the anchor, lands on support media, or splits the frame/marker
-  // weld is allowed but answered live by the plan's material warnings. Pure view
-  // state like viewMode: it only reshapes the PRINT projection, so a pin never
-  // detaches `synced` or touches the design. A pin onto an unloaded spool is
-  // ignored by materialize, so its row falls back to Auto.
-  const [overrides, setOverrides] = useState<Record<string, string>>({})
-  // the print plan = the design projected onto the loaded filaments, honoring
-  // the user's pins. The catalog is the live AMS snapshot when a print service
-  // is paired and reachable (real colors, names, and material families), falling
-  // back to the params-derived color-only catalog when it isn't — the studio
-  // never blocks on the print service. This copy of the plan feeds the per-shell
-  // recolor + export; FilamentPlanPanel re-derives the identical plan (pure fn,
-  // same inputs) for the warning strip and mapping UI it renders.
-  const thhFilaments = useThhFilamentCatalog()
-  const catalog = useMemo(
-    () => thhFilaments.catalog ?? catalogFromParams(params),
-    [thhFilaments.catalog, params]
-  )
-  const plan = useMemo(
-    () => materialize(design, catalog, { overrides }),
-    [design, catalog, overrides]
-  )
-  // the legacy FilamentMap the recolor passes color through, derived FROM the plan
-  // so overrides flow into the live preview for free. Mirrored to a ref for the
-  // mount-once three.js closures (like designRef).
-  const filamentMap = useMemo(
-    () =>
-      planToFilamentMap(
-        plan,
-        catalog.spools.map((s) => s.hex)
-      ),
-    [plan, catalog]
-  )
   const filamentMapRef = useRef(filamentMap)
   filamentMapRef.current = filamentMap
+
   const [status, setStatus] = useState<StatusUpdate>({ text: 'booting…' })
   const [meta, setMeta] = useState<{ ms?: number; tris?: number }>({})
   const mountRef = useRef<HTMLDivElement | null>(null)
@@ -186,6 +77,10 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
     },
     onStatus: (s) => setStatus(s),
   })
+  // keep the latest scad reachable from the once-registered exporter without
+  // re-registering each render (scad.exportStl itself reads a stable stateRef).
+  const scadRef = useRef(scad)
+  scadRef.current = scad
 
   // ---- three.js scene (mount once) ------------------------------------------
   useEffect(() => {
@@ -559,18 +454,6 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
     }
   }, [])
 
-  // ---- follow the identity source while synced ------------------------------
-  // Re-seeds when the provider hydrates its stored config after mount, when
-  // the user changes their abacus elsewhere, and when the selected player (or
-  // their saved identity) changes. Holds while a player's row is in flight
-  // (sourceIdentity null), and is a no-op once the user has customized —
-  // switching players while detached keeps the scratch work and only
-  // retargets reset/save.
-  useEffect(() => {
-    if (!synced || !sourceIdentity) return
-    setParams(paramsFromDisplayConfig(sourceIdentity))
-  }, [sourceIdentity, synced])
-
   // ---- react to param edits: cheap redraw + (deduped) WASM re-render --------
   useEffect(() => {
     drawRef.current?.applyParams()
@@ -585,85 +468,17 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
     drawRef.current?.applyParams()
   }, [viewMode, filamentMap])
 
-  // any manual edit detaches from the live config (see `synced`).
-  const set = <K extends keyof Params>(k: K, v: Params[K]) => {
-    setSynced(false)
-    setParams((prev) => ({ ...prev, [k]: v }))
-  }
-
-  // ---- player identity save -------------------------------------------------
-  // Explicit act, not auto-save: the synced/detach model already separates
-  // scratch work from identity, and write access is narrower than read (a
-  // teacher can view without the student present, but not write). Saving the
-  // identity slice of the current params re-syncs — the optimistic cache
-  // makes the follow-effect's re-seed a visual no-op.
-  const saveIdentity = useSavePlayerAbacusIdentity(playerId ?? 'anonymous')
-  const canWriteIdentity = playerAccess.data
-    ? playerAccess.data.isParent || playerAccess.data.isPresent
-    : false
-  const savableIdentity = identityFromParams(params)
-  const saveAsPlayerAbacus = () => {
-    if (!playerId || !savableIdentity) return
-    saveIdentity.mutate(savableIdentity, { onSuccess: () => setSynced(true) })
-  }
-  // Possessive for pill/buttons: a roster player's name, or a neutral
-  // fallback for shared deep links outside the viewer's own roster.
-  const playerPossessive = playerName ? `${playerName}'s` : "this student's"
-
-  // ---- printability gate ----------------------------------------------------
-  // Run the pure solver against the selected profile; errors block Export, the
-  // inlay warning does not. See abacus-solver.ts.
-  const profile = profileById(profileId)
-  const solveResult = useMemo(() => solve(params, profile), [params, profile])
-  const errors = solveResult.reasons.filter((r) => r.severity === 'error')
-  const warnings = solveResult.reasons.filter((r) => r.severity === 'warning')
-  const exportBlocked = errors.length > 0
-  // the two mechanical one-click fixes derivable from the errors: scale up to
-  // clear all proportional floors at once, and/or raise the absolute fit gap.
-  const proportionalScales = errors
-    .map((r) => r.suggestedScale)
-    .filter((s): s is number => typeof s === 'number')
-  const scaleFix = proportionalScales.length ? Math.max(...proportionalScales) : null
-  const clearanceFix = errors.find((r) => r.dim === 'clearance')?.floorMm ?? null
-
-  const downloadBlob = (blob: Blob, filename: string) => {
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(a.href)
-  }
-
-  // primary export: the multi-material 3MF — the print projection's colors baked
-  // in as one co-registered body per filament slot (#9). Falls back to the raw
-  // colorless STL below for anyone whose slicer wants that.
-  const onExport = () =>
-    scad.exportStl(paramsRef.current, (stl) => {
-      const p = paramsRef.current
-      const { bytes } = buildAbacusThreeMf({
-        stl,
-        params: p,
-        filamentMap: filamentMapRef.current,
-        slotLabels: catalog.spools.map((s) => s.name),
-      })
-      downloadBlob(
-        new Blob([bytes as BlobPart], { type: 'model/3mf' }),
-        `abacus-${p.cols}col-x${p.scale_factor}.3mf`
-      )
-    })
-
-  const onExportPlainStl = () =>
-    scad.exportStl(paramsRef.current, (stl) => {
-      const p = paramsRef.current
-      downloadBlob(
-        new Blob([stl], { type: 'model/stl' }),
-        `abacus-${p.cols}col-x${p.scale_factor}.stl`
-      )
-    })
-
-  // the print panel's export path: same one-shot render, promise-shaped
-  const requestExportStl = () =>
-    new Promise<ArrayBuffer>((resolve) => scad.exportStl(paramsRef.current, resolve))
+  // publish the worker-bound STL exporter into the store so the fabrication rail's
+  // Export buttons + the print panel can trigger a one-shot high-quality render.
+  // Registered once (scad.exportStl reads a stable ref); torn down on unmount so
+  // the store's exporterReady flips back to false on the paper lane.
+  useEffect(() => {
+    registerExportStl(
+      () =>
+        new Promise<ArrayBuffer>((resolve) => scadRef.current.exportStl(paramsRef.current, resolve))
+    )
+    return () => registerExportStl(null)
+  }, [registerExportStl])
 
   return (
     <div
@@ -673,415 +488,7 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
       <div
         ref={mountRef}
         data-element="abacus-studio-canvas"
-        style={{ width: '100%', height: '100%' }}
-      />
-
-      {/* control panel */}
-      <div
-        data-element="abacus-studio-controls"
-        style={{
-          position: 'absolute',
-          top: 12,
-          left: 12,
-          width: 250,
-          maxHeight: 'calc(100% - 24px)',
-          overflowY: 'auto',
-          background: 'rgba(17,24,39,0.9)',
-          backdropFilter: 'blur(8px)',
-          borderRadius: 10,
-          padding: '14px 16px',
-          color: 'rgba(243,244,246,1)',
-          fontSize: 12,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-          boxShadow: '0 4px 14px rgba(0,0,0,0.35)',
-        }}
-      >
-        <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>Your 3D abacus</div>
-
-        <div
-          data-element="abacus-studio-sync-status"
-          style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 8,
-              fontSize: 11,
-              color: synced ? 'rgba(134,239,172,0.95)' : 'rgba(252,211,77,0.95)',
-            }}
-          >
-            <span>
-              {synced
-                ? `● showing ${playerId ? `${playerPossessive} abacus` : 'your abacus'}`
-                : '● customized'}
-            </span>
-            {!synced && (
-              <div
-                style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}
-              >
-                {playerId && (
-                  <button
-                    type="button"
-                    data-action="save-as-player-abacus"
-                    onClick={saveAsPlayerAbacus}
-                    disabled={!canWriteIdentity || !savableIdentity || saveIdentity.isPending}
-                    title={
-                      canWriteIdentity
-                        ? undefined
-                        : `Only a parent — or a teacher while ${playerName ?? 'this student'} is in class — can change their abacus`
-                    }
-                    style={{
-                      padding: '3px 8px',
-                      borderRadius: 5,
-                      border: '1px solid rgba(6,182,212,0.6)',
-                      background: 'rgba(6,182,212,0.15)',
-                      color: 'rgba(165,243,252,1)',
-                      fontSize: 11,
-                      cursor:
-                        !canWriteIdentity || !savableIdentity || saveIdentity.isPending
-                          ? 'default'
-                          : 'pointer',
-                      opacity: !canWriteIdentity || !savableIdentity ? 0.55 : 1,
-                    }}
-                  >
-                    {saveIdentity.isPending ? 'saving…' : `make this ${playerPossessive} abacus`}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  data-action="reset-to-my-abacus"
-                  onClick={() => setSynced(true)}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: 5,
-                    border: '1px solid rgba(148,163,184,0.5)',
-                    background: 'transparent',
-                    color: 'rgba(226,232,240,1)',
-                    fontSize: 11,
-                    cursor: 'pointer',
-                  }}
-                >
-                  reset to {playerId ? `${playerPossessive} abacus` : 'my abacus'}
-                </button>
-              </div>
-            )}
-          </div>
-          {saveIdentity.isError && (
-            <span
-              data-element="abacus-identity-save-error"
-              style={{ fontSize: 11, color: 'rgba(252,165,165,0.95)' }}
-            >
-              Couldn't save — check your access and try again.
-            </span>
-          )}
-        </div>
-
-        {/* preview lens: the identity the user built vs. what the loaded filaments
-            will actually print. Flipping it recolors the model in place. */}
-        <div
-          data-element="abacus-studio-view-mode"
-          style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-        >
-          <div
-            role="group"
-            aria-label="preview colors"
-            style={{
-              display: 'flex',
-              borderRadius: 7,
-              overflow: 'hidden',
-              border: '1px solid rgba(148,163,184,0.35)',
-            }}
-          >
-            {(
-              [
-                ['design', 'My colors'],
-                ['print', 'Print preview'],
-              ] as const
-            ).map(([mode, label]) => {
-              const active = viewMode === mode
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  data-action="set-view-mode"
-                  data-mode={mode}
-                  aria-pressed={active}
-                  onClick={() => setViewMode(mode)}
-                  style={{
-                    flex: 1,
-                    padding: '6px 8px',
-                    border: 'none',
-                    background: active ? CYAN_GRADIENT : 'transparent',
-                    color: active ? '#fff' : 'rgba(203,213,225,0.9)',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-
-          {viewMode === 'print' && (
-            <FilamentPlanPanel
-              design={design}
-              catalog={catalog}
-              overrides={overrides}
-              onOverridesChange={setOverrides}
-            />
-          )}
-        </div>
-
-        {/* printer profile — a first-class print setting (drives the gate below) */}
-        <Select
-          label="printer profile"
-          value={profileId}
-          options={PRINTER_PROFILES.map((p) => ({ value: p.id, label: p.label }))}
-          onChange={setProfileId}
-          dataElement="abacus-studio-profile"
-          dataAction="select-profile"
-        />
-
-        {/* printability verdict: red errors block Export (with one-click fixes),
-            amber warnings inform but don't block */}
-        {solveResult.reasons.length > 0 && (
-          <div
-            data-element="abacus-studio-solver-reasons"
-            style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-          >
-            {errors.length > 0 && (
-              <div
-                data-element="abacus-studio-solver-errors"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                  padding: '8px 10px',
-                  borderRadius: 8,
-                  background: 'rgba(127,29,29,0.35)',
-                  border: '1px solid rgba(248,113,113,0.5)',
-                  color: 'rgba(254,226,226,0.96)',
-                  fontSize: 11,
-                  lineHeight: 1.45,
-                }}
-              >
-                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span aria-hidden="true">⛔</span> Won&apos;t print on {profile.label}
-                </div>
-                {errors.map((r) => (
-                  <div key={r.dim}>{r.message}</div>
-                ))}
-                {(scaleFix != null || clearanceFix != null) && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
-                    {scaleFix != null && (
-                      <button
-                        type="button"
-                        data-action="apply-solver-fix"
-                        onClick={() => set('scale_factor', scaleFix)}
-                        style={FIX_BTN}
-                      >
-                        ⤢ Scale up to {scaleFix}×
-                      </button>
-                    )}
-                    {clearanceFix != null && (
-                      <button
-                        type="button"
-                        data-action="apply-solver-fix"
-                        onClick={() => set('clearance', clearanceFix)}
-                        style={FIX_BTN}
-                      >
-                        ↕ Raise fit gap to {clearanceFix.toFixed(2)} mm
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            {warnings.length > 0 && (
-              <div
-                data-element="abacus-studio-solver-warnings"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 4,
-                  padding: '8px 10px',
-                  borderRadius: 8,
-                  background: 'rgba(120,53,15,0.30)',
-                  border: '1px solid rgba(251,191,36,0.45)',
-                  color: 'rgba(254,243,199,0.96)',
-                  fontSize: 11,
-                  lineHeight: 1.45,
-                }}
-              >
-                <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span aria-hidden="true">⚠️</span> Heads up
-                </div>
-                {warnings.map((r) => (
-                  <div key={r.dim}>{r.message}</div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* primary action — the whole point of the print path */}
-        <button
-          type="button"
-          data-action="export-3mf"
-          onClick={onExport}
-          disabled={exportBlocked}
-          title={
-            exportBlocked
-              ? `Fix the errors above to print on ${profile.label}`
-              : 'Download a print-ready multi-material 3MF'
-          }
-          style={{
-            padding: '11px 12px',
-            borderRadius: 8,
-            border: 'none',
-            background: exportBlocked ? 'rgba(75,85,99,0.55)' : CYAN_GRADIENT,
-            color: exportBlocked ? 'rgba(209,213,219,0.7)' : '#fff',
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: exportBlocked ? 'not-allowed' : 'pointer',
-            boxShadow: exportBlocked ? 'none' : '0 4px 14px rgba(6,182,212,0.35)',
-          }}
-        >
-          ⬇ Download 3MF to print
-        </button>
-        <button
-          type="button"
-          data-action="export-stl"
-          onClick={onExportPlainStl}
-          disabled={exportBlocked}
-          style={{
-            alignSelf: 'center',
-            padding: '2px 4px',
-            border: 'none',
-            background: 'transparent',
-            color: exportBlocked ? 'rgba(148,163,184,0.5)' : 'rgba(148,163,184,0.9)',
-            fontSize: 11,
-            cursor: exportBlocked ? 'not-allowed' : 'pointer',
-            textDecoration: 'underline',
-          }}
-        >
-          plain STL instead
-        </button>
-
-        {/* customize disclosure — sliders/selects tucked out of the way */}
-        <button
-          type="button"
-          data-action="toggle-customize"
-          aria-expanded={customizeOpen}
-          onClick={() => setCustomizeOpen((v) => !v)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '6px 2px',
-            border: 'none',
-            background: 'transparent',
-            color: 'rgba(203,213,225,0.9)',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >
-          <span>Customize</span>
-          <span aria-hidden="true">{customizeOpen ? '▾' : '▸'}</span>
-        </button>
-
-        {customizeOpen && (
-          <div
-            data-element="abacus-studio-customize"
-            style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
-          >
-            <DebugSlider
-              label="size ×"
-              value={params.scale_factor}
-              min={0.5}
-              max={2}
-              step={0.05}
-              onChange={(v) => set('scale_factor', v)}
-              formatValue={(v) => v.toFixed(2)}
-            />
-            <DebugSlider
-              label="columns"
-              value={params.cols}
-              min={3}
-              max={21}
-              step={1}
-              onChange={(v) => set('cols', v)}
-            />
-            <DebugSlider
-              label="fit gap (mm)"
-              value={params.clearance}
-              min={0.1}
-              max={0.8}
-              step={0.01}
-              onChange={(v) => set('clearance', v)}
-              formatValue={(v) => v.toFixed(2)}
-            />
-            <DebugSlider
-              label="$fn (quality)"
-              value={params.fn}
-              min={8}
-              max={64}
-              step={1}
-              onChange={(v) => set('fn', v)}
-            />
-
-            <Select
-              label="color scheme"
-              value={params.color_scheme}
-              options={SCHEMES}
-              onChange={(v) => set('color_scheme', v)}
-            />
-            <Select
-              label="palette"
-              value={params.color_palette}
-              options={PALETTES}
-              onChange={(v) => set('color_palette', v)}
-            />
-            <Select
-              label="top rail"
-              value={params.top_preset}
-              options={PRESET_OPTS}
-              onChange={(v) => set('top_preset', v)}
-            />
-            <Select
-              label="bottom rail"
-              value={params.bottom_preset}
-              options={PRESET_OPTS}
-              onChange={(v) => set('bottom_preset', v)}
-            />
-
-            <DebugCheckbox
-              label="ArUco corner markers"
-              checked={params.show_markers}
-              onChange={(v) => set('show_markers', v)}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* print-service panel (Gitea #9) — sibling of the controls so the
-          settings editor never gets clipped by the 250px controls column */}
-      <PrintPanel
-        visible={viewMode === 'print'}
-        params={params}
-        filamentMap={filamentMap}
-        catalog={catalog}
-        printerId={thhFilaments.printerId}
-        unavailable={thhFilaments.unavailable}
-        exportBlocked={exportBlocked}
-        requestExportStl={requestExportStl}
+        style={{ width: '100%', height: '100%', touchAction: 'none' }}
       />
 
       {/* status HUD */}
@@ -1098,6 +505,7 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
           font: '12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace',
           whiteSpace: 'pre-wrap',
           maxWidth: 'calc(100% - 24px)',
+          pointerEvents: 'none',
         }}
       >
         {status.text}
@@ -1106,52 +514,5 @@ export function AbacusStudioViewer({ playerId = null }: AbacusStudioViewerProps 
           : ''}
       </div>
     </div>
-  )
-}
-
-// tiny labeled <select> (the app's debug panel has no select primitive). Options
-// are plain strings (value === label) or {value,label} pairs for id→label menus.
-function Select({
-  label,
-  value,
-  options,
-  onChange,
-  dataElement = 'abacus-studio-select',
-  dataAction,
-}: {
-  label: string
-  value: string
-  options: Array<string | { value: string; label: string }>
-  onChange: (v: string) => void
-  dataElement?: string
-  dataAction?: string
-}) {
-  const opts = options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o))
-  return (
-    <label
-      data-element={dataElement}
-      style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, fontWeight: 500 }}
-    >
-      {label}
-      <select
-        value={value}
-        data-action={dataAction}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          background: 'rgba(255,255,255,0.08)',
-          color: 'inherit',
-          border: '1px solid rgba(255,255,255,0.15)',
-          borderRadius: 4,
-          padding: '4px 6px',
-          fontSize: 12,
-        }}
-      >
-        {opts.map((o) => (
-          <option key={o.value} value={o.value} style={{ color: '#111' }}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
   )
 }
