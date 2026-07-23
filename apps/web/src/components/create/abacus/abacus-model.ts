@@ -572,13 +572,73 @@ export const shellHex = (info: ShellInfo, p: Params, fm: FilamentMap): string =>
 // The print-plan ROLE KEY a shell belongs to (frame or a bead role), matching the
 // keys PrintRole emits in abacus-plan.ts: 'frame' and `bead-${beadRoleIndex(...)}`.
 // The single source of truth mapping addressable geometry → a mapping row, shared
-// by the viewer's row→hero highlight dimming and (future, Gitea #18) the hero→row
-// raycaster. Markers + inset text have no addressable render shell (baked into the
+// by the viewer's row→hero x-ray highlight (Gitea #17) and the hero→row raycaster
+// (Gitea #18). Markers + inset text have no addressable render shell (baked into the
 // frame recess / a separate plug pass), so they never resolve here.
 export const shellRoleKey = (info: ShellInfo, p: Params): string =>
   info.isFrame
     ? 'frame'
     : `bead-${beadRoleIndex(info.i, info.isHeaven, p.color_scheme, p.cols, p.color_palette)}`
+
+// The frame's role key — the one value shellRoleKey returns for the frame shell.
+// Exposed so the marker-ghost predicate can ask "is the frame the emphasized part?"
+// without hardcoding the literal in two places.
+export const FRAME_ROLE_KEY = 'frame'
+
+// ---- studio hover-lens pures (Gitea #17) ------------------------------------
+// The two hover lenses (reveal designed colors / emphasize one role via x-ray) drive
+// three imperative bits of the viewer: the hero caption text, the x-ray geometry
+// split, and whether the marker decals fade with the frame. Those live inside the
+// mount-once three.js closure, so the decision logic is factored out here as pure
+// functions the closures call — and the tests pin.
+
+export type EmphasisCaption = { text: string; active: boolean }
+
+// The hero caption's text + active flag from the current lens state. Reveal (the
+// designed-colors lens) wins over emphasis; emphasis only speaks when the hovered
+// role actually lit a shell (`matched`) — a marker/text row resolves to no geometry,
+// so it falls back to the resting announce rather than claiming to emphasize nothing.
+export function emphasisCaption(
+  revealing: boolean,
+  label: string | null,
+  matched: boolean
+): EmphasisCaption {
+  if (revealing) return { text: 'Your designed colors', active: true }
+  if (label != null && matched) return { text: `Emphasizing ${label}`, active: true }
+  return { text: 'Print preview · hover a swatch for your design', active: false }
+}
+
+export type XrayGroup = { start: number; count: number; materialIndex: number }
+
+// Coalesce a per-triangle match mask into three.js geometry groups for the x-ray
+// split: `match[t]` true → the emphasized part (material index 0, opaque), false →
+// the ghosted rest (material index 1, translucent). Consecutive same-status triangles
+// merge into one group. `start`/`count` are in VERTICES (3 per triangle, as
+// BufferGeometry.addGroup wants). Empty input → no groups.
+export function xrayGroups(match: ArrayLike<boolean>): XrayGroup[] {
+  const groups: XrayGroup[] = []
+  if (match.length === 0) return groups
+  let start = 0
+  let cur = match[0]
+  for (let t = 1; t < match.length; t++) {
+    if (match[t] !== cur) {
+      groups.push({ start: start * 3, count: (t - start) * 3, materialIndex: cur ? 0 : 1 })
+      start = t
+      cur = match[t]
+    }
+  }
+  groups.push({ start: start * 3, count: (match.length - start) * 3, materialIndex: cur ? 0 : 1 })
+  return groups
+}
+
+// Should the ArUco marker decals fade with the frame during an x-ray? The markers
+// are decals ON the frame's top face, so they follow the frame's emphasis state:
+// ghost when a row highlight is x-raying the model AND the emphasized role isn't the
+// frame itself (Gitea #17). No x-ray, or the frame IS the emphasized part → the
+// markers stay opaque (they belong to the part in focus).
+export function markersFollowFrameGhost(xrayOn: boolean, activeRole: string | null): boolean {
+  return xrayOn && activeRole !== FRAME_ROLE_KEY
+}
 
 // ---- inset text-plug layout (QA for inlay fill colors) ----------------------
 // mirror of the scad rails()/walls() layout: token k of a slot sits at

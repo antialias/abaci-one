@@ -25,16 +25,24 @@ import { useAbacusStudio } from './AbacusStudioContext'
 import {
   analyzeShells,
   COLOR_PALETTES,
+  emphasisCaption,
   frameW,
   MARKER_BITS,
+  markersFollowFrameGhost,
   nearestSlot,
   outerD,
   type ShellInfo,
   shellHex,
   shellRoleKey,
   tokenCenters,
+  xrayGroups,
 } from './abacus-model'
 import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
+
+// x-ray opacity for the ghosted (non-emphasized) parts during a row highlight — the
+// beads, the inset text, and the marker decals all fade to this while one role stays
+// opaque (Gitea #17). One tuning knob so the three ghosts stay in lockstep.
+const XRAY_OPACITY = 0.14
 
 type DrawApi = {
   /** parse + shell-classify + recolor a fresh geometry STL; returns tri count */
@@ -104,15 +112,12 @@ export function AbacusStudioViewer() {
   const paintCaption = useCallback(() => {
     const el = captionRef.current
     if (!el) return
-    const revealing = revealIntrinsicRef.current
-    const label = highlightLabelRef.current
-    const emphasizing = !revealing && label != null && highlightMatchRef.current
-    const active = revealing || emphasizing
-    el.textContent = revealing
-      ? 'Your designed colors'
-      : emphasizing
-        ? `Emphasizing ${label}`
-        : 'Print preview · hover a swatch for your design'
+    const { text, active } = emphasisCaption(
+      revealIntrinsicRef.current,
+      highlightLabelRef.current,
+      highlightMatchRef.current
+    )
+    el.textContent = text
     el.dataset.active = active ? 'true' : 'false'
     el.style.color = active ? '#e6faff' : 'rgba(148,163,184,0.92)'
     el.style.background = active ? 'rgba(8,22,30,0.85)' : 'rgba(17,24,39,0.7)'
@@ -200,7 +205,7 @@ export function AbacusStudioViewer() {
       metalness: 0.05,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.14,
+      opacity: XRAY_OPACITY,
       depthWrite: false,
     })
     let renderMesh: THREE.Mesh | null = null
@@ -234,8 +239,13 @@ export function AbacusStudioViewer() {
       // model to designed colors AND single out that part. A role that resolves to
       // no shell (marker/text — no addressable geometry) leaves the model untouched.
       // Colors themselves never change here — only which material a shell draws with.
+      // per-shell match for the emphasized role (null when no row is hovered). Reused
+      // below to expand into the per-triangle mask the x-ray split coalesces, so the
+      // role→shellRoleKey scan runs once per shell, not once per triangle.
       const active = highlightRoleRef.current
-      const anyMatch = active != null && shellInfo.some((info) => shellRoleKey(info, p) === active)
+      const shellMatch =
+        active != null ? shellInfo.map((info) => shellRoleKey(info, p) === active) : null
+      const anyMatch = shellMatch?.some(Boolean) ?? false
       highlightMatchRef.current = anyMatch
       const shellRGB = shellInfo.map((info) => {
         let hex: string
@@ -262,27 +272,15 @@ export function AbacusStudioViewer() {
       }
       geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
 
-      // x-ray split: coalesce consecutive same-status triangles into geometry groups
-      // — matching shells → material 0 (opaque renderMat), the rest → material 1
-      // (translucent ghostMat, depth-write-free so the emphasized part shows through).
-      // No highlight → one opaque material, no groups (single-draw fast path).
+      // x-ray split: expand the per-shell match to a per-triangle mask, coalesce into
+      // geometry groups — matching triangles → material 0 (opaque renderMat), the rest
+      // → material 1 (translucent ghostMat, depth-write-free so the emphasized part
+      // shows through). No highlight → one opaque material, no groups (single-draw).
       geo.clearGroups()
-      if (anyMatch) {
-        const matchOf = (tri: number): boolean => {
-          const info = shellInfo[ts[tri]]
-          return info ? shellRoleKey(info, p) === active : false
-        }
-        let start = 0
-        let cur = matchOf(0)
-        for (let t = 1; t < ts.length; t++) {
-          const m = matchOf(t)
-          if (m !== cur) {
-            geo.addGroup(start * 3, (t - start) * 3, cur ? 0 : 1)
-            start = t
-            cur = m
-          }
-        }
-        geo.addGroup(start * 3, (ts.length - start) * 3, cur ? 0 : 1)
+      if (anyMatch && shellMatch) {
+        const mask = new Array<boolean>(ts.length)
+        for (let t = 0; t < ts.length; t++) mask[t] = shellMatch[ts[t]] ?? false
+        for (const g of xrayGroups(mask)) geo.addGroup(g.start, g.count, g.materialIndex)
         renderMesh.material = [renderMat, ghostMat]
       } else {
         renderMesh.material = renderMat
@@ -401,12 +399,18 @@ export function AbacusStudioViewer() {
       const fm = revealIntrinsicRef.current ? null : filamentMapRef.current
       const white = fm ? fm.slots[fm.markerWhite] : '#ffffff'
       const black = fm ? fm.slots[fm.markerBlack] : '#000000'
+      // markers are decals on the frame's top face — fade them with the frame during
+      // an x-ray (Gitea #17) so they don't hang solid over a ghosted board. xrayOn is
+      // fresh here: applyParams runs recolor (which sets it) before updateMarkers.
+      const ghosted = markersFollowFrameGhost(xrayOn, highlightRoleRef.current)
       pos.forEach(([x, y], k) => {
         const quad = new THREE.Mesh(
           new THREE.PlaneGeometry(p.marker_mm, p.marker_mm),
           new THREE.MeshBasicMaterial({
             map: markerTexture(MARKER_BITS[k], k, trim, white, black),
             transparent: true,
+            opacity: ghosted ? XRAY_OPACITY : 1,
+            depthWrite: !ghosted,
           })
         )
         quad.position.set(x, y, z)
@@ -438,7 +442,7 @@ export function AbacusStudioViewer() {
       polygonOffsetUnits: -2,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.14,
+      opacity: XRAY_OPACITY,
       depthWrite: false,
     })
     let plugMesh: THREE.Mesh | null = null
@@ -531,8 +535,11 @@ export function AbacusStudioViewer() {
       clearPlug,
       applyParams: () => {
         recenter()
-        updateMarkers()
+        // recolor first: it sets xrayOn, which updateMarkers reads to fade the marker
+        // decals with the frame during an x-ray (Gitea #17). recolor never touches the
+        // markers, so the swap is safe.
         recolor()
+        updateMarkers()
       },
     }
     updateMarkers()
