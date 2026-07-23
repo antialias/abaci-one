@@ -100,6 +100,56 @@ describe('thhFilamentsToCatalog', () => {
   })
 })
 
+// The no-AMS / external-spool path (Gitea #19, wire contract from things-haunt-house#382):
+// a printer running off its direct spool holder reports ONE row with `external:true`
+// and `slotId:null`. When its family resolves we fold it in as an `external` spool; when
+// the family is null/empty (the printer can't identify the loaded material) we DROP it
+// rather than invent a PLA default — the honest-unknown rule. The source stays 'thh-ams'.
+describe('thhFilamentsToCatalog — external (no-AMS) spool', () => {
+  const FETCHED = '2026-07-19T00:00:00.000Z'
+
+  it('folds a resolved external row into an external:true spool, source still thh-ams', () => {
+    const rows: ThhFilamentRow[] = [
+      {
+        external: true,
+        slotId: null,
+        family: 'PLA',
+        colorHex: '112233FF',
+        brand: 'Sunlu',
+        product: 'PLA+',
+      },
+    ]
+    const cat = thhFilamentsToCatalog(rows, FETCHED)
+    expect(cat.source).toBe('thh-ams')
+    expect(cat.spools).toEqual([
+      { id: 'external-0', name: 'Sunlu PLA+', hex: '#112233', material: 'PLA', external: true },
+    ])
+  })
+
+  it('DROPS an external row with an unresolved family — never a PLA-defaulted spool', () => {
+    for (const family of [null, '', undefined]) {
+      const cat = thhFilamentsToCatalog(
+        [{ external: true, slotId: null, family, colorHex: '112233FF' }],
+        FETCHED
+      )
+      expect(cat.source).toBe('thh-ams')
+      expect(cat.spools).toHaveLength(0)
+      // the "no silent PLA default" rule, made literal: no spool survives at all
+      expect(cat.spools.some((s) => s.material === 'PLA')).toBe(false)
+    }
+  })
+
+  it('keeps the AMS slot but drops a null-family external in a mixed roster', () => {
+    const rows: ThhFilamentRow[] = [
+      { slotId: '0.1', family: 'PETG', colorHex: 'AABBCCFF', brand: 'Bambu Lab' },
+      { external: true, slotId: null, family: null, colorHex: '112233FF' },
+    ]
+    const cat = thhFilamentsToCatalog(rows, FETCHED)
+    // only the slot spool survives; the PLA default never touches the external row
+    expect(cat.spools).toEqual([{ id: '0.1', name: 'Bambu Lab', hex: '#AABBCC', material: 'PETG' }])
+  })
+})
+
 describe('family knowledge (gh#163)', () => {
   it('flags breakaway support families, case-insensitively', () => {
     expect(isSupportMaterial('PLA-S')).toBe(true)

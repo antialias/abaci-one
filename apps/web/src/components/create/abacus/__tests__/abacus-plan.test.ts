@@ -356,6 +356,40 @@ describe('materialize — overrides + catalog source', () => {
   })
 })
 
+describe('materialize — total on an empty catalog (regression: the provider crash)', () => {
+  // The studio crash: a live THH read that SUCCEEDS but reports zero loaded
+  // filaments yields a non-null, EMPTY thh-ams catalog. That reached materialize
+  // (in the provider, above every error boundary), the quantizer emitted an
+  // out-of-range slot, and `spools[idx].id` threw — blanking the whole page.
+  // materialize must be TOTAL: an empty catalog degrades to a valid plan, never a
+  // throw. (In the app the provider ALSO falls back to the params catalog so this
+  // degenerate plan isn't user-visible — but the pure function is the real
+  // boundary and must hold on its own.)
+  const empty: FilamentCatalog = {
+    source: 'thh-ams',
+    fetchedAt: '2026-01-01T00:00:00Z',
+    spools: [],
+  }
+  const design = toAbacusDesign(paramsFor('place-value', 'default', 8), '')
+
+  it('returns a valid degenerate plan instead of throwing', () => {
+    const plan = materialize(design, empty)
+    expect(plan.assignments).toEqual([])
+    expect(plan.warnings).toEqual([])
+    expect(plan.ok).toBe(true)
+    expect(plan.catalogSource).toBe('thh-ams')
+    expect(plan.schemaVersion).toBe(PRINT_PLAN_SCHEMA_VERSION)
+  })
+
+  it('projects to a FilamentMap without throwing (planToFilamentMap stays total)', () => {
+    const fm = planToFilamentMap(materialize(design, empty), [])
+    expect(fm.frame).toBe(0)
+    expect(fm.markerBlack).toBe(0)
+    expect(fm.markerWhite).toBe(0)
+    expect(fm.beadRoles).toEqual([])
+  })
+})
+
 describe('planToFilamentMap — the viewer preview seam', () => {
   const slotsOf = (catalog: FilamentCatalog) => catalog.spools.map((s) => s.hex)
 

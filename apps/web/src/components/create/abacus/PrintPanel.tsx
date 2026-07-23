@@ -63,6 +63,32 @@ export interface PrintPanelProps {
   catalog: FilamentCatalog
   /** The discovered THH printer (multi-material preferred), or null. */
   printerId: string | null
+  /** Whether the chosen printer is AMS-equipped (static model capability) — the
+   *  back-compat fallback for wording the empty-roster notice when the live
+   *  `amsPresent` signal is absent (pre things-haunt-house#382 service). */
+  printerMultiMaterial?: boolean
+  /** Live AMS presence from the roster read (#382): `true`/`false` when reported,
+   *  `undefined` against a pre-#382 service. Preferred over `printerMultiMaterial`
+   *  for empty-roster wording (`amsPresent ?? printerMultiMaterial`) — a live
+   *  `false` must not fall through to the static flag. */
+  amsPresent?: boolean
+  /** A spool is loaded on the external holder but THH couldn't identify its
+   *  material (`external:true`, `family:null`) — so the catalog dropped it and the
+   *  print isn't settable. Distinct from an empty roster: something IS loaded. */
+  externalUnprintable?: boolean
+  /** Service reachable + printer found, but it reports zero loaded spools. A
+   *  distinct, surfaced state — not a failure and not printable-yet. */
+  rosterEmpty?: boolean
+  /** The first printer+filament read is still in flight. Kept distinct from a
+   *  resolved-empty roster so a mid-load studio never shows the settled
+   *  "nothing loaded" notice — "still asking" and "asked, nothing" differ. */
+  isLoading?: boolean
+  /** A background refetch is running while cached data is shown (e.g. after Try
+   *  again) — used to put the retry control in a pending state. */
+  isFetching?: boolean
+  /** The connection all print reads/writes here target. Omit for the sole-
+   *  connection fallback; required once the user has paired more than one. */
+  connectionId?: string
   unavailable: PrintUnavailableReason | null
   /** Solver gate — a design that won't print can't be submitted either. */
   exportBlocked: boolean
@@ -88,6 +114,8 @@ const UNAVAILABLE_COPY: Record<PrintUnavailableReason, string> = {
   unreachable: 'Print service unreachable right now.',
   unauthorized: 'The print service rejected our credentials — re-pair to reconnect.',
   'no-printer': 'The print service has no printers.',
+  error:
+    'The print service hit an unexpected error reading your filaments — retry, or check the connection in Settings.',
 }
 
 /** The service's clamp echoes (`style.applied`) from a submit response, if any. */
@@ -114,10 +142,31 @@ export function PrintPanel(props: PrintPanelProps) {
     filamentMap,
     catalog,
     printerId,
+    printerMultiMaterial = false,
+    amsPresent,
+    externalUnprintable = false,
+    rosterEmpty = false,
+    isLoading = false,
+    isFetching = false,
+    connectionId,
     unavailable,
     exportBlocked,
     requestExportStl,
   } = props
+
+  // The AMS-presence signal that words the empty/degraded states: prefer the live
+  // flag from #382, fall back to the static model capability only when it's absent
+  // (?? not ||, so a live `false` is honored, never masked by has_ams). See the
+  // hook for the tri-state rationale.
+  const hasAms = amsPresent ?? printerMultiMaterial
+
+  // The one printable no-AMS case: a single external spool. Drives the non-blocking
+  // "prints in one color" note (state D) — a one-nozzle printer collapses a
+  // multi-color design onto its single loaded filament, surfaced, never silent.
+  const monochromeExternal =
+    catalog.source === 'thh-ams' &&
+    catalog.spools.length === 1 &&
+    catalog.spools[0]?.external === true
 
   const queryClient = useQueryClient()
   const userId = useUserId().data ?? undefined
@@ -127,9 +176,11 @@ export function PrintPanel(props: PrintPanelProps) {
   const serviceReady = unavailable === null && printerId !== null
 
   // ---- capabilities through the package client (ETag revalidation inside) ---
-  const client = useMemo(() => createAbacusPrintClient(), [])
+  // The client is scoped to the selected connection; re-created when it changes
+  // so the ?connectionId= rides every read the kit makes.
+  const client = useMemo(() => createAbacusPrintClient(connectionId), [connectionId])
   const caps = useQuery({
-    queryKey: abacusPrintKeys.capabilities(),
+    queryKey: abacusPrintKeys.capabilities(connectionId),
     queryFn: () => client.getCapabilities(),
     enabled: visible && serviceReady,
     staleTime: 5 * 60_000,
@@ -250,7 +301,8 @@ export function PrintPanel(props: PrintPanelProps) {
         new File([model.bytes as BlobPart], `abacus-${params.cols}col.3mf`, { type: 'model/3mf' })
       )
       form.set('job', JSON.stringify(ticket))
-      const res = await api(`abacus/print/printers/${encodeURIComponent(printerId)}/jobs`, {
+      const cq = connectionId ? `?connectionId=${encodeURIComponent(connectionId)}` : ''
+      const res = await api(`abacus/print/printers/${encodeURIComponent(printerId)}/jobs${cq}`, {
         method: 'POST',
         body: form,
       })
@@ -269,7 +321,7 @@ export function PrintPanel(props: PrintPanelProps) {
   const applied = useMemo(() => extractApplied(submit.data), [submit.data])
 
   // ---- jobs roster + resolve actions (ring-invalidated; no poll) ------------
-  const { jobRows } = useAbacusPrintJobs({ enabled: visible && serviceReady })
+  const { jobRows } = useAbacusPrintJobs({ enabled: visible && serviceReady, connectionId })
   const startJob = useStartPrintJob()
   const cancelJob = useCancelPrintJob()
 
@@ -336,34 +388,189 @@ export function PrintPanel(props: PrintPanelProps) {
       {unavailable !== null ? (
         <div data-element="print-service-unavailable" style={{ color: 'rgba(148,163,184,0.95)' }}>
           {UNAVAILABLE_COPY[unavailable]}
-          {/* not-configured means zero connections — inline quick-pair is
-              unambiguous (0 → 1) and the studio's sole-connection proxy
-              fallback keeps working. unauthorized means a broken connection
-              already exists; re-pairing inline would make a SECOND one and
-              break that fallback, so send those to Settings › Printing to
-              remove the dead one first. unreachable / no-printer are
-              service-side — pairing won't help — so they stay copy-only. */}
+          {/* Remediation is per-reason: not-configured (zero connections) gets an
+              inline quick-pair (0 → 1, keeps the sole-connection fallback);
+              unreachable/error get a retry that re-runs the reads; unauthorized/
+              error also link to Settings › Printing (a dead or ambiguous
+              connection must be fixed there, not re-paired inline). no-printer is
+              service-side with no client action, so it stays copy-only. */}
           {unavailable === 'not-configured' ? (
             <PairPrinterPrompt />
-          ) : unavailable === 'unauthorized' ? (
-            <a
-              data-action="manage-print-connections"
-              href="/settings?tab=printing"
-              style={{
-                display: 'inline-block',
-                marginTop: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                color: 'rgba(196,181,253,0.95)',
-                textDecoration: 'underline',
-              }}
-            >
-              Manage printers in Settings →
-            </a>
-          ) : null}
+          ) : (
+            <div style={{ display: 'flex', gap: 12, marginTop: 8, alignItems: 'center' }}>
+              {/* Transient reads (unreachable) and unexpected faults (error) are
+                  worth retrying in place — re-run the printer/filament reads. */}
+              {(unavailable === 'unreachable' || unavailable === 'error') && (
+                <button
+                  type="button"
+                  data-action="retry-print-service"
+                  onClick={() => queryClient.invalidateQueries({ queryKey: abacusPrintKeys.all })}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid rgba(148,163,184,0.4)',
+                    background: 'rgba(148,163,184,0.12)',
+                    color: 'rgba(226,232,240,0.95)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Try again
+                </button>
+              )}
+              {/* unauthorized means a broken connection already exists; re-pairing
+                  inline would make a SECOND one and break the sole-connection
+                  fallback, so send those to Settings › Printing to remove the dead
+                  one first. 'error' is ambiguous enough (a 400 from a connection
+                  the studio can't disambiguate, a 5xx) that Settings is the right
+                  escape hatch too. */}
+              {(unavailable === 'unauthorized' || unavailable === 'error') && (
+                <a
+                  data-action="manage-print-connections"
+                  href="/settings?tab=printing"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: 'rgba(196,181,253,0.95)',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Manage printers in Settings →
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      ) : isLoading ? (
+        // First roster read in flight. Deliberately its OWN neutral state, never
+        // the amber empty-roster notice below: "still asking the printer" and
+        // "asked, nothing loaded" are different states, and only the latter is
+        // actionable. No retry control — nothing to retry while a read is running.
+        <div
+          data-element="print-service-loading"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            color: 'rgba(148,163,184,0.95)',
+            lineHeight: 1.5,
+          }}
+        >
+          <span aria-hidden="true">⏳</span> Reading your printer’s loaded filaments…
+        </div>
+      ) : catalog.source !== 'thh-ams' ? (
+        // Service reachable + a printer found + the read RESOLVED, but there's no
+        // printable live roster to map onto. Not a failure and NOT loading (those
+        // are the branches above). This is a PRIORITY CHAIN, most-specific first:
+        //   E. externalUnprintable — a spool IS loaded on the external holder but
+        //      its material is unresolved (family:null → catalog dropped it). Must
+        //      be checked BEFORE rosterEmpty: a row exists (rosterEmpty is false),
+        //      yet something is physically loaded, so "nothing loaded" would lie.
+        //   defensive — roster read didn't resolve to an empty count either (should
+        //      not normally reach source!=='thh-ams'); preview the designed colors.
+        //   C(AMS)  — hasAms: an AMS that reports no loaded spools.
+        //   C(noAMS)— else: no AMS and the external holder is empty.
+        // hasAms = live amsPresent ?? static printerMultiMaterial (see above).
+        <div
+          data-element="print-roster-empty"
+          data-degrade={
+            externalUnprintable
+              ? 'external-unprintable'
+              : rosterEmpty
+                ? hasAms
+                  ? 'ams-empty'
+                  : 'no-ams-empty'
+                : 'roster-unavailable'
+          }
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            padding: '10px 12px',
+            borderRadius: 8,
+            background: 'rgba(120,53,15,0.30)',
+            border: '1px solid rgba(251,191,36,0.45)',
+            color: 'rgba(254,243,199,0.96)',
+            lineHeight: 1.5,
+          }}
+        >
+          <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span aria-hidden="true">{externalUnprintable ? '🎨' : '🎞️'}</span>{' '}
+            {externalUnprintable
+              ? 'Loaded filament not recognized'
+              : 'No loaded filament to print with'}
+          </div>
+          <div>
+            {externalUnprintable
+              ? 'A spool is loaded on the external holder, but the printer couldn’t identify its material, so one-click print can’t choose settings for it.'
+              : !rosterEmpty
+                ? 'The live filament roster isn’t available right now, so the studio is previewing your designed colors instead of the real spools.'
+                : hasAms
+                  ? 'The printer is connected, but its AMS reports no loaded spools. One-click print maps your designed colors onto the filaments that are actually loaded, so it needs at least one.'
+                  : 'The printer is connected, but nothing is loaded — no AMS, and the external spool holder is empty. Load a spool and press Try again.'}
+          </div>
+          <div style={{ color: 'rgba(254,243,199,0.82)' }}>
+            {externalUnprintable ? (
+              <>
+                Reload a recognized filament, or use <strong>Download 3MF to print</strong> above
+                and pick the material yourself.
+              </>
+            ) : (
+              <>
+                Use <strong>Download 3MF to print</strong> above to slice it yourself, or load
+                filament and press Try again.
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            data-action="retry-print-service"
+            onClick={() => queryClient.invalidateQueries({ queryKey: abacusPrintKeys.all })}
+            disabled={isFetching}
+            style={{
+              alignSelf: 'flex-start',
+              padding: '5px 11px',
+              borderRadius: 6,
+              border: '1px solid rgba(251,191,36,0.5)',
+              background: 'rgba(254,243,199,0.12)',
+              color: 'rgba(254,243,199,0.98)',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: isFetching ? 'progress' : 'pointer',
+              opacity: isFetching ? 0.7 : 1,
+            }}
+          >
+            {isFetching ? 'Checking…' : 'Try again'}
+          </button>
         </div>
       ) : (
         <>
+          {/* No-AMS single-spool print (state D): the design is still submittable,
+              but a one-nozzle printer lays it down in ONE color — surface that here,
+              non-blocking, so the collapse from multi-color is never a surprise. The
+              submit button below stays enabled (submitBlocked doesn't gate on this). */}
+          {monochromeExternal && (
+            <div
+              data-element="print-monochrome-note"
+              style={{
+                display: 'flex',
+                gap: 8,
+                padding: '8px 10px',
+                borderRadius: 8,
+                background: 'rgba(30,58,138,0.28)',
+                border: '1px solid rgba(96,165,250,0.45)',
+                color: 'rgba(219,234,254,0.96)',
+                lineHeight: 1.45,
+              }}
+            >
+              <span aria-hidden="true">🎨</span>
+              <span>
+                No AMS — this prints in a single color ({catalog.spools[0]?.name}). Your multi-color
+                design collapses to one filament.
+              </span>
+            </div>
+          )}
           <button
             type="button"
             data-action="submit-print-job"
@@ -372,9 +579,7 @@ export function PrintPanel(props: PrintPanelProps) {
             title={
               exportBlocked
                 ? 'Fix the printability errors first'
-                : catalog.source !== 'thh-ams'
-                  ? 'Waiting for the AMS filament roster'
-                  : 'Slice and print on the paired printer'
+                : 'Slice and print on the paired printer'
             }
             style={{
               padding: '10px 12px',

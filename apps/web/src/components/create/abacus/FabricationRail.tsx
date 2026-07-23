@@ -54,6 +54,9 @@ export function FabricationRail() {
     setOverrides,
     design,
     thhFilaments,
+    connections,
+    selectedConnectionId,
+    selectConnection,
     catalog,
     filamentMap,
     solveResult,
@@ -273,6 +276,21 @@ export function FabricationRail() {
         plain STL instead
       </button>
 
+      {/* which paired print service this design prints to. Only shown once the
+          user has more than one — with a single connection there's nothing to
+          choose and the proxy resolves it implicitly. Switching re-reads the
+          printer, filament roster, capabilities, and job list for that service. */}
+      {connections.length > 1 && (
+        <StudioSelect
+          label="print service"
+          value={selectedConnectionId ?? ''}
+          options={connections.map((c) => ({ value: c.id, label: c.name }))}
+          onChange={selectConnection}
+          dataElement="abacus-studio-print-connection"
+          dataAction="select-print-connection"
+        />
+      )}
+
       {/* print-service panel (Gitea #9) — embedded (normal flow) in the rail */}
       <PrintPanel
         embedded
@@ -281,6 +299,13 @@ export function FabricationRail() {
         filamentMap={filamentMap}
         catalog={catalog}
         printerId={thhFilaments.printerId}
+        printerMultiMaterial={thhFilaments.printerMultiMaterial}
+        amsPresent={thhFilaments.amsPresent}
+        externalUnprintable={thhFilaments.externalUnprintable}
+        rosterEmpty={thhFilaments.rosterEmpty}
+        isLoading={thhFilaments.isLoading}
+        isFetching={thhFilaments.isFetching}
+        connectionId={selectedConnectionId}
         unavailable={thhFilaments.unavailable}
         exportBlocked={exportBlocked}
         requestExportStl={requestExportStl}

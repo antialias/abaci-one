@@ -237,9 +237,24 @@ export const postcardKeys = {
 export const abacusPrintKeys = {
   all: ['abacus-print'] as const,
   connections: () => [...abacusPrintKeys.all, 'connections'] as const,
-  printers: () => [...abacusPrintKeys.all, 'printers'] as const,
-  filaments: (printerId: string) => [...abacusPrintKeys.all, 'filaments', printerId] as const,
-  jobs: () => [...abacusPrintKeys.all, 'jobs'] as const,
+  // Connection-scoped reads, prefix-scoped invalidations — one React Query
+  // hierarchy, not a legacy shim. A read passes the selected connectionId so each
+  // printer's roster/filaments/capabilities cache independently; the doorbell ring
+  // invalidates the BARE prefix (no id) on purpose, so one ring refreshes every
+  // connection's cached entry in a single call. Same reason `job(jobId)` sits
+  // under its own segment.
+  printers: (connectionId?: string) =>
+    connectionId
+      ? ([...abacusPrintKeys.all, 'printers', connectionId] as const)
+      : ([...abacusPrintKeys.all, 'printers'] as const),
+  filaments: (printerId: string, connectionId?: string) =>
+    connectionId
+      ? ([...abacusPrintKeys.all, 'filaments', printerId, connectionId] as const)
+      : ([...abacusPrintKeys.all, 'filaments', printerId] as const),
+  jobs: (connectionId?: string) =>
+    connectionId
+      ? ([...abacusPrintKeys.all, 'jobs', connectionId] as const)
+      : ([...abacusPrintKeys.all, 'jobs'] as const),
   job: (jobId: string) => [...abacusPrintKeys.all, 'job', jobId] as const,
   capabilities: (connectionId?: string) =>
     [...abacusPrintKeys.all, 'capabilities', connectionId ?? 'sole'] as const,

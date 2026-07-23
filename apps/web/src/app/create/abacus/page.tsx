@@ -21,6 +21,7 @@ import {
 } from '@/components/create/abacus/AbacusStudioContext'
 import { intentOf } from '@/components/create/abacus/abacus-fabrication'
 import { DesignInspectorRail } from '@/components/create/abacus/DesignInspectorRail'
+import { FabricationErrorBoundary } from '@/components/create/abacus/FabricationErrorBoundary'
 import { FabricationRail } from '@/components/create/abacus/FabricationRail'
 import { FabricationSwitch } from '@/components/create/abacus/FabricationSwitch'
 import { PageWithNav } from '@/components/PageWithNav'
@@ -117,8 +118,22 @@ function StudioBody({ selectedPlayerId, onSelectPlayer, playerUnavailable }: Stu
           playerUnavailable={playerUnavailable}
         />
       }
-      center={isFdm ? <AbacusStudioViewer /> : <PaperMarkerCenter />}
-      right={isFdm ? <FabricationRail /> : null}
+      center={
+        isFdm ? (
+          <FabricationErrorBoundary label="3D preview">
+            <AbacusStudioViewer />
+          </FabricationErrorBoundary>
+        ) : (
+          <PaperMarkerCenter />
+        )
+      }
+      right={
+        isFdm ? (
+          <FabricationErrorBoundary label="print panel">
+            <FabricationRail />
+          </FabricationErrorBoundary>
+        ) : null
+      }
     />
   )
 }

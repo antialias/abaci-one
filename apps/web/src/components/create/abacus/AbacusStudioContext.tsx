@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useAbacusPrintConnections } from '@/hooks/useAbacusPrintConnections'
 import {
   usePlayerAbacusIdentity,
   useSavePlayerAbacusIdentity,
@@ -43,6 +44,10 @@ import { selectSourceIdentity } from './abacus-identity-source'
 import { type DisplayConfigInput, type Params, paramsFromDisplayConfig } from './abacus-model'
 import { materialize, planToFilamentMap } from './abacus-plan'
 import { DEFAULT_PROFILE_ID, profileById, solve } from './abacus-solver'
+
+// Per-browser memory of which paired print service the studio prints to, so a
+// devbox pointed at both prod and a local service reopens on the same one.
+const PRINT_CONNECTION_STORAGE_KEY = 'abacus-studio-print-connection'
 
 // The identity slice of the current params, or null when a custom scheme/palette
 // string can't be expressed as a saved identity (save stays disabled).
@@ -100,11 +105,55 @@ function useStudioController(playerId: string | null) {
   // paired and reachable, falling back to the params-derived color-only catalog
   // when it isn't — the studio never blocks on the print service. Only read when
   // the design is being made as a 3D print; the paper lane needs no filaments.
-  const thhFilaments = useThhFilamentCatalog({ enabled: fabrication.kind === 'fdm' })
-  const catalog = useMemo(
-    () => thhFilaments.catalog ?? catalogFromParams(params),
-    [thhFilaments.catalog, params]
-  )
+  // Which paired print service the print reads/writes target. The proxy accepts
+  // an explicit ?connectionId= and 400s once the user has more than one paired
+  // without one, so the studio resolves it here: the user's remembered pick when
+  // it's still a live connection, else the first (listConnections sorts by
+  // createdAt). The list read is cheap and shared with Settings › Printing; only
+  // the fdm lane actually consumes the resolved id.
+  const { connectionsQuery } = useAbacusPrintConnections()
+  const connections = useMemo(() => connectionsQuery.data ?? [], [connectionsQuery.data])
+  const [pickedConnectionId, setPickedConnectionId] = useState<string | null>(null)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(PRINT_CONNECTION_STORAGE_KEY)
+      if (stored) setPickedConnectionId(stored)
+    } catch {
+      /* private mode / storage disabled — fall through to the default pick */
+    }
+  }, [])
+  const selectConnection = useCallback((id: string) => {
+    setPickedConnectionId(id)
+    try {
+      localStorage.setItem(PRINT_CONNECTION_STORAGE_KEY, id)
+    } catch {
+      /* non-fatal: the pick just won't persist across reloads */
+    }
+  }, [])
+  const selectedConnectionId = useMemo<string | undefined>(() => {
+    if (connections.length === 0) return undefined
+    if (pickedConnectionId && connections.some((c) => c.id === pickedConnectionId)) {
+      return pickedConnectionId
+    }
+    return connections[0].id
+  }, [connections, pickedConnectionId])
+
+  const thhFilaments = useThhFilamentCatalog({
+    enabled: fabrication.kind === 'fdm',
+    connectionId: selectedConnectionId,
+  })
+  // The catalog the print plan quantizes onto. It MUST be non-empty: materialize
+  // runs in this provider (above every error boundary), and an empty spool list
+  // makes the quantizer emit an out-of-range slot that throws and blanks the whole
+  // studio. Two empty vectors both fall back to the params catalog (always ≥1
+  // spool): a null live catalog (service unpaired / unreachable / read failed) AND
+  // a live thh-ams catalog with zero loaded filaments (printer on, AMS empty). In
+  // the fallback the preview shows the designed colors and the print path stays
+  // blocked (source !== 'thh-ams') until a real roster loads — never a crash.
+  const catalog = useMemo(() => {
+    const live = thhFilaments.catalog
+    return live && live.spools.length > 0 ? live : catalogFromParams(params)
+  }, [thhFilaments.catalog, params])
   const plan = useMemo(
     () => materialize(design, catalog, { overrides }),
     [design, catalog, overrides]
@@ -252,6 +301,9 @@ function useStudioController(playerId: string | null) {
     setFabricationKind,
     design,
     thhFilaments,
+    connections,
+    selectedConnectionId,
+    selectConnection,
     catalog,
     plan,
     filamentMap,

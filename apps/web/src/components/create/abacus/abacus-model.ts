@@ -332,13 +332,21 @@ export const beadRoleNames = (scheme: string): string[] =>
 // `computeFilamentMap` shape re-exports from there. This file keeps only the pure
 // color primitives (distance, luminance, contrast, nearest-slot) that both the
 // plan and the viewer's plug pass still share.
+// Total by construction: color math is a leaf primitive called from the viewer,
+// the plan quantizer, and the reconcile strip, so it must NEVER throw — a bad or
+// missing hex (an unmapped role, an empty catalog slot, a partial config) has to
+// degrade one swatch to neutral grey, not unwind React past the studio provider
+// and blank the whole page. A genuine data fault is surfaced by the print panel's
+// unavailable state; this guard just refuses to make it a render crash.
+const NEUTRAL_RGB: [number, number, number] = [128, 128, 128]
 export const hexRGB = (h: string): [number, number, number] => {
-  let s = h.replace('#', '')
+  let s = typeof h === 'string' ? h.replace('#', '') : ''
   if (s.length === 3)
     s = s
       .split('')
       .map((c) => c + c)
       .join('')
+  if (!/^[0-9a-fA-F]{6}$/.test(s)) return NEUTRAL_RGB
   const n = Number.parseInt(s, 16)
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
 }

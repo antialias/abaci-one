@@ -36,15 +36,17 @@ export interface CancelPrintJobVars {
  * The jobs roster, normalized. Read-only companion to the ring: the same query
  * key `usePrintJobRing` invalidates, so a ring or a mutation both land here.
  */
-export function useAbacusPrintJobs(options: { enabled: boolean }) {
+export function useAbacusPrintJobs(options: { enabled: boolean; connectionId?: string }) {
+  const { enabled, connectionId } = options
   const query = useQuery({
-    queryKey: abacusPrintKeys.jobs(),
+    queryKey: abacusPrintKeys.jobs(connectionId),
     queryFn: async (): Promise<unknown> => {
-      const res = await api('abacus/print/jobs')
+      const cq = connectionId ? `?connectionId=${encodeURIComponent(connectionId)}` : ''
+      const res = await api(`abacus/print/jobs${cq}`)
       if (!res.ok) throw new Error(`jobs read failed: ${res.status}`)
       return (await res.json()) as unknown
     },
-    enabled: options.enabled,
+    enabled,
     staleTime: 5_000,
   })
   const jobRows: JobRow[] = normalizeJobs(query.data)

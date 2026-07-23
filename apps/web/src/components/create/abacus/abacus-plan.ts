@@ -145,7 +145,11 @@ function snapWithin(
   allowed: number[]
 ): AutoSnap {
   const nearestIn = (target: string, exclude = -1): number => {
-    let best = allowed[0]
+    // `?? 0` guards an empty `allowed` (e.g. a future candidate group with no
+    // members): never emit `undefined`, which would index `spools[undefined]`
+    // and throw in the provider. materialize's empty-catalog guard makes slot 0
+    // always exist here.
+    let best = allowed[0] ?? 0
     let bd = Number.POSITIVE_INFINITY
     for (const idx of allowed) {
       if (idx === exclude) continue
@@ -202,6 +206,24 @@ function candidateGroups(catalog: FilamentCatalog): Map<string, number[]> | null
   return groups.size > 0 ? groups : null
 }
 
+// A valid plan for an EMPTY catalog: no spools ⇒ nothing to assign. materialize's
+// production caller (the studio provider) guarantees a non-empty catalog by
+// falling back to the always-populated params catalog, so this is a defensive
+// floor, not a normal path. It exists because materialize runs INSIDE the studio
+// provider — above every React error boundary — so a throw here blanks the whole
+// page instead of one pane. Returning a degenerate-but-valid plan keeps the
+// function total: an empty roster degrades, never crashes.
+function emptyPlan(source: FilamentCatalog['source']): PrintPlan {
+  return {
+    schemaVersion: PRINT_PLAN_SCHEMA_VERSION,
+    catalogSource: source,
+    assignments: [],
+    markerContrast: 1,
+    warnings: [],
+    ok: true,
+  }
+}
+
 // Project a design onto a catalog. Role assignment order matches the bench's
 // historical precedence EXACTLY (markers first — they're CV-critical — then
 // frame, then bead roles distinct-first), so `computeFilamentMap` can adapt this
@@ -210,12 +232,17 @@ function candidateGroups(catalog: FilamentCatalog): Map<string, number[]> | null
 // wins the whole plate, so the default mapping never mixes temperatures and
 // never lands a visible part on support media — the pit of success. Pins go
 // wherever the user says; the warnings answer.
+//
+// TOTAL by contract: a catalog with zero spools returns emptyPlan rather than
+// throwing (see above). Every index the quantizer produces below therefore
+// references a real spool, so the assignments can't read `.id` off undefined.
 export function materialize(
   design: AbacusDesign,
   catalog: FilamentCatalog,
   opts: MaterializeOpts = {}
 ): PrintPlan {
   const spools = catalog.spools
+  if (spools.length === 0) return emptyPlan(catalog.source)
   const hexes = spools.map((s) => s.hex)
   const overrides = opts.overrides ?? {}
   const idToIndex = new Map(spools.map((s, i) => [s.id, i] as const))
@@ -538,8 +565,12 @@ function planWarnings(
 // lets a manual override flow straight into the live preview, and keeps the plan
 // the single source of truth for both the warnings and the pixels.
 export function planToFilamentMap(plan: PrintPlan, slots: string[]): FilamentMap {
+  // `?? 0` keeps this total for an emptyPlan (no assignments): a missing role maps
+  // to slot 0. Paired with hexRGB's neutral fallback, a degenerate catalog renders
+  // a neutral preview instead of throwing. A normal plan always has every role, so
+  // this changes nothing on the live path (the snapshot test pins that).
   const pick = (kind: PrintRoleKind): number =>
-    (plan.assignments.find((a) => a.role.kind === kind) as RoleAssignment).spoolIndex
+    plan.assignments.find((a) => a.role.kind === kind)?.spoolIndex ?? 0
   return {
     slots,
     frame: pick('frame'),
