@@ -9,9 +9,9 @@
  *
  * The style block is the settings editor's controlled value, passed through
  * verbatim (v2 discipline: nothing here injects or defaults process keys).
- * Only a THH-backed catalog can produce a ticket — its spool ids are the real
- * AMS `slotId`s the service resolves; the params stand-in catalog has no
- * physical slots to name.
+ * Only a THH-backed catalog can produce a ticket — an AMS slot rides as its real
+ * `slotId`, while a no-AMS external spool (#19) rides as `{external, family}`
+ * since it has no slot; the params stand-in catalog has neither and is refused.
  */
 import type {
   PrintTicketV2,
@@ -31,7 +31,8 @@ export interface AbacusTicketArgs {
   source: Omit<TicketSource, 'app'>
   /** The bodies that actually went into the 3MF (ascending slot order). */
   bodies: readonly SpoolBodySummary[]
-  /** Must be a 'thh-ams' catalog — spool ids are the AMS slotIds. */
+  /** Must be a 'thh-ams' catalog — an AMS spool rides as its slotId, a no-AMS
+   *  external spool as `{external, family}`. */
   catalog: FilamentCatalog
   /** The settings editor's controlled value, verbatim. */
   style: TicketStyle
@@ -63,7 +64,20 @@ export function buildAbacusTicket(args: AbacusTicketArgs): PrintTicketV2 {
     if (!spool) {
       throw new Error(`3MF body "${body.label}" references slot ${body.slot}, not in the catalog`)
     }
-    filaments.push({ slotId: spool.id })
+    // An AMS slot names its physical `slotId`; a no-AMS external spool (#19) has no
+    // slot — the service resolves it by {external, family} instead. The catalog only
+    // marks a spool external when its family is a real string, so `family` here is
+    // always concrete (a null-family external is dropped before it reaches a spool).
+    filaments.push(
+      spool.external ? { external: true, family: spool.material } : { slotId: spool.id }
+    )
+  }
+
+  // A no-AMS print is single-filament by construction — one nozzle, one external
+  // spool. More than one external means the catalog projection went wrong upstream;
+  // fail loud rather than silently collapse the design onto the wrong colour.
+  if (filaments.filter((f) => 'external' in f).length > 1) {
+    throw new Error('an external (no-AMS) print carries exactly one spool; got multiple')
   }
 
   return {

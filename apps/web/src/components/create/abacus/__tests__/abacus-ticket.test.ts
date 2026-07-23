@@ -1,7 +1,8 @@
 /**
- * v2 ticket builder tests (#9): filaments mirror the 3MF's extruder grouping
- * (one spool per distinct body colour, body order), slot ids come from the THH
- * catalog, style passes through verbatim, and non-submittable states fail loud.
+ * v2 ticket builder tests (#9, #19): filaments mirror the 3MF's extruder grouping
+ * (one spool per distinct body colour, body order); an AMS spool rides as its THH
+ * slotId, a no-AMS external spool as {external, family}; style passes through
+ * verbatim; and non-submittable states (incl. >1 external) fail loud.
  */
 import { describe, expect, it } from 'vitest'
 import type { SpoolBodySummary } from '../abacus-3mf'
@@ -77,5 +78,55 @@ describe('buildAbacusTicket', () => {
       { slot: 9, label: 'Ghost', colorHex: '#FF00FF', triangleCount: 1 },
     ]
     expect(() => buildAbacusTicket({ ...base, bodies: stray })).toThrow(/slot 9/)
+  })
+
+  it('rides a no-AMS external spool as {external, family} instead of a slotId', () => {
+    const externalCatalog: FilamentCatalog = {
+      source: 'thh-ams',
+      fetchedAt: '2026-07-20T00:00:00Z',
+      spools: [
+        { id: 'external-0', name: 'Sunlu PLA+', hex: '#1A7A3E', material: 'PLA', external: true },
+      ],
+    }
+    const externalBodies: SpoolBodySummary[] = [
+      { slot: 0, label: 'Sunlu PLA+', colorHex: '#1A7A3E', triangleCount: 5000 },
+    ]
+    const ticket = buildAbacusTicket({ ...base, catalog: externalCatalog, bodies: externalBodies })
+    expect(ticket.filaments).toEqual([{ external: true, family: 'PLA' }])
+  })
+
+  it('emits both filament shapes for a mixed roster (an AMS slot + one external)', () => {
+    const mixed: FilamentCatalog = {
+      source: 'thh-ams',
+      fetchedAt: '2026-07-20T00:00:00Z',
+      spools: [
+        { id: '0.1', name: 'Latte PLA', hex: '#C9A26E', material: 'PLA' },
+        { id: 'external-1', name: 'Sunlu Red', hex: '#C0392B', material: 'PLA', external: true },
+      ],
+    }
+    const mixedBodies: SpoolBodySummary[] = [
+      { slot: 0, label: 'latte', colorHex: '#C9A26E', triangleCount: 10 },
+      { slot: 1, label: 'red', colorHex: '#C0392B', triangleCount: 10 },
+    ]
+    const ticket = buildAbacusTicket({ ...base, catalog: mixed, bodies: mixedBodies })
+    expect(ticket.filaments).toEqual([{ slotId: '0.1' }, { external: true, family: 'PLA' }])
+  })
+
+  it('refuses more than one external spool — a no-AMS print is single-filament', () => {
+    const twoExternal: FilamentCatalog = {
+      source: 'thh-ams',
+      fetchedAt: '2026-07-20T00:00:00Z',
+      spools: [
+        { id: 'external-0', name: 'Sunlu Green', hex: '#1A7A3E', material: 'PLA', external: true },
+        { id: 'external-1', name: 'Sunlu Red', hex: '#C0392B', material: 'PLA', external: true },
+      ],
+    }
+    const twoBodies: SpoolBodySummary[] = [
+      { slot: 0, label: 'green', colorHex: '#1A7A3E', triangleCount: 10 },
+      { slot: 1, label: 'red', colorHex: '#C0392B', triangleCount: 10 },
+    ]
+    expect(() => buildAbacusTicket({ ...base, catalog: twoExternal, bodies: twoBodies })).toThrow(
+      /exactly one spool/i
+    )
   })
 })
