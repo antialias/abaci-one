@@ -1,10 +1,16 @@
-// Abacus Studio — FilamentPlanPanel stories (gh#163).
+// Abacus Studio — FilamentPlanPanel stories (gh#163, Gitea #17).
 //
 // The panel is presentational, so every state the material UX can reach is
 // demonstrable here with fabricated AMS snapshots — including the ones that are
 // awkward to stage with real spools (weld splits, temperature ties). The
 // catalogs below are modeled on the production failure that motivated gh#163:
 // four PLA spools plus one PETG whose color matches the heaven bead exactly.
+//
+// #17 collapsed the old reconcile strip into this ONE part-aware list: each row
+// leads with a thumbnail of the actual part (a bead in the display shape, the
+// frame, an ArUco marker) and a flecked tile of the filament it prints on. The
+// global Storybook preview wraps stories in AbacusDisplayProvider, so the bead
+// thumbnails render in the configured shape with no story-level provider.
 
 import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
@@ -58,7 +64,7 @@ const supportCatalog = thh([
 ])
 
 // A bare black + white plate: no spool comes close to either bead color, so both
-// beads snap onto a far-off filament and each earns a corner fleck in the strip,
+// beads snap onto a far-off filament and each earns a corner fleck on its tile,
 // while the black frame + markers still print true (the fleck's silent case).
 const limitedCatalog = thh([
   spool('s-black', 'Bambu Lab PLA Basic Black', '#101010', 'PLA'),
@@ -72,11 +78,10 @@ const limitedCatalog = thh([
 type HarnessProps = {
   catalog: FilamentCatalog
   initialOverrides?: Record<string, string>
-  defaultMappingOpen?: boolean
   defaultOpenRole?: string | null
 }
 
-function Harness({ catalog, initialOverrides, defaultMappingOpen, defaultOpenRole }: HarnessProps) {
+function Harness({ catalog, initialOverrides, defaultOpenRole }: HarnessProps) {
   const [overrides, setOverrides] = useState<Record<string, string>>(initialOverrides ?? {})
   return (
     <FilamentPlanPanel
@@ -84,7 +89,6 @@ function Harness({ catalog, initialOverrides, defaultMappingOpen, defaultOpenRol
       catalog={catalog}
       overrides={overrides}
       onOverridesChange={setOverrides}
-      defaultMappingOpen={defaultMappingOpen}
       defaultOpenRole={defaultOpenRole}
     />
   )
@@ -120,22 +124,22 @@ type Story = StoryObj<typeof FilamentPlanPanel>
  * Layer 0, the pit of success: this is the exact catalog shape that failed in
  * production (4× PLA + a PETG that matches the heaven bead perfectly). The
  * anchor-restricted auto-snap keeps every role on the PLA plate — no warnings,
- * nothing pinned, and the PETG is simply not chosen. Open the mapping to see
- * every row on its ✓ best match.
+ * nothing pinned, and the PETG is simply not chosen. Every row sits on its ✓ best
+ * match, so no tile carries a fleck and the footer reads "prints true".
  */
 export const PitOfSuccess: Story = {
   render: () => <Harness catalog={prodEchoCatalog} />,
 }
 
 /**
- * The reconcile strip, reality-first, both states in one shot. Each swatch's base
- * is the FILAMENT the role prints on; a role only earns a corner fleck of the
- * user's *true* (designed) color when it prints noticeably differently. On this
- * bare black+white plate the bead colors have nowhere true to land, so each prints
- * as black/white with a fleck of its intended color and the caption reads "N
- * colors shift". Compare with PitOfSuccess above, whose exact-match plate leaves
- * the strip fleckless ("prints true"). In the studio, hovering a fleck previews
- * the designed colors on the 3D model; clicking a swatch opens that role's picker.
+ * Reality-first tiles, both states in one list. Each row's tile is the FILAMENT
+ * the role prints on; a role only earns a corner fleck of the user's *true*
+ * (designed) color when it prints noticeably differently. On this bare black+white
+ * plate the bead colors have nowhere true to land, so each bead row shows a
+ * black/white tile flecked with its intended color and the footer reads "N colors
+ * shift". Compare with PitOfSuccess, whose exact-match plate leaves every tile
+ * fleckless ("prints true"). In the studio, hovering a tile previews the designed
+ * colors on the 3D hero; hovering the row highlights that part.
  */
 export const ColorsShiftFleck: Story = {
   render: () => <Harness catalog={limitedCatalog} />,
@@ -157,7 +161,7 @@ export const TempMixPin: Story = {
  * breakaway support spool (near-white, so a color-only snapper would love it).
  * That's not a temperature problem — Support-for-PLA prints at PLA temps by
  * design — it's a "this part will be chalky and crumble" problem, and the
- * warning says so. Note the amber PLA-S tag on the chip and in the legend.
+ * warning says so. Note the amber PLA-S tag on the chip and the marker row.
  */
 export const SupportMediaPin: Story = {
   render: () => <Harness catalog={supportCatalog} initialOverrides={{ 'marker-white': 's-sup' }} />,
@@ -174,28 +178,27 @@ export const WeldSplitPin: Story = {
 }
 
 /**
- * Layer 2, the grouped picker: a role's picker open on a mixed catalog. The
- * plate's anchor group leads undimmed ("PLA · prints with this plate"); the
- * PETG section follows dimmed ("needs a different plate temperature"), and the
- * breakaway spool sits last under "Support". Dimmed is not disabled — every
- * swatch stays clickable, and an off-anchor pick lights the warning strip
- * instead of being blocked.
+ * Layer 2, the grouped picker expanded in place: a role's row opened on a mixed
+ * catalog. The picker bathes in the role's DESIGNED color (what the ✓ matches to),
+ * with its plate's anchor group leading undimmed ("PLA · prints with this plate");
+ * the PETG section follows dimmed ("needs a different plate temperature"), and the
+ * breakaway spool sits last under "Support". Dimmed is not disabled — every swatch
+ * stays clickable, and an off-anchor pick lights the warning strip instead of being
+ * blocked.
  */
 export const GroupedPicker: Story = {
-  render: () => (
-    <Harness catalog={supportCatalog} defaultMappingOpen={true} defaultOpenRole="bead-0" />
-  ),
+  render: () => <Harness catalog={supportCatalog} defaultOpenRole="bead-0" />,
 }
 
 /**
  * Layer 1, visibility: every spool here starts with "Bambu Lab", so the mapping
  * rows strip that shared brand prefix and spend their characters on the
  * distinguishing words (full name stays in the tooltip). Material tags ride the
- * rows, and the reconcile strip's caption reports the loaded count ("6 filaments
- * loaded") while its swatches show how the design lands on this plate.
+ * rows, and the list footer reports the loaded count ("6 filaments loaded") beside
+ * the shift status.
  */
 export const BrandPrefixAndMapping: Story = {
-  render: () => <Harness catalog={supportCatalog} defaultMappingOpen={true} />,
+  render: () => <Harness catalog={supportCatalog} />,
 }
 
 /**
@@ -205,11 +208,5 @@ export const BrandPrefixAndMapping: Story = {
  * material warnings. Only the THH AMS snapshot activates the material layers.
  */
 export const ColorOnlyCatalog: Story = {
-  render: () => (
-    <Harness
-      catalog={catalogFromParams(params)}
-      defaultMappingOpen={true}
-      defaultOpenRole="bead-0"
-    />
-  ),
+  render: () => <Harness catalog={catalogFromParams(params)} defaultOpenRole="bead-0" />,
 }

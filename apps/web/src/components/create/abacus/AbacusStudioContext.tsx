@@ -205,6 +205,24 @@ function useStudioController(playerId: string | null) {
     revealIntrinsicRef.current?.(v)
   }, [])
 
+  // Hovering/focusing a filament-mapping row highlights THAT part on the 3D model
+  // and x-rays the rest (Gitea #17). Same imperative-handle shape as reveal: the rail
+  // row (a sibling) can't reach the viewer's mount-once recolor closure, and a hover
+  // must not re-render the studio tree — the viewer registers the poke, the row
+  // calls it with a role key (or null to clear). The optional human label rides
+  // along so the viewer can caption WHAT it's emphasizing on the hero. No-op on the
+  // paper lane.
+  const highlightRoleRef = useRef<((k: string | null, label?: string | null) => void) | null>(null)
+  const registerHighlightRole = useCallback(
+    (fn: ((k: string | null, label?: string | null) => void) | null) => {
+      highlightRoleRef.current = fn
+    },
+    []
+  )
+  const setHighlightRole = useCallback((k: string | null, label?: string | null) => {
+    highlightRoleRef.current?.(k, label)
+  }, [])
+
   return {
     playerId,
     playerName,
@@ -241,6 +259,8 @@ function useStudioController(playerId: string | null) {
     requestExportStl,
     registerRevealIntrinsic,
     setRevealIntrinsic,
+    registerHighlightRole,
+    setHighlightRole,
   }
 }
 

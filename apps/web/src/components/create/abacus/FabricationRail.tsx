@@ -65,6 +65,7 @@ export function FabricationRail() {
     requestExportStl,
     exporterReady,
     setRevealIntrinsic,
+    setHighlightRole,
   } = useAbacusStudio()
 
   const canExport = exporterReady && !exportBlocked
@@ -117,16 +118,17 @@ export function FabricationRail() {
     >
       <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>3D print</div>
 
-      {/* reality-first: the model previews what actually prints (the loaded
-          filament colors). This strip mirrors that — each swatch is a filament,
-          flecked with the user's true color only where it prints differently.
-          Hovering a fleck previews the designed colors on the model. */}
+      {/* the single part-aware filament↔color list (Gitea #17): one row per abacus
+          part, each with a thumbnail + a flecked tile of the filament it prints on.
+          Hovering a row highlights that part on the 3D hero (onHighlightRole);
+          hovering its tile flips the hero to the designed colors (onRevealIntrinsic). */}
       <FilamentPlanPanel
         design={design}
         catalog={catalog}
         overrides={overrides}
         onOverridesChange={setOverrides}
         onRevealIntrinsic={setRevealIntrinsic}
+        onHighlightRole={setHighlightRole}
       />
 
       {/* printer profile — a first-class print setting (drives the gate below) */}

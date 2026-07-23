@@ -362,6 +362,65 @@ export const lum = (hex: string): number => {
 export const contrastRatio = (a: string, b: string): number =>
   (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05)
 
+// linear per-channel blend a→b (t=0 → a, t=1 → b), clamped to a valid hex.
+export const mixHex = (a: string, b: string, t: number): string => {
+  const A = hexRGB(a)
+  const B = hexRGB(b)
+  return `#${A.map((v, i) => {
+    const c = Math.round(v + (B[i] - v) * t)
+    return Math.max(0, Math.min(255, c)).toString(16).padStart(2, '0')
+  }).join('')}`
+}
+
+// The expanded filament picker bathes in the DESIGNED role color, so its text
+// must be chosen against that specific ground — as a coordinated set, not one
+// label at a time (Gitea #17). pickerInk derives the WHOLE ink palette from one
+// background: the ink polarity that actually contrasts (max of near-white /
+// near-black — the crossover is luminance ≈0.18, not 0.5), a neutral ramp on
+// that side (primary → soft → hairline, lerped toward the ground), and a caution
+// tone in the same polarity's WARM pole (gold on dark grounds, brown on light).
+// The warm tone is FLOORED: if it can't clear `floor`, it lerps back toward the
+// neutral base until it does — so it degrades to a warm-neutral instead of the
+// muddy fixed amber it replaced. Poles + floor are the only design constants;
+// which tone and how light/dark it must be is solved per background.
+export const INK_LIGHT = '#f8fafc'
+export const INK_DARK = '#0b0f14'
+export const WARM_LIGHT = '#ffd68a' // caution tone when the ink is light (dark grounds)
+export const WARM_DARK = '#4a1e06' // caution tone when the ink is dark (light grounds)
+export const PICKER_INK_FLOOR = 3.2 // WCAG ratio the caution label must clear
+
+export type PickerInk = {
+  light: boolean // true → light ink polarity (dark ground)
+  fg: string // primary labels, selected/pin rings
+  fgSoft: string // titles, footer, anchor section label
+  fgHair: string // borders, hairlines
+  warn: string // off-plate / support section labels
+}
+
+export const pickerInk = (bg: string, floor = PICKER_INK_FLOOR): PickerInk => {
+  const light = contrastRatio(bg, INK_LIGHT) >= contrastRatio(bg, INK_DARK)
+  const base = light ? INK_LIGHT : INK_DARK
+  const warmIdeal = light ? WARM_LIGHT : WARM_DARK
+  let warn = warmIdeal
+  if (contrastRatio(bg, warn) < floor) {
+    warn = base // fallback if even a hair of warmth won't clear the floor
+    for (let t = 1; t >= 0; t -= 0.05) {
+      const c = mixHex(base, warmIdeal, t)
+      if (contrastRatio(bg, c) >= floor) {
+        warn = c
+        break
+      }
+    }
+  }
+  return {
+    light,
+    fg: base,
+    fgSoft: mixHex(base, bg, 0.34),
+    fgHair: mixHex(base, bg, 0.72),
+    warn,
+  }
+}
+
 export type FilamentMap = {
   slots: string[] // the loaded spools (filament_1..filament_count)
   frame: number // slot index per role ↓
@@ -509,6 +568,17 @@ export const shellSlotIndex = (info: ShellInfo, p: Params, fm: FilamentMap): num
 // the viewer converts this to a linear rgb triple via THREE.Color.
 export const shellHex = (info: ShellInfo, p: Params, fm: FilamentMap): string =>
   fm.slots[shellSlotIndex(info, p, fm)]
+
+// The print-plan ROLE KEY a shell belongs to (frame or a bead role), matching the
+// keys PrintRole emits in abacus-plan.ts: 'frame' and `bead-${beadRoleIndex(...)}`.
+// The single source of truth mapping addressable geometry → a mapping row, shared
+// by the viewer's row→hero highlight dimming and (future, Gitea #18) the hero→row
+// raycaster. Markers + inset text have no addressable render shell (baked into the
+// frame recess / a separate plug pass), so they never resolve here.
+export const shellRoleKey = (info: ShellInfo, p: Params): string =>
+  info.isFrame
+    ? 'frame'
+    : `bead-${beadRoleIndex(info.i, info.isHeaven, p.color_scheme, p.cols, p.color_palette)}`
 
 // ---- inset text-plug layout (QA for inlay fill colors) ----------------------
 // mirror of the scad rails()/walls() layout: token k of a slot sits at
