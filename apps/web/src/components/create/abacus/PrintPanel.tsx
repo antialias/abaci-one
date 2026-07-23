@@ -37,6 +37,7 @@ import { abacusPrintKeys } from '@/lib/queryKeys'
 import { buildAbacusThreeMf } from './abacus-3mf'
 import type { FilamentCatalog } from './abacus-catalog'
 import type { FilamentMap, Params } from './abacus-model'
+import { abacusPrintPanelState } from './abacus-print-panel-state'
 import { buildAbacusTicket } from './abacus-ticket'
 import { ParkedJobCard } from './ParkedJobCard'
 import { PairPrinterPrompt } from './PrintConnectionsManager'
@@ -154,19 +155,20 @@ export function PrintPanel(props: PrintPanelProps) {
     requestExportStl,
   } = props
 
-  // The AMS-presence signal that words the empty/degraded states: prefer the live
-  // flag from #382, fall back to the static model capability only when it's absent
-  // (?? not ||, so a live `false` is honored, never masked by has_ams). See the
-  // hook for the tri-state rationale.
-  const hasAms = amsPresent ?? printerMultiMaterial
-
-  // The one printable no-AMS case: a single external spool. Drives the non-blocking
-  // "prints in one color" note (state D) — a one-nozzle printer collapses a
-  // multi-color design onto its single loaded filament, surfaced, never silent.
-  const monochromeExternal =
-    catalog.source === 'thh-ams' &&
-    catalog.spools.length === 1 &&
-    catalog.spools[0]?.external === true
+  // Which body state to render — the pure decision lives in `abacusPrintPanelState`
+  // (framework-free, unit-tested) so this component owns only the wording. The four
+  // degrade `kind`s double as the `data-degrade` attribute below; `printable` carries
+  // whether it's the single-external-spool case that needs the monochrome note (#19).
+  const panelState = abacusPrintPanelState({
+    unavailable,
+    isLoading,
+    catalog,
+    rosterEmpty,
+    externalUnprintable,
+    amsPresent,
+    printerMultiMaterial,
+  })
+  const monochromeExternal = panelState.kind === 'printable' && panelState.monochromeExternal
 
   const queryClient = useQueryClient()
   const userId = useUserId().data ?? undefined
@@ -474,15 +476,7 @@ export function PrintPanel(props: PrintPanelProps) {
         // hasAms = live amsPresent ?? static printerMultiMaterial (see above).
         <div
           data-element="print-roster-empty"
-          data-degrade={
-            externalUnprintable
-              ? 'external-unprintable'
-              : rosterEmpty
-                ? hasAms
-                  ? 'ams-empty'
-                  : 'no-ams-empty'
-                : 'roster-unavailable'
-          }
+          data-degrade={panelState.kind}
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -496,22 +490,24 @@ export function PrintPanel(props: PrintPanelProps) {
           }}
         >
           <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span aria-hidden="true">{externalUnprintable ? '🎨' : '🎞️'}</span>{' '}
-            {externalUnprintable
+            <span aria-hidden="true">
+              {panelState.kind === 'external-unprintable' ? '🎨' : '🎞️'}
+            </span>{' '}
+            {panelState.kind === 'external-unprintable'
               ? 'Loaded filament not recognized'
               : 'No loaded filament to print with'}
           </div>
           <div>
-            {externalUnprintable
+            {panelState.kind === 'external-unprintable'
               ? 'A spool is loaded on the external holder, but the printer couldn’t identify its material, so one-click print can’t choose settings for it.'
-              : !rosterEmpty
+              : panelState.kind === 'roster-unavailable'
                 ? 'The live filament roster isn’t available right now, so the studio is previewing your designed colors instead of the real spools.'
-                : hasAms
+                : panelState.kind === 'ams-empty'
                   ? 'The printer is connected, but its AMS reports no loaded spools. One-click print maps your designed colors onto the filaments that are actually loaded, so it needs at least one.'
                   : 'The printer is connected, but nothing is loaded — no AMS, and the external spool holder is empty. Load a spool and press Try again.'}
           </div>
           <div style={{ color: 'rgba(254,243,199,0.82)' }}>
-            {externalUnprintable ? (
+            {panelState.kind === 'external-unprintable' ? (
               <>
                 Reload a recognized filament, or use <strong>Download 3MF to print</strong> above
                 and pick the material yourself.
