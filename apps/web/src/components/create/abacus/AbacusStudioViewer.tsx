@@ -61,6 +61,7 @@ export function AbacusStudioViewer() {
     registerExportStl,
     registerRevealIntrinsic,
     registerHighlightRole,
+    pickModelRole,
   } = useAbacusStudio()
 
   // live mirrors read by the mount-once three.js closures (which can't re-close
@@ -71,6 +72,10 @@ export function AbacusStudioViewer() {
   designRef.current = design
   const filamentMapRef = useRef(filamentMap)
   filamentMapRef.current = filamentMap
+  // hero→row pick emitter (Gitea #18), mirrored so the mount-once scene effect can
+  // call the latest without re-running. pickModelRole is a stable useCallback anyway.
+  const pickRef = useRef(pickModelRole)
+  pickRef.current = pickModelRole
   // transient hover lens: true → show the user's INTRINSIC colors instead of the
   // filament projection. Set imperatively (not React state) so a hover never
   // re-renders the studio tree; the reveal handle below flips it + repaints.
@@ -532,6 +537,44 @@ export function AbacusStudioViewer() {
     }
     updateMarkers()
 
+    // ---- hero→row picking (Gitea #18) ---------------------------------------
+    // Click a bead/frame on the model → open its filament row. Raycast renderMesh
+    // (beads + frame) on a press that ISN'T an orbit drag, map the hit triangle to
+    // its shell → role key (the exact key the mapping rows carry, via shellRoleKey),
+    // and emit it. Markers/inset text have no addressable shell here, so a miss is a
+    // silent no-op. The intrinsic-reveal/x-ray lenses don't affect hit-testing —
+    // the raycaster reads geometry, not material opacity.
+    const raycaster = new THREE.Raycaster()
+    const ndc = new THREE.Vector2()
+    let downX = 0
+    let downY = 0
+    let downT = 0
+    const onPointerDown = (e: PointerEvent) => {
+      downX = e.clientX
+      downY = e.clientY
+      downT = e.timeStamp
+    }
+    const onPointerUp = (e: PointerEvent) => {
+      if (e.button !== 0) return // primary button only (right/middle = orbit/pan)
+      // reject orbit drags: only a short, near-stationary press reads as a pick
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return
+      if (e.timeStamp - downT > 500) return
+      if (!renderMesh || !triShell) return
+      const rect = renderer.domElement.getBoundingClientRect()
+      ndc.set(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      )
+      raycaster.setFromCamera(ndc, camera)
+      const hit = raycaster.intersectObject(renderMesh, false)[0]
+      if (hit?.faceIndex == null) return // clicked empty space / grid
+      const shell = shellInfo[triShell[hit.faceIndex]]
+      if (!shell) return
+      pickRef.current?.(shellRoleKey(shell, paramsRef.current))
+    }
+    renderer.domElement.addEventListener('pointerdown', onPointerDown)
+    renderer.domElement.addEventListener('pointerup', onPointerUp)
+
     // ---- resize + animation loop --------------------------------------------
     const onResize = () => {
       const w = mount.clientWidth || w0
@@ -555,6 +598,8 @@ export function AbacusStudioViewer() {
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown)
+      renderer.domElement.removeEventListener('pointerup', onPointerUp)
       controls.dispose()
       renderMesh?.geometry.dispose()
       renderMat.dispose()

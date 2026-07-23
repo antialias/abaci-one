@@ -223,6 +223,18 @@ function useStudioController(playerId: string | null) {
     highlightRoleRef.current?.(k, label)
   }, [])
 
+  // hero→row (Gitea #18): the reverse of the hover lenses above. The viewer
+  // raycasts a click on the 3D model to a shell → role key and calls pickModelRole;
+  // the fabrication rail hands the pick to the mapping panel, which opens + scrolls
+  // that role's row. A click is discrete (not a per-frame hover), so plain state +
+  // a re-render is fine here — the monotonic nonce lets a repeat click re-open a row
+  // the user had collapsed. Null role keys never reach here (shellRoleKey is total).
+  const [modelPick, setModelPick] = useState<{ key: string; nonce: number } | null>(null)
+  const pickModelRole = useCallback(
+    (key: string) => setModelPick((prev) => ({ key, nonce: (prev?.nonce ?? 0) + 1 })),
+    []
+  )
+
   return {
     playerId,
     playerName,
@@ -261,6 +273,8 @@ function useStudioController(playerId: string | null) {
     setRevealIntrinsic,
     registerHighlightRole,
     setHighlightRole,
+    modelPick,
+    pickModelRole,
   }
 }
 

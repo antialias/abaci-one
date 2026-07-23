@@ -196,6 +196,9 @@ export interface FilamentPlanPanelProps {
   /** hover/focus a row → highlight that part on the 3D model, x-ray the rest (#17).
    *  the label rides along so the hero can caption what's being emphasized. */
   onHighlightRole?: (roleKey: string | null, label?: string | null) => void
+  /** hero→row (#18): a click on the 3D model, as `{ key, nonce }` — opens + scrolls
+   *  that role's row. The nonce re-fires on repeat clicks of the same collapsed part. */
+  modelPick?: { key: string; nonce: number } | null
 }
 
 export function FilamentPlanPanel({
@@ -206,6 +209,7 @@ export function FilamentPlanPanel({
   defaultOpenRole = null,
   onRevealIntrinsic,
   onHighlightRole,
+  modelPick = null,
 }: FilamentPlanPanelProps) {
   // the design projected onto the loaded filaments, honoring the user's pins —
   // the source of truth for every warning and row below
@@ -367,6 +371,18 @@ export function FilamentPlanPanel({
     )
     return () => cancelAnimationFrame(raf)
   }, [openRole])
+  // hero→row (#18): a click on the 3D model opens + scrolls its role's row. Keyed on
+  // the whole pick object (fresh per click via its nonce), so re-clicking a part the
+  // user has since collapsed re-opens it — which setOpenRole(sameKey) alone wouldn't.
+  // rAF because the target row may be mounting in this same commit.
+  useEffect(() => {
+    if (!modelPick) return
+    setOpenRole(modelPick.key)
+    const raf = requestAnimationFrame(() =>
+      mappingRowRefs.current.get(modelPick.key)?.scrollIntoView({ block: 'nearest' })
+    )
+    return () => cancelAnimationFrame(raf)
+  }, [modelPick])
 
   // One role row: a part glyph + name + a flecked tile (the filament it prints on,
   // corner-flecked with the designed color when it shifts) that expands in place to

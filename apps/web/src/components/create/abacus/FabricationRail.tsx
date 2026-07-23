@@ -66,6 +66,7 @@ export function FabricationRail() {
     exporterReady,
     setRevealIntrinsic,
     setHighlightRole,
+    modelPick,
   } = useAbacusStudio()
 
   const canExport = exporterReady && !exportBlocked
@@ -121,7 +122,9 @@ export function FabricationRail() {
       {/* the single part-aware filament↔color list (Gitea #17): one row per abacus
           part, each with a thumbnail + a flecked tile of the filament it prints on.
           Hovering a row highlights that part on the 3D hero (onHighlightRole);
-          hovering its tile flips the hero to the designed colors (onRevealIntrinsic). */}
+          hovering its tile flips the hero to the designed colors (onRevealIntrinsic).
+          The reverse binding (#18): clicking a part on the hero opens its row here
+          (modelPick, emitted by the viewer's raycaster). */}
       <FilamentPlanPanel
         design={design}
         catalog={catalog}
@@ -129,6 +132,7 @@ export function FabricationRail() {
         onOverridesChange={setOverrides}
         onRevealIntrinsic={setRevealIntrinsic}
         onHighlightRole={setHighlightRole}
+        modelPick={modelPick}
       />
 
       {/* printer profile — a first-class print setting (drives the gate below) */}
