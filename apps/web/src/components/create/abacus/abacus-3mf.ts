@@ -5,9 +5,17 @@
  * beads) with no color information. This module splits that triangle soup by
  * filament slot — `analyzeShells` union-finds the shells, `shellSlotIndex`
  * maps each shell to the slot its role rides (the same mapping the viewer's
- * recolor pass uses) — and hands the per-slot bodies to frames-engine's
- * `meshesToThreeMf`, which keeps them CO-REGISTERED (one shared translate,
- * never per-body re-origin) so the beads stay threaded on their rods.
+ * recolor pass uses) — keeping every body CO-REGISTERED (never per-body
+ * re-origin) so the beads stay threaded on their rods.
+ *
+ * The per-slot bodies then take one of two paths by count:
+ *  - MULTICOLOR (>= 2 slots) → `assembleAbacus3mf`: one bed-centered printable
+ *    object (a `<components>` assembly, each colored mesh a `<part>` with its
+ *    extruder) plus an OWNED prime tower. Four *separate* objects (what
+ *    `meshesToThreeMf` emits) let Orca scatter the in-place beads and jam its auto
+ *    tower into an unprintable spot (exit 154); one placed object with a pinned
+ *    tower slices clean. See abacus-3mf-assembly.ts for the full root cause.
+ *  - SINGLE filament → `meshesToThreeMf` unchanged (one object already prints).
  *
  * Marker pockets and inset text ride the frame body in this pass: with the
  * scad's default `inlay_plugs=false` the plug solids aren't in the export STL
@@ -17,6 +25,7 @@
  */
 import { type ColorBody, meshesToThreeMf } from '@eink/frames-engine/print-bundle'
 import { parseStl, writeBinaryStl } from '@eink/frames-engine/stl'
+import { type AssemblyBody, assembleAbacus3mf, BAMBU_256_BED } from './abacus-3mf-assembly'
 import { analyzeShells, type FilamentMap, type Params, shellSlotIndex } from './abacus-model'
 
 /** Per-body summary of what went into the 3MF — feeds the print panel + tests. */
@@ -83,20 +92,31 @@ export function buildAbacusThreeMf(args: {
   }
 
   const bodies: SpoolBodySummary[] = []
-  const colorBodies: ColorBody[] = []
+  const assemblyBodies: AssemblyBody[] = []
   for (const slot of slots) {
     const bucket = buckets.get(slot)
     const count = triCount.get(slot)
     if (!bucket || count === undefined) continue
     const label = slotLabels?.[slot] ?? `Filament ${slot + 1}`
     const colorHex = filamentMap.slots[slot]
-    const stlBytes = writeBinaryStl(bucket.positions)
-    // ColorBody wants a plain ArrayBuffer; copy into an exact-size one.
-    const stlBuffer = new ArrayBuffer(stlBytes.byteLength)
-    new Uint8Array(stlBuffer).set(stlBytes)
     bodies.push({ slot, label, colorHex, triangleCount: count })
-    colorBodies.push({ label, stl: stlBuffer, colorHex })
+    // extruder = emission order (ascending slot), 1-based — the same color→filament
+    // convention `meshesToThreeMf` uses, so the print ticket stays correct.
+    assemblyBodies.push({ positions: bucket.positions, colorHex, label, extruder: assemblyBodies.length + 1 })
   }
 
+  // Multicolor: one bed-centered assembly object with an owned prime tower — the
+  // 4-separate-object layout scatters the in-place beads and jams Orca's auto tower
+  // (exit 154). Single filament already slices clean as one co-registered object.
+  if (assemblyBodies.length >= 2) {
+    const { bytes } = assembleAbacus3mf(assemblyBodies, BAMBU_256_BED)
+    return { bytes, bodies }
+  }
+
+  const only = assemblyBodies[0]
+  const stlBytes = writeBinaryStl(only.positions)
+  const stlBuffer = new ArrayBuffer(stlBytes.byteLength) // ColorBody wants a plain ArrayBuffer
+  new Uint8Array(stlBuffer).set(stlBytes)
+  const colorBodies: ColorBody[] = [{ label: only.label, stl: stlBuffer, colorHex: only.colorHex }]
   return { bytes: meshesToThreeMf(colorBodies), bodies }
 }
