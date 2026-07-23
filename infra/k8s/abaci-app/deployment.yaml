@@ -11,7 +11,9 @@ metadata:
   labels:
     app: abaci-app
 spec:
-  replicas: 3
+  # 2 replicas: on a single-node cluster this buys zero-downtime rolling deploys
+  # (maxSurge:1), not node-failure HA (which one node can't provide anyway).
+  replicas: 2
   selector:
     matchLabels:
       app: abaci-app
@@ -41,9 +43,11 @@ spec:
             - secretRef:
                 name: app-env
           resources:
+            # cpu request sized to observed 10-day peak (~60m/replica) + headroom.
+            # limit left generous so SSR/startup bursts aren't throttled.
             requests:
               memory: "512Mi"
-              cpu: "200m"
+              cpu: "75m"
             limits:
               memory: "1Gi"
               cpu: "2000m"

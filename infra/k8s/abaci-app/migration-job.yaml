@@ -36,9 +36,10 @@ spec:
             - secretRef:
                 name: app-env
           resources:
+            # transient PreSync hook; uses ~0 cpu. small request so it always schedules.
             requests:
               memory: "128Mi"
-              cpu: "100m"
+              cpu: "75m"
             limits:
               memory: "256Mi"
               cpu: "500m"
