@@ -13,6 +13,23 @@
 # monitoring namespace, so combined with alertroute="claude-usage" the match is
 # exact. Because a matched child route handles the alert, it does NOT also fall
 # through to the root email receiver.
+#
+# NOISE BUDGET (retuned 2026-07-24) — the load-bearing idea, don't undo it:
+# the informational rules describe MULTI-DAY, NON-ACTIONABLE states. "This account
+# is spent for the week" stays true until the 7-day window rolls; the proxy has
+# already routed away from it and there is nothing for a human to do. The previous
+# settings treated those like incidents and produced ~24 messages/day:
+#   * groupBy [account, alertname] = one group — so one Telegram message — per
+#     (account × alertname) PAIR. Two accounts both maxing the Fable cap arrived as
+#     two separate messages, each carrying its own copy of the bridge's identical
+#     "Accounts now: … most headroom: …" fusion line.
+#   * repeatInterval 3h = 8 re-nags/day of a condition that cannot clear for days.
+# So: informational alerts now coalesce into ONE group (groupBy the constant
+# alertroute label => a single message listing every firing quota alert, with ONE
+# fusion line) and re-nag daily. The single delivery="critical" rule
+# (ClaudeAllAccountsWeeklyExhausted — "every account is hot, switching cannot save
+# you") gets its own child route that keeps the old urgent timings. Quiet the
+# non-events, keep the one real page loud.
 apiVersion: monitoring.coreos.com/v1alpha1
 kind: AlertmanagerConfig
 metadata:
@@ -23,16 +40,38 @@ metadata:
 spec:
   route:
     receiver: claude-usage-bridge
-    groupBy: ["account", "alertname"]
+    # Every claude-usage alert carries alertroute="claude-usage" (enforced in the
+    # rule file), so grouping BY that constant label puts them all in exactly one
+    # group: one webhook POST, one Telegram message, one fusion line — however many
+    # accounts and alertnames are firing.
+    groupBy: ["alertroute"]
     groupWait: 30s
-    groupInterval: 5m
-    # Re-nag every 3h while a quota alert keeps firing (the bridge re-sends the
-    # Telegram DM / HA push). Resolved notifications are sent too.
-    repeatInterval: 3h
+    # A new alert joining the (single) existing group re-sends the whole group, so
+    # this is the real floor on informational message rate while state churns.
+    # 30m is fine for states measured in days — and the status-line segment
+    # (home-infra services/claude-switch-proxy/statusline) shows the burning
+    # account continuously, at zero notification cost.
+    groupInterval: 30m
+    # Daily, not 3-hourly. Re-nagging a condition you cannot act on is how a
+    # channel gets muted. Resolved notifications are still sent.
+    repeatInterval: 24h
     matchers:
       - name: alertroute
         value: claude-usage
         matchType: "="
+    routes:
+      # The one alert that means "switching cannot save you". Matched children win
+      # outright, so this never lands in the coalesced informational group: its own
+      # group, fast escalation, and a re-nag you'd actually want.
+      - receiver: claude-usage-bridge
+        groupBy: ["alertname"]
+        groupWait: 30s
+        groupInterval: 5m
+        repeatInterval: 3h
+        matchers:
+          - name: delivery
+            value: critical
+            matchType: "="
   receivers:
     - name: claude-usage-bridge
       webhookConfigs:
