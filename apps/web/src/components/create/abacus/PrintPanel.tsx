@@ -38,7 +38,7 @@ import { buildAbacusThreeMf } from './abacus-3mf'
 import type { FilamentCatalog } from './abacus-catalog'
 import type { FilamentMap, Params } from './abacus-model'
 import { abacusPrintPanelState } from './abacus-print-panel-state'
-import { buildAbacusTicket } from './abacus-ticket'
+import { buildAbacusAuthoring, buildAbacusTicket } from './abacus-ticket'
 import { ParkedJobCard } from './ParkedJobCard'
 import { PairPrinterPrompt } from './PrintConnectionsManager'
 import { PrintSubmitErrorNotice } from './PrintSubmitErrorNotice'
@@ -95,6 +95,10 @@ export interface PrintPanelProps {
   exportBlocked: boolean
   /** One-shot high-quality export render of the current params. */
   requestExportStl: () => Promise<ArrayBuffer>
+  /** Whose abacus (the page's `?player=` selection, null = the user's own) —
+   *  rides the authoring hand-off so the job's edit link reopens the studio on
+   *  the same student (things-haunt-house#408). */
+  playerId?: string | null
 }
 
 /** How long the export render may take before the submit gives up. */
@@ -153,6 +157,7 @@ export function PrintPanel(props: PrintPanelProps) {
     unavailable,
     exportBlocked,
     requestExportStl,
+    playerId = null,
   } = props
 
   // Which body state to render — the pure decision lives in `abacusPrintPanelState`
@@ -295,6 +300,9 @@ export function PrintPanel(props: PrintPanelProps) {
         style,
         startPolicy,
         idempotencyKey: idem.key,
+        // A link back to the editor, not print content — deliberately outside
+        // the idempotency signature (changing players must not rotate the key).
+        authoring: buildAbacusAuthoring(playerId),
       })
 
       const form = new FormData()

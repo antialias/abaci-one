@@ -70,6 +70,7 @@ export function FabricationRail() {
     setRevealIntrinsic,
     setHighlightRole,
     modelPick,
+    playerId,
   } = useAbacusStudio()
 
   const canExport = exporterReady && !exportBlocked
@@ -309,6 +310,7 @@ export function FabricationRail() {
         unavailable={thhFilaments.unavailable}
         exportBlocked={exportBlocked}
         requestExportStl={requestExportStl}
+        playerId={playerId}
       />
     </div>
   )

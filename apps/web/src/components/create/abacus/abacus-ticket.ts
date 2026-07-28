@@ -15,6 +15,7 @@
  */
 import type {
   PrintTicketV2,
+  TicketAuthoring,
   TicketFilament,
   TicketSource,
   TicketStartPolicy,
@@ -39,10 +40,33 @@ export interface AbacusTicketArgs {
   startPolicy: TicketStartPolicy
   /** Dedup key — mint one per submit intent, reuse across retries. */
   idempotencyKey: string
+  /** Source-editor hand-off (things-haunt-house#408) — the service renders
+   *  "Edit in Abacus Studio ↗" on the job. Omitted (null) off-https, since the
+   *  service 400s a non-https editUrl. Build with `buildAbacusAuthoring`. */
+  authoring?: TicketAuthoring | null
+}
+
+/** The abacus studio's `authoring` block (things-haunt-house#408). The link is
+ *  SHALLOW for now (abaci#22): it reopens the studio — `?player=` restores the
+ *  student's identity when one is selected — but the full ~70-key design isn't
+ *  URL-addressable yet. `origin` defaults to the running instance's own origin,
+ *  never hardcoded. Returns null off-https: the service rejects a non-https
+ *  editUrl at submit, so a dev instance (http://localhost) omits the block
+ *  rather than failing every submit. */
+export function buildAbacusAuthoring(
+  playerId: string | null,
+  origin?: string
+): TicketAuthoring | null {
+  const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : '')
+  if (!base.startsWith('https://')) return null
+  const editUrl = playerId
+    ? `${base}/create/abacus?player=${encodeURIComponent(playerId)}`
+    : `${base}/create/abacus`
+  return { editUrl, editTool: 'Abacus Studio' }
 }
 
 export function buildAbacusTicket(args: AbacusTicketArgs): PrintTicketV2 {
-  const { name, source, bodies, catalog, style, startPolicy, idempotencyKey } = args
+  const { name, source, bodies, catalog, style, startPolicy, idempotencyKey, authoring } = args
 
   if (catalog.source !== 'thh-ams') {
     throw new Error(
@@ -83,6 +107,7 @@ export function buildAbacusTicket(args: AbacusTicketArgs): PrintTicketV2 {
   return {
     name,
     source: { ...source, app: PRINT_SOURCE_APP },
+    ...(authoring ? { authoring } : {}),
     filaments,
     style,
     start: { policy: startPolicy },

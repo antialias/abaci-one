@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SpoolBodySummary } from '../abacus-3mf'
 import type { FilamentCatalog } from '../abacus-catalog'
-import { buildAbacusTicket } from '../abacus-ticket'
+import { buildAbacusAuthoring, buildAbacusTicket } from '../abacus-ticket'
 
 const catalog: FilamentCatalog = {
   source: 'thh-ams',
@@ -112,6 +112,16 @@ describe('buildAbacusTicket', () => {
     expect(ticket.filaments).toEqual([{ slotId: '0.1' }, { external: true, family: 'PLA' }])
   })
 
+  it('rides the authoring hand-off verbatim when given, omits the key when absent', () => {
+    const authoring = {
+      editUrl: 'https://abaci.one/create/abacus?player=p1',
+      editTool: 'Abacus Studio',
+    }
+    expect(buildAbacusTicket({ ...base, authoring }).authoring).toEqual(authoring)
+    expect(buildAbacusTicket(base)).not.toHaveProperty('authoring')
+    expect(buildAbacusTicket({ ...base, authoring: null })).not.toHaveProperty('authoring')
+  })
+
   it('refuses more than one external spool — a no-AMS print is single-filament', () => {
     const twoExternal: FilamentCatalog = {
       source: 'thh-ams',
@@ -128,5 +138,32 @@ describe('buildAbacusTicket', () => {
     expect(() => buildAbacusTicket({ ...base, catalog: twoExternal, bodies: twoBodies })).toThrow(
       /exactly one spool/i
     )
+  })
+})
+
+describe('buildAbacusAuthoring (things-haunt-house#408)', () => {
+  it('builds the https hand-off with the player selection encoded', () => {
+    expect(buildAbacusAuthoring('p 1/x', 'https://abaci.one')).toEqual({
+      editUrl: 'https://abaci.one/create/abacus?player=p%201%2Fx',
+      editTool: 'Abacus Studio',
+    })
+  })
+
+  it('links the bare studio when no player is selected', () => {
+    expect(buildAbacusAuthoring(null, 'https://abaci.one')).toEqual({
+      editUrl: 'https://abaci.one/create/abacus',
+      editTool: 'Abacus Studio',
+    })
+  })
+
+  it('returns null off-https — the service 400s a non-https editUrl', () => {
+    expect(buildAbacusAuthoring('p1', 'http://localhost:3000')).toBeNull()
+    expect(buildAbacusAuthoring('p1', '')).toBeNull()
+  })
+
+  it('defaults to the running instance origin (jsdom is http ⇒ null)', () => {
+    // jsdom serves tests from an http origin, so the default-origin path must
+    // omit the block — the same behavior a dev instance gets.
+    expect(buildAbacusAuthoring('p1')).toBeNull()
   })
 })
