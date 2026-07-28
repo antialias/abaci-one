@@ -34,7 +34,7 @@ import { createAbacusPrintClient } from '@/lib/abacus/print/browser-transport'
 import type { PrintUnavailableReason } from '@/lib/abacus/print/filament-wire'
 import { api } from '@/lib/queryClient'
 import { abacusPrintKeys } from '@/lib/queryKeys'
-import { buildAbacusThreeMf } from './abacus-3mf'
+import { type AbacusExportParts, buildAbacusThreeMf } from './abacus-3mf'
 import type { FilamentCatalog } from './abacus-catalog'
 import type { FilamentMap, Params } from './abacus-model'
 import { abacusPrintPanelState } from './abacus-print-panel-state'
@@ -93,8 +93,9 @@ export interface PrintPanelProps {
   unavailable: PrintUnavailableReason | null
   /** Solver gate — a design that won't print can't be submitted either. */
   exportBlocked: boolean
-  /** One-shot high-quality export render of the current params. */
-  requestExportStl: () => Promise<ArrayBuffer>
+  /** One-shot high-quality export renders (whole abacus + the ArUco marker part
+   *  passes), all from a single params snapshot taken inside the viewer. */
+  requestExportParts: () => Promise<AbacusExportParts>
   /** Whose abacus (the page's `?player=` selection, null = the user's own) —
    *  rides the authoring hand-off so the job's edit link reopens the studio on
    *  the same student (things-haunt-house#408). */
@@ -156,7 +157,7 @@ export function PrintPanel(props: PrintPanelProps) {
     connectionId,
     unavailable,
     exportBlocked,
-    requestExportStl,
+    requestExportParts,
     playerId = null,
   } = props
 
@@ -269,8 +270,13 @@ export function PrintPanel(props: PrintPanelProps) {
       if (!printerId) throw new Error('No printer available')
       if (!style) throw new Error('Print settings are still loading')
 
-      const stl = await Promise.race([
-        requestExportStl(),
+      // The race covers the whole bundle (frame + marker part passes) — the
+      // bundle promise resolves only after all renders land. The 3MF builds from
+      // the bundle's own params snapshot; the ticket/idempotency below keep using
+      // the live `params` prop (they describe submit intent, and any divergence
+      // requires editing the design inside the render window).
+      const parts = await Promise.race([
+        requestExportParts(),
         new Promise<never>((_, reject) =>
           setTimeout(
             () => reject(new Error("The 3D render didn't finish — try again")),
@@ -279,7 +285,7 @@ export function PrintPanel(props: PrintPanelProps) {
         ),
       ])
       const slotLabels = catalog.spools.map((s) => s.name)
-      const model = buildAbacusThreeMf({ stl, params, filamentMap, slotLabels })
+      const model = buildAbacusThreeMf({ ...parts, filamentMap, slotLabels })
 
       // Reuse the key only for an identical resubmit; any edit rotates it.
       const idem = resolveIdempotencyKey(

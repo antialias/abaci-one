@@ -33,6 +33,7 @@ import { usePlayerAccess } from '@/hooks/usePlayerAccess'
 import { useThhFilamentCatalog } from '@/hooks/useThhFilamentCatalog'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { type AbacusIdentity, parseAbacusIdentity } from '@/lib/abacus/identity'
+import type { AbacusExportParts } from './abacus-3mf'
 import { catalogFromParams } from './abacus-catalog'
 import { toAbacusDesign } from './abacus-design'
 import {
@@ -48,6 +49,15 @@ import { DEFAULT_PROFILE_ID, profileById, solve } from './abacus-solver'
 // Per-browser memory of which paired print service the studio prints to, so a
 // devbox pointed at both prod and a local service reopens on the same one.
 const PRINT_CONNECTION_STORAGE_KEY = 'abacus-studio-print-connection'
+
+// The viewer's worker-bound export surface, registered into the store on mount.
+// `exportStl` renders just the whole-abacus STL (the plain-STL download);
+// `exportParts` adds the ArUco marker part passes for the 3MF build, all from
+// one params snapshot.
+export type AbacusExporter = {
+  exportStl: () => Promise<ArrayBuffer>
+  exportParts: () => Promise<AbacusExportParts>
+}
 
 // The identity slice of the current params, or null when a custom scheme/palette
 // string can't be expressed as a saved identity (save stays disabled).
@@ -219,23 +229,33 @@ function useStudioController(playerId: string | null) {
   const clearanceFix = errors.find((r) => r.dim === 'clearance')?.floorMm ?? null
 
   // ---- 3D export handle -----------------------------------------------------
-  // The heavy STL export lives in the lazy, three.js-bound viewer, but the Export
+  // The heavy renders live in the lazy, three.js-bound viewer, but the Export
   // buttons live in the fabrication rail — a sibling that can't reach the viewer's
   // worker directly. The viewer registers its worker-bound exporter here on mount
-  // (mirroring the drawRef lifetime); rails call requestExportStl() and assemble
-  // the 3MF from the store's live params/filamentMap/catalog. `exporterReady` gates
-  // the buttons while the viewer chunk is still loading — and stays false on the
-  // paper lane, where the viewer never mounts.
-  const exportStlRef = useRef<(() => Promise<ArrayBuffer>) | null>(null)
+  // (mirroring the drawRef lifetime): `exportStl` is the plain whole-abacus STL,
+  // `exportParts` the full 3MF bundle (frame + the ArUco marker part passes),
+  // snapshotting params ONCE inside the viewer so the three renders can never mix
+  // designs. Rails assemble the 3MF from the bundle plus the store's live
+  // filamentMap/catalog. `exporterReady` gates the buttons while the viewer chunk
+  // is still loading — and stays false on the paper lane, where the viewer never
+  // mounts.
+  const exporterRef = useRef<AbacusExporter | null>(null)
   const [exporterReady, setExporterReady] = useState(false)
-  const registerExportStl = useCallback((fn: (() => Promise<ArrayBuffer>) | null) => {
-    exportStlRef.current = fn
-    setExporterReady(fn != null)
+  const registerExporter = useCallback((exp: AbacusExporter | null) => {
+    exporterRef.current = exp
+    setExporterReady(exp != null)
   }, [])
   const requestExportStl = useCallback(
     (): Promise<ArrayBuffer> =>
-      exportStlRef.current
-        ? exportStlRef.current()
+      exporterRef.current
+        ? exporterRef.current.exportStl()
+        : Promise.reject(new Error('3D exporter not ready')),
+    []
+  )
+  const requestExportParts = useCallback(
+    (): Promise<AbacusExportParts> =>
+      exporterRef.current
+        ? exporterRef.current.exportParts()
         : Promise.reject(new Error('3D exporter not ready')),
     []
   )
@@ -319,8 +339,9 @@ function useStudioController(playerId: string | null) {
     saveIsPending: saveIdentity.isPending,
     saveIsError: saveIdentity.isError,
     exporterReady,
-    registerExportStl,
+    registerExporter,
     requestExportStl,
+    requestExportParts,
     registerRevealIntrinsic,
     setRevealIntrinsic,
     registerHighlightRole,

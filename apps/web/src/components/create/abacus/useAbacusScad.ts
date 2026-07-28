@@ -5,7 +5,9 @@
 // Owns the two same-origin ES-module workers (main geometry + inset-text plug
 // preview) and their latest-wins pumps, plus the one-time load of the .scad
 // source and the two TTFs written into the worker's MEMFS /fonts (no font ships
-// with the engine, so text() renders nothing without them). Results are handed
+// with the engine, so text() renders nothing without them). Export one-shots
+// (negative ids, promise-based) share the main worker: the whole-abacus render
+// plus the `only="marker_*"` part passes that feed the 3MF's marker bodies. Results are handed
 // back through imperative callbacks — the transferable STL ArrayBuffers never
 // sit in React state, and all three.js mesh work stays in the viewer.
 //
@@ -36,12 +38,21 @@ export type UseAbacusScadArgs = {
   onStatus?: (s: StatusUpdate) => void
 }
 
+/** The scad's top-level `only=` part selectors used by the export path. The
+ *  marker passes render JUST the four corner plugs (abacus.scad:526-527) so the
+ *  3MF can carry them as separate filament bodies — a flush plug rendered into
+ *  the main STL would weld into the frame shell and be unsplittable. */
+export type ExportOnly = 'marker_black' | 'marker_white'
+
 export type UseAbacusScad = {
   /** Request a render of `params`; latest-wins, and a no-op if the scad inputs
    *  are unchanged (color-only edits don't re-render). */
   render: (params: Params) => void
-  /** Fire a one-shot high-quality ($fn=64) render for STL export. */
-  exportStl: (params: Params, cb: (stl: ArrayBuffer) => void) => void
+  /** Fire a one-shot high-quality ($fn=64) render for export. `only` selects a
+   *  marker-plug part pass instead of the whole abacus. Rejects when the worker
+   *  isn't ready or the scad render fails — export callers must surface that,
+   *  not hang. */
+  exportStl: (params: Params, only?: ExportOnly) => Promise<ArrayBuffer>
 }
 
 type Pump = {
@@ -49,7 +60,7 @@ type Pump = {
   latestKey: string
   drawnKey: string
   rendering: boolean
-  reqId: number
+  reqId: number // positive, pump-owned; export one-shots use negative ids
   pending: { id: number; key: string } | null
 }
 const newPump = (): Pump => ({
@@ -74,6 +85,7 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
     plugWorker: Worker | null
     main: Pump
     plug: Pump
+    nextExportId: number
     pumpMain?: () => void
     pumpPlug?: () => void
   }>({
@@ -84,6 +96,10 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
     plugWorker: null,
     main: newPump(),
     plug: newPump(),
+    // export one-shots count DOWN so they can never collide with the pumps'
+    // positive reqIds — nor with each other when several fire in the same ms
+    // (the old `-performance.now()` scheme could).
+    nextExportId: -1,
   })
 
   useEffect(() => {
@@ -131,6 +147,10 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
 
     worker.onmessage = (e: MessageEvent) => {
       const { id, ok, stl, ms, error } = e.data
+      // export one-shots (negative ids) are handled entirely by their own
+      // once-listeners in exportStl — touching the pump state here would
+      // falsely clear `rendering` mid-flight and re-post redundant renders.
+      if (typeof id === 'number' && id < 0) return
       const m = st.main
       m.rendering = false
       if (m.pending && id === m.pending.id) {
@@ -218,22 +238,31 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
     }
   }
 
-  const exportStl = (params: Params, cb: (stl: ArrayBuffer) => void): void => {
+  const exportStl = (params: Params, only?: ExportOnly): Promise<ArrayBuffer> => {
     const st = stateRef.current
-    if (!st.worker || !st.loaded) return
-    const id = -1 - Math.floor(performance.now()) // negative id: outside the pump's stream
-    const onceHandler = (e: MessageEvent) => {
-      if (e.data.id !== id) return
-      st.worker?.removeEventListener('message', onceHandler)
-      if (e.data.ok) cb(e.data.stl as ArrayBuffer)
+    if (!st.worker || !st.loaded) {
+      return Promise.reject(new Error('3D exporter not ready — the render engine is still loading'))
     }
-    st.worker.addEventListener('message', onceHandler)
-    st.worker.postMessage({
-      id,
-      entry: '/abacus.scad',
-      files: { '/abacus.scad': st.scad, ...st.fonts },
-      defines: definesFrom(params),
-      fn: 64,
+    const worker = st.worker
+    const id = st.nextExportId--
+    return new Promise<ArrayBuffer>((resolve, reject) => {
+      const onceHandler = (e: MessageEvent) => {
+        if (e.data.id !== id) return
+        worker.removeEventListener('message', onceHandler)
+        if (e.data.ok) resolve(e.data.stl as ArrayBuffer)
+        else
+          reject(new Error(`export render failed: ${String(e.data.error ?? 'unknown scad error')}`))
+      }
+      worker.addEventListener('message', onceHandler)
+      // NOTE: if the worker is terminated mid-render (viewer unmount) the promise
+      // never settles — callers that outlive the viewer must race a timeout.
+      worker.postMessage({
+        id,
+        entry: '/abacus.scad',
+        files: { '/abacus.scad': st.scad, ...st.fonts },
+        defines: only ? [...definesFrom(params), `-Donly="${only}"`] : definesFrom(params),
+        fn: 64,
+      })
     })
   }
 

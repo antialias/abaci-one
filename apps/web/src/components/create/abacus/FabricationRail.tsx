@@ -8,12 +8,13 @@
 // pays for none of it. The 3D model always shows the user's designed colors — the
 // design→filament reconciliation is whispered by the strip, not a preview toggle.
 //
-// The heavy STL render stays bound to the three.js viewer; this rail calls the
-// store's registered `requestExportStl()` and assembles the 3MF from the store's
-// live params/filamentMap/catalog. `exporterReady` gates the buttons while the
-// viewer chunk is still loading.
+// The heavy renders stay bound to the three.js viewer; this rail calls the
+// store's registered `requestExportParts()` (whole abacus + the ArUco marker
+// part passes, one params snapshot) and assembles the 3MF from that bundle plus
+// the store's live filamentMap/catalog. `exporterReady` gates the buttons while
+// the viewer chunk is still loading.
 
-import type { CSSProperties } from 'react'
+import { type CSSProperties, useState } from 'react'
 import { StudioSelect } from '@/components/studio/StudioSelect'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { buildAbacusThreeMf } from './abacus-3mf'
@@ -66,6 +67,7 @@ export function FabricationRail() {
     scaleFix,
     clearanceFix,
     requestExportStl,
+    requestExportParts,
     exporterReady,
     setRevealIntrinsic,
     setHighlightRole,
@@ -75,15 +77,21 @@ export function FabricationRail() {
 
   const canExport = exporterReady && !exportBlocked
 
+  // A failed export render (e.g. a marker part pass) now REJECTS instead of
+  // hanging — surfaced inline under the button. Silently swallowing it would
+  // recreate the markerless-print bug in UX form (Gitea #12).
+  const [exportError, setExportError] = useState<string | null>(null)
+
   // primary export: the multi-material 3MF — the print projection's colors baked
-  // in as one co-registered body per filament slot (#9). Falls back to the raw
+  // in as one co-registered body per filament slot (#9), plus the ArUco corner
+  // marker bodies from their own part renders (#12). Falls back to the raw
   // colorless STL for anyone whose slicer wants that.
   const onExport3mf = async () => {
+    setExportError(null)
     try {
-      const stl = await requestExportStl()
+      const parts = await requestExportParts()
       const { bytes } = buildAbacusThreeMf({
-        stl,
-        params,
+        ...parts, // stl + marker part renders + the params snapshot they rendered from
         filamentMap,
         slotLabels: catalog.spools.map((s) => s.name),
       })
@@ -91,21 +99,21 @@ export function FabricationRail() {
         new Blob([bytes as BlobPart], { type: 'model/3mf' }),
         `abacus-${params.cols}col-x${params.scale_factor}.3mf`
       )
-    } catch {
-      // exporter not ready yet — the button is gated on exporterReady, so this is
-      // only reachable in a brief load race; the user can click again.
+    } catch (err) {
+      setExportError(String((err as Error)?.message ?? err))
     }
   }
 
   const onExportPlainStl = async () => {
+    setExportError(null)
     try {
       const stl = await requestExportStl()
       downloadBlob(
         new Blob([stl], { type: 'model/stl' }),
         `abacus-${params.cols}col-x${params.scale_factor}.stl`
       )
-    } catch {
-      /* see onExport3mf */
+    } catch (err) {
+      setExportError(String((err as Error)?.message ?? err))
     }
   }
 
@@ -276,6 +284,22 @@ export function FabricationRail() {
       >
         plain STL instead
       </button>
+      {exportError != null && (
+        <div
+          data-element="abacus-studio-export-error"
+          style={{
+            padding: '8px 10px',
+            borderRadius: 8,
+            background: 'rgba(127,29,29,0.35)',
+            border: '1px solid rgba(248,113,113,0.5)',
+            color: 'rgba(254,226,226,0.96)',
+            fontSize: 11,
+            lineHeight: 1.45,
+          }}
+        >
+          Export failed: {exportError}
+        </div>
+      )}
 
       {/* which paired print service this design prints to. Only shown once the
           user has more than one — with a single connection there's nothing to
@@ -309,7 +333,7 @@ export function FabricationRail() {
         connectionId={selectedConnectionId}
         unavailable={thhFilaments.unavailable}
         exportBlocked={exportBlocked}
-        requestExportStl={requestExportStl}
+        requestExportParts={requestExportParts}
         playerId={playerId}
       />
     </div>

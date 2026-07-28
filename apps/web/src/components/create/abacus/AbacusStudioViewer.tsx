@@ -66,7 +66,7 @@ export function AbacusStudioViewer() {
     params,
     design,
     filamentMap,
-    registerExportStl,
+    registerExporter,
     registerRevealIntrinsic,
     registerHighlightRole,
     pickModelRole,
@@ -307,10 +307,12 @@ export function AbacusStudioViewer() {
     }
 
     // ---- ArUco corner marker overlay ----------------------------------------
-    // The STL carries only the marker pockets (flush 2-color plugs weld into the
-    // frame shell — color() is inert on binstl). Preview the b/w pattern as
+    // The MAIN STL carries only the marker pockets (flush 2-color plugs weld into
+    // the frame shell — color() is inert on binstl). Preview the b/w pattern as
     // texture quads floated on the top face, from the same js-aruco2 bits the
-    // scad models and the abaci.one detector reads.
+    // scad models and the abaci.one detector reads. The EXPORT gets the real
+    // plugs: separate `only="marker_*"` part renders merged into the 3MF as
+    // their own filament bodies (abacus-3mf.ts, Gitea #12).
     const markerGroup = new THREE.Group()
     centered.add(markerGroup)
 
@@ -641,17 +643,32 @@ export function AbacusStudioViewer() {
     drawRef.current?.applyParams()
   }, [filamentMap])
 
-  // publish the worker-bound STL exporter into the store so the fabrication rail's
-  // Export buttons + the print panel can trigger a one-shot high-quality render.
-  // Registered once (scad.exportStl reads a stable ref); torn down on unmount so
-  // the store's exporterReady flips back to false on the paper lane.
+  // publish the worker-bound exporter into the store so the fabrication rail's
+  // Export buttons + the print panel can trigger the one-shot high-quality
+  // renders. `exportParts` snapshots params ONCE for all three renders (frame +
+  // the two ArUco marker part passes) — a knob drag mid-export can therefore
+  // never mix a frame from one design with markers from another. The marker
+  // passes are gated on that same snapshot: markers must be on, and the frame
+  // must be rendered (the scad's `only=` selectors emit plugs unconditionally —
+  // without a frame they'd be four floating plates). Registered once
+  // (scad.exportStl reads a stable ref); torn down on unmount so the store's
+  // exporterReady flips back to false on the paper lane.
   useEffect(() => {
-    registerExportStl(
-      () =>
-        new Promise<ArrayBuffer>((resolve) => scadRef.current.exportStl(paramsRef.current, resolve))
-    )
-    return () => registerExportStl(null)
-  }, [registerExportStl])
+    registerExporter({
+      exportStl: () => scadRef.current.exportStl(paramsRef.current),
+      exportParts: async () => {
+        const p = paramsRef.current
+        const withMarkers = p.show_markers && p.show_frame
+        const [stl, markerBlack, markerWhite] = await Promise.all([
+          scadRef.current.exportStl(p),
+          withMarkers ? scadRef.current.exportStl(p, 'marker_black') : null,
+          withMarkers ? scadRef.current.exportStl(p, 'marker_white') : null,
+        ])
+        return { stl, markerBlack, markerWhite, params: p }
+      },
+    })
+    return () => registerExporter(null)
+  }, [registerExporter])
 
   // publish the hover-reveal handle: the reconcile strip flips the model to the
   // user's designed colors while a true-color fleck is hovered. Imperative (flip a
