@@ -323,6 +323,8 @@ export function FabricationRail() {
         params={params}
         filamentMap={filamentMap}
         catalog={catalog}
+        overrides={overrides}
+        profileId={profileId}
         printerId={thhFilaments.printerId}
         printerMultiMaterial={thhFilaments.printerMultiMaterial}
         amsPresent={thhFilaments.amsPresent}

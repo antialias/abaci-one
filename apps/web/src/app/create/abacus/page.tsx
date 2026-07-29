@@ -24,8 +24,10 @@ import { DesignInspectorRail } from '@/components/create/abacus/DesignInspectorR
 import { FabricationErrorBoundary } from '@/components/create/abacus/FabricationErrorBoundary'
 import { FabricationRail } from '@/components/create/abacus/FabricationRail'
 import { FabricationSwitch } from '@/components/create/abacus/FabricationSwitch'
+import { studioHref } from '@/components/create/abacus/studio-url'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StudioShell } from '@/components/studio/StudioShell'
+import { useAbacusDesignSnapshot } from '@/hooks/useAbacusDesignSnapshot'
 import { usePlayerAbacusIdentity } from '@/hooks/usePlayerAbacusIdentity'
 import { css } from '../../../../styled-system/css'
 
@@ -65,9 +67,16 @@ export default function CreateAbacusPage() {
   const selectedPlayerId = searchParams.get('player')
   const playerIdentity = usePlayerAbacusIdentity(selectedPlayerId)
   const playerUnavailable = selectedPlayerId !== null && playerIdentity.isError
+  // ?design=<id> (Gitea #22): a persisted snapshot to restore — the deep link
+  // THH's "Edit in Abacus Studio ↗" carries. A failed read (not yours, gone)
+  // degrades exactly like a failed player: the studio opens normally with a
+  // notice, never a dead-end. The provider only ever sees a loadable id.
+  const designId = searchParams.get('design')
+  const designSnapshot = useAbacusDesignSnapshot(designId)
+  const designUnavailable = designId !== null && designSnapshot.isError
 
   const selectPlayer = (playerId: string | null) => {
-    router.replace(playerId ? `${pathname}?player=${playerId}` : pathname, { scroll: false })
+    router.replace(studioHref(pathname, { playerId, designId }), { scroll: false })
   }
 
   return (
@@ -82,11 +91,15 @@ export default function CreateAbacusPage() {
           bg: '#0b0f14',
         })}
       >
-        <AbacusStudioProvider playerId={playerUnavailable ? null : selectedPlayerId}>
+        <AbacusStudioProvider
+          playerId={playerUnavailable ? null : selectedPlayerId}
+          designId={designUnavailable ? null : designId}
+        >
           <StudioBody
             selectedPlayerId={selectedPlayerId}
             onSelectPlayer={selectPlayer}
             playerUnavailable={playerUnavailable}
+            designUnavailable={designUnavailable}
           />
         </AbacusStudioProvider>
       </div>
@@ -98,6 +111,7 @@ interface StudioBodyProps {
   selectedPlayerId: string | null
   onSelectPlayer: (playerId: string | null) => void
   playerUnavailable: boolean
+  designUnavailable: boolean
 }
 
 // Inside the provider, so the shell's center/right can switch on the shared
@@ -105,7 +119,12 @@ interface StudioBodyProps {
 // shell's persistent top toolbar so it reads on every breakpoint; the shell swaps
 // the center output (and the FDM-only fabrication rail) accordingly. Only the
 // 3D-print target mounts the heavy three.js viewer + fabrication rail.
-function StudioBody({ selectedPlayerId, onSelectPlayer, playerUnavailable }: StudioBodyProps) {
+function StudioBody({
+  selectedPlayerId,
+  onSelectPlayer,
+  playerUnavailable,
+  designUnavailable,
+}: StudioBodyProps) {
   const { fabrication } = useAbacusStudio()
   const isFdm = fabrication.kind === 'fdm'
   return (
@@ -116,6 +135,7 @@ function StudioBody({ selectedPlayerId, onSelectPlayer, playerUnavailable }: Stu
           selectedPlayerId={selectedPlayerId}
           onSelectPlayer={onSelectPlayer}
           playerUnavailable={playerUnavailable}
+          designUnavailable={designUnavailable}
         />
       }
       center={

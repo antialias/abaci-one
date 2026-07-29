@@ -40,12 +40,16 @@ export interface DesignInspectorRailProps {
   onSelectPlayer: (playerId: string | null) => void
   /** the selected player's row failed to load → we're showing the user's own */
   playerUnavailable: boolean
+  /** the ?design= snapshot failed to load (not yours / gone, Gitea #22) →
+   *  the studio opened without it */
+  designUnavailable?: boolean
 }
 
 export function DesignInspectorRail({
   selectedPlayerId,
   onSelectPlayer,
   playerUnavailable,
+  designUnavailable = false,
 }: DesignInspectorRailProps) {
   const {
     params,
@@ -129,6 +133,14 @@ export function DesignInspectorRail({
             style={{ fontSize: 11, color: 'rgba(148,163,184,0.95)' }}
           >
             Couldn't load that player's abacus — showing yours instead.
+          </span>
+        )}
+        {designUnavailable && (
+          <span
+            data-element="abacus-design-unavailable"
+            style={{ fontSize: 11, color: 'rgba(148,163,184,0.95)' }}
+          >
+            Couldn't open that saved design — starting from the abacus instead.
           </span>
         )}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

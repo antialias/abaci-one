@@ -105,6 +105,11 @@ export async function mergeGuestIntoUser(
   await reparent('print_service_connections', 'user_id')
   await reparent('print_jobs', 'user_id')
   await reparentOrDrop('abacus_print_settings', 'user_id')
+  // Design snapshots (#22): reads are owner-gated, so a guest's ?design= links
+  // (printed on their THH job cards) must keep resolving after sign-in. The
+  // rows' content hashes stay scoped to the OLD id — that only means a future
+  // identical submit mints a fresh row instead of deduping, which is fine.
+  await reparent('abacus_designs', 'created_by')
 
   // Delete the source user (CASCADE will clean up auth_accounts and any remaining FKs)
   await db.delete(schema.users).where(eq(schema.users.id, sourceUserId))

@@ -106,6 +106,11 @@ p, guest, /api/scanner-settings, *
 # the guest→user merge carries its print rows along on sign-in. The doorbell
 # ring route is unaffected (no withAuth — it authenticates by ring secret).
 p, guest, /api/abacus/print/*, *
+# Abacus design snapshots (#22) — save is guest-first (a guest can print, so a
+# guest can snapshot); read is owner-or-admin, enforced IN the handler (the
+# route layer admits the request, the handler 404s non-owners).
+p, guest, /api/abacus/designs, POST
+p, guest, /api/abacus/designs/*, GET
 p, guest, /api/arcade/*, *
 p, guest, /api/arcade-session, *
 p, guest, /api/realtime/*, *

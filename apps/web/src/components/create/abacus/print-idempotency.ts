@@ -18,6 +18,7 @@
  * rotates the key, so the edit becomes a new job instead of a silent no-op.
  */
 import type { TicketStartPolicy, TicketStyle } from '@eink/print-dialog'
+import { stableStringify } from '@/lib/stable-stringify'
 import type { FilamentMap, Params } from './abacus-model'
 
 /** A minted key paired with the content signature it was minted for. */
@@ -34,20 +35,6 @@ export interface AbacusPrintSignatureInputs {
   readonly slotLabels: readonly string[]
   readonly style: TicketStyle
   readonly startPolicy: TicketStartPolicy
-}
-
-/** Deterministic, key-order-independent serialization — two objects that differ
- *  only in property insertion order sign identically, so React re-renders that
- *  rebuild state objects don't spuriously rotate the key. */
-function stableStringify(value: unknown): string {
-  if (value === undefined) return 'undefined'
-  if (value === null || typeof value !== 'object') return JSON.stringify(value)
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`
-  const obj = value as Record<string, unknown>
-  return `{${Object.keys(obj)
-    .sort()
-    .map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`)
-    .join(',')}}`
 }
 
 /** The content signature: identical inputs → identical string, any change → a

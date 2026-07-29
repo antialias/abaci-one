@@ -1,0 +1,108 @@
+/**
+ * Design-snapshot guard (Gitea #22): the single parse used on both the POST
+ * (refuse junk) and GET (never hydrate garbage) sides, plus the canonical
+ * serialization the dedup content-hash is computed over.
+ */
+import { defaultParams } from '@/components/create/abacus/abacus-model'
+import { DEFAULT_PROFILE_ID } from '@/components/create/abacus/abacus-solver'
+import {
+  ABACUS_DESIGN_SNAPSHOT_VERSION,
+  canonicalDesignSnapshot,
+  parseDesignSnapshot,
+} from '@/lib/abacus/design-snapshot'
+import { describe, expect, it } from 'vitest'
+
+const valid = () => ({
+  v: ABACUS_DESIGN_SNAPSHOT_VERSION,
+  params: { ...defaultParams, cols: 15, top_text: 'Sonia' },
+  overrides: { 'bead:earth': 'ams-1-2' },
+  profileId: 'fdm-0.4',
+})
+
+describe('parseDesignSnapshot', () => {
+  it('round-trips a well-formed snapshot', () => {
+    const parsed = parseDesignSnapshot(valid())
+    expect(parsed).toEqual(valid())
+  })
+
+  it('rejects non-objects and wrong versions', () => {
+    expect(parseDesignSnapshot(null)).toBeNull()
+    expect(parseDesignSnapshot('design')).toBeNull()
+    expect(parseDesignSnapshot([])).toBeNull()
+    expect(parseDesignSnapshot({})).toBeNull()
+    expect(parseDesignSnapshot({ ...valid(), v: 2 })).toBeNull()
+    expect(parseDesignSnapshot({ ...valid(), v: '1' })).toBeNull()
+  })
+
+  it('rejects an envelope whose params is not an object', () => {
+    expect(parseDesignSnapshot({ ...valid(), params: null })).toBeNull()
+    expect(parseDesignSnapshot({ ...valid(), params: 'cols=13' })).toBeNull()
+    expect(parseDesignSnapshot({ ...valid(), params: [13] })).toBeNull()
+  })
+
+  it('drops unknown params keys and defaults missing/mistyped ones', () => {
+    const parsed = parseDesignSnapshot({
+      v: 1,
+      params: { cols: 15, frame_h: 'tall', evil_key: 'x' },
+      overrides: {},
+      profileId: DEFAULT_PROFILE_ID,
+    })
+    expect(parsed).not.toBeNull()
+    expect(parsed!.params.cols).toBe(15)
+    expect(parsed!.params.frame_h).toBe(defaultParams.frame_h) // mistyped → default
+    expect(parsed!.params.top_text).toBe(defaultParams.top_text) // missing → default
+    expect('evil_key' in parsed!.params).toBe(false)
+  })
+
+  it('clamps cols into the studio range', () => {
+    const at = (cols: number) =>
+      parseDesignSnapshot({ v: 1, params: { cols }, overrides: {}, profileId: '' })!.params.cols
+    expect(at(1)).toBe(3)
+    expect(at(99)).toBe(21)
+    expect(at(13.4)).toBe(13)
+  })
+
+  it('keeps only string→string overrides entries', () => {
+    const parsed = parseDesignSnapshot({
+      v: 1,
+      params: { ...defaultParams },
+      overrides: { good: 'spool-1', bad: 7, worse: { nested: true } },
+      profileId: DEFAULT_PROFILE_ID,
+    })
+    expect(parsed!.overrides).toEqual({ good: 'spool-1' })
+  })
+
+  it('defaults a missing or non-object overrides to {}', () => {
+    expect(parseDesignSnapshot({ v: 1, params: {} })!.overrides).toEqual({})
+    expect(parseDesignSnapshot({ v: 1, params: {}, overrides: 'x' })!.overrides).toEqual({})
+  })
+
+  it('normalizes an unknown or missing profileId to the default profile', () => {
+    expect(parseDesignSnapshot({ v: 1, params: {} })!.profileId).toBe(DEFAULT_PROFILE_ID)
+    expect(parseDesignSnapshot({ v: 1, params: {}, profileId: 'sla-9000' })!.profileId).toBe(
+      DEFAULT_PROFILE_ID
+    )
+    expect(parseDesignSnapshot({ v: 1, params: {}, profileId: 'fdm-0.4' })!.profileId).toBe(
+      'fdm-0.4'
+    )
+  })
+})
+
+describe('canonicalDesignSnapshot', () => {
+  it('is key-order independent — the dedup hash input converges', () => {
+    const a = parseDesignSnapshot(valid())!
+    const shuffled = parseDesignSnapshot({
+      profileId: 'fdm-0.4',
+      overrides: { 'bead:earth': 'ams-1-2' },
+      params: Object.fromEntries(Object.entries(valid().params).reverse()),
+      v: 1,
+    })!
+    expect(canonicalDesignSnapshot(shuffled)).toBe(canonicalDesignSnapshot(a))
+  })
+
+  it('differs when any restorable field differs', () => {
+    const base = parseDesignSnapshot(valid())!
+    const edited = parseDesignSnapshot({ ...valid(), overrides: {} })!
+    expect(canonicalDesignSnapshot(edited)).not.toBe(canonicalDesignSnapshot(base))
+  })
+})

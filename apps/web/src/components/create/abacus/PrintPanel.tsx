@@ -26,6 +26,7 @@ import { PrintSettingsEditor } from '@eink/print-dialog/ui'
 import '@eink/print-dialog/ui/style.css'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { persistAbacusDesign } from '@/hooks/useAbacusDesignSnapshot'
 import { useAbacusPrintJobs, useCancelPrintJob, useStartPrintJob } from '@/hooks/useAbacusPrintJobs'
 import { useAbacusPrintSettings, useSaveAbacusPrintSettings } from '@/hooks/useAbacusPrintSettings'
 import { usePrintJobRing } from '@/hooks/usePrintJobRing'
@@ -39,6 +40,7 @@ import type { FilamentCatalog } from './abacus-catalog'
 import type { FilamentMap, Params } from './abacus-model'
 import { abacusPrintPanelState } from './abacus-print-panel-state'
 import { buildAbacusAuthoring, buildAbacusTicket } from './abacus-ticket'
+import { studioHref } from './studio-url'
 import { ParkedJobCard } from './ParkedJobCard'
 import { PairPrinterPrompt } from './PrintConnectionsManager'
 import { PrintSubmitErrorNotice } from './PrintSubmitErrorNotice'
@@ -62,6 +64,11 @@ export interface PrintPanelProps {
   params: Params
   filamentMap: FilamentMap
   catalog: FilamentCatalog
+  /** Manual filament-role pins — part of the RESTORABLE design snapshot the
+   *  submit persists (abaci#22), unlike filamentMap which is provenance. */
+  overrides: Record<string, string>
+  /** Printer profile — a print setting, and part of the design snapshot. */
+  profileId: string
   /** The discovered THH printer (multi-material preferred), or null. */
   printerId: string | null
   /** Whether the chosen printer is AMS-equipped (static model capability) — the
@@ -147,6 +154,8 @@ export function PrintPanel(props: PrintPanelProps) {
     params,
     filamentMap,
     catalog,
+    overrides,
+    profileId,
     printerId,
     printerMultiMaterial = false,
     amsPresent,
@@ -275,16 +284,25 @@ export function PrintPanel(props: PrintPanelProps) {
       // the bundle's own params snapshot; the ticket/idempotency below keep using
       // the live `params` prop (they describe submit intent, and any divergence
       // requires editing the design inside the render window).
-      const parts = await Promise.race([
-        requestExportParts(),
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error("The 3D render didn't finish — try again")),
-            EXPORT_TIMEOUT_MS
-          )
-        ),
-      ])
+      //
+      // The design-snapshot persist (abaci#22) rides IN PARALLEL with the render:
+      // it's bounded and TOTAL — null on any failure — so a dead snapshot API
+      // costs the job its deep edit link, never the print. The envelope is the
+      // restorable intent (params + pins + profile); the AMS projection
+      // (filamentMap/slotLabels) rides as provenance only.
       const slotLabels = catalog.spools.map((s) => s.name)
+      const [parts, designId] = await Promise.all([
+        Promise.race([
+          requestExportParts(),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("The 3D render didn't finish — try again")),
+              EXPORT_TIMEOUT_MS
+            )
+          ),
+        ]),
+        persistAbacusDesign({ v: 1, params, overrides, profileId }, { filamentMap, slotLabels }),
+      ])
       const model = buildAbacusThreeMf({ ...parts, filamentMap, slotLabels })
 
       // Reuse the key only for an identical resubmit; any edit rotates it.
@@ -296,19 +314,31 @@ export function PrintPanel(props: PrintPanelProps) {
       idemRef.current = idem
       const ticket = buildAbacusTicket({
         name: `Abacus — ${params.cols} columns`,
-        source: {
-          artifactId: `abacus-${params.cols}col-x${params.scale_factor}`,
-          artifactUrl: `${window.location.origin}/create/abacus`,
-          label: `${params.cols}-column abacus`,
-        },
+        // With a persisted snapshot the artifact IS the design row (abaci#22);
+        // a failed persist degrades to the pre-#22 shallow provenance.
+        source: designId
+          ? {
+              artifactId: `design-${designId}`,
+              artifactUrl: `${window.location.origin}${studioHref('/create/abacus', {
+                playerId: null,
+                designId,
+              })}`,
+              label: `${params.cols}-column abacus`,
+            }
+          : {
+              artifactId: `abacus-${params.cols}col-x${params.scale_factor}`,
+              artifactUrl: `${window.location.origin}/create/abacus`,
+              label: `${params.cols}-column abacus`,
+            },
         bodies: model.bodies,
         catalog,
         style,
         startPolicy,
         idempotencyKey: idem.key,
         // A link back to the editor, not print content — deliberately outside
-        // the idempotency signature (changing players must not rotate the key).
-        authoring: buildAbacusAuthoring(playerId),
+        // the idempotency signature (changing players must not rotate the key,
+        // and neither may a transiently failed snapshot persist).
+        authoring: buildAbacusAuthoring(playerId, { designId }),
       })
 
       const form = new FormData()

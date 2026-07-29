@@ -24,6 +24,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useAbacusDesignSnapshot } from '@/hooks/useAbacusDesignSnapshot'
 import { useAbacusPrintConnections } from '@/hooks/useAbacusPrintConnections'
 import {
   usePlayerAbacusIdentity,
@@ -69,7 +70,7 @@ function identityFromParams(p: Params): AbacusIdentity | null {
   })
 }
 
-function useStudioController(playerId: string | null) {
+function useStudioController(playerId: string | null, designId: string | null) {
   // The studio opens showing an abacus IDENTITY and follows it until the user
   // touches a control. With a player selected, that identity is the player's
   // saved "my abacus" row; otherwise it's the viewer's own live
@@ -188,6 +189,24 @@ function useStudioController(playerId: string | null) {
     if (!synced || !sourceIdentity) return
     setParams(paramsFromDisplayConfig(sourceIdentity))
   }, [sourceIdentity, synced])
+
+  // ---- ?design= hydration (Gitea #22) --------------------------------------
+  // Restore a persisted snapshot ONCE per design id. Hydration IS detachment:
+  // it sets synced=false, so the identity follow-effect above can never stomp
+  // the restored params — the design wins the params, while the ?player=
+  // selection keeps choosing WHOSE abacus this is. Declared after the
+  // follow-effect so the restore also wins the commit where both fire.
+  const designSnapshot = useAbacusDesignSnapshot(designId)
+  const hydratedDesignRef = useRef<string | null>(null)
+  useEffect(() => {
+    const snapshot = designSnapshot.data
+    if (!designId || !snapshot || hydratedDesignRef.current === designId) return
+    hydratedDesignRef.current = designId
+    setParams(snapshot.params)
+    setOverrides(snapshot.overrides)
+    setProfileId(snapshot.profileId)
+    setSynced(false)
+  }, [designId, designSnapshot.data])
 
   // any manual edit detaches from the live config (see `synced`). THE chokepoint.
   const set = <K extends keyof Params>(k: K, v: Params[K]) => {
@@ -358,11 +377,18 @@ const AbacusStudioContext = createContext<AbacusStudioContextValue | null>(null)
 export interface AbacusStudioProviderProps {
   /** Selected player whose "my abacus" the studio manifests; null = the viewer's own config */
   playerId?: string | null
+  /** Persisted design snapshot to restore (?design=<id>, Gitea #22); null = none.
+   *  The page passes null when the read failed — the degrade happens there. */
+  designId?: string | null
   children: ReactNode
 }
 
-export function AbacusStudioProvider({ playerId = null, children }: AbacusStudioProviderProps) {
-  const value = useStudioController(playerId)
+export function AbacusStudioProvider({
+  playerId = null,
+  designId = null,
+  children,
+}: AbacusStudioProviderProps) {
+  const value = useStudioController(playerId, designId)
   return <AbacusStudioContext.Provider value={value}>{children}</AbacusStudioContext.Provider>
 }
 

@@ -110,6 +110,12 @@ export const playerAbacusIdentityKeys = {
   detail: (playerId: string) => [...playerAbacusIdentityKeys.all, playerId] as const,
 }
 
+// Abacus design snapshot query keys (?design=<id> deep-link hydration, #22)
+export const abacusDesignKeys = {
+  all: ['abacus-design'] as const,
+  detail: (designId: string) => [...abacusDesignKeys.all, designId] as const,
+}
+
 // Collected clips query keys (admin audio TTS generation)
 export const collectedClipKeys = {
   all: ['collected-clips'] as const,

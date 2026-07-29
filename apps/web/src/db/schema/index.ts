@@ -5,6 +5,7 @@
  * All tables, relations, and types are exported from here.
  */
 
+export * from './abacus-designs'
 export * from './abacus-settings'
 export * from './ai-usage'
 export * from './auth-accounts'

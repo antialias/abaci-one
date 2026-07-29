@@ -141,24 +141,58 @@ describe('buildAbacusTicket', () => {
   })
 })
 
-describe('buildAbacusAuthoring (things-haunt-house#408)', () => {
+describe('buildAbacusAuthoring (things-haunt-house#408 / abaci#22)', () => {
   it('builds the https hand-off with the player selection encoded', () => {
-    expect(buildAbacusAuthoring('p 1/x', 'https://abaci.one')).toEqual({
-      editUrl: 'https://abaci.one/create/abacus?player=p%201%2Fx',
+    expect(buildAbacusAuthoring('p 1/x', { origin: 'https://abaci.one' })).toEqual({
+      editUrl: 'https://abaci.one/create/abacus?player=p+1%2Fx',
       editTool: 'Abacus Studio',
     })
   })
 
   it('links the bare studio when no player is selected', () => {
-    expect(buildAbacusAuthoring(null, 'https://abaci.one')).toEqual({
+    expect(buildAbacusAuthoring(null, { origin: 'https://abaci.one' })).toEqual({
       editUrl: 'https://abaci.one/create/abacus',
       editTool: 'Abacus Studio',
     })
   })
 
+  it('deep-links the persisted design, with the player riding along (abaci#22)', () => {
+    expect(
+      buildAbacusAuthoring('p1', { designId: 'dsn123', origin: 'https://abaci.one' })
+    ).toEqual({
+      editUrl: 'https://abaci.one/create/abacus?design=dsn123&player=p1',
+      editTool: 'Abacus Studio',
+    })
+    expect(buildAbacusAuthoring(null, { designId: 'dsn123', origin: 'https://abaci.one' })).toEqual(
+      {
+        editUrl: 'https://abaci.one/create/abacus?design=dsn123',
+        editTool: 'Abacus Studio',
+      }
+    )
+  })
+
+  it('degrades to the shallow link when the snapshot persist failed (null id)', () => {
+    expect(buildAbacusAuthoring('p1', { designId: null, origin: 'https://abaci.one' })).toEqual({
+      editUrl: 'https://abaci.one/create/abacus?player=p1',
+      editTool: 'Abacus Studio',
+    })
+  })
+
+  it('stays far under the service’s 2048-char editUrl ceiling', () => {
+    // THH hard-rejects editUrl > 2048 (gateway print_jobs.py). Ids are cuid2
+    // (~24 chars) — pin that even generous ids leave an order of magnitude of
+    // headroom, so this shape can never regress into the rejected-URL class.
+    const authoring = buildAbacusAuthoring('p'.repeat(64), {
+      designId: 'd'.repeat(64),
+      origin: 'https://abaci.one',
+    })
+    expect(authoring).not.toBeNull()
+    expect(authoring!.editUrl.length).toBeLessThan(2048 / 8)
+  })
+
   it('returns null off-https — the service 400s a non-https editUrl', () => {
-    expect(buildAbacusAuthoring('p1', 'http://localhost:3000')).toBeNull()
-    expect(buildAbacusAuthoring('p1', '')).toBeNull()
+    expect(buildAbacusAuthoring('p1', { origin: 'http://localhost:3000' })).toBeNull()
+    expect(buildAbacusAuthoring('p1', { designId: 'dsn123', origin: '' })).toBeNull()
   })
 
   it('defaults to the running instance origin (jsdom is http ⇒ null)', () => {

@@ -24,6 +24,7 @@ import type {
 import { PRINT_SOURCE_APP } from '@/lib/abacus/print/source-app'
 import type { SpoolBodySummary } from './abacus-3mf'
 import type { FilamentCatalog } from './abacus-catalog'
+import { studioHref } from './studio-url'
 
 export interface AbacusTicketArgs {
   /** Job name shown on the service, e.g. "Abacus — 13 columns". */
@@ -46,22 +47,26 @@ export interface AbacusTicketArgs {
   authoring?: TicketAuthoring | null
 }
 
-/** The abacus studio's `authoring` block (things-haunt-house#408). The link is
- *  SHALLOW for now (abaci#22): it reopens the studio — `?player=` restores the
- *  student's identity when one is selected — but the full ~70-key design isn't
- *  URL-addressable yet. `origin` defaults to the running instance's own origin,
- *  never hardcoded. Returns null off-https: the service rejects a non-https
- *  editUrl at submit, so a dev instance (http://localhost) omits the block
- *  rather than failing every submit. */
+/** The abacus studio's `authoring` block (things-haunt-house#408). With a
+ *  `designId` (abaci#22) the link is DEEP: `?design=` restores the persisted
+ *  full-fidelity snapshot, `?player=` keeps selecting the student. Without one
+ *  (snapshot persist failed — it never blocks a print) the link degrades to
+ *  the shallow reopen-the-studio form. The URL shares `studioHref` with the
+ *  page's own navigation — one derivation, so the hand-off link and the
+ *  address bar can't drift. `origin` defaults to the running instance's own
+ *  origin, never hardcoded. Returns null off-https: the service rejects a
+ *  non-https editUrl at submit, so a dev instance (http://localhost) omits
+ *  the block rather than failing every submit. */
 export function buildAbacusAuthoring(
   playerId: string | null,
-  origin?: string
+  opts?: { designId?: string | null; origin?: string }
 ): TicketAuthoring | null {
-  const base = origin ?? (typeof window !== 'undefined' ? window.location.origin : '')
+  const base = opts?.origin ?? (typeof window !== 'undefined' ? window.location.origin : '')
   if (!base.startsWith('https://')) return null
-  const editUrl = playerId
-    ? `${base}/create/abacus?player=${encodeURIComponent(playerId)}`
-    : `${base}/create/abacus`
+  const editUrl = `${base}${studioHref('/create/abacus', {
+    playerId,
+    designId: opts?.designId ?? null,
+  })}`
   return { editUrl, editTool: 'Abacus Studio' }
 }
 
