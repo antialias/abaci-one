@@ -53,8 +53,40 @@ function createInstance() {
 // Start warming the first instance immediately, before any render request.
 let warm = createInstance();
 
-self.onmessage = async (e) => {
-  const { id, files, defines, fn, entry } = e.data;
+// Renders run strictly one at a time. `render()` below claims the warm instance
+// with an `await`, and only replaces `warm` once that await resolves — so two
+// handlers running concurrently would both park on the *same* pending instance
+// and both get it. The second one's callMain() then throws the engine's raw
+// "program has already aborted!" (callMain exits the runtime, which sets
+// emscripten's ABORT, and every wasm export is abort-wrapped). That is exactly
+// what a fan-out of postMessage()s in one tick does — e.g. the 3MF export's
+// frame + marker_black + marker_white passes, or a pump render overlapping an
+// export one-shot. Chaining on a queue keeps the claim exclusive without
+// instantiating N engines at once.
+let queue = Promise.resolve();
+self.onmessage = (e) => {
+  queue = queue.then(() => render(e.data)).catch((err) => {
+    // render() reports its own render failures, so reaching here means the
+    // failure path itself broke (e.g. postMessage on an already-detached
+    // buffer). Still answer the request: a caller whose promise never settles
+    // hangs the export forever, which is worse than a surfaced error. The catch
+    // also keeps the chain alive — a rejected `queue` would silently skip every
+    // later render for the life of the worker.
+    try {
+      self.postMessage({
+        id: e.data && e.data.id,
+        ok: false,
+        error: `worker render crashed: ${String((err && err.message) || err)}`,
+      });
+    } catch (postErr) {
+      // the channel itself is gone; console is the only sink left
+      console.error('scad-worker: cannot report render failure', err, postErr);
+    }
+  });
+};
+
+async function render(msg) {
+  const { id, files, defines, fn, entry } = msg;
   const t0 = performance.now();
   const log = [];
   logSink = log;
@@ -98,4 +130,4 @@ self.onmessage = async (e) => {
   } catch (err) {
     self.postMessage({ id, ok: false, error: String((err && err.message) || err) });
   }
-};
+}
