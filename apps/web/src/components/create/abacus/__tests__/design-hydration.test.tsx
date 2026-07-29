@@ -7,6 +7,7 @@
  * The data hooks are mocked at the module seam; everything the provider
  * derives (materialize, solve, catalog fallback) runs for real.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -53,13 +54,17 @@ const SNAPSHOT = {
   profileId: 'fdm-0.4',
 }
 
-const wrap =
-  (designId: string | null, playerId: string | null = null) =>
-  ({ children }: { children: ReactNode }) => (
-    <AbacusStudioProvider playerId={playerId} designId={designId}>
-      {children}
-    </AbacusStudioProvider>
+const wrap = (designId: string | null, playerId: string | null = null) => {
+  // the controller reads useQueryClient (design-link cache seeding, Gitea #25)
+  const queryClient = new QueryClient()
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <AbacusStudioProvider playerId={playerId} designId={designId}>
+        {children}
+      </AbacusStudioProvider>
+    </QueryClientProvider>
   )
+}
 
 beforeEach(() => {
   vi.mocked(useAbacusDesignSnapshot).mockReturnValue({
@@ -88,6 +93,8 @@ describe('?design= hydration', () => {
     expect(result.current.overrides).toEqual({ 'bead:earth': 'spool-9' })
     expect(result.current.profileId).toBe('fdm-0.4')
     expect(result.current.synced).toBe(false) // hydration IS detachment
+    // a deep-linked design opens "already linked" (Gitea #25)
+    expect(result.current.savedDesignId).toBe('dsn-1')
   })
 
   it("a later-arriving player identity can't stomp the restored params", () => {

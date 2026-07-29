@@ -79,6 +79,17 @@ export default function CreateAbacusPage() {
     router.replace(studioHref(pathname, { playerId, designId }), { scroll: false })
   }
 
+  // The link chip saved the design (Gitea #25): mirror the minted id into the
+  // URL so the address bar matches the copied link and a reload reopens the
+  // save. Safe against self-stomp — the controller pre-seeds its hydration
+  // guard and the query cache before this ever runs.
+  const handleDesignSaved = (id: string) => {
+    if (id === designId) return
+    router.replace(studioHref(pathname, { playerId: selectedPlayerId, designId: id }), {
+      scroll: false,
+    })
+  }
+
   return (
     <PageWithNav navTitle="Your Abacus" navEmoji="🧮">
       <div
@@ -100,6 +111,7 @@ export default function CreateAbacusPage() {
             onSelectPlayer={selectPlayer}
             playerUnavailable={playerUnavailable}
             designUnavailable={designUnavailable}
+            onDesignSaved={handleDesignSaved}
           />
         </AbacusStudioProvider>
       </div>
@@ -112,6 +124,7 @@ interface StudioBodyProps {
   onSelectPlayer: (playerId: string | null) => void
   playerUnavailable: boolean
   designUnavailable: boolean
+  onDesignSaved: (designId: string) => void
 }
 
 // Inside the provider, so the shell's center/right can switch on the shared
@@ -124,6 +137,7 @@ function StudioBody({
   onSelectPlayer,
   playerUnavailable,
   designUnavailable,
+  onDesignSaved,
 }: StudioBodyProps) {
   const { fabrication } = useAbacusStudio()
   const isFdm = fabrication.kind === 'fdm'
@@ -136,6 +150,7 @@ function StudioBody({
           onSelectPlayer={onSelectPlayer}
           playerUnavailable={playerUnavailable}
           designUnavailable={designUnavailable}
+          onDesignSaved={onDesignSaved}
         />
       }
       center={

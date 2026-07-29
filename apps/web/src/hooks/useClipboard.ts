@@ -15,9 +15,11 @@ export interface UseClipboardReturn {
   copied: boolean
 
   /**
-   * Copy text to clipboard
+   * Copy text to clipboard. Resolves true on success, false when the
+   * clipboard refused (permissions, insecure context) — callers that need a
+   * fallback affordance branch on it; existing callers ignore it.
    */
-  copy: (text: string) => Promise<void>
+  copy: (text: string) => Promise<boolean>
 
   /**
    * Reset the copied state manually
@@ -49,8 +51,10 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
         setTimeout(() => {
           setCopied(false)
         }, timeout)
+        return true
       } catch (error) {
         console.error('[useClipboard] Failed to copy to clipboard:', error)
+        return false
       }
     },
     [timeout]

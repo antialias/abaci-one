@@ -14,6 +14,7 @@
 // fabrication are pure view state and never detach.
 
 import { useAbacusConfig } from '@soroban/abacus-react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   createContext,
   type ReactNode,
@@ -24,7 +25,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useAbacusDesignSnapshot } from '@/hooks/useAbacusDesignSnapshot'
+import { persistAbacusDesign, useAbacusDesignSnapshot } from '@/hooks/useAbacusDesignSnapshot'
 import { useAbacusPrintConnections } from '@/hooks/useAbacusPrintConnections'
 import {
   usePlayerAbacusIdentity,
@@ -33,7 +34,9 @@ import {
 import { usePlayerAccess } from '@/hooks/usePlayerAccess'
 import { useThhFilamentCatalog } from '@/hooks/useThhFilamentCatalog'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
+import { type AbacusDesignSnapshot, canonicalDesignSnapshot } from '@/lib/abacus/design-snapshot'
 import { type AbacusIdentity, parseAbacusIdentity } from '@/lib/abacus/identity'
+import { abacusDesignKeys } from '@/lib/queryKeys'
 import type { AbacusExportParts } from './abacus-3mf'
 import { catalogFromParams } from './abacus-catalog'
 import { toAbacusDesign } from './abacus-design'
@@ -198,6 +201,9 @@ function useStudioController(playerId: string | null, designId: string | null) {
   // follow-effect so the restore also wins the commit where both fire.
   const designSnapshot = useAbacusDesignSnapshot(designId)
   const hydratedDesignRef = useRef<string | null>(null)
+  // The last persisted design (id + canonical form) — seeded by hydration and
+  // by the link chip's save (design-link block below).
+  const [savedDesign, setSavedDesign] = useState<{ id: string; canonical: string } | null>(null)
   useEffect(() => {
     const snapshot = designSnapshot.data
     if (!designId || !snapshot || hydratedDesignRef.current === designId) return
@@ -206,7 +212,48 @@ function useStudioController(playerId: string | null, designId: string | null) {
     setOverrides(snapshot.overrides)
     setProfileId(snapshot.profileId)
     setSynced(false)
+    // a deep-linked design opens "already linked": copying its link is instant
+    // and offline-safe (no re-POST until the content diverges).
+    setSavedDesign({ id: designId, canonical: canonicalDesignSnapshot(snapshot) })
   }, [designId, designSnapshot.data])
+
+  // ---- design link (Gitea #25) ---------------------------------------------
+  // "Copy design link": an explicit, idempotent save that mints (or re-uses)
+  // the current design's ?design= id WITHOUT printing. `savedDesignId` is the
+  // dirty derivation — non-null only while live content still matches the last
+  // persisted snapshot (the `synced` analogue for design links, derived not
+  // stored). Unchanged content re-copies with no POST (synchronous inside the
+  // click gesture); edited content mints a fresh id — a stored id's content is
+  // immutable, old links keep meaning what they meant.
+  const queryClient = useQueryClient()
+  const [designLinkPending, setDesignLinkPending] = useState(false)
+  const liveCanonical = useMemo(
+    () => canonicalDesignSnapshot({ v: 1, params, overrides, profileId }),
+    [params, overrides, profileId]
+  )
+  const savedDesignId =
+    savedDesign && savedDesign.canonical === liveCanonical ? savedDesign.id : null
+  const saveDesignSnapshot = useCallback(async (): Promise<string | null> => {
+    if (savedDesignId) return savedDesignId
+    const snapshot: AbacusDesignSnapshot = { v: 1, params, overrides, profileId }
+    const canonical = canonicalDesignSnapshot(snapshot)
+    setDesignLinkPending(true)
+    try {
+      const id = await persistAbacusDesign(snapshot, { origin: 'studio-link' })
+      if (id) {
+        // This content came FROM live state: pre-seed the hydration guard and
+        // the query cache BEFORE the URL ever carries the new id, so the
+        // ?design= rewrite can never hydrate the save back over live edits
+        // (the replaceState hazard #22 side-stepped, resolved here).
+        hydratedDesignRef.current = id
+        queryClient.setQueryData(abacusDesignKeys.detail(id), snapshot)
+        setSavedDesign({ id, canonical })
+      }
+      return id
+    } finally {
+      setDesignLinkPending(false)
+    }
+  }, [savedDesignId, params, overrides, profileId, queryClient])
 
   // any manual edit detaches from the live config (see `synced`). THE chokepoint.
   const set = <K extends keyof Params>(k: K, v: Params[K]) => {
@@ -357,6 +404,9 @@ function useStudioController(playerId: string | null, designId: string | null) {
     saveAsPlayerAbacus,
     saveIsPending: saveIdentity.isPending,
     saveIsError: saveIdentity.isError,
+    saveDesignSnapshot,
+    designLinkPending,
+    savedDesignId,
     exporterReady,
     registerExporter,
     requestExportStl,

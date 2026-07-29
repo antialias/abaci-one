@@ -1,5 +1,5 @@
-import { renderHook, act } from '@testing-library/react'
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import { act, renderHook } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useClipboard } from '../useClipboard'
 
 describe('useClipboard', () => {
@@ -35,6 +35,26 @@ describe('useClipboard', () => {
 
     expect(result.current.copied).toBe(true)
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('hello')
+  })
+
+  it('copy resolves true on success and false when the clipboard refuses', async () => {
+    const { result } = renderHook(() => useClipboard())
+
+    let outcome: boolean | undefined
+    await act(async () => {
+      outcome = await result.current.copy('hello')
+    })
+    expect(outcome).toBe(true)
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    ;(navigator.clipboard.writeText as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('Clipboard not available')
+    )
+    await act(async () => {
+      outcome = await result.current.copy('hello')
+    })
+    expect(outcome).toBe(false)
+    consoleSpy.mockRestore()
   })
 
   it('resets copied state after default timeout (1500ms)', async () => {

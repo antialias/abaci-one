@@ -26,6 +26,7 @@ import {
 } from '@/lib/abacus/identity'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { PRESET_OPTS } from './abacus-model'
+import { DesignLinkChip } from './DesignLinkChip'
 
 const SCHEME_LABEL: Record<string, string> = {
   monochrome: 'Monochrome',
@@ -43,6 +44,9 @@ export interface DesignInspectorRailProps {
   /** the ?design= snapshot failed to load (not yours / gone, Gitea #22) →
    *  the studio opened without it */
   designUnavailable?: boolean
+  /** the link chip saved the design (Gitea #25) → the page mirrors the minted
+   *  id into the ?design= URL */
+  onDesignSaved: (designId: string) => void
 }
 
 export function DesignInspectorRail({
@@ -50,6 +54,7 @@ export function DesignInspectorRail({
   onSelectPlayer,
   playerUnavailable,
   designUnavailable = false,
+  onDesignSaved,
 }: DesignInspectorRailProps) {
   const {
     params,
@@ -231,6 +236,11 @@ export function DesignInspectorRail({
           </span>
         )}
       </div>
+
+      {/* design link (Gitea #25) — adjacent to the identity save so the two
+          save-ish acts read as one neighborhood, but a clearly different verb:
+          the identity save is about a PERSON, this is about an ADDRESS */}
+      <DesignLinkChip selectedPlayerId={selectedPlayerId} onDesignSaved={onDesignSaved} />
 
       {/* the fabrication chooser (paper ↔ 3D print) now lives in the shell's
           persistent top toolbar (FabricationSwitch), not here */}
