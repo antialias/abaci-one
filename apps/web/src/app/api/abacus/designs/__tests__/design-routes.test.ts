@@ -1,13 +1,14 @@
 // @vitest-environment node
 /**
- * Design-snapshot route tests (Gitea #22): the guest-first POST with its
- * owner-scoped content-hash dedup, and the owner-or-admin GET that answers
- * an identical 404 for "unknown" and "not yours". Uses the in-memory-db
- * pattern from the print proxy tests; auth is mocked to a fixed user.
+ * Design-snapshot route tests (Gitea #22, extended for sharing in #24): the
+ * guest-first POST with its owner-scoped content-hash dedup, and the
+ * shared-or-owner-or-admin GET that answers an identical 404 for "unknown",
+ * "not yours" and "not shared". Uses the in-memory-db pattern from the print
+ * proxy tests; auth is mocked to a fixed user.
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { sql } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { NextRequest } from 'next/server'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { defaultParams } from '@/components/create/abacus/abacus-model'
@@ -65,12 +66,16 @@ async function get(id: string, userRole = 'user') {
 describe('abacus design routes', () => {
   beforeAll(async () => {
     await db.run(sql.raw('CREATE TABLE `users` (`id` text PRIMARY KEY NOT NULL)'))
-    const migration = readFileSync(
-      path.join(__dirname, '../../../../../../drizzle/0140_abacus_designs.sql'),
-      'utf-8'
-    )
-    for (const statement of migration.split('--> statement-breakpoint')) {
-      if (statement.trim()) await db.run(sql.raw(statement))
+    // Every migration that touches abacus_designs, in order — miss one and the
+    // failures read as "no such column", not "you forgot a migration".
+    for (const file of ['0140_abacus_designs.sql', '0141_abacus_design_sharing.sql']) {
+      const migration = readFileSync(
+        path.join(__dirname, '../../../../../../drizzle', file),
+        'utf-8'
+      )
+      for (const statement of migration.split('--> statement-breakpoint')) {
+        if (statement.trim()) await db.run(sql.raw(statement))
+      }
     }
     await db.run(sql.raw(`INSERT INTO users (id) VALUES ('${OWNER}'), ('${STRANGER}')`))
   })
@@ -163,6 +168,35 @@ describe('abacus design routes', () => {
     vi.mocked(getUserId).mockResolvedValueOnce(STRANGER)
     const res = await get(id, 'admin')
     expect(res.status).toBe(200)
+  })
+
+  it('lets anyone read a SHARED design, and stops the moment it is un-shared', async () => {
+    const created = await post({ design: snapshot() })
+    const { id } = await created.json()
+
+    await db
+      .update(schema.abacusDesigns)
+      .set({ sharedAt: new Date() })
+      .where(eq(schema.abacusDesigns.id, id))
+
+    // Anyone can read it — the handler never even asks who you are, so a
+    // signed-out visitor works too. (Deliberately no queued mock value here:
+    // the short-circuit would leave it unconsumed, leaking into the next read.)
+    vi.mocked(getUserId).mockClear()
+    expect((await get(id)).status).toBe(200)
+    expect(getUserId).not.toHaveBeenCalled()
+
+    await db
+      .update(schema.abacusDesigns)
+      .set({ sharedAt: null })
+      .where(eq(schema.abacusDesigns.id, id))
+
+    vi.mocked(getUserId).mockResolvedValueOnce(STRANGER)
+    const denied = await get(id)
+    expect(denied.status).toBe(404)
+    expect(await denied.json()).toEqual({ error: 'Design not found' })
+    // …while the owner never lost their own design
+    expect((await get(id)).status).toBe(200)
   })
 
   it('counts reads without ever blocking them', async () => {

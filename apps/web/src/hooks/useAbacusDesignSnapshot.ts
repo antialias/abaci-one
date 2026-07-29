@@ -3,7 +3,7 @@
 // Design-snapshot read/write (Gitea #22): the `?design=<id>` deep link's data
 // side. The read hydrates the studio once per id (snapshots are immutable
 // content behind an immutable id — staleTime Infinity, no retry on the
-// permanent 404 the owner-gate answers). The write is the submit-path helper:
+// permanent 404 the access gate answers). The write is the submit-path helper:
 // TOTAL by contract — a failed snapshot degrades the print's edit link to
 // today's shallow form, it must never block or fail the print itself.
 

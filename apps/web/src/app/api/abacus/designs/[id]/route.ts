@@ -2,9 +2,10 @@
  * GET /api/abacus/designs/[id] (Gitea #22) — read back a persisted design
  * snapshot for `?design=<id>` hydration.
  *
- * Owner-or-admin for v1 (operator decision 2026-07-28; cross-account read is
- * the #24 sharing ticket). A denied read and an unknown id answer the SAME
- * 404 so existence is never leaked; the studio degrades both to the
+ * Readable by anyone holding the link once the owner shares it (#24), and by
+ * the owner or an admin always. A denied read, an unshared design and an
+ * unknown id all answer the SAME 404 so neither existence nor share state is
+ * ever leaked; the studio degrades all of them to the
  * "design unavailable" notice. The stored envelope is re-parsed through the
  * same guard the POST used — schema drift degrades to unavailable instead of
  * hydrating garbage. Provenance is never returned: it's a record of what was
@@ -30,7 +31,10 @@ export const GET = withAuth(async (_request, { userRole, params }) => {
     })
     if (!row) return notFound()
 
-    if (userRole !== 'admin') {
+    // A shared design (#24) is readable by anyone holding the link — and the
+    // check short-circuits before getUserId(), so a stranger's read no longer
+    // lazily provisions a guest user row just to be told they're allowed.
+    if (row.sharedAt === null && userRole !== 'admin') {
       // A signed-out visitor (getUserId throws) simply isn't the owner.
       const userId = await getUserId().catch(() => null)
       if (userId === null || row.createdBy !== userId) return notFound()

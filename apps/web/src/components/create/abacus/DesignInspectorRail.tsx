@@ -27,6 +27,7 @@ import {
 import { useAbacusStudio } from './AbacusStudioContext'
 import { PRESET_OPTS } from './abacus-model'
 import { DesignLinkChip } from './DesignLinkChip'
+import { SharedDesignsList } from './SharedDesignsList'
 
 const SCHEME_LABEL: Record<string, string> = {
   monochrome: 'Monochrome',
@@ -41,8 +42,9 @@ export interface DesignInspectorRailProps {
   onSelectPlayer: (playerId: string | null) => void
   /** the selected player's row failed to load → we're showing the user's own */
   playerUnavailable: boolean
-  /** the ?design= snapshot failed to load (not yours / gone, Gitea #22) →
-   *  the studio opened without it */
+  /** the ?design= snapshot failed to load (not shared with you / gone,
+   *  Gitea #22 + #24) → the studio opened without it. The route answers one
+   *  404 for every case on purpose, so the notice must not guess which. */
   designUnavailable?: boolean
   /** the link chip saved the design (Gitea #25) → the page mirrors the minted
    *  id into the ?design= URL */
@@ -145,7 +147,8 @@ export function DesignInspectorRail({
             data-element="abacus-design-unavailable"
             style={{ fontSize: 11, color: 'rgba(148,163,184,0.95)' }}
           >
-            Couldn't open that saved design — starting from the abacus instead.
+            That design is private or no longer available — starting from the abacus instead. If
+            it's yours, open it from the account that made it.
           </span>
         )}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -241,6 +244,12 @@ export function DesignInspectorRail({
           save-ish acts read as one neighborhood, but a clearly different verb:
           the identity save is about a PERSON, this is about an ADDRESS */}
       <DesignLinkChip selectedPlayerId={selectedPlayerId} onDesignSaved={onDesignSaved} />
+
+      {/* the ledger of everything you've made public (#24). A sibling of the
+          chip rather than a child of it: the chip is pure orchestration over a
+          mocked context seam, and this fetches. Renders nothing until you have
+          actually shared something. */}
+      <SharedDesignsList />
 
       {/* the fabrication chooser (paper ↔ 3D print) now lives in the shell's
           persistent top toolbar (FabricationSwitch), not here */}

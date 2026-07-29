@@ -25,6 +25,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useAbacusDesignShare } from '@/hooks/useAbacusDesignShare'
 import { persistAbacusDesign, useAbacusDesignSnapshot } from '@/hooks/useAbacusDesignSnapshot'
 import { useAbacusPrintConnections } from '@/hooks/useAbacusPrintConnections'
 import {
@@ -233,6 +234,13 @@ function useStudioController(playerId: string | null, designId: string | null) {
   )
   const savedDesignId =
     savedDesign && savedDesign.canonical === liveCanonical ? savedDesign.id : null
+  // Who may open the saved link (#24). Keyed on savedDesignId, NOT the URL's
+  // designId: sharing belongs to the id whose content is actually on screen, so
+  // editing a shared design hides the control until a new link is saved — the
+  // old id's sharing says nothing about what you're looking at now.
+  const designShare = useAbacusDesignShare(savedDesignId)
+  // the saved link no longer addresses what's on screen (save, then edit)
+  const designLinkStale = savedDesign !== null && savedDesignId === null
   const saveDesignSnapshot = useCallback(async (): Promise<string | null> => {
     if (savedDesignId) return savedDesignId
     const snapshot: AbacusDesignSnapshot = { v: 1, params, overrides, profileId }
@@ -407,6 +415,16 @@ function useStudioController(playerId: string | null, designId: string | null) {
     saveDesignSnapshot,
     designLinkPending,
     savedDesignId,
+    designLinkStale,
+    designShared: designShare.shared,
+    // WHAT we know about who can open it, not just the answer — the chip must
+    // not say "only you can open it" about a stranger's shared design, nor
+    // about a design whose access simply failed to load.
+    designAccess: designShare.access,
+    canShareDesign: designShare.canShare,
+    setDesignShared: designShare.setShared,
+    designSharePending: designShare.isPending,
+    designShareFailed: designShare.isError,
     exporterReady,
     registerExporter,
     requestExportStl,

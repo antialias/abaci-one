@@ -114,6 +114,47 @@ describe('DesignLinkChip', () => {
     expect(onDesignSaved).toHaveBeenCalledWith('dsn-9') // the note's claim is true
   })
 
+  // The tooltip is the only place the studio says WHO can open the link, so it
+  // must never over-claim. Each state gets its own sentence, and in particular
+  // "Only you can open it" is licensed by exactly one of them (#24).
+  describe('who-can-open-it tooltip', () => {
+    const tip = () => screen.getByText('🔗 Copy design link').getAttribute('title')
+
+    it('promises privacy only for a design that is provably yours and private', () => {
+      studio({ savedDesignId: 'dsn-9', designAccess: 'manageable', designShared: false })
+      render(<DesignLinkChip selectedPlayerId={null} onDesignSaved={vi.fn()} />)
+      expect(tip()).toBe('This design is saved — copy its link. Only you can open it.')
+    })
+
+    it('says it is open when it is yours and shared', () => {
+      studio({ savedDesignId: 'dsn-9', designAccess: 'manageable', designShared: true })
+      render(<DesignLinkChip selectedPlayerId={null} onDesignSaved={vi.fn()} />)
+      expect(tip()).toContain('anyone with the link can open it')
+    })
+
+    it("never calls someone else's shared design private — it offers a copy instead", () => {
+      // reading it at all proves it is shared; the old code claimed the opposite
+      studio({ savedDesignId: 'dsn-9', designAccess: 'not-yours', designShared: false })
+      render(<DesignLinkChip selectedPlayerId={null} onDesignSaved={vi.fn()} />)
+      expect(tip()).not.toContain('Only you')
+      expect(tip()).toContain('opens for anyone')
+      expect(tip()).toContain('copy of your own')
+    })
+
+    it('claims nothing when access is unknown — a failed load, or a partial context', () => {
+      studio({ savedDesignId: 'dsn-9', designAccess: 'unknown', designShared: false })
+      render(<DesignLinkChip selectedPlayerId={null} onDesignSaved={vi.fn()} />)
+      expect(tip()).toBe('This design is saved — copy its link.')
+
+      studio({ savedDesignId: 'dsn-9' }) // designAccess absent entirely
+      const { container } = render(
+        <DesignLinkChip selectedPlayerId={null} onDesignSaved={vi.fn()} />
+      )
+      const button = container.querySelector('[data-action="copy-design-link"]')
+      expect(button?.getAttribute('title')).toBe('This design is saved — copy its link.')
+    })
+  })
+
   it('a fresh attempt clears the previous outcome line', async () => {
     saveDesignSnapshot.mockResolvedValueOnce(null)
     const { container } = render(<DesignLinkChip selectedPlayerId={null} onDesignSaved={vi.fn()} />)

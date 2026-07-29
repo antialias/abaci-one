@@ -1,9 +1,6 @@
 import { createId } from '@paralleldrive/cuid2'
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import type {
-  AbacusDesignProvenance,
-  AbacusDesignSnapshot,
-} from '@/lib/abacus/design-snapshot'
+import type { AbacusDesignProvenance, AbacusDesignSnapshot } from '@/lib/abacus/design-snapshot'
 import { users } from './users'
 
 /**
@@ -13,9 +10,11 @@ import { users } from './users'
  * the canonical serialization of the `{v, params, overrides, profileId}`
  * envelope and upserts on `contentHash`, so identical submits (and submit
  * retries) by the same user converge on one id. The hash is OWNER-scoped on
- * purpose: reads are owner-or-admin, so a global dedup would hand user B a
- * design id owned by whichever user A happened to print the same design
- * first — and B could never read it back. Rows are permanent — a
+ * purpose: an unshared design reads owner-or-admin, so a global dedup would
+ * hand user B a design id owned by whichever user A happened to print the same
+ * design first — and B could never read it back, nor share or revoke it
+ * (#24, which makes the scoping load-bearing rather than merely tidy). Rows
+ * are permanent — a
  * `?design=<id>` link printed on a THH job card must keep resolving years
  * later (operator decision, 2026-07-28), so nothing here expires or
  * cascades away with its creator.
@@ -43,6 +42,15 @@ export const abacusDesigns = sqliteTable(
       .$defaultFn(() => new Date()),
     views: integer('views').notNull().default(0),
     lastAccessedAt: integer('last_accessed_at', { mode: 'timestamp' }),
+    /** Cross-account read access (#24). NULL = private (owner-or-admin, the
+     *  #22 default); a timestamp = anyone with the link may read it.
+     *  Deliberately on the design row rather than in a share-code table: the
+     *  id IS the capability (cuid2, far stronger than a 7-char share code),
+     *  and links already stamped on THH job cards must be repairable by a
+     *  later share — a new code at a new URL could never fix them. Revoking
+     *  nulls this back out, and re-sharing revives the SAME url, which is what
+     *  makes the toggle its own undo. Access changes; content never does. */
+    sharedAt: integer('shared_at', { mode: 'timestamp' }),
   },
   (table) => ({
     createdByIdx: index('abacus_designs_created_by_idx').on(table.createdBy),

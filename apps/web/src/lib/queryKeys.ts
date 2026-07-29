@@ -114,6 +114,13 @@ export const playerAbacusIdentityKeys = {
 export const abacusDesignKeys = {
   all: ['abacus-design'] as const,
   detail: (designId: string) => [...abacusDesignKeys.all, designId] as const,
+  // 'share' sits BEFORE the id on purpose: who may open a design is mutable,
+  // and must not live as a prefix-invalidatable child of the immutable
+  // snapshot key (which is cached with staleTime: Infinity).
+  share: (designId: string) => [...abacusDesignKeys.all, 'share', designId] as const,
+  /** the caller's currently-shared designs (#24) — mutable, like `share`, and
+   *  invalidated by every flip in either direction. */
+  sharedList: () => [...abacusDesignKeys.all, 'shared-list'] as const,
 }
 
 // Collected clips query keys (admin audio TTS generation)
@@ -264,6 +271,16 @@ export const abacusPrintKeys = {
   job: (jobId: string) => [...abacusPrintKeys.all, 'job', jobId] as const,
   capabilities: (connectionId?: string) =>
     [...abacusPrintKeys.all, 'capabilities', connectionId ?? 'sole'] as const,
+  // Pre-slice support-interface recommendation (THH#367 / Gitea #23) — keyed on
+  // the model family too, since the service's ladder ranks against it.
+  supportRecommendation: (printerId: string, modelFamily: string, connectionId?: string) =>
+    [
+      ...abacusPrintKeys.all,
+      'support-recommendation',
+      printerId,
+      modelFamily,
+      connectionId ?? 'sole',
+    ] as const,
   settings: () => [...abacusPrintKeys.all, 'settings'] as const,
 }
 

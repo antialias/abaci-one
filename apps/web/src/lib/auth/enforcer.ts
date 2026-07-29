@@ -107,10 +107,20 @@ p, guest, /api/scanner-settings, *
 # ring route is unaffected (no withAuth — it authenticates by ring secret).
 p, guest, /api/abacus/print/*, *
 # Abacus design snapshots (#22) — save is guest-first (a guest can print, so a
-# guest can snapshot); read is owner-or-admin, enforced IN the handler (the
-# route layer admits the request, the handler 404s non-owners).
+# guest can snapshot); read is shared-or-owner-or-admin, enforced IN the handler
+# (the route layer admits the request, the handler 404s everyone else — with the
+# same body an unknown id gets, so nothing is leaked).
 p, guest, /api/abacus/designs, POST
+# GET on the collection is the caller's SHARED-design ledger (#24) — the only
+# way back to a design you shared and then edited past. Identity-scoped in the
+# handler, so a guest reading it sees exactly their own (usually none).
+p, guest, /api/abacus/designs, GET
 p, guest, /api/abacus/designs/*, GET
+# Design sharing (#24) — the owner flips cross-account read on the SAME design
+# id. Guest subject on purpose (unlike song/observation shares): the studio is
+# guest-first, and because the flag rides the design row, the guest→user merge
+# carries the share with no extra code. Ownership is enforced in the handler.
+p, guest, /api/abacus/designs/*/share, *
 p, guest, /api/arcade/*, *
 p, guest, /api/arcade-session, *
 p, guest, /api/realtime/*, *

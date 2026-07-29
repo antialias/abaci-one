@@ -29,6 +29,27 @@ describe('route RBAC policy', () => {
     expect(await enforcer.enforce('guest', '/api/players/p1/abacus-identity', 'PUT')).toBe(true)
   })
 
+  it('guests reach the design snapshot + sharing routes', async () => {
+    const enforcer = await getRouteEnforcer()
+    for (const [path, method] of [
+      ['/api/abacus/designs', 'POST'],
+      // the shared-design ledger (#24). Its own line because the POST rule is
+      // verb-scoped — GET on the collection is genuinely uncovered without it,
+      // which would 401 the only route back to a design you shared and edited
+      // past.
+      ['/api/abacus/designs', 'GET'],
+      ['/api/abacus/designs/abc123', 'GET'],
+      // the mid-path wildcard (#24) — this is the pin: keyMatch2 has to expand
+      // designs/*/share, and a missing rule 401s in prod but never in a unit
+      // test, because handler tests mock withAuth away.
+      ['/api/abacus/designs/abc123/share', 'GET'],
+      ['/api/abacus/designs/abc123/share', 'POST'],
+      ['/api/abacus/designs/abc123/share', 'DELETE'],
+    ] as const) {
+      expect(await enforcer.enforce('guest', path, method), `${method} ${path}`).toBe(true)
+    }
+  })
+
   it('stays deny-by-default elsewhere', async () => {
     const enforcer = await getRouteEnforcer()
     expect(await enforcer.enforce('guest', '/api/admin/subscriptions', 'GET')).toBe(false)
