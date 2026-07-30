@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { catalogFromParams, type FilamentCatalog, type FilamentSpool } from '../abacus-catalog'
 import { toAbacusDesign } from '../abacus-design'
-import { beadRoleColors, COLOR_PALETTES, defaultParams, type Params } from '../abacus-model'
+import {
+  beadRoleColors,
+  COLOR_PALETTES,
+  defaultParams,
+  type Params,
+  textSlots,
+  tokGroup,
+} from '../abacus-model'
 import {
   computeFilamentMap,
   materialize,
@@ -796,6 +803,68 @@ describe('materialize — inset text reductions are warnings, never gates', () =
     expect(find(result, 'text-invisible')).toBeUndefined()
     // still honest about the shortfall it cannot fix: 5 groups, 3 usable spools
     expect(find(result, 'rainbow-unrealizable')?.message).toContain('only 3 distinct')
+  })
+
+  // Every pair of tokens that TOUCH on the plate, as spool indices. Walks the
+  // real layout (slot by slot, k by k) rather than assuming which groups abut,
+  // so it stays honest if the wrap or the slot list ever changes.
+  const touchingPairs = (r: ReturnType<typeof materialize>, p: Params): [string, string][] => {
+    const ink = new Map(
+      r.assignments.filter((a) => a.role.kind === 'text').map((a) => [a.role.key, a.spoolIndex])
+    )
+    const clashes: [string, string][] = []
+    for (const toks of textSlots(p)) {
+      for (let k = 1; k < toks.length; k++) {
+        const a = ink.get(`text-${tokGroup(p, k - 1)}`)
+        const b = ink.get(`text-${tokGroup(p, k)}`)
+        if (a !== undefined && a === b) clashes.push([toks[k - 1][0], toks[k][0]])
+      }
+    }
+    return clashes
+  }
+
+  it('never inks two touching words the same, even when it has to share', () => {
+    // The reported bug, from the screenshot: four spools, three of them usable,
+    // and the top rail came out blue/brown/dark/brown/BROWN — "4+6 5+5" ran
+    // together into one blob. Sharing is unavoidable at 5 groups over 3 spools;
+    // sharing with your NEIGHBOUR is not (A B C A B exists, and A B C B C does).
+    const roster = [
+      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+      spool('s-wood', 'PLA Wood', '#a9713b', 'PLA'),
+      spool('s-walnut', 'PLA Walnut', '#3b2a20', 'PLA'),
+      spool('s-blue', 'PLA Matte Blue', '#2e5fa3', 'PLA'),
+    ]
+    const p = { ...design.params }
+    const result = materialize(withText(), thh(roster))
+    expect(touchingPairs(result, p)).toEqual([])
+    // and it did NOT buy that by spending a fourth ink it doesn't have, nor by
+    // letting a group vanish into the frame
+    const text = result.assignments.filter((a) => a.role.kind === 'text')
+    expect(new Set(text.map((a) => a.spoolIndex)).size).toBe(3)
+    const frameIdx = result.assignments.find((a) => a.role.kind === 'frame')?.spoolIndex
+    expect(text.some((a) => a.spoolIndex === frameIdx)).toBe(false)
+  })
+
+  it('separates neighbours down to two usable spools, and reports honestly below that', () => {
+    // three spools, two usable: 5 groups alternate A B A B A — still no clash,
+    // because the default rails are 5 and 4 tokens long (paths, not cycles).
+    const two = [
+      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+      spool('s-black', 'Matte Black', '#000000', 'PLA'),
+      spool('s-blue', 'PLA Matte Blue', '#2e5fa3', 'PLA'),
+    ]
+    const p = { ...design.params }
+    expect(touchingPairs(materialize(withText(), thh(two)), p)).toEqual([])
+
+    // one usable spool: adjacency is unsatisfiable. Readable-but-merged beats
+    // vanishing into the frame, so it shares and rainbow-unrealizable says so.
+    const one = [
+      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+      spool('s-black', 'Matte Black', '#000000', 'PLA'),
+    ]
+    const scraped = materialize(withText(), thh(one))
+    expect(touchingPairs(scraped, p).length).toBeGreaterThan(0)
+    expect(find(scraped, 'rainbow-unrealizable')).toBeDefined()
   })
 
   it("auto steers the inlay OFF the frame's filament even when the ink asks for it", () => {

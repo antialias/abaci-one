@@ -1107,6 +1107,35 @@ export function textGroups(p: Params): TextGroup[] {
   }))
 }
 
+/** Which color groups end up written NEXT TO EACH OTHER on the plate.
+ *
+ *  Derived from the real layout rather than reasoned about: tokens of one slot
+ *  sit evenly along a single line (tokenCenters), so token k and k+1 touch, and
+ *  the pair of groups they carry must not print in the same filament — two
+ *  neighbouring words in one ink read as one word. Different slots are on
+ *  different faces (four top rails + four walls) and never abut.
+ *
+ *  Reading it off `textSlots` instead of assuming `g, g±1` is what makes the
+ *  WRAP correct for free: `tokGroup` is `k % 5`, so a slot of six or more tokens
+ *  puts group 4 beside group 0, and that pair is a real neighbour too.
+ *
+ *  Symmetric, no self-edges (a group beside itself — single-fill text, or a slot
+ *  long enough to repeat — is one ink by definition and not a defect).
+ *  Result index = group id; always length `textGroupCount(p)`. */
+export function textGroupNeighbors(p: Params): Set<number>[] {
+  const nb = Array.from({ length: textGroupCount(p) }, () => new Set<number>())
+  for (const toks of textSlots(p)) {
+    for (let k = 1; k < toks.length; k++) {
+      const a = tokGroup(p, k - 1)
+      const b = tokGroup(p, k)
+      if (a === b) continue
+      nb[a].add(b)
+      nb[b].add(a)
+    }
+  }
+  return nb
+}
+
 // ---- feet layout mirror (Gitea #23) -----------------------------------------
 // Mirror of the scad's FEET derivation chain (abacus.scad "feet pockets" block),
 // for the viewer's foot-stud preview — same shape as tokenCenters: pure math,

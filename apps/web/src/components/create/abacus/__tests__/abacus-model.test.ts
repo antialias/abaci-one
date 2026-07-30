@@ -16,6 +16,7 @@ import {
   paramsFromDisplayConfig,
   TEXT_RAINBOW_GROUPS,
   textGroupCount,
+  textGroupNeighbors,
   textGroups,
   textSlots,
   tokenCenters,
@@ -404,6 +405,49 @@ describe('inset text color groups — hand-computed mirror of the scad tok_color
 
   it('defaults use all five: friends-of-10 is a 5-token rail', () => {
     expect(textGroupCount(defaultParams)).toBe(TEXT_RAINBOW_GROUPS)
+  })
+
+  describe('textGroupNeighbors — which groups get written next to each other', () => {
+    const asArrays = (p: Params) => textGroupNeighbors(p).map((s) => [...s].sort((a, b) => a - b))
+
+    it('a rail of five is a PATH 0–1–2–3–4: the ends do not touch', () => {
+      // 5 tokens, 5 groups, one each in order. The plan may reuse an ink for 0
+      // and 4 (they are far apart on the rail); it may not for 3 and 4.
+      expect(asArrays(withTop(5))).toEqual([[1], [0, 2], [1, 3], [2, 4], [3]])
+    })
+
+    it('a rail of six WRAPS: k=5 is group 0 again, sitting beside group 4', () => {
+      // The reason this is read off the layout instead of assuming g±1.
+      expect(asArrays(withTop(6))).toEqual([
+        [1, 4],
+        [0, 2],
+        [1, 3],
+        [2, 4],
+        [0, 3],
+      ])
+    })
+
+    it('the defaults are the union of both rails — friends-of-10 (5) and -of-5 (4)', () => {
+      // the 4-token rail contributes 0–1, 1–2, 2–3, all already on the 5-token
+      // one, so the shape is the 5-path. Groups never bridge rails: separate faces.
+      expect(asArrays(defaultParams)).toEqual([[1], [0, 2], [1, 3], [2, 4], [3]])
+    })
+
+    it('single fill has one group and therefore no edges — one ink by definition', () => {
+      expect(asArrays({ ...defaultParams, text_fill: 'single' })).toEqual([[]])
+      expect(textGroupNeighbors(blank)).toEqual([])
+    })
+
+    it('is symmetric and self-edge-free for every rail length', () => {
+      for (let n = 1; n <= 12; n++) {
+        const nb = textGroupNeighbors(withTop(n))
+        expect(nb).toHaveLength(textGroupCount(withTop(n)))
+        nb.forEach((set, g) => {
+          expect(set.has(g)).toBe(false)
+          for (const o of set) expect(nb[o].has(g)).toBe(true)
+        })
+      }
+    })
   })
 
   it('textSlots is the one token layout — definesFrom, tokenCenters and anyTokens read it', () => {

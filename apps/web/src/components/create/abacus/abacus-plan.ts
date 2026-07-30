@@ -54,6 +54,7 @@ import {
   type FilamentMap,
   type Params,
   type TextGroup,
+  textGroupNeighbors,
   textGroups,
 } from './abacus-model'
 
@@ -422,6 +423,14 @@ export function materialize(
   // rainbow needs 5 spare spools, and a 4-slot AMS already owes slots to the
   // frame, both ArUco markers and the bead roles. rainbow-unrealizable reports
   // what it actually got.
+  //
+  // But NOT WITH ITS NEIGHBOUR. Sharing spread across a rail is a smaller
+  // palette; sharing between two words that touch is a rendering bug — a
+  // four-spool roster printed "1+9 2+8 3+7 4+6 5+5" as blue/brown/dark/brown/
+  // brown, and the last two ran together into one blob. Three inks over five
+  // words has a perfectly good answer (A B C A B); nearest-color alone just
+  // never looks for it. So the sharing branch skips whatever ink the adjacent
+  // groups already took — see textGroupNeighbors for what "adjacent" means.
   const textAssignments: RoleAssignment[] = []
   if (design.params.text_mode === 'inset') {
     const usedByText = new Set<number>()
@@ -441,17 +450,39 @@ export function materialize(
       }
       return best
     }
+    // Who each group is written NEXT TO on the plate, and what ink that neighbour
+    // ended up with. Sharing is fine — sharing with the word touching yours is
+    // not, because the two then read as one word.
+    const neighbors = textGroupNeighbors(design.params)
+    const inkOf = new Map<number, number>()
+    const neighborInks = (g: number): Set<number> => {
+      const s = new Set<number>()
+      for (const n of neighbors[g] ?? []) {
+        const i = inkOf.get(n)
+        if (i !== undefined) s.add(i)
+      }
+      return s
+    }
     for (const t of textGroups(design.params)) {
+      const beside = neighborInks(t.g)
       const idx =
         nearestIn(
           visible.filter((i) => !usedByText.has(i)),
           t.hex
-        ) ?? // fresh and readable — the rainbow's whole point
-        nearestIn(visible, t.hex) ?? // out of fresh spools: share, stay readable
+        ) ?? // fresh and readable — the rainbow's whole point. Never needs the
+        // adjacency filter: "fresh" already means no group holds it, neighbour
+        // or not, so this branch is byte-identical to before the rule landed.
+        nearestIn(
+          visible.filter((i) => !beside.has(i)),
+          t.hex
+        ) ?? // out of fresh spools: share, but not with the word touching this one
+        nearestIn(visible, t.hex) ?? // one visible spool for two adjacent groups —
+        // unsatisfiable, and readable beats separated (rainbow-unrealizable says so)
         nearestIn(allowed, t.hex) ?? // a roster whose only candidate IS the frame
         allowed[0] ??
         0
       usedByText.add(idx)
+      inkOf.set(t.g, idx)
       textAssignments.push(
         assign(
           {
