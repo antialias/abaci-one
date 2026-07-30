@@ -22,7 +22,7 @@
 // OpenSCAD (that was the dead feature's fatal flaw); this is client WASM only.
 
 import { useEffect, useRef } from 'react'
-import { anyTokens, definesFrom, type ExportPass, exportDefines, type Params } from './abacus-model'
+import { anyTokens, definesFrom, exportDefines, type Params, type RenderPass } from './abacus-model'
 
 const WORKER_URL = '/openscad/scad-worker.js'
 const SCAD_URL = '/scad/abacus.scad'
@@ -37,17 +37,24 @@ export type UseAbacusScadArgs = {
   onMain: (res: MainResult) => void
   onPlug: (stl: ArrayBuffer | null) => void
   onStatus?: (s: StatusUpdate) => void
+  /** Fired once the .scad + fonts are in MEMFS and the workers can render —
+   *  i.e. the moment {@link UseAbacusScad.exportStl} stops rejecting. Consumers
+   *  driven by `render()` don't need it (the pump replays the latest params by
+   *  itself once loaded); a consumer that ONLY does export one-shots does, and
+   *  without it its only way to discover readiness is to call and fail. */
+  onReady?: () => void
 }
 
 export type UseAbacusScad = {
   /** Request a render of `params`; latest-wins, and a no-op if the scad inputs
    *  are unchanged (color-only edits don't re-render). */
   render: (params: Params) => void
-  /** Fire a one-shot high-quality ($fn=64) render for export. `pass` selects a
-   *  part pass (marker plugs, feet, one text-inlay color group) instead of the
-   *  whole abacus — see ExportPass. Rejects when the worker isn't ready or the
-   *  scad render fails — export callers must surface that, not hang. */
-  exportStl: (params: Params, pass?: ExportPass) => Promise<ArrayBuffer>
+  /** Fire a one-shot high-quality ($fn=64 by default) render. `pass` selects a
+   *  single `only=` slice instead of the whole abacus: either a 3MF filament
+   *  body (marker plugs, feet, one text-inlay color group) or an inspection part
+   *  (a lone bead, the channel cavity) — see RenderPass. Rejects when the worker
+   *  isn't ready or the scad render fails — callers must surface that, not hang. */
+  exportStl: (params: Params, pass?: RenderPass, fn?: number) => Promise<ArrayBuffer>
 }
 
 type Pump = {
@@ -192,6 +199,7 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
           st.fonts[u] = new Uint8Array(fontBufs[i])
         })
         st.loaded = true
+        cbRef.current.onReady?.()
         pumpMain()
         pumpPlug()
       } catch (err) {
@@ -237,7 +245,7 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
     }
   }
 
-  const exportStl = (params: Params, pass?: ExportPass): Promise<ArrayBuffer> => {
+  const exportStl = (params: Params, pass?: RenderPass, fn = 64): Promise<ArrayBuffer> => {
     const st = stateRef.current
     if (!st.worker || !st.loaded) {
       return Promise.reject(new Error('3D exporter not ready — the render engine is still loading'))
@@ -260,7 +268,7 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
         entry: '/abacus.scad',
         files: { '/abacus.scad': st.scad, ...st.fonts },
         defines: exportDefines(params, pass),
-        fn: 64,
+        fn,
       })
     })
   }

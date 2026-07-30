@@ -140,6 +140,11 @@ inlay_plugs  = false;  // true → also model the white/black inlay solids (3MF 
 only         = "";     // part passes: "" | "marker_black" | "marker_white" | "text_plugs" | "feet"
                        // "feet" renders the printed foot solids (pocket fill + stand-off,
                        // crossbar voided) — emitted UNCONDITIONALLY; the TS caller gates.
+                       // Plus the INSPECTION slices — "bead" | "bead_capture" | "bead_cap"
+                       // | "bead_exposed" | "channel" | "frame" — which are not filament
+                       // bodies, just one piece rendered alone for the Storybook bench.
+                       // Both sets are dispatched at the bottom of this file; the full
+                       // vocabulary is pinned against the TS side by export-defines.test.ts.
 plug_group   = -1;     // "text_plugs" pass filter: −1 = every token (one soup, what the
                        // on-screen preview wants); 0..4 = only the tokens whose tok_group
                        // matches, so the 3MF export can put each ink color on its own
@@ -796,6 +801,32 @@ if (only == "marker_black")      for (k = [0 : 3]) color("black") marker_plug(k,
 else if (only == "marker_white") for (k = [0 : 3]) color("white") marker_plug(k, false);
 else if (only == "text_plugs")   text_plugs();
 else if (only == "feet")         for (k = [0 : len(FEET_POS) - 1]) color("#1f2937") foot_at(k);
+/* ---- inspection slices (the Storybook parts bench) ------------------------
+   NOT filament bodies — the four passes above each become one body in the 3MF,
+   these do not. They render ONE piece of the model in isolation so it can be
+   orbited, measured and test-printed on its own. Everything here composes the
+   same modules the assembly does, so a slice can never drift from what ships.
+   Consumed by AbacusPartBench / abacus-parts.stories.tsx (`INSPECT_PARTS`).
+
+   The three bead slices exist because the bead is TWO solids joined at the belt
+   (see "exposed cap" above) and the two halves answer different questions:
+   `bead_capture` is the part that rides in the track and must never change,
+   `bead_cap` is the part that is free to, and `bead_exposed` is the only part
+   anyone ever SEES — everything below `s_fh` is swallowed by the frame. */
+else if (only == "bead")         color(frame_color) bead_solid(0);
+else if (only == "bead_capture") color(frame_color) bead_solid(0, cap = false);
+else if (only == "bead_cap")     color(frame_color) cap_solid(0);
+else if (only == "bead_exposed")
+  color(frame_color) intersection() {
+    bead_solid(0);
+    translate([-s_bd * 2, -s_bd * 2, s_fh]) cube(s_bd * 4);   // keep only what clears the face
+  }
+/* The channel is the NEGATIVE — the cavity carved out of the frame, i.e. the
+   bead grown by `clearance` and swept through its travel, plus the chimney. It
+   is the shape of the track, so it is what a fit question is asked of. Centered
+   on the origin rather than at its column, and one earth channel's travel. */
+else if (only == "channel")      color(frame_color) channel(0, -(s_ehi - s_elo) / 2, (s_ehi - s_elo) / 2);
+else if (only == "frame")        color(frame_color) frame();
 else {
   if (show_frame) {
     color(frame_color) {

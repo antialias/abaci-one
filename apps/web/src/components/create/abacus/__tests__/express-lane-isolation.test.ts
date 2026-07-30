@@ -25,12 +25,20 @@ const PAGE = join(WEB, 'src/app/create/abacus/page.tsx')
 // The dynamic boundary: the one module allowed to touch the 3D stack.
 const VIEWER = 'AbacusStudioViewer.tsx'
 
+// Story-only harnesses. These also pull three + the WASM exporter, but they are
+// unreachable from the app: nothing outside Storybook imports them, which the
+// third test below PROVES rather than takes on trust. That proof — not this
+// list — is what keeps the express lane's promise, so a module added here
+// without a matching unreachability assertion is a hole.
+const STORY_ONLY = ['AbacusPartBench.tsx']
+
 // A static `import … from 'three'` / 'three/…'. Anchored at line start so bare
 // mentions in comments or strings, and dynamic import() expressions, don't match.
 const STATIC_THREE_IMPORT = /^\s*import\b[^\n]*\bfrom\s+['"]three(?:['"/])/m
-// A static import of the viewer symbol. The dynamic `import('…AbacusStudioViewer')`
+// A static import of a local module by basename. The dynamic `import('…Foo')`
 // form has no `from` and doesn't start the line with `import`, so it won't match.
-const STATIC_VIEWER_IMPORT = /^\s*import\b[^\n]*\bfrom\s+['"][^'"]*AbacusStudioViewer['"]/m
+const staticImportOf = (name: string) =>
+  new RegExp(`^\\s*import\\b[^\\n]*\\bfrom\\s+['"][^'"]*${name}['"]`, 'm')
 
 // App source only: exclude __tests__ and Storybook stories, which legitimately
 // import components directly and never ship in the app bundle.
@@ -55,16 +63,28 @@ describe('express lane keeps the 3D stack code-split from the paper path (Gitea 
     expect(names).toContain('StudioShell.tsx') // shared shell
   })
 
-  it('only the dynamically-imported viewer statically imports three', () => {
+  it('only the dynamically-imported viewer and the story-only benches import three', () => {
     const offenders = STUDIO_SURFACE.filter((f) =>
       STATIC_THREE_IMPORT.test(readFileSync(f, 'utf8'))
     ).map(base)
-    expect(offenders).toEqual([VIEWER])
+    expect(offenders.sort()).toEqual([VIEWER, ...STORY_ONLY].sort())
   })
 
   it('no app module statically imports the viewer — it is reachable only via dynamic import()', () => {
     const offenders = [...STUDIO_SURFACE, PAGE]
-      .filter((f) => STATIC_VIEWER_IMPORT.test(readFileSync(f, 'utf8')))
+      .filter((f) => staticImportOf('AbacusStudioViewer').test(readFileSync(f, 'utf8')))
+      .map(base)
+    expect(offenders).toEqual([])
+  })
+
+  // The other half of the STORY_ONLY exemption: a bench may import three because
+  // no app module can reach it. Storybook imports it directly (.stories.tsx is
+  // outside this scan) and never ships in the app bundle.
+  it.each(STORY_ONLY)('no app module imports the story-only bench %s', (name) => {
+    const stem = name.replace(/\.tsx?$/, '')
+    const offenders = [...STUDIO_SURFACE, PAGE]
+      .filter((f) => base(f) !== name)
+      .filter((f) => staticImportOf(stem).test(readFileSync(f, 'utf8')))
       .map(base)
     expect(offenders).toEqual([])
   })

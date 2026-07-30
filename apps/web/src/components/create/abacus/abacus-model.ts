@@ -370,13 +370,37 @@ export type ExportPass =
   | { only: 'marker_black' | 'marker_white' | 'feet' }
   | { only: 'text_plugs'; group: number }
 
+/** INSPECTION-only `only=` slices — one piece of the model rendered alone so it
+ *  can be orbited, measured and test-printed (the Storybook parts bench). These
+ *  are deliberately NOT `ExportPass` values: an export pass means "one filament
+ *  body in the 3MF", and a lone bead or a channel cavity is not that. Both kinds
+ *  ride the same `-Donly=` mechanism, hence the shared {@link exportDefines}.
+ *
+ *  The three bead slices split the bead at the belt, because the two halves
+ *  answer different questions: `bead_capture` rides in the track and must never
+ *  change, `bead_cap` is free to, and `bead_exposed` is the only part anyone
+ *  ever sees (everything below the frame's top face is swallowed by it).
+ *  Mirrors `abacus.scad`'s dispatch — keep the two lists in step. */
+export const INSPECT_PARTS = [
+  'bead',
+  'bead_capture',
+  'bead_cap',
+  'bead_exposed',
+  'channel',
+  'frame',
+] as const
+export type InspectPart = (typeof INSPECT_PARTS)[number]
+
+/** Anything the worker can be asked to render as a single `only=` pass. */
+export type RenderPass = ExportPass | { only: InspectPart }
+
 /** The define list for one export render. Pure — and split out of the worker
  *  postMessage so the exact strings are testable: `-Dplug_group` is the one
  *  define whose absence fails SILENTLY (the scad's −1 default renders every
  *  token, so a typo'd name ships N identical copies of the whole inlay on N
  *  extruders instead of a partition). Emitted for the text pass only; the
  *  preview pump deliberately omits it and gets the unfiltered soup. */
-export function exportDefines(p: Params, pass?: ExportPass): string[] {
+export function exportDefines(p: Params, pass?: RenderPass): string[] {
   if (!pass) return definesFrom(p)
   const defs = [...definesFrom(p), `-Donly="${pass.only}"`]
   if (pass.only === 'text_plugs') defs.push(`-Dplug_group=${pass.group}`)

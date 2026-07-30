@@ -1,5 +1,13 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { defaultParams, exportDefines, type Params } from '../abacus-model'
+import {
+  defaultParams,
+  type ExportPass,
+  exportDefines,
+  INSPECT_PARTS,
+  type Params,
+} from '../abacus-model'
 
 // The define strings the export path hands the OpenSCAD worker. This file exists
 // because `-Dplug_group` is the one define whose ABSENCE fails silently: the
@@ -64,5 +72,46 @@ describe('exportDefines', () => {
     expect(defs).toContain('-Dtext_fill="single"')
     expect(defs).toContain('-Dtext_color="#abcdef"')
     expect(defs).toContain('-Dtext_mode="inset"')
+  })
+})
+
+// The `only=` vocabulary lives in two places — this module's types and the
+// .scad's dispatch chain — and the two can only be kept in step by hand. A name
+// that exists on one side and not the other fails SILENTLY in the same family as
+// the plug_group bug above: the scad's if/else chain ends in a bare `else` that
+// renders the WHOLE abacus, so an unrecognised `-Donly="bead"` doesn't error, it
+// quietly ships the entire model where one bead was asked for. That is exactly
+// what would happen to a 3MF body if an export pass were renamed on one side.
+//
+// `Record<ExportPass['only'], true>` is load-bearing: adding a variant to the
+// ExportPass union makes this object a COMPILE error until it's listed, so the
+// set below can't silently fall behind the type.
+const EXPORT_ONLY: Record<ExportPass['only'], true> = {
+  marker_black: true,
+  marker_white: true,
+  text_plugs: true,
+  feet: true,
+}
+const SCAD = join(process.cwd(), 'public/scad/abacus.scad')
+
+describe('the only= vocabulary matches abacus.scad', () => {
+  const dispatched = [...readFileSync(SCAD, 'utf8').matchAll(/\bonly\s*==\s*"([^"]+)"/g)].map(
+    (m) => m[1]
+  )
+
+  it('every TS pass name is dispatched by the scad, and vice versa', () => {
+    const ts = [...Object.keys(EXPORT_ONLY), ...INSPECT_PARTS].sort()
+    expect([...new Set(dispatched)].sort()).toEqual(ts)
+  })
+
+  it('no name is dispatched twice — a duplicate branch is dead code', () => {
+    expect(dispatched).toHaveLength(new Set(dispatched).size)
+  })
+
+  it('export passes and inspection parts are disjoint', () => {
+    // They share one define, so a collision would make a filament body and an
+    // inspection slice indistinguishable at the wire.
+    const overlap = INSPECT_PARTS.filter((p) => p in EXPORT_ONLY)
+    expect(overlap).toEqual([])
   })
 })
