@@ -403,29 +403,68 @@ export function materialize(
   // Gated like the geometry: only `inset` mode carves pockets that need filling.
   // Not gated on show_frame — same reasoning as feet above, the plan describes
   // design intent and the 3MF re-checks before consuming the slot.
-  const textAssignments: RoleAssignment[] =
-    design.params.text_mode === 'inset'
-      ? textGroups(design.params).map((t) => {
-          let idx = allowed[0] ?? 0
-          let bd = Number.POSITIVE_INFINITY
-          for (const i of allowed) {
-            const d = colorDist(t.hex, hexes[i])
-            if (d < bd) {
-              bd = d
-              idx = i
-            }
-          }
-          return assign(
-            {
-              kind: 'text',
-              key: `text-${t.g}`,
-              label: textGroupLabel(t, design.params.text_fill !== 'rainbow'),
-              intrinsicHex: t.hex,
-            },
-            idx
-          )
-        })
-      : []
+  // DISTINCT-FIRST, FRAME-LAST — the same shape as snapWithin's bead loop, plus
+  // one rule the beads don't need.
+  //
+  // Independent nearest-match was the bug: five rainbow groups each picked their
+  // own closest spool, four of them landed on the same one, and two perfectly
+  // good contrasting spools sat unused. A rainbow that prints as two colors when
+  // three were available isn't a near-miss, it's a wasted slot. So a group
+  // prefers a spool no other group has taken.
+  //
+  // The frame's spool is held back until every other candidate is spoken for.
+  // An inlay plug fills its pocket FLUSH and level, so text in frame filament
+  // doesn't print a near-miss color — it VANISHES. Distinctness must never be
+  // bought with invisibility, and neither must fidelity: this is the one role
+  // where the nearest color can be the wrong answer.
+  //
+  // Groups still share once the spools run out, and that's honest: a 5-ink
+  // rainbow needs 5 spare spools, and a 4-slot AMS already owes slots to the
+  // frame, both ArUco markers and the bead roles. rainbow-unrealizable reports
+  // what it actually got.
+  const textAssignments: RoleAssignment[] = []
+  if (design.params.text_mode === 'inset') {
+    const usedByText = new Set<number>()
+    // every candidate that isn't the frame's own filament, i.e. the ones that
+    // will actually read as writing. Uses the FINAL frame index, so pinning the
+    // frame moves what counts as invisible.
+    const visible = allowed.filter((i) => i !== frame.spoolIndex)
+    const nearestIn = (pool: number[], hex: string): number | null => {
+      let best: number | null = null
+      let bd = Number.POSITIVE_INFINITY
+      for (const i of pool) {
+        const d = colorDist(hex, hexes[i])
+        if (d < bd) {
+          bd = d
+          best = i
+        }
+      }
+      return best
+    }
+    for (const t of textGroups(design.params)) {
+      const idx =
+        nearestIn(
+          visible.filter((i) => !usedByText.has(i)),
+          t.hex
+        ) ?? // fresh and readable — the rainbow's whole point
+        nearestIn(visible, t.hex) ?? // out of fresh spools: share, stay readable
+        nearestIn(allowed, t.hex) ?? // a roster whose only candidate IS the frame
+        allowed[0] ??
+        0
+      usedByText.add(idx)
+      textAssignments.push(
+        assign(
+          {
+            kind: 'text',
+            key: `text-${t.g}`,
+            label: textGroupLabel(t, design.params.text_fill !== 'rainbow'),
+            intrinsicHex: t.hex,
+          },
+          idx
+        )
+      )
+    }
+  }
 
   // Contrast of the FINAL marker pair (pins included) — the camera reads what
   // actually prints, so a pinned marker must move this warning too.

@@ -100,18 +100,18 @@ describe('refusal reasons carry actionable payloads', () => {
     const bare: Params = {
       ...defaultParams,
       show_markers: false,
-      top_preset: 'custom',
+      aid_10: 'off',
+      aid_5: 'off',
       top_text: '',
-      bottom_preset: 'custom',
       bottom_text: '',
     }
     // Wide needs 0.9 mm inlays, but with nothing inlaid there is nothing to fail.
     const r = solve(bare, fdm06)
     expect(r.reasons.some((x) => x.dim === 'inlay')).toBe(false)
     // markers back on → the inlay-depth refusal reappears
-    expect(solve({ ...bare, show_markers: true }, fdm06).reasons.some((x) => x.dim === 'inlay')).toBe(
-      true,
-    )
+    expect(
+      solve({ ...bare, show_markers: true }, fdm06).reasons.some((x) => x.dim === 'inlay')
+    ).toBe(true)
   })
 
   it('every reason names its measured value and floor', () => {

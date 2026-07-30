@@ -17,6 +17,7 @@ import { AbacusReact } from '@soroban/abacus-react'
 import { PlayerPicker } from '@/components/shared/PlayerPicker'
 import { Disclosure } from '@/components/studio/Disclosure'
 import { StudioSelect } from '@/components/studio/StudioSelect'
+import { StudioTextInput } from '@/components/studio/StudioTextInput'
 import { DebugCheckbox, DebugColor, DebugSlider } from '@/components/toys/ToyDebugPanel'
 import {
   ABACUS_COLOR_PALETTES,
@@ -26,6 +27,8 @@ import {
 } from '@/lib/abacus/identity'
 import { useAbacusStudio } from './AbacusStudioContext'
 import {
+  AID_OPTS,
+  aidNote,
   BRIM_PRESETS,
   BUMPER_PRESETS,
   type BumperPreset,
@@ -37,7 +40,9 @@ import {
   feetFit,
   matchBrim,
   matchBumper,
-  PRESET_OPTS,
+  placeAids,
+  SLOT_LABEL,
+  type TextSlot,
 } from './abacus-model'
 import { DesignLinkChip } from './DesignLinkChip'
 import { MyDesignsList } from './MyDesignsList'
@@ -54,6 +59,20 @@ const SCHEME_LABEL: Record<string, string> = {
  *  never asked us to touch. */
 const CUSTOM_BUMPER = '__custom_bumper__'
 const CUSTOM_BRIM = '__custom_brim__'
+/** The eight engravable slots, in the scad's own order. The four top-face rails
+ *  carry a `slot` because a teaching aid can claim them; the four outer walls
+ *  are words-only. Labelled so top-face left and wall left can't be confused. */
+type WordKey = `${TextSlot}_text` | 'edge_front' | 'edge_back' | 'edge_left' | 'edge_right'
+const WORD_FIELDS: { key: WordKey; label: string; slot?: TextSlot }[] = [
+  { key: 'top_text', label: SLOT_LABEL.top, slot: 'top' },
+  { key: 'bottom_text', label: SLOT_LABEL.bottom, slot: 'bottom' },
+  { key: 'left_text', label: SLOT_LABEL.left, slot: 'left' },
+  { key: 'right_text', label: SLOT_LABEL.right, slot: 'right' },
+  { key: 'edge_front', label: 'front wall' },
+  { key: 'edge_back', label: 'back wall' },
+  { key: 'edge_left', label: 'left wall' },
+  { key: 'edge_right', label: 'right wall' },
+]
 /** A greyed row's own label has to carry both the reason and the lever — a
  *  <select> has nowhere else to put them. When neither lever reaches, say that
  *  outright rather than trailing an empty "needs". */
@@ -102,6 +121,13 @@ export function DesignInspectorRail({
     saveIsError,
     savedDesignId,
   } = useAbacusStudio()
+
+  // Where the teaching aids actually landed. Derived per render on purpose —
+  // nothing is written back, so hydrating a saved design can't mutate it (see
+  // placeAids). The selects show the stored intent; the labels and caption show
+  // the outcome, which is the only way "automatic" stays honest.
+  const placements = placeAids(params)
+  const notes = placements.map((pl) => aidNote(params, pl)).filter((n): n is string => n !== null)
 
   const ownerLabel = playerUnavailable
     ? 'This is your abacus'
@@ -333,18 +359,69 @@ export function DesignInspectorRail({
           options={[...ABACUS_COLOR_PALETTES]}
           onChange={(v) => set('color_palette', v)}
         />
-        <StudioSelect
-          label="top rail"
-          value={params.top_preset}
-          options={PRESET_OPTS}
-          onChange={(v) => set('top_preset', v)}
-        />
-        <StudioSelect
-          label="bottom rail"
-          value={params.bottom_preset}
-          options={PRESET_OPTS}
-          onChange={(v) => set('bottom_preset', v)}
-        />
+        {/* Writing (Gitea #28) — the eight engravable slots, and the two
+            teaching aids that compete with them for the same rails.
+
+            ONE RULE: one slot, one occupant; words win; the UI always names the
+            occupant. An aid's rail is DERIVED, never stored (see placeAids), so
+            the select shows the stored intent while the 'auto' option's label
+            shows where automatic placement lands — "auto — left side". That label
+            is present whatever the intent, deliberately: it's the only thing that
+            keeps a hand-pinned "right side" from reading as the default.
+
+            Below ~6 columns the top rail is too short for five facts and the side
+            rails don't shrink with the column count, so 'auto' rotates the aids
+            onto the sides — as a PAIR, mirrored, never one rotated and one
+            horizontal. The caption says which rail and why. */}
+        <Disclosure label="Writing" dataElement="abacus-writing" dataAction="toggle-writing">
+          {placements.map((place) => (
+            <StudioSelect
+              key={place.aid.key}
+              label={place.aid.label}
+              value={place.intent}
+              options={AID_OPTS.map((o) => ({
+                value: o,
+                label:
+                  o === 'auto'
+                    ? place.autoSlot
+                      ? `auto — ${SLOT_LABEL[place.autoSlot]}`
+                      : 'auto — nowhere free'
+                    : o === 'off'
+                      ? o
+                      : SLOT_LABEL[o as TextSlot],
+              }))}
+              onChange={(v) => set(place.aid.key, v)}
+              dataElement={`abacus-${place.aid.key}`}
+              dataAction={`set-${place.aid.key}`}
+            />
+          ))}
+          {notes.length > 0 && (
+            <span
+              data-element="abacus-writing-note"
+              style={{ fontSize: 10, lineHeight: 1.45, color: 'rgba(148,163,184,0.95)' }}
+            >
+              {notes.join(' ')}
+            </span>
+          )}
+          <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.7)' }}>
+            your own words — space-separated, one word per engraving
+          </span>
+          {WORD_FIELDS.map(({ key, label, slot }) => {
+            const held = slot ? placements.find((x) => x.slot === slot) : undefined
+            return (
+              <StudioTextInput
+                key={key}
+                label={label}
+                value={params[key]}
+                onChange={(v) => set(key, v)}
+                disabled={held !== undefined}
+                disabledReason={held ? `showing ${held.aid.label}` : undefined}
+                dataElement={`abacus-words-${key}`}
+                dataAction={`set-${key}`}
+              />
+            )
+          })}
+        </Disclosure>
         {/* Inlay ink (Gitea #26): the writing prints as filament plugs pressed
             into its pockets, one 3MF body per color group. Rainbow costs up to
             five ink slots on the plate — one per group — so the choice belongs

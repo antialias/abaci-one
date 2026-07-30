@@ -62,14 +62,26 @@ export const defaultParams = {
   filament_6: '#F18F01',
   filament_7: '#6A994E',
   filament_8: '#BC4B51',
-  // perimeter text: 4 top-face rails (preset or custom tokens) + 4 side walls
-  top_preset: 'friends-of-10',
+  // Perimeter text (Gitea #28) — eight slots: 4 top-face rails + 4 outer side
+  // walls, every one of them authorable as space-separated words.
+  //
+  // The two teaching aids are NOT stored per-rail. `aid_10`/`aid_5` hold the
+  // INTENT ('off' | 'auto' | a named rail) and the rail is DERIVED on every
+  // read by placeAids(). That's what makes 'auto' safe: which rails have room
+  // changes with the column count (the top rail shrinks with `cols`, the sides
+  // never do), so a stored rail plus an automatic placer would be two truths
+  // free to disagree — the same argument that retired `feet_preset`. Nothing is
+  // ever written back, so opening a saved design can't mutate it, detach
+  // `synced`, or change its content hash.
+  //
+  // Pre-#28 designs stored `<rail>_preset` instead; design-snapshot.ts
+  // translates those (an aid no rail claimed becomes 'off', not 'auto', so a
+  // legacy design that deliberately blanked a rail stays blank).
+  aid_10: 'auto',
+  aid_5: 'auto',
   top_text: '',
-  bottom_preset: 'friends-of-5',
   bottom_text: '',
-  left_preset: 'custom',
   left_text: '',
-  right_preset: 'custom',
   right_text: '',
   edge_front: '',
   edge_back: '',
@@ -141,12 +153,6 @@ export function paramsFromDisplayConfig(
 }
 
 // ---- perimeter text tokens --------------------------------------------------
-export const TEXT_PRESETS: Record<string, string[]> = {
-  'friends-of-10': ['1+9', '2+8', '3+7', '4+6', '5+5'],
-  'friends-of-5': ['1+4', '2+3', '3+2', '4+1'],
-}
-export const PRESET_OPTS = ['custom', ...Object.keys(TEXT_PRESETS)]
-
 // token → [string, fontIdx]; fontIdx 1 = Noto Emoji for emoji tokens (OpenSCAD
 // has no per-glyph fallback, so mixed emoji+text inside ONE token will tofu).
 export const tokenize = (s: string): [string, number][] =>
@@ -155,10 +161,75 @@ export const tokenize = (s: string): [string, number][] =>
     .split(/\s+/)
     .filter(Boolean)
     .map((t) => [t, /\p{Extended_Pictographic}/u.test(t) ? 1 : 0])
-export const slotTokens = (preset: string, custom: string): [string, number][] =>
-  preset !== 'custom' && TEXT_PRESETS[preset]
-    ? TEXT_PRESETS[preset].map((t) => [t, 0] as [string, number])
-    : tokenize(custom)
+
+/** The four top-face rails, in the scad's rails() order. The four outer walls
+ *  are words-only — no aid ever lands on a wall, whose glyph plane is a
+ *  different orientation entirely and whose band is the frame height. */
+export const TEXT_SLOTS = ['top', 'bottom', 'left', 'right'] as const
+export type TextSlot = (typeof TEXT_SLOTS)[number]
+export const SLOT_LABEL: Record<TextSlot, string> = {
+  top: 'top rail',
+  bottom: 'bottom rail',
+  left: 'left side',
+  right: 'right side',
+}
+/** Side rails are rotated ±90° (abacus.scad rails()), so their reading
+ *  direction is a real cost the caption has to disclose. */
+export const SLOT_READS: Partial<Record<TextSlot, string>> = {
+  left: 'reads bottom→top',
+  right: 'reads top→bottom',
+}
+export const slotWords = (p: Params, slot: TextSlot): string => p[`${slot}_text`]
+
+export type AidKey = 'aid_10' | 'aid_5'
+/** The two rail pairs. Placement is per-AXIS rather than per-rail so the aids
+ *  stay MIRRORED — see aidPrefer. */
+export type Axis = 'horizontal' | 'vertical'
+export type Aid = {
+  key: AidKey
+  label: string
+  tokens: string[]
+  /** This aid's end of each axis: the rail it takes when the auto pair uses that
+   *  axis. The horizontal pair is today's fixed layout exactly — friends-of-10
+   *  on top, friends-of-5 on the bottom — so 'auto' reproduces it byte-for-byte
+   *  wherever it still works (≥6 columns, where the glyph cap binds before the
+   *  rail runs out). The vertical pair mirrors it across the frame. */
+  home: Record<Axis, TextSlot>
+}
+export const AIDS: readonly Aid[] = [
+  {
+    key: 'aid_10',
+    label: 'Friends of 10',
+    tokens: ['1+9', '2+8', '3+7', '4+6', '5+5'],
+    home: { horizontal: 'top', vertical: 'left' },
+  },
+  {
+    key: 'aid_5',
+    label: 'Friends of 5',
+    tokens: ['1+4', '2+3', '3+2', '4+1'],
+    home: { horizontal: 'bottom', vertical: 'right' },
+  },
+]
+/** What 'auto' walks: this aid's end of the chosen axis, then the other aid's end
+ *  of the same axis, then both ends of the far axis as a last resort.
+ *
+ *  Placing by axis rather than rail is what keeps the pair mirrored. Walking
+ *  rails independently put friends-of-10 down the LEFT while friends-of-5 kept
+ *  the BOTTOM at 5 columns — an L-shape around one corner, which reads as an
+ *  accident rather than a layout. The far-axis tail only comes into play when the
+ *  user's words already hold a rail. */
+export const aidPrefer = (aid: Aid, axis: Axis): TextSlot[] => {
+  const other = AIDS.find((a) => a.key !== aid.key) as Aid
+  const far: Axis = axis === 'horizontal' ? 'vertical' : 'horizontal'
+  return [aid.home[axis], other.home[axis], aid.home[far], other.home[far]]
+}
+export const AID_OPTS: readonly string[] = ['off', 'auto', ...TEXT_SLOTS]
+/** Pre-#28 `<rail>_preset` ids → the aid they selected. Only design-snapshot.ts
+ *  reads this; the UI has no notion of a per-rail preset any more. */
+export const LEGACY_PRESET_AID: Record<string, AidKey> = {
+  'friends-of-10': 'aid_10',
+  'friends-of-5': 'aid_5',
+}
 
 // ---- derived layout — mirrors the scad's intent-knob chain EXACTLY -----------
 // (same s_* math: clearance + print_gap absolute, everything else scales with S;
@@ -264,18 +335,27 @@ export const DEFINE_KEYS: (keyof Params)[] = [
   'show_beads',
   'show_markers',
 ]
+/** The scad's eight token-vector params, in textSlots() order — rails() then
+ *  walls(). */
+export const TEXT_SLOT_DEFINES = [
+  'text_top',
+  'text_bottom',
+  'text_left',
+  'text_right',
+  'edge_front',
+  'edge_back',
+  'edge_left',
+  'edge_right',
+] as const
 export const definesFrom = (p: Params): string[] => [
   // JSON serialization doubles as OpenSCAD literal syntax for numbers, booleans,
   // quoted strings AND [string, fontIdx] token vectors.
   ...DEFINE_KEYS.map((k) => `-D${k}=${JSON.stringify(p[k])}`),
-  `-Dtext_top=${JSON.stringify(slotTokens(p.top_preset, p.top_text))}`,
-  `-Dtext_bottom=${JSON.stringify(slotTokens(p.bottom_preset, p.bottom_text))}`,
-  `-Dtext_left=${JSON.stringify(slotTokens(p.left_preset, p.left_text))}`,
-  `-Dtext_right=${JSON.stringify(slotTokens(p.right_preset, p.right_text))}`,
-  `-Dedge_front=${JSON.stringify(tokenize(p.edge_front))}`,
-  `-Dedge_back=${JSON.stringify(tokenize(p.edge_back))}`,
-  `-Dedge_left=${JSON.stringify(tokenize(p.edge_left))}`,
-  `-Dedge_right=${JSON.stringify(tokenize(p.edge_right))}`,
+  // Straight off textSlots(), NOT a second derivation of the same eight slots.
+  // It used to be one — and the day placement became derived, two copies would
+  // have put the plate's ink on different rails than the viewer's preview tint,
+  // with nothing to catch it (see textSlots).
+  ...textSlots(p).map((toks, i) => `-D${TEXT_SLOT_DEFINES[i]}=${JSON.stringify(toks)}`),
 ]
 
 /** One export render request: the whole abacus (no pass) or a single `only=`
@@ -685,17 +765,276 @@ export function markersFollowFrameGhost(xrayOn: boolean, activeRole: string | nu
   return xrayOn && activeRole !== FRAME_ROLE_KEY
 }
 
-// ---- inset text-plug layout (QA for inlay fill colors) ----------------------
-// The 8 token rails in the scad's own order — rails() (top, bottom, left, right)
-// then walls() (front, back, left, right). Single source for every consumer:
-// tokenCenters, anyTokens, and the color-group math below all read this, so the
-// rail ORDER and the per-rail token index `k` mean the same thing everywhere.
-export function textSlots(p: Params): [string, number][][] {
+// ---- rail geometry + the auto-fit rule (mirror of abacus.scad) ---------------
+/** The eight slots' endpoints and cross-band, in textSlots() order — the scad's
+ *  rails() then walls(). ONE derivation, shared by tokenCenters (which tints the
+ *  viewer's plug preview by nearest centroid) and the placement fit rule, so a
+ *  layout change can't move one without the other. */
+export type SlotGeom = { ax: number; ay: number; bx: number; by: number; z: number; band: number }
+export function slotGeom(p: Params): SlotGeom[] {
+  const S = p.scale_factor
+  const d = derived(p)
+  const W = d.frameW
+  const D = d.outerD
+  const r = p.corner_r * S
+  const mkEnd = d.mkI + p.marker_mm + 2
+  // strip_x == strip_y by construction in the scad; one number serves both.
+  const strip = borderStrip(p)
+  const zTop = p.frame_h * S
+  const zEdge = zTop / 2
+  const rail = strip - 2 * d.chamf
+  const wall = zTop - 2 * d.chamf
+  const g = (
+    ax: number,
+    ay: number,
+    bx: number,
+    by: number,
+    z: number,
+    band: number
+  ): SlotGeom => ({ ax, ay, bx, by, z, band })
   return [
-    slotTokens(p.top_preset, p.top_text),
-    slotTokens(p.bottom_preset, p.bottom_text),
-    slotTokens(p.left_preset, p.left_text),
-    slotTokens(p.right_preset, p.right_text),
+    g(mkEnd, D - strip / 2, W - mkEnd, D - strip / 2, zTop, rail),
+    g(mkEnd, strip / 2, W - mkEnd, strip / 2, zTop, rail),
+    g(strip / 2, mkEnd, strip / 2, D - mkEnd, zTop, rail),
+    g(W - strip / 2, D - mkEnd, W - strip / 2, mkEnd, zTop, rail),
+    g(r + 2, 0, W - r - 2, 0, zEdge, wall),
+    g(W - r - 2, D, r + 2, D, zEdge, wall),
+    g(0, D - r - 2, 0, r + 2, zEdge, wall),
+    g(W, r + 2, W, D - r - 2, zEdge, wall),
+  ]
+}
+export const slotSpan = (g: SlotGeom): number => Math.hypot(g.bx - g.ax, g.by - g.ay)
+
+/** Half of m/(m+1) — the scad's `ink_frac`. Both this bound and the ink it is
+ *  compared against are HALF-extents, hence the 0.5.
+ *
+ *  Holding an m-glyph token's ink to m/(m+1) of its pitch leaves exactly one
+ *  character advance between neighbors. The scad used to use a flat 92%, which
+ *  only guaranteed they never TOUCH: at 3 glyphs that leaves 0.26 of an advance
+ *  between tokens — tighter than the space around the `+` inside `1+9` — so
+ *  `1+9 2+8 …` reads as one number. Fixed ratio, so it never improved with
+ *  size; it just stopped mattering from 7 columns up, where the glyph cap binds
+ *  first and all the leftover pitch becomes gap anyway. */
+export const inkFraction = (glyphs: number): number => (0.5 * glyphs) / (glyphs + 1)
+
+/** Per-glyph ink half-advance and half-height in ems, for the aid tokens in
+ *  DejaVu Sans Bold — MEASURED off the shipped
+ *  `public/fonts/DejaVuSans-Bold.ttf` (hmtx advances + glyf bboxes), not
+ *  guessed. `1+9` inks 2.053 em wide and 0.755 em tall, i.e. 0.342 em of
+ *  half-advance per glyph; the five friends-of-10 facts span 0.342–0.347, so
+ *  0.35 covers them all with a hair to spare. Digits are the calibration target
+ *  on purpose: only the AIDS drive placement, and they are all digits and `+`.
+ *  (Letters run wider — `MOM` is 0.443 — so a words-only rail is estimated
+ *  optimistically. That costs nothing: the scad's own fit_sz still shrinks it
+ *  correctly, and words never trigger a relocation.)
+ *
+ *  Still an ESTIMATE, deliberately: real metrics come from `textmetrics`, which
+ *  only OpenSCAD has (the worker passes --enable=textmetrics), and the scad's
+ *  no-metrics fallback is pessimistic enough to make every rail look unfit. So
+ *  these decide a THRESHOLD — "is this rail worth rotating out of?" — and must
+ *  never be surfaced as a millimetre figure we can't stand behind. */
+const EM_HALF_ADVANCE = 0.35
+const EM_HALF_HEIGHT = 0.38
+
+/** Below this, a rotated side rail that clears it is worth the awkward reading
+ *  direction — this is the whole relocation trigger. NOT a claim that 4.4 mm is
+ *  unreadable: it's the point where the sideways rail becomes the better deal.
+ *  Sized to sit off a cliff — at 5 columns the top rail estimates 4.2 mm (7%
+ *  under) and at 6 it estimates 5.1 mm (14% over), so a few percent of metric
+ *  error can't silently move the crossover. */
+export const ROTATE_BELOW_MM = 4.5
+/** And below THIS we say out loud that the writing will print small, whatever
+ *  rail it ended up on. Only reachable when words have crowded the aid onto a
+ *  short rail, or at a very small `scale_factor`. */
+export const SMALL_PRINT_MM = 4
+
+/** What the scad's fit_sz will land on for this rail, ESTIMATED (see
+ *  EM_HALF_ADVANCE). `text_size` is a maximum, never a target: the rail shrinks
+ *  to whichever of the two bounds binds — inter-token gap, or the solid strip's
+ *  cross-band. */
+export function estimateRailGlyphMm(p: Params, slot: TextSlot, tokens: readonly string[]): number {
+  if (tokens.length === 0) return p.text_size
+  const g = slotGeom(p)[TEXT_SLOTS.indexOf(slot)]
+  const pitch = slotSpan(g) / tokens.length
+  const widthCap = Math.min(
+    ...tokens.map((t) => {
+      const m = Math.max(1, t.length)
+      return (inkFraction(m) * pitch) / (EM_HALF_ADVANCE * m)
+    })
+  )
+  const bandCap = (g.band / 2 - 0.3) / EM_HALF_HEIGHT
+  return Math.min(p.text_size, widthCap, bandCap)
+}
+/** Is this rail good enough to keep the writing horizontal? */
+export const railFits = (p: Params, slot: TextSlot, tokens: readonly string[]): boolean =>
+  estimateRailGlyphMm(p, slot, tokens) >= ROTATE_BELOW_MM
+
+// ---- where the teaching aids go (Gitea #28) ---------------------------------
+/** Why an aid ended up where it is. Drives the caption — the user is never told
+ *  a rail moved without being told what moved it. */
+export type AidReason =
+  | 'off'
+  | 'asked' // you named this rail
+  | 'preferred' // 'auto' got its first choice (i.e. today's layout)
+  | 'moved' // 'auto' rotated it onto a side rail for room
+  | 'nowhere' // every rail is holding your words
+export type AidPlacement = {
+  aid: Aid
+  slot: TextSlot | null
+  intent: string
+  /** Where 'auto' WOULD put this aid, holding everything else as it is. Equals
+   *  `slot` when the intent already is 'auto'; the point is the other cases —
+   *  a pinned or switched-off aid can still show its automatic answer, so "right
+   *  side" and "auto — right side" can never be mistaken for each other. ONE
+   *  derivation behind both the select's label and the caption's clause. */
+  autoSlot: TextSlot | null
+  /** the rail it landed on clears SMALL_PRINT_MM — an honesty flag, independent
+   *  of `reason`: a rail can be the best available AND still print small */
+  fits: boolean
+  /** estimated glyph size on the chosen rail, mm; null when unplaced */
+  mm: number | null
+  reason: AidReason
+}
+
+/**
+ * Which axis the auto-placed aids share.
+ *
+ * Horizontal is home: it's today's layout and it reads without tilting your
+ * head. We rotate the pair onto the sides only when horizontal has actually
+ * failed — some aid can't reach ROTATE_BELOW_MM there — AND rotating costs no
+ * aid any glyph size. That second half is the important one: symmetry is never
+ * bought with legibility. At 5 columns it comes free (friends-of-5 measures
+ * 5.2 mm on the bottom rail but 6.0 mm on the right), so the pair rotates
+ * together; at 19 columns the top rail is strictly roomier, so nothing moves.
+ *
+ * Only aids actually on 'auto' get a vote. A pinned aid is immovable, so letting
+ * it drag the free one across the frame would mean overruling a measured
+ * legibility win for the sake of tidiness.
+ */
+function autoAxis(p: Params, aids: readonly Aid[]): Axis {
+  if (aids.length === 0) return 'horizontal'
+  const mm = (axis: Axis, a: Aid): number => estimateRailGlyphMm(p, a.home[axis], a.tokens)
+  if (aids.every((a) => mm('horizontal', a) >= ROTATE_BELOW_MM)) return 'horizontal'
+  return aids.every((a) => mm('vertical', a) >= mm('horizontal', a)) ? 'vertical' : 'horizontal'
+}
+
+/**
+ * Resolve both aids to rails. PURE, and called on every read rather than
+ * written back — see the `aid_10` comment on defaultParams for why that's the
+ * whole safety argument.
+ *
+ * One rule, in this order:
+ *   1. WORDS WIN. A rail with words in it is the user's, full stop.
+ *   2. A named rail is honoured verbatim, cramped or not — the caption says the
+ *      writing will be small rather than overruling a deliberate choice. (If the
+ *      user somehow names a rail that also has words, words still win and the aid
+ *      falls through to 'auto'; the UI disables that field, so this needs a
+ *      hand-edited param to reach.)
+ *   3. 'auto' walks aidPrefer(aid, autoAxis(…)) and takes the first free rail
+ *      that clears ROTATE_BELOW_MM; failing that, the first free rail at all —
+ *      small writing beats no writing, and the caption says which it is.
+ *   4. Two aids never share a rail. If nothing is free the aid is not placed —
+ *      concatenating nine facts onto one rail would be worse than absent, and
+ *      the caption can say so.
+ *
+ * `withAuto` is internal: the pass that answers "where would 'auto' have put
+ * this?" for a pinned aid re-enters with it false, which bounds the recursion at
+ * depth 1. Callers always want the default.
+ */
+export function placeAids(p: Params, withAuto = true): AidPlacement[] {
+  const taken = new Set<TextSlot>(TEXT_SLOTS.filter((s) => tokenize(slotWords(p, s)).length > 0))
+  const axis = autoAxis(
+    p,
+    AIDS.filter((a) => String(p[a.key]) === 'auto')
+  )
+  // The hypothetical: this aid on 'auto', everything else exactly as it is.
+  const wouldAuto = (aid: Aid): TextSlot | null => {
+    if (!withAuto) return null
+    const asAuto: Params = { ...p }
+    asAuto[aid.key] = 'auto'
+    return placeAids(asAuto, false).find((x) => x.aid.key === aid.key)?.slot ?? null
+  }
+  const land = (
+    aid: Aid,
+    slot: TextSlot,
+    intent: string,
+    reason: AidReason,
+    autoSlot: TextSlot | null
+  ): AidPlacement => {
+    taken.add(slot)
+    const mm = estimateRailGlyphMm(p, slot, aid.tokens)
+    return { aid, slot, intent, autoSlot, mm, fits: mm >= SMALL_PRINT_MM, reason }
+  }
+  return AIDS.map((aid) => {
+    const intent = String(p[aid.key])
+    if (intent === 'off') {
+      const autoSlot = wouldAuto(aid)
+      return { aid, slot: null, intent, autoSlot, mm: null, fits: true, reason: 'off' as AidReason }
+    }
+    const named = (TEXT_SLOTS as readonly string[]).includes(intent) ? (intent as TextSlot) : null
+    if (named && !taken.has(named)) return land(aid, named, intent, 'asked', wouldAuto(aid))
+    const free = aidPrefer(aid, axis).filter((s) => !taken.has(s))
+    const slot = free.find((s) => railFits(p, s, aid.tokens)) ?? free[0] ?? null
+    if (!slot) {
+      const autoSlot = intent === 'auto' ? null : wouldAuto(aid)
+      return { aid, slot: null, intent, autoSlot, mm: null, fits: false, reason: 'nowhere' }
+    }
+    // 'preferred' means today's layout — its horizontal home — not merely "first
+    // choice", which now depends on the axis.
+    const reason: AidReason = slot === aid.home.horizontal ? 'preferred' : 'moved'
+    return land(aid, slot, intent, reason, intent === 'auto' ? slot : wouldAuto(aid))
+  })
+}
+
+/** The caption sentence, or null when there is nothing worth saying (the aid is
+ *  off, or 'auto' landed on its first choice and reads left-to-right). Lives here
+ *  rather than in the rail so it's unit-testable without a DOM.
+ *
+ *  Deliberately says no millimetres: the size is an estimate (see
+ *  EM_HALF_ADVANCE) and only OpenSCAD knows the real one. "Too small" and "will
+ *  print small" are claims the estimate can carry; "4.2 mm" is not. */
+export function aidNote(p: Params, place: AidPlacement): string | null {
+  const { aid, slot, reason, fits, autoSlot } = place
+  if (reason === 'off') return null
+  if (!slot) return `Nowhere to put ${aid.label} — all four rails are holding your words.`
+  const n = aid.tokens.length
+  const where = `${aid.label} is on the ${SLOT_LABEL[slot]}`
+  const reads = SLOT_READS[slot]
+  const tail = reads ? ` It ${reads}.` : ''
+  const small = fits ? '' : ` ${n} facts will print small there.`
+  if (reason === 'moved') {
+    return `${where}: ${n} facts print too small along the ${SLOT_LABEL[aid.home.horizontal]} at ${p.cols} columns.${tail}${small}`
+  }
+  if (reason === 'asked') {
+    // Name the pin AS a pin, and say what letting go of it would do. Without
+    // this the only tell that a rail was chosen by hand is the missing "auto —"
+    // prefix in the select, which is far too quiet to carry the difference.
+    const instead =
+      autoSlot && autoSlot !== slot ? ` On 'auto' it would use the ${SLOT_LABEL[autoSlot]}.` : ''
+    return `${where} because you pinned it there.${instead}${tail}${small}`
+  }
+  // 'preferred' — today's layout. Worth a word only if something is off about it.
+  if (!fits) return `${where}, but ${n} facts print small at ${p.cols} columns.${tail}`
+  return reads ? `${where}. It ${reads}.` : null
+}
+
+// ---- inset text-plug layout (QA for inlay fill colors) ----------------------
+// The 8 token slots in the scad's own order — rails() (top, bottom, left, right)
+// then walls() (front, back, left, right). Single source for every consumer:
+// definesFrom, tokenCenters, anyTokens, and the color-group math below all read
+// this, so the slot ORDER and the per-slot token index `k` mean the same thing
+// everywhere — on the plate, in the plan, and in the preview's tint.
+export function textSlots(p: Params): [string, number][][] {
+  const placed = placeAids(p)
+  const rail = (slot: TextSlot): [string, number][] => {
+    const aid = placed.find((x) => x.slot === slot)?.aid
+    return aid ? aid.tokens.map((t) => [t, 0] as [string, number]) : tokenize(slotWords(p, slot))
+  }
+  return [
+    rail('top'),
+    rail('bottom'),
+    rail('left'),
+    rail('right'),
     tokenize(p.edge_front),
     tokenize(p.edge_back),
     tokenize(p.edge_left),
@@ -707,30 +1046,10 @@ export function textSlots(p: Params): [string, number][][] {
 // A + (B−A)·(k+0.5)/n, on the top face (z≈s_fh) or a wall (z=z_edge).
 export type TokenCenter = { x: number; y: number; z: number; k: number }
 export function tokenCenters(p: Params): TokenCenter[] {
-  const S = p.scale_factor
-  const d = derived(p)
-  const W = d.frameW
-  const D = d.outerD
-  const r = p.corner_r * S
-  const mkEnd = d.mkI + p.marker_mm + 2
-  const stripX = borderStrip(p)
-  const stripY = stripX
-  const zTop = p.frame_h * S
-  const zEdge = (p.frame_h * S) / 2
-  // [ax, ay, bx, by, z] per rail, in textSlots order.
-  const geom: [number, number, number, number, number][] = [
-    [mkEnd, D - stripY / 2, W - mkEnd, D - stripY / 2, zTop],
-    [mkEnd, stripY / 2, W - mkEnd, stripY / 2, zTop],
-    [stripX / 2, mkEnd, stripX / 2, D - mkEnd, zTop],
-    [W - stripX / 2, D - mkEnd, W - stripX / 2, mkEnd, zTop],
-    [r + 2, 0, W - r - 2, 0, zEdge],
-    [W - r - 2, D, r + 2, D, zEdge],
-    [0, D - r - 2, 0, r + 2, zEdge],
-    [W, r + 2, W, D - r - 2, zEdge],
-  ]
+  const geom = slotGeom(p)
   const centers: TokenCenter[] = []
   textSlots(p).forEach((toks, s) => {
-    const [ax, ay, bx, by, z] = geom[s]
+    const { ax, ay, bx, by, z } = geom[s]
     toks.forEach((_, k) => {
       const f = (k + 0.5) / toks.length
       centers.push({ x: ax + (bx - ax) * f, y: ay + (by - ay) * f, z, k })

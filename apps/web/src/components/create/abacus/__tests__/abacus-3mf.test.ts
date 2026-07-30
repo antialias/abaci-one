@@ -354,10 +354,10 @@ describe('buildAbacusThreeMf (printed feet — Gitea #23)', () => {
   })
 })
 
-// Supports rotate the plate under Orca, so the prime tower has to dodge the rotated
-// footprint whenever they're on — and the operator's ticket style can turn them on
-// for a design with no printed feet at all. Keying the dodge off feet alone is what
-// pinned a tower straight into the rotated model on prod (exit 155, 2026-07-29).
+// Supports push the model's first layer outward, so the prime tower needs a wider gap
+// whenever they're on — and the operator's ticket style can turn them on for a design
+// with no printed feet at all. Keying the wider gap off feet alone is what pinned a
+// tower 6 mm from a supported model on prod (exit 155, 2026-07-29).
 describe('buildAbacusThreeMf (supports from the ticket style)', () => {
   const projectOf = (bytes: Uint8Array) =>
     JSON.parse(strFromU8(unzipSync(bytes)['Metadata/project_settings.config']))
@@ -396,9 +396,9 @@ describe('buildAbacusThreeMf (inset text — Gitea #26)', () => {
   const inkParams: Params = {
     ...noMarkers,
     text_mode: 'inset',
-    top_preset: 'custom',
+    aid_10: 'off',
+    aid_5: 'off',
     top_text: 'a b',
-    bottom_preset: 'custom',
   }
   // groups 0 → slot 2 (nothing else prints there), 1 → slot 3 (shared with heaven)
   const inkFm: FilamentMap = { ...fm, textRoles: [2, 3] }
@@ -524,7 +524,7 @@ describe('buildAbacusThreeMf (inset text — Gitea #26)', () => {
     // render — the three conditions the exporter itself gates on.
     for (const p of [
       { ...inkParams, text_mode: 'emboss' as const },
-      { ...inkParams, top_preset: 'custom', top_text: '' },
+      { ...inkParams, top_text: '' },
       { ...inkParams, show_frame: false },
     ]) {
       const bare = buildAbacusThreeMf({ stl: fixtureStl(p), params: p, filamentMap: inkFm })

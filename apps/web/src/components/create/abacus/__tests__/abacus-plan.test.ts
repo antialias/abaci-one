@@ -16,8 +16,9 @@ import snapshot from './filament-map-snapshot.json'
 // roles (frame, ArUco pair, beads) depend only on color_scheme, color_palette,
 // frame_color and the loaded filament slots — NOT on cols. That is the surface
 // the frozen fixture pins. The map ALSO carries text roles now, which depend on
-// text_mode / text_fill / text_color and the four rail presets; that axis is
-// covered by its own describe below rather than by widening this matrix 5×.
+// text_mode / text_fill / text_color and what's written on the eight slots;
+// that axis is covered by its own describe below rather than by widening this
+// matrix 5×.
 const SCHEMES = ['monochrome', 'heaven-earth', 'alternating', 'place-value']
 const PALETTES = ['default', 'colorblind', 'grayscale']
 const COUNTS = [8, 3, 1]
@@ -638,7 +639,7 @@ describe('materialize — inset text inlay roles', () => {
 
   it('mints nothing when there is no inlay to ink (emboss mode, or no writing)', () => {
     expect(textOf(materialize(withText({ text_mode: 'emboss' }), thh(plaRoster())))).toHaveLength(0)
-    const blank = withText({ top_preset: 'custom', bottom_preset: 'custom' })
+    const blank = withText({ aid_10: 'off', aid_5: 'off' })
     expect(textOf(materialize(blank, thh(plaRoster())))).toHaveLength(0)
   })
 
@@ -773,19 +774,45 @@ describe('materialize — inset text reductions are warnings, never gates', () =
     expect(find(result, 'rainbow-unrealizable')).toBeUndefined()
   })
 
-  it("text-invisible fires when the inlay lands on the frame's own filament", () => {
-    // ink asked for the frame color: the plug fills its pocket flush and in the
-    // same filament, so the writing disappears on the plate.
+  it('spreads the rainbow over every spool that is not the frame', () => {
+    // The bug as reported: four PLA spools loaded, three of them not the frame
+    // color, and the friends-of facts printed in TWO colors — the first one blue
+    // and every other one identical. Independent nearest-match sent four of the
+    // five groups to the same spool while two contrasting ones sat unused.
+    const roster = [
+      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+      spool('s-wood', 'PLA Wood', '#b5651d', 'PLA'),
+      spool('s-walnut', 'PLA Walnut', '#3b2a22', 'PLA'),
+      spool('s-blue', 'PLA Matte Blue', '#2e86ab', 'PLA'),
+    ]
+    const result = materialize(withText(), thh(roster))
+    const text = result.assignments.filter((a) => a.role.kind === 'text')
+    const frameIdx = result.assignments.find((a) => a.role.kind === 'frame')?.spoolIndex
+    expect(text).toHaveLength(5)
+    // all three usable spools get work — 3 distinct inks, not 2
+    expect(new Set(text.map((a) => a.spoolIndex)).size).toBe(3)
+    // ...and not one group vanishes into the frame to get there
+    expect(text.some((a) => a.spoolIndex === frameIdx)).toBe(false)
+    expect(find(result, 'text-invisible')).toBeUndefined()
+    // still honest about the shortfall it cannot fix: 5 groups, 3 usable spools
+    expect(find(result, 'rainbow-unrealizable')?.message).toContain('only 3 distinct')
+  })
+
+  it("auto steers the inlay OFF the frame's filament even when the ink asks for it", () => {
+    // The nearest color is the one answer that must lose here. A plug fills its
+    // pocket flush and level, so frame-colored text doesn't print a near-miss —
+    // it vanishes. Auto holds the frame's spool back until nothing else is left,
+    // which turns text-invisible into a report on PINS (covered below) and on a
+    // roster whose only candidate is the frame (covered by plan.ok, last test).
     const result = materialize(
       withText({ text_fill: 'single', text_color: defaultParams.frame_color }),
       thh(plaRoster())
     )
-    const w = find(result, 'text-invisible')
-    expect(w).toBeDefined()
-    expect(w?.severity).toBe('warning')
-    expect(w?.roleKeys).toEqual(['text-0'])
-    expect(w?.message).toContain('The inlay text prints')
-    expect(w?.message).toContain("frame's own filament")
+    const text = result.assignments.filter((a) => a.role.kind === 'text')
+    const frameIdx = result.assignments.find((a) => a.role.kind === 'frame')?.spoolIndex
+    expect(text).toHaveLength(1)
+    expect(text[0].spoolIndex).not.toBe(frameIdx)
+    expect(find(result, 'text-invisible')).toBeUndefined()
   })
 
   it('names only the groups that vanished when some inks still read', () => {

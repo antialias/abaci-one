@@ -17,7 +17,16 @@
  * `parseAbacusIdentity`: unknown keys drop, a missing/mistyped key falls back
  * to its default — a snapshot from an older params surface still restores.
  */
-import { clampCols, defaultParams, type Params } from '@/components/create/abacus/abacus-model'
+import {
+  AID_OPTS,
+  AIDS,
+  type AidKey,
+  clampCols,
+  defaultParams,
+  LEGACY_PRESET_AID,
+  type Params,
+  TEXT_SLOTS,
+} from '@/components/create/abacus/abacus-model'
 import { DEFAULT_PROFILE_ID, PRINTER_PROFILES } from '@/components/create/abacus/abacus-solver'
 import { stableStringify } from '@/lib/stable-stringify'
 
@@ -38,6 +47,38 @@ export interface AbacusDesignProvenance {
   [key: string]: unknown
 }
 
+/**
+ * Pre-#28 envelopes stored perimeter-text placement PER RAIL, as
+ * `<rail>_preset` ∈ {'custom', 'friends-of-10', 'friends-of-5'}. Those keys are
+ * gone — placement is derived now — but unlike the feet keys #23 retired, they
+ * can't just be dropped. The feet knobs were UI-unreachable and therefore
+ * invariant across every stored design; these two had controls, so their values
+ * VARY: friends-of-5 on top with friends-of-10 on the bottom is a real thing
+ * somebody saved, and dropping the keys would silently re-normalize their
+ * abacus.
+ *
+ * Two details that make the translation faithful rather than approximate:
+ *   • An aid that no rail claimed becomes 'off', NOT 'auto'. A legacy design
+ *     that deliberately blanked its top rail must stay blank, and 'auto' would
+ *     put the aid straight back.
+ *   • A claimed rail's `_text` is cleared, because the old `slotTokens` let the
+ *     preset SHADOW the text. Leaving both would hand the rail to words-win and
+ *     relocate the aid — i.e. render the design differently than it was saved.
+ */
+function adoptLegacyPresets(raw: Record<string, unknown>, out: Params): void {
+  const present = TEXT_SLOTS.some((s) => typeof raw[`${s}_preset`] === 'string')
+  if (!present) return
+  const claimed = new Set<AidKey>()
+  for (const slot of TEXT_SLOTS) {
+    const aid = LEGACY_PRESET_AID[String(raw[`${slot}_preset`])]
+    if (!aid || claimed.has(aid)) continue // first rail wins a doubly-named aid
+    claimed.add(aid)
+    out[aid] = slot
+    out[`${slot}_text`] = ''
+  }
+  for (const aid of AIDS) if (!claimed.has(aid.key)) out[aid.key] = 'off'
+}
+
 function parseParams(input: unknown): Params | null {
   if (typeof input !== 'object' || input === null || Array.isArray(input)) return null
   const raw = input as Record<string, unknown>
@@ -49,6 +90,10 @@ function parseParams(input: unknown): Params | null {
     }
   }
   out.cols = clampCols(out.cols)
+  // an unrecognized aid intent would render as a blank <select>; 'auto' is what
+  // it would have behaved as anyway (placeAids treats anything unnamed as auto)
+  for (const aid of AIDS) if (!AID_OPTS.includes(out[aid.key])) out[aid.key] = 'auto'
+  adoptLegacyPresets(raw, out)
   return out
 }
 

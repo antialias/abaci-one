@@ -137,3 +137,80 @@ describe('legacy feet params (pre-#23 snapshots)', () => {
     expect(parsed!.params.feet_proud).toBe(defaultParams.feet_proud)
   })
 })
+
+describe('legacy rail presets (pre-#28 snapshots)', () => {
+  // These CANNOT just be dropped the way the feet keys were. The feet knobs had
+  // no UI, so every stored design carried the same values; `<rail>_preset` had a
+  // control, so its values VARY — and dropping them would silently re-normalize
+  // somebody's saved abacus into the default layout.
+  const legacy = (params: Record<string, unknown>) =>
+    parseDesignSnapshot({
+      v: 1,
+      params: { ...defaultParams, aid_10: undefined, aid_5: undefined, ...params },
+      overrides: {},
+      profileId: DEFAULT_PROFILE_ID,
+    })!.params
+
+  it('restores a swapped design swapped, not normalized', () => {
+    const p = legacy({
+      top_preset: 'friends-of-5',
+      bottom_preset: 'friends-of-10',
+      left_preset: 'custom',
+      right_preset: 'custom',
+    })
+    expect(p.aid_5).toBe('top')
+    expect(p.aid_10).toBe('bottom')
+    expect('top_preset' in p).toBe(false)
+  })
+
+  it('leaves a rail the user deliberately blanked BLANK — off, not auto', () => {
+    // 'auto' would helpfully put the aid straight back, which is the one thing
+    // this design said it didn't want.
+    const p = legacy({
+      top_preset: 'custom',
+      bottom_preset: 'custom',
+      left_preset: 'custom',
+      right_preset: 'custom',
+    })
+    expect(p.aid_10).toBe('off')
+    expect(p.aid_5).toBe('off')
+  })
+
+  it('restores custom words, and drops the aid that no rail claimed', () => {
+    const p = legacy({ top_preset: 'custom', top_text: 'ADA', bottom_preset: 'friends-of-5' })
+    expect(p.top_text).toBe('ADA')
+    expect(p.aid_5).toBe('bottom')
+    expect(p.aid_10).toBe('off')
+  })
+
+  it('clears the words on a rail the preset was shadowing', () => {
+    // pre-#28 `slotTokens(preset, custom)` IGNORED the text whenever the preset
+    // wasn't 'custom', so that text was dead data. Keeping it would hand the rail
+    // to words-win and relocate the aid — i.e. render the design differently than
+    // it was saved.
+    const p = legacy({ top_preset: 'friends-of-10', top_text: 'stale' })
+    expect(p.top_text).toBe('')
+    expect(p.aid_10).toBe('top')
+  })
+
+  it('leaves a modern envelope entirely alone', () => {
+    const p = parseDesignSnapshot({
+      v: 1,
+      params: { ...defaultParams, aid_10: 'left', aid_5: 'off' },
+      overrides: {},
+      profileId: DEFAULT_PROFILE_ID,
+    })!.params
+    expect(p.aid_10).toBe('left')
+    expect(p.aid_5).toBe('off')
+  })
+
+  it('falls back to auto for an aid value that means nothing', () => {
+    const p = parseDesignSnapshot({
+      v: 1,
+      params: { ...defaultParams, aid_10: 'diagonally' },
+      overrides: {},
+      profileId: DEFAULT_PROFILE_ID,
+    })!.params
+    expect(p.aid_10).toBe('auto')
+  })
+})

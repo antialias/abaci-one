@@ -71,7 +71,7 @@ describe('paramsFromDisplayConfig', () => {
     expect(p.clearance).toBe(defaultParams.clearance)
     expect(p.frame_h).toBe(defaultParams.frame_h)
     expect(p.fn).toBe(defaultParams.fn)
-    expect(p.top_preset).toBe(defaultParams.top_preset)
+    expect(p.aid_10).toBe(defaultParams.aid_10)
   })
 
   it('projects onto a caller-supplied base (a customization carries through)', () => {
@@ -327,8 +327,8 @@ describe('inset text color groups — hand-computed mirror of the scad tok_color
   // actually gets printed, not just what the preview tints.
   const blank: Params = {
     ...defaultParams,
-    top_preset: 'custom',
-    bottom_preset: 'custom',
+    aid_10: 'off',
+    aid_5: 'off',
   }
   // n tokens on ONE rail, everything else empty
   const withTop = (n: number): Params => ({
@@ -406,9 +406,11 @@ describe('inset text color groups — hand-computed mirror of the scad tok_color
     expect(textGroupCount(defaultParams)).toBe(TEXT_RAINBOW_GROUPS)
   })
 
-  it('textSlots is the one token layout — tokenCenters and anyTokens read it', () => {
-    // The de-fork guard: all three used to build their own copy of the 8-rail
-    // list, so a preset change could reach one and not the others.
+  it('textSlots is the one token layout — definesFrom, tokenCenters and anyTokens read it', () => {
+    // The de-fork guard: all four used to build their own copy of the 8-slot
+    // list, so a placement change could reach one and not the others. That
+    // stopped being survivable in #28, where the aid's rail is derived: two
+    // copies would ink the plate on a different rail than the preview tints.
     const slots = textSlots(defaultParams)
     expect(slots).toHaveLength(8)
     // friends-of-10 (5) + friends-of-5 (4), the other six rails empty

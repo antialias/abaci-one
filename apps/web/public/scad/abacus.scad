@@ -456,12 +456,25 @@ z_edge = s_fh / 2;  // wall glyph centerline — flat wall band is [chamf, s_fh�
    text_size / edge_text_size are MAXIMA, not absolutes. Each slot's effective
    size shrinks (never grows) so that (a) every token's ink stays inside the
    slot's cross-band — wall glyphs inside [chamf, s_fh−chamf], rail glyphs
-   inside the solid strip minus the rim chamfer — and (b) neighbors can never
-   collide: each token's ink width ≤ 92% of the per-token pitch. Uses REAL
-   glyph metrics (textmetrics — worker passes --enable=textmetrics); metrics
-   scale linearly with size, so one probe at the requested size yields the
-   exact shrink factor. Ink half-extents are measured from the anchor on BOTH
-   sides (halign/valign "center" centers the layout box, not the ink), so
+   inside the solid strip minus the rim chamfer — and (b) adjacent tokens read
+   as SEPARATE words: an m-glyph token's ink is held to m/(m+1) of its pitch,
+   which leaves a gap of one full character advance between neighbors.
+
+   That second bound used to be a flat 92% of pitch, which only guaranteed
+   neighbors never TOUCH. Where width binds, 92% of pitch spent on 3 glyphs
+   makes one advance 0.307·pitch and the inter-token gap 0.26 advances —
+   NARROWER than the whitespace around the `+` inside `1+9`, so proximity
+   groups the wrong things and a 4-column friends-of-10 rail reads
+   `1+92+83+74+65+5`. Deriving the bound from the glyph count instead states
+   the real intent in the token's own units, and it costs nothing from 7
+   columns up, where text_size caps first and all the slack is gap anyway.
+   (Measured against the shipped DejaVuSans-Bold.ttf: `1+9` inks 2.05 em wide,
+   so a 5-fact rail needs ~17 mm of pitch to hold 6 mm glyphs.)
+
+   Uses REAL glyph metrics (textmetrics — worker passes --enable=textmetrics);
+   metrics scale linearly with size, so one probe at the requested size yields
+   the exact shrink factor. Ink half-extents are measured from the anchor on
+   BOTH sides (halign/valign "center" centers the layout box, not the ink), so
    asymmetric ascender/descender strings still fit. Falls back to a
    conservative per-char estimate if the builtin is unavailable. */
 tm_probe = textmetrics(text = "0", size = 10, font = FONTS[0]);
@@ -472,11 +485,14 @@ function ink(t, f, sz) =            // [x half-extent, y half-extent] of the ink
             [max(abs(m.position[0]), abs(m.position[0] + m.size[0])),
              max(abs(m.position[1]), abs(m.position[1] + m.size[1]))]
         : [0.55 * sz * len(t), 0.85 * sz];
+// half of m/(m+1) — ink() and the bounds are both HALF-extents. The TS mirror
+// is inkFraction() in abacus-model.ts.
+function ink_frac(t) = 0.5 * len(t) / (len(t) + 1);
 function fit_sz(toks, req, pitch, band) =
   len(toks) == 0 ? req :
   req * min(1, min(concat(
-    [for (t = toks) 0.46 * pitch     / max(0.001, ink(t[0], FONTS[t[1]], req)[0])],
-    [for (t = toks) (band / 2 - 0.3) / max(0.001, ink(t[0], FONTS[t[1]], req)[1])])));
+    [for (t = toks) ink_frac(t[0]) * pitch / max(0.001, ink(t[0], FONTS[t[1]], req)[0])],
+    [for (t = toks) (band / 2 - 0.3)       / max(0.001, ink(t[0], FONTS[t[1]], req)[1])])));
 function rail_sz(r) = fit_sz(r[0], text_size,
   norm([r[3] - r[1], r[4] - r[2]]) / max(1, len(r[0])),
   (r[5] == 0 ? strip_y : strip_x) - 2 * chamf);
