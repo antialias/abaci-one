@@ -18,6 +18,7 @@
  * rotates the key, so the edit becomes a new job instead of a silent no-op.
  */
 import type { TicketStartPolicy, TicketStyle } from '@eink/print-dialog'
+import { fnv1a32Hex } from '@/lib/fnv1a'
 import { stableStringify } from '@/lib/stable-stringify'
 import type { FilamentMap, Params } from './abacus-model'
 
@@ -35,6 +36,10 @@ export interface AbacusPrintSignatureInputs {
   readonly slotLabels: readonly string[]
   readonly style: TicketStyle
   readonly startPolicy: TicketStartPolicy
+  /** The support-interface pick riding the ticket (THH#367) — `null` when
+   *  supports are off or the interface prints in the model material. Changing
+   *  the pick changes the physical print, so it must rotate the key. */
+  readonly supportInterfaceSlotId: string | null
 }
 
 /** The content signature: identical inputs → identical string, any change → a
@@ -47,7 +52,32 @@ export function abacusPrintSignature(inputs: AbacusPrintSignatureInputs): string
     slotLabels: inputs.slotLabels,
     style: inputs.style,
     startPolicy: inputs.startPolicy,
+    supportInterfaceSlotId: inputs.supportInterfaceSlotId,
   })
+}
+
+/**
+ * The filename the 3MF is uploaded under — content-bound, for the same reason
+ * the idempotency key is.
+ *
+ * THH derives a model's IDENTITY from its filename: `normalizeModelKey` takes
+ * the basename, strips the extension, a trailing Bambu `_plate_N` suffix and a
+ * trailing copy counter, then lowercases. That key addresses the cached mesh its
+ * ghost/orbit viewer renders. A constant name like `abacus-13col.3mf` therefore
+ * collapses EVERY 13-column design onto one model, and the viewer shows whichever
+ * abacus THH cached first no matter what we just sent. (THH treating a filename
+ * as content identity is its own bug, tracked separately — this keeps us honest
+ * regardless of when that lands.)
+ *
+ * Binding the name to the same signature the idempotency key uses gives distinct
+ * designs distinct models, and an unchanged resubmit the same one.
+ *
+ * The `h` prefix on the hash is load-bearing: THH's copy-counter rule strips a
+ * trailing `-<digits>`, and an all-digit hex hash (~2.3% of them) would be eaten
+ * right back off, silently restoring the collision we are fixing.
+ */
+export function abacusModelFileName(cols: number, sig: string): string {
+  return `abacus-${cols}col-h${fnv1a32Hex(sig)}.3mf`
 }
 
 /**

@@ -84,6 +84,52 @@ export function DebugSlider({
   )
 }
 
+interface DebugColorProps {
+  label: string
+  /** `#rrggbb` — a native color input accepts nothing else. */
+  value: string
+  onChange: (hex: string) => void
+}
+
+/** A labelled swatch. Shares the row shape of DebugCheckbox so the two stack
+ *  evenly in a control panel; the hex rides alongside so the value stays
+ *  readable without opening the picker. */
+export function DebugColor({ label, value, onChange }: DebugColorProps) {
+  return (
+    <label
+      data-element="debug-color"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        fontSize: 11,
+        fontWeight: 500,
+        cursor: 'pointer',
+        userSelect: 'none',
+      }}
+    >
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          width: 24,
+          height: 18,
+          padding: 0,
+          border: '1px solid rgba(0,0,0,0.2)',
+          borderRadius: 4,
+          background: 'none',
+          cursor: 'pointer',
+        }}
+      />
+      {label}
+      <span style={{ marginLeft: 'auto', opacity: 0.55, fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </span>
+    </label>
+  )
+}
+
 interface DebugCheckboxProps {
   label: string
   checked: boolean

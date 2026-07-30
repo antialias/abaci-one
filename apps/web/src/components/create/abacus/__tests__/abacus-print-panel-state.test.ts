@@ -230,7 +230,26 @@ describe('designSlotIds (the support-interface pick can never be a design slot)'
     expect(designSlotIds(base, spools).has('0.4')).toBe(false)
   })
 
+  it('counts the inlay-text roles only when the plan minted them (Gitea #26)', () => {
+    // a rainbow group pinned to an otherwise-unused spool is exactly the case
+    // that would look "free" to the interface picker and then be dropped by
+    // buildAbacusTicket — the UI would claim a material the print never uses.
+    expect(designSlotIds({ ...base, textRoles: [3, 0] }, spools).has('0.4')).toBe(true)
+    expect(designSlotIds(base, spools).has('0.4')).toBe(false)
+  })
+
+  it('leaves no interface choice when text + feet consume the whole roster', () => {
+    // correct, not a regression: there genuinely is no spare spool left.
+    const full = { ...base, feet: 3, textRoles: [0, 1, 2, 3] }
+    expect([...designSlotIds(full, spools)].sort()).toEqual(['0.1', '0.2', '0.3', '0.4'])
+  })
+
   it('ignores an index the roster no longer has (a spool unloaded mid-session)', () => {
     expect([...designSlotIds({ ...base, feet: 9 }, spools)]).toEqual(['0.1', '0.2', '0.3'])
+    expect([...designSlotIds({ ...base, textRoles: [9, 12] }, spools)]).toEqual([
+      '0.1',
+      '0.2',
+      '0.3',
+    ])
   })
 })

@@ -244,10 +244,12 @@ export function FilamentPlanPanel({
     return m
   }, [design, catalog])
   // the lossy-reduction heads-up shown in print mode: contrast the camera can't
-  // read, a palette that outruns the loaded spools, and the material trio a pin
-  // can raise (gh#163) — a plate split across temperature families, a visible
-  // part on breakaway support media, a mixed-material frame/marker weld. The
-  // per-role collision detail lives in the filament-mapping panel below.
+  // read, a palette that outruns the loaded spools, the material trio a pin can
+  // raise (gh#163) — a plate split across temperature families, a visible part on
+  // breakaway support media, a mixed-material frame/marker weld — and the two
+  // inlay-text reductions (rainbow collapsed onto fewer inks; an inlay group on
+  // the frame's own filament, i.e. writing you can't read). The per-role
+  // collision detail lives in the filament-mapping panel below.
   const reductionWarnings = plan.warnings.filter(
     (w) =>
       w.code === 'marker-contrast' ||
@@ -255,7 +257,9 @@ export function FilamentPlanPanel({
       w.code === 'material-mix' ||
       w.code === 'support-material' ||
       w.code === 'material-interface' ||
-      w.code === 'feet-material'
+      w.code === 'feet-material' ||
+      w.code === 'rainbow-unrealizable' ||
+      w.code === 'text-invisible'
   )
   // override rows, grouped frame → ArUco pair → beads. `activeOverrides` counts
   // pins that actually took (an ignored, unloaded-spool pin has overridden=false).

@@ -3,9 +3,31 @@ import { describe, expect, it, vi } from 'vitest'
 import { defaultParams, type FilamentMap } from '../abacus-model'
 import {
   type AbacusPrintSignatureInputs,
+  abacusModelFileName,
   abacusPrintSignature,
   resolveIdempotencyKey,
 } from '../print-idempotency'
+
+/**
+ * A faithful mirror of THH's `ui/lib/archive/model-key.ts:normalizeModelKey` —
+ * the function that turns an uploaded filename into the model identity its
+ * ghost/orbit viewer caches against. Copied deliberately: these tests assert a
+ * property of THEIR reduction, so the reduction has to be present to test it.
+ * Keep in sync if THH's rules change.
+ */
+const MODEL_EXT_RE = /\.(?:gcode\.3mf|gcode\.gz|3mf|gcode|stl|obj)$/i
+const PLATE_RE = /[_-]plate[_-]?\d+$/i
+const COPY_RE = /(?:[ _-]?\(?copy\)?|[ _-]\(?\d+\)?)$/i
+function normalizeModelKey(raw: string): string | null {
+  let key = raw.replace(/^.*\//, '').replace(MODEL_EXT_RE, '')
+  key = key.replace(PLATE_RE, '')
+  key = key.replace(COPY_RE, '')
+  key = key
+    .replace(/[\s_]+/g, ' ')
+    .trim()
+    .toLowerCase()
+  return key || null
+}
 
 const filamentMap: FilamentMap = {
   slots: ['PLA Black', 'PLA White'],
@@ -23,11 +45,13 @@ const base: AbacusPrintSignatureInputs = {
   slotLabels: ['PLA Black', 'PLA White'],
   style,
   startPolicy: 'hold',
+  supportInterfaceSlotId: null,
 }
 
 describe('abacusPrintSignature', () => {
   it('is stable for identical inputs and independent of property order', () => {
     const reordered: AbacusPrintSignatureInputs = {
+      supportInterfaceSlotId: null,
       startPolicy: 'hold',
       style,
       slotLabels: ['PLA Black', 'PLA White'],
@@ -68,6 +92,15 @@ describe('abacusPrintSignature', () => {
   it('changes when a spool is renamed', () => {
     const edited = { ...base, slotLabels: ['PLA Black', 'PLA Blue'] }
     expect(abacusPrintSignature(edited)).not.toBe(abacusPrintSignature(base))
+  })
+
+  it('changes when the support-interface pick changes (THH#367)', () => {
+    // null → a slot, and slot → different slot: both change the physical print
+    // (which spool lays the interface layers), so both must rotate the key.
+    const picked = { ...base, supportInterfaceSlotId: '0.3' }
+    expect(abacusPrintSignature(picked)).not.toBe(abacusPrintSignature(base))
+    const repicked = { ...base, supportInterfaceSlotId: '0.4' }
+    expect(abacusPrintSignature(repicked)).not.toBe(abacusPrintSignature(picked))
   })
 
   it('array order is significant (bead-role assignment is not a set)', () => {
@@ -125,5 +158,52 @@ describe('resolveIdempotencyKey', () => {
     // onSuccess sets idemRef.current = null; the next identical submit is a new job.
     const afterSuccess = resolveIdempotencyKey(null, sig, () => 'k2')
     expect(afterSuccess.key).not.toBe(first.key)
+  })
+})
+
+describe('abacusModelFileName — content identity survives THH normalization', () => {
+  const nameFor = (i: AbacusPrintSignatureInputs) =>
+    abacusModelFileName(i.params.cols, abacusPrintSignature(i))
+
+  it('gives an identical design an identical name', () => {
+    expect(nameFor(base)).toBe(nameFor({ ...base, params: { ...defaultParams } }))
+  })
+
+  it('distinguishes designs that share a column count', () => {
+    // The exact collision that made THH show a stale mesh: same `cols`, different
+    // everything else. The OLD name (`abacus-13col.3mf`) was byte-identical here.
+    const a = { ...base, params: { ...defaultParams, frame_color: '#111111' } }
+    const b = { ...base, params: { ...defaultParams, frame_color: '#c9a26e' } }
+    expect(a.params.cols).toBe(b.params.cols)
+    expect(nameFor(a)).not.toBe(nameFor(b))
+    expect(normalizeModelKey(nameFor(a))).not.toBe(normalizeModelKey(nameFor(b)))
+  })
+
+  it('a filament remap alone rotates the name', () => {
+    const remapped = { ...base, filamentMap: { ...filamentMap, frame: 1 } }
+    expect(nameFor(remapped)).not.toBe(nameFor(base))
+  })
+
+  it('survives normalizeModelKey — the hash is never eaten as a copy counter', () => {
+    // The `h` prefix exists for this. An all-digit suffix would be stripped by
+    // THH's COPY_RE, restoring the collision. Sweep enough designs that a digits-
+    // only hash would have shown up (~2.3% each) if the prefix were missing.
+    const keys = new Set<string>()
+    for (let n = 0; n < 300; n++) {
+      const name = nameFor({ ...base, params: { ...defaultParams, scale_factor: 1 + n / 1000 } })
+      const key = normalizeModelKey(name)
+      expect(key).toBeTruthy()
+      // The discriminator must still be attached after normalization.
+      expect(key).not.toBe(`abacus-${defaultParams.cols}col`)
+      expect(key).toMatch(/-h[0-9a-f]{8}$/)
+      keys.add(key as string)
+    }
+    // 300 distinct designs → 300 distinct model identities (no fnv collision here).
+    expect(keys.size).toBe(300)
+  })
+
+  it('survives a Bambu plate suffix on the card file', () => {
+    const stem = nameFor(base).replace(/\.3mf$/, '')
+    expect(normalizeModelKey(`${stem}_plate_1.gcode.3mf`)).toBe(normalizeModelKey(nameFor(base)))
   })
 })

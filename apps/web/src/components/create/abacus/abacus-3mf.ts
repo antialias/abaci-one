@@ -28,14 +28,42 @@
  * empty marker renders are a hard error: silently shipping a markerless print
  * is the exact bug this path exists to prevent.
  *
- * Inset text stays deferred: its plugs ride no FilamentMap slot yet (P1 scope
- * is frame + markers + beads; per-token text color is P4 territory), so inset
- * text still prints as empty pockets in the frame body.
+ * Printed TPU feet (Gitea #23) ride the same part-pass pattern: the scad's
+ * `only="feet"` selector renders the pocket-filling foot solids (stand-off
+ * below z=0 + crossbar voids), merged here into the plan's `feet` slot. Feet
+ * NEVER enter shell classification — a foot shell would centroid-map to a bead
+ * column and silently mis-color. A printed-feet export always takes the
+ * assembly path (even single-bodied) so `project_settings.config` can carry
+ * the support keys the raised bottom face needs; missing/empty feet renders
+ * are the same class of hard error as markerless markers.
+ *
+ * Inset text (Gitea #26) rides the same pattern once more, but split by COLOR
+ * GROUP rather than by part: `only="text_plugs"` renders the perimeter writing's
+ * inlay plugs, and `-Dplug_group=g` narrows a render to the tokens the scad
+ * would tint with palette ink `g`. One render per group, each merged into that
+ * group's plan-assigned slot. Before this, the export asked for no plug pass at
+ * all and every 3MF shipped the text pockets EMPTY — bare relief in frame
+ * filament, the same class of silent bug the marker pass fixed.
  */
 import { type ColorBody, meshesToThreeMf } from '@eink/frames-engine/print-bundle'
 import { parseStl, writeBinaryStl } from '@eink/frames-engine/stl'
 import { type AssemblyBody, assembleAbacus3mf, BAMBU_256_BED } from './abacus-3mf-assembly'
-import { analyzeShells, type FilamentMap, type Params, shellSlotIndex } from './abacus-model'
+import {
+  analyzeShells,
+  anyTokens,
+  type FilamentMap,
+  type Params,
+  shellSlotIndex,
+} from './abacus-model'
+
+/** One `only="text_plugs"` render, tagged with the `plug_group` it was rendered
+ *  under. Tagged rather than positional so a dropped group can't silently shift
+ *  every later group's geometry onto the wrong slot. */
+export interface TextPlugRender {
+  /** The `plug_group` define this render used — indexes `FilamentMap.textRoles`. */
+  group: number
+  stl: ArrayBuffer
+}
 
 /**
  * The one-shot export renders the 3MF build consumes, snapshotted from a single
@@ -49,6 +77,12 @@ export interface AbacusExportParts {
   markerBlack: ArrayBuffer | null
   /** `only="marker_white"` part pass — null iff markers were off in `params`. */
   markerWhite: ArrayBuffer | null
+  /** `only="feet"` part pass — null iff `params.feet_mode !== 'printed'` (or the
+   *  frame was off). */
+  feet: ArrayBuffer | null
+  /** `only="text_plugs"` part passes, one per inlay color group. Empty iff the
+   *  design has no inset writing to ink (emboss mode, no tokens, or no frame). */
+  textPlugs: TextPlugRender[]
   /** The exact snapshot all renders used — pass THIS to `buildAbacusThreeMf`,
    *  not the live store value, so shell classification matches the geometry. */
   params: Params
@@ -78,23 +112,48 @@ export interface AbacusThreeMf {
  * @param markerBlack The `only="marker_black"` part render. Required (and
  *                   non-empty) when `params.show_markers`; ignored otherwise.
  * @param markerWhite The `only="marker_white"` part render, same contract.
+ * @param feet       The `only="feet"` part render. Required (and non-empty)
+ *                   when `params.feet_mode === 'printed'`; ignored otherwise.
+ * @param textPlugs  The `only="text_plugs"` renders, one per inlay color group.
+ *                   At least one must carry geometry when the design has inset
+ *                   writing; ignored otherwise.
  * @param params     The scad params ALL the renders came from — shell
  *                   classification reads the same layout constants, and
- *                   `show_markers` gates the marker merge.
+ *                   `show_markers` / `feet_mode` / `text_mode` gate the part merges.
  * @param filamentMap The role→slot mapping the plan materialized — markers ride
- *                   its `markerBlack` / `markerWhite` slots.
+ *                   its `markerBlack` / `markerWhite` slots, feet its `feet`
+ *                   slot, inlay groups their `textRoles` slots (each present iff
+ *                   the plan minted the matching role).
  * @param slotLabels Optional human names per slot (e.g. spool names from the
  *                   AMS roster); defaults to `Filament N`.
+ * @param supportsAtSlice Whether the print this file is headed for will slice with
+ *                   supports on because the operator's ticket style says so. Only
+ *                   the print path knows this (a plain download carries no style,
+ *                   and its own settings say supports off), and it only moves the
+ *                   prime tower — printed feet turn supports on by themselves.
  */
 export function buildAbacusThreeMf(args: {
   stl: ArrayBuffer
   markerBlack?: ArrayBuffer | null
   markerWhite?: ArrayBuffer | null
+  feet?: ArrayBuffer | null
+  textPlugs?: readonly TextPlugRender[] | null
   params: Params
   filamentMap: FilamentMap
   slotLabels?: readonly string[]
+  supportsAtSlice?: boolean
 }): AbacusThreeMf {
-  const { stl, markerBlack, markerWhite, params, filamentMap, slotLabels } = args
+  const {
+    stl,
+    markerBlack,
+    markerWhite,
+    feet,
+    textPlugs,
+    params,
+    filamentMap,
+    slotLabels,
+    supportsAtSlice,
+  } = args
 
   const mesh = parseStl(stl)
   if (mesh.triangleCount === 0) {
@@ -104,11 +163,12 @@ export function buildAbacusThreeMf(args: {
   const { triShell, shellInfo } = analyzeShells(mesh.positions, params)
   const slotOfShell = shellInfo.map((info) => shellSlotIndex(info, params, filamentMap))
 
-  // The marker plugs never enter shell classification (flush solids would weld
-  // into the frame there) — they arrive as their own soups and merge straight
-  // into their plan-assigned slots' buckets. The gate matches the exporter's:
-  // markers on AND a frame to sit in (a beads-only debug render has no pockets).
-  const markerSoups: { slot: number; positions: Float32Array }[] = []
+  // Part-pass soups (markers, feet) never enter shell classification (a flush
+  // marker would weld into the frame there; a foot shell would centroid-map to
+  // a bead column) — they arrive as their own soups and merge straight into
+  // their plan-assigned slots' buckets. The gates match the exporter's:
+  // the part on AND a frame to sit in (a beads-only debug render has no pockets).
+  const partSoups: { slot: number; positions: Float32Array }[] = []
   if (params.show_markers && params.show_frame) {
     if (!markerBlack || !markerWhite) {
       throw new Error(
@@ -120,8 +180,76 @@ export function buildAbacusThreeMf(args: {
     if (black.triangleCount === 0 || white.triangleCount === 0) {
       throw new Error('a marker part render came back empty — refusing to build a markerless 3MF')
     }
-    markerSoups.push({ slot: filamentMap.markerBlack, positions: black.positions })
-    markerSoups.push({ slot: filamentMap.markerWhite, positions: white.positions })
+    partSoups.push({ slot: filamentMap.markerBlack, positions: black.positions })
+    partSoups.push({ slot: filamentMap.markerWhite, positions: white.positions })
+  }
+  const feetPrinted = params.feet_mode === 'printed' && params.show_frame
+  if (feetPrinted) {
+    if (filamentMap.feet === undefined) {
+      // the plan mints the feet role from the same feet_mode — a map without the
+      // slot means plan and params came from different designs (programming error)
+      throw new Error('feet_mode is "printed" but the filament map has no feet slot')
+    }
+    if (!feet) {
+      throw new Error(
+        'feet_mode is "printed" but the feet part render is missing — refusing to build a footless 3MF'
+      )
+    }
+    const feetSoup = parseStl(feet)
+    if (feetSoup.triangleCount === 0) {
+      throw new Error('the feet part render came back empty — refusing to build a footless 3MF')
+    }
+    partSoups.push({ slot: filamentMap.feet, positions: feetSoup.positions })
+  }
+
+  // Inset text: one render per inlay color group, each into its own plan slot.
+  // Gated on the same three conditions the exporter gates on — inset mode, a
+  // frame to carve pockets in, and something written.
+  if (params.text_mode === 'inset' && params.show_frame && anyTokens(params)) {
+    const textRoles = filamentMap.textRoles
+    if (!textRoles || textRoles.length === 0) {
+      // the plan mints one text role per color group from these same params, so
+      // a map without them means plan and params came from different designs
+      throw new Error('the design has inset text but the filament map has no text slots')
+    }
+    const inked: { group: number; slot: number; positions: Float32Array }[] = []
+    let textTriangles = 0
+    for (const plug of textPlugs ?? []) {
+      const slot = textRoles[plug.group]
+      if (slot === undefined) {
+        throw new Error(
+          `inset-text render for color group ${plug.group} has no slot in the filament map`
+        )
+      }
+      const soup = parseStl(plug.stl)
+      textTriangles += soup.triangleCount
+      // A single group may legitimately come back empty — these are user glyphs,
+      // and one unrenderable codepoint shouldn't kill an export. Unlike the
+      // synthetic marker/feet geometry, per-group emptiness is not an error.
+      if (soup.triangleCount === 0) continue
+      inked.push({ group: plug.group, slot, positions: soup.positions })
+    }
+    // Zero across ALL groups — including no renders at all, the pre-#26 state of
+    // the world — means the text never rendered, and shipping that is the empty
+    // -pocket bug itself: bare relief in frame filament. Checked FIRST because it
+    // is both the likelier failure and the more specific diagnosis.
+    if (textTriangles === 0) {
+      throw new Error(
+        'the design has inset text but no text plug render carried geometry — refusing to ship empty pockets'
+      )
+    }
+    // Then: every group the plan minted must have been rendered. The renders come
+    // from a params snapshot while the map comes from the live store (see @param
+    // params) — if the writing changed mid-export, a group's ink would silently
+    // never print. Loud beats a quietly half-inked plate.
+    const rendered = new Set((textPlugs ?? []).map((p) => p.group))
+    if (rendered.size !== textRoles.length) {
+      throw new Error(
+        `the plan has ${textRoles.length} inset-text color groups but ${rendered.size} were rendered — the design changed mid-export`
+      )
+    }
+    assertGroupsDiffer(inked)
+    for (const g of inked) partSoups.push({ slot: g.slot, positions: g.positions })
   }
 
   // Count triangles per slot, then bucket the position soup (9 floats/tri).
@@ -130,9 +258,9 @@ export function buildAbacusThreeMf(args: {
     const slot = slotOfShell[triShell[t]]
     triCount.set(slot, (triCount.get(slot) ?? 0) + 1)
   }
-  // Marker counts join BEFORE bucket allocation — a marker slot with no
+  // Part counts join BEFORE bucket allocation — a marker/feet slot with no
   // frame/bead geometry (the typical case) gets its bucket created here.
-  for (const soup of markerSoups) {
+  for (const soup of partSoups) {
     triCount.set(soup.slot, (triCount.get(soup.slot) ?? 0) + soup.positions.length / 9)
   }
 
@@ -149,9 +277,9 @@ export function buildAbacusThreeMf(args: {
     bucket.positions.set(mesh.positions.subarray(t * 9, t * 9 + 9), bucket.fill)
     bucket.fill += 9
   }
-  // Marker soups append after the main soup (deterministic body content:
-  // frame/beads first, then black, then white when slots collide).
-  for (const soup of markerSoups) {
+  // Part soups append after the main soup (deterministic body content:
+  // frame/beads first, then black, then white, then feet when slots collide).
+  for (const soup of partSoups) {
     const bucket = buckets.get(soup.slot)
     if (!bucket) continue
     bucket.positions.set(soup.positions, bucket.fill)
@@ -179,9 +307,22 @@ export function buildAbacusThreeMf(args: {
 
   // Multicolor: one bed-centered assembly object with an owned prime tower — the
   // 4-separate-object layout scatters the in-place beads and jams Orca's auto tower
-  // (exit 154). Single filament already slices clean as one co-registered object.
-  if (assemblyBodies.length >= 2) {
-    const { bytes } = assembleAbacus3mf(assemblyBodies, BAMBU_256_BED)
+  // (exit 154). Single filament already slices clean as one co-registered object —
+  // EXCEPT with printed feet, which force the assembly path even single-bodied:
+  // only project_settings.config can carry the support keys the raised bottom
+  // face needs, and meshesToThreeMf emits none.
+  //
+  // `supportsAtSlice` is separate from `feetPrinted` on purpose: supports rotate the
+  // plate under Orca, so the tower has to dodge the rotated pose whenever they're on
+  // — and the operator's style can turn them on for a design with no printed feet at
+  // all. Keying the dodge off feet alone is what let prod pin a tower straight into
+  // the rotated model (exit 155, 2026-07-29). Single filament needs neither: no
+  // second extruder, no tower, nothing to collide with.
+  if (assemblyBodies.length >= 2 || feetPrinted) {
+    const { bytes } = assembleAbacus3mf(assemblyBodies, BAMBU_256_BED, {
+      support: feetPrinted,
+      supportsAtSlice,
+    })
     return { bytes, bodies }
   }
 
@@ -191,4 +332,41 @@ export function buildAbacusThreeMf(args: {
   new Uint8Array(stlBuffer).set(stlBytes)
   const colorBodies: ColorBody[] = [{ label: only.label, stl: stlBuffer, colorHex: only.colorHex }]
   return { bytes: meshesToThreeMf(colorBodies), bodies }
+}
+
+/**
+ * The one check that catches a dropped, misspelled, or ignored `plug_group`
+ * define — the highest-consequence silent failure in the inset-text path.
+ *
+ * The scad's `plug_group` defaults to -1 meaning "every token", so a define that
+ * never lands doesn't error: each group's render comes back with ALL the text,
+ * and the 3MF ships G overlapping copies of the writing on G extruders. That
+ * looks entirely plausible in a slicer preview and prints as a smeared mess.
+ *
+ * Two groups can never legitimately share geometry — every token occupies its
+ * own position along its rail — so identical soups mean the filter didn't apply.
+ * Compared by triangle count plus the first triangle's 9 floats: enough to
+ * separate real groups (which differ in the very first glyph's x) without
+ * walking megabytes of vertices.
+ */
+function assertGroupsDiffer(inked: readonly { group: number; positions: Float32Array }[]): void {
+  for (let i = 0; i < inked.length; i++) {
+    for (let j = i + 1; j < inked.length; j++) {
+      const a = inked[i].positions
+      const b = inked[j].positions
+      if (a.length !== b.length) continue
+      let same = true
+      for (let k = 0; k < 9; k++) {
+        if (a[k] !== b[k]) {
+          same = false
+          break
+        }
+      }
+      if (same) {
+        throw new Error(
+          `inset-text color groups ${inked[i].group} and ${inked[j].group} rendered identical geometry — the plug_group filter did not apply`
+        )
+      }
+    }
+  }
 }

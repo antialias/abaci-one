@@ -140,6 +140,10 @@ inlay_plugs  = false;  // true → also model the white/black inlay solids (3MF 
 only         = "";     // part passes: "" | "marker_black" | "marker_white" | "text_plugs" | "feet"
                        // "feet" renders the printed foot solids (pocket fill + stand-off,
                        // crossbar voided) — emitted UNCONDITIONALLY; the TS caller gates.
+plug_group   = -1;     // "text_plugs" pass filter: −1 = every token (one soup, what the
+                       // on-screen preview wants); 0..4 = only the tokens whose tok_group
+                       // matches, so the 3MF export can put each ink color on its own
+                       // extruder. A pocket needs a plug of ITS color to print filled.
 fn           = 40;   // worker passes -Dfn=...; wire it to $fn
 $fn = fn;
 
@@ -483,8 +487,13 @@ function wall_sz(r) = fit_sz(r[0], edge_text_size,
 module tok2d(tokens, k, sz)
   text(tokens[k][0], size = sz, font = FONTS[tokens[k][1]],
        halign = "center", valign = "center");
+// Which ink color token k (index WITHIN ITS OWN RAIL) belongs to. The TS mirror
+// is textGroups() in abacus-model.ts — the 5 is pinned there too, deliberately
+// NOT read from the palette length: color_palette never reaches this file.
+function tok_group(k) = text_fill == "rainbow" ? k % 5 : 0;
 function tok_color(k) =
-  text_fill == "rainbow" ? _palette(color_palette)[k % 5] : text_color;
+  text_fill == "rainbow" ? _palette(color_palette)[tok_group(k)] : text_color;
+function tok_wanted(k) = plug_group < 0 || tok_group(k) == plug_group;
 
 module rail_tok_2d(r, k) {   // one top-face token, positioned in the XY plane
   f = (k + 0.5) / len(r[0]);
@@ -505,10 +514,10 @@ module text_pockets() {      // inset mode: carved from the frame
       linear_extrude(inlay_d + 1) tok2d(r[0], k, wall_sz(r));
 }
 module text_plugs() {        // inset mode: flush colored inlays (3MF path)
-  for (r = rails()) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
+  for (r = rails()) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1]) if (tok_wanted(k))
     color(tok_color(k)) translate([0, 0, s_fh - inlay_d])
       linear_extrude(inlay_d) rail_tok_2d(r, k);
-  for (r = walls()) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
+  for (r = walls()) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1]) if (tok_wanted(k))
     color(tok_color(k)) wall_tok_at(r, k) translate([0, 0, -inlay_d])
       linear_extrude(inlay_d) tok2d(r[0], k, wall_sz(r));
 }

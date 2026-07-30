@@ -7,7 +7,8 @@
 // source and the two TTFs written into the worker's MEMFS /fonts (no font ships
 // with the engine, so text() renders nothing without them). Export one-shots
 // (negative ids, promise-based) share the main worker: the whole-abacus render
-// plus the `only="marker_*"` part passes that feed the 3MF's marker bodies. Results are handed
+// plus the `only=` part passes that feed the 3MF's separate filament bodies —
+// markers, feet, and one per inset-text color group. Results are handed
 // back through imperative callbacks — the transferable STL ArrayBuffers never
 // sit in React state, and all three.js mesh work stays in the viewer.
 //
@@ -21,7 +22,7 @@
 // OpenSCAD (that was the dead feature's fatal flaw); this is client WASM only.
 
 import { useEffect, useRef } from 'react'
-import { anyTokens, definesFrom, type Params } from './abacus-model'
+import { anyTokens, definesFrom, type ExportPass, exportDefines, type Params } from './abacus-model'
 
 const WORKER_URL = '/openscad/scad-worker.js'
 const SCAD_URL = '/scad/abacus.scad'
@@ -38,21 +39,15 @@ export type UseAbacusScadArgs = {
   onStatus?: (s: StatusUpdate) => void
 }
 
-/** The scad's top-level `only=` part selectors used by the export path. The
- *  marker passes render JUST the four corner plugs (abacus.scad:526-527) so the
- *  3MF can carry them as separate filament bodies — a flush plug rendered into
- *  the main STL would weld into the frame shell and be unsplittable. */
-export type ExportOnly = 'marker_black' | 'marker_white'
-
 export type UseAbacusScad = {
   /** Request a render of `params`; latest-wins, and a no-op if the scad inputs
    *  are unchanged (color-only edits don't re-render). */
   render: (params: Params) => void
-  /** Fire a one-shot high-quality ($fn=64) render for export. `only` selects a
-   *  marker-plug part pass instead of the whole abacus. Rejects when the worker
-   *  isn't ready or the scad render fails — export callers must surface that,
-   *  not hang. */
-  exportStl: (params: Params, only?: ExportOnly) => Promise<ArrayBuffer>
+  /** Fire a one-shot high-quality ($fn=64) render for export. `pass` selects a
+   *  part pass (marker plugs, feet, one text-inlay color group) instead of the
+   *  whole abacus — see ExportPass. Rejects when the worker isn't ready or the
+   *  scad render fails — export callers must surface that, not hang. */
+  exportStl: (params: Params, pass?: ExportPass) => Promise<ArrayBuffer>
 }
 
 type Pump = {
@@ -135,6 +130,10 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
         id,
         entry: '/abacus.scad',
         files: renderFiles(),
+        // No -Dplug_group here on purpose: the preview wants ONE mesh carrying
+        // every token (it tints per-triangle in JS), which is exactly the scad's
+        // plug_group = −1 default. Only the export splits the soup per color
+        // group — see exportDefines.
         defines: [...definesFrom(pl.latest), '-Donly="text_plugs"'],
         fn: pl.latest.fn,
       })
@@ -238,7 +237,7 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
     }
   }
 
-  const exportStl = (params: Params, only?: ExportOnly): Promise<ArrayBuffer> => {
+  const exportStl = (params: Params, pass?: ExportPass): Promise<ArrayBuffer> => {
     const st = stateRef.current
     if (!st.worker || !st.loaded) {
       return Promise.reject(new Error('3D exporter not ready — the render engine is still loading'))
@@ -260,7 +259,7 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
         id,
         entry: '/abacus.scad',
         files: { '/abacus.scad': st.scad, ...st.fonts },
-        defines: only ? [...definesFrom(params), `-Donly="${only}"`] : definesFrom(params),
+        defines: exportDefines(params, pass),
         fn: 64,
       })
     })

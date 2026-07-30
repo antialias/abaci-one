@@ -14,6 +14,10 @@ import {
   feetPositions,
   type Params,
   paramsFromDisplayConfig,
+  TEXT_RAINBOW_GROUPS,
+  textGroupCount,
+  textGroups,
+  textSlots,
   tokenCenters,
 } from '../abacus-model'
 
@@ -312,5 +316,107 @@ describe('feet layout mirror (Gitea #23) — hand-computed against the scad chai
     // → 4 + 2·2 + 2·1 = 10 feet on a HALF-size board (stiffness ∝ S⁴).
     const pos = feetPositions({ ...defaultParams, scale_factor: 0.5 })
     expect(pos.length).toBe(10)
+  })
+})
+
+describe('inset text color groups — hand-computed mirror of the scad tok_color rule', () => {
+  // abacus.scad: tok_color(k) = text_fill == "rainbow" ? _palette(color_palette)[k % 5]
+  //                                                    : text_color
+  // with k the token's index WITHIN ITS OWN RAIL. Each distinct value is one
+  // render pass, one plan role, one 3MF body — so this arithmetic decides what
+  // actually gets printed, not just what the preview tints.
+  const blank: Params = {
+    ...defaultParams,
+    top_preset: 'custom',
+    bottom_preset: 'custom',
+  }
+  // n tokens on ONE rail, everything else empty
+  const withTop = (n: number): Params => ({
+    ...blank,
+    top_text: Array.from({ length: n }, (_, i) => `t${i}`).join(' '),
+  })
+
+  it('pins the modulus the scad hardcodes: every palette is exactly TEXT_RAINBOW_GROUPS long', () => {
+    // textGroups reads the palette at [g] for g < TEXT_RAINBOW_GROUPS. The scad
+    // hardcodes `k % 5` and never receives color_palette, so a palette of any
+    // other length would silently desync the two. This is the guard for that.
+    for (const palette of Object.keys(BEAD_COLOR_PALETTES)) {
+      expect(BEAD_COLOR_PALETTES[palette]).toHaveLength(TEXT_RAINBOW_GROUPS)
+    }
+  })
+
+  it('present groups are the PREFIX 0…min(n,5)−1 for a single rail of n tokens', () => {
+    // {k % 5 : k ∈ [0,n)} = {0 … min(n,5)−1}. The hole-free prefix shape is what
+    // lets FilamentMap.textRoles be a dense array.
+    for (let n = 1; n <= 9; n++) {
+      const groups = textGroups(withTop(n))
+      expect(groups.map((t) => t.g)).toEqual(
+        Array.from({ length: Math.min(n, TEXT_RAINBOW_GROUPS) }, (_, i) => i)
+      )
+    }
+  })
+
+  it('takes the union over rails — the LONGEST rail sets the group count', () => {
+    // top: 2 tokens (groups 0,1), bottom: 4 tokens (groups 0..3) → union 0..3.
+    const p: Params = { ...blank, top_text: 'a b', bottom_text: 'w x y z' }
+    expect(textGroups(p).map((t) => t.g)).toEqual([0, 1, 2, 3])
+  })
+
+  it('rainbow group hexes ARE the place-value bead hexes (same palette, same index)', () => {
+    for (const palette of ['default', 'colorblind', 'nature'] as const) {
+      const groups = textGroups({ ...defaultParams, color_palette: palette })
+      expect(groups.map((t) => t.hex)).toEqual(BEAD_COLOR_PALETTES[palette])
+    }
+  })
+
+  it('single fill collapses to exactly one group at text_color, holding EVERY token', () => {
+    const p: Params = { ...defaultParams, text_fill: 'single', text_color: '#123456' }
+    expect(textGroupCount(p)).toBe(1)
+    expect(textGroups(p)).toEqual([
+      {
+        g: 0,
+        hex: '#123456',
+        // friends-of-10 then friends-of-5, in rail order — one filament inks all 9
+        tokens: ['1+9', '2+8', '3+7', '4+6', '5+5', '1+4', '2+3', '3+2', '4+1'],
+      },
+    ])
+  })
+
+  it('rainbow partitions the tokens by per-rail index — group g inks token g of every rail', () => {
+    // top = friends-of-10 (k 0..4), bottom = friends-of-5 (k 0..3), so group 4 is
+    // the only one with a single token. Every token lands in exactly one group.
+    const groups = textGroups(defaultParams)
+    expect(groups.map((t) => t.tokens)).toEqual([
+      ['1+9', '1+4'],
+      ['2+8', '2+3'],
+      ['3+7', '3+2'],
+      ['4+6', '4+1'],
+      ['5+5'],
+    ])
+    expect(groups.flatMap((t) => t.tokens)).toHaveLength(9)
+  })
+
+  it('no tokens → no groups (nothing to render, nothing to assign a filament)', () => {
+    expect(textGroups(blank)).toEqual([])
+    expect(textGroupCount(blank)).toBe(0)
+    expect(textGroupCount({ ...blank, text_fill: 'single' })).toBe(0)
+  })
+
+  it('defaults use all five: friends-of-10 is a 5-token rail', () => {
+    expect(textGroupCount(defaultParams)).toBe(TEXT_RAINBOW_GROUPS)
+  })
+
+  it('textSlots is the one token layout — tokenCenters and anyTokens read it', () => {
+    // The de-fork guard: all three used to build their own copy of the 8-rail
+    // list, so a preset change could reach one and not the others.
+    const slots = textSlots(defaultParams)
+    expect(slots).toHaveLength(8)
+    // friends-of-10 (5) + friends-of-5 (4), the other six rails empty
+    expect(slots.map((t) => t.length)).toEqual([5, 4, 0, 0, 0, 0, 0, 0])
+    expect(tokenCenters(defaultParams)).toHaveLength(9)
+    expect(anyTokens(defaultParams)).toBe(true)
+    expect(anyTokens(blank)).toBe(false)
+    // per-rail index: both rails restart at k=0
+    expect(tokenCenters(defaultParams).map((c) => c.k)).toEqual([0, 1, 2, 3, 4, 0, 1, 2, 3])
   })
 })

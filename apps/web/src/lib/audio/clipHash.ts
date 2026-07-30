@@ -1,3 +1,4 @@
+import { fnv1a32 } from '@/lib/fnv1a'
 import type { TtsSay } from './TtsAudioManager'
 
 /**
@@ -10,18 +11,6 @@ import type { TtsSay } from './TtsAudioManager'
 export function resolveCanonicalText(say: Record<string, string> | undefined | null): string {
   if (!say) return ''
   return say['en-US'] ?? say['en'] ?? Object.values(say)[0] ?? ''
-}
-
-/**
- * FNV-1a 32-bit hash. Synchronous, no crypto dependency.
- */
-function fnv1a32(input: string): number {
-  let hash = 0x811c9dc5 // FNV offset basis
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i)
-    hash = Math.imul(hash, 0x01000193) // FNV prime
-  }
-  return hash >>> 0 // Ensure unsigned 32-bit
 }
 
 /**

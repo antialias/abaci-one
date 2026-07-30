@@ -51,7 +51,9 @@ describe('assembleAbacus3mf', () => {
   it('centers the footprint on the bed (build-item translate)', () => {
     const { model } = read(assembleAbacus3mf(bodies, BAMBU_256_BED).bytes)
     // transform = "1 0 0 0 1 0 0 0 1 tx ty tz"; merged bbox X[0,60] Y[0,80] → center (30,40)
-    const m = model.match(/<item objectid="\d+" transform="1 0 0 0 1 0 0 0 1 ([-\d.]+) ([-\d.]+) ([-\d.]+)"/)
+    const m = model.match(
+      /<item objectid="\d+" transform="1 0 0 0 1 0 0 0 1 ([-\d.]+) ([-\d.]+) ([-\d.]+)"/
+    )
     expect(m).toBeTruthy()
     const [tx, ty] = [Number(m![1]), Number(m![2])]
     expect(tx).toBeCloseTo(128 - 30, 3) // bedCx - footprintCx
@@ -67,7 +69,12 @@ describe('assembleAbacus3mf', () => {
 
     // centered footprint (60×80 at bed center) and a generous tower reserve
     const obj = { x0: 128 - 30, y0: 128 - 40, x1: 128 + 30, y1: 128 + 40 }
-    const t = { x0: wipeTower.xMm, y0: wipeTower.yMm, x1: wipeTower.xMm + 45, y1: wipeTower.yMm + 40 }
+    const t = {
+      x0: wipeTower.xMm,
+      y0: wipeTower.yMm,
+      x1: wipeTower.xMm + 45,
+      y1: wipeTower.yMm + 40,
+    }
     // on bed
     expect(t.x0).toBeGreaterThanOrEqual(0)
     expect(t.y0).toBeGreaterThanOrEqual(0)
@@ -90,5 +97,164 @@ describe('assembleAbacus3mf', () => {
 
   it('refuses a single body (single filament rides meshesToThreeMf)', () => {
     expect(() => assembleAbacus3mf([bodies[0]], BAMBU_256_BED)).toThrow(/>= 2/)
+  })
+
+  it('drops the merged bbox to the bed — a below-z=0 stand-off becomes the bed contact', () => {
+    // printed feet dip to −feet_proud; the build-item tz must lift exactly that,
+    // so the print stands on its feet with the foot bottoms at z=0 (Gitea #23).
+    const feetProud = 1.6
+    const dipped: AssemblyBody[] = [
+      bodies[0],
+      {
+        positions: new Float32Array([20, 20, -feetProud, 30, 20, -feetProud, 25, 30, 2]),
+        colorHex: '#1f2937',
+        label: 'Feet',
+        extruder: 2,
+      },
+    ]
+    const { model } = read(assembleAbacus3mf(dipped, BAMBU_256_BED).bytes)
+    const m = model.match(
+      /<item objectid="\d+" transform="1 0 0 0 1 0 0 0 1 ([-\d.]+) ([-\d.]+) ([-\d.]+)"/
+    )
+    expect(m).toBeTruthy()
+    expect(Number(m![3])).toBeCloseTo(feetProud, 3)
+  })
+})
+
+describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
+  it('bakes the support keys into project_settings when asked', () => {
+    const { project } = read(assembleAbacus3mf(bodies, BAMBU_256_BED, { support: true }).bytes)
+    expect(project.enable_support).toBe('1')
+    expect(project.support_type).toBe('normal(auto)')
+    expect(project.support_on_build_plate_only).toBe('1') // nothing grows in channels/on beads
+    expect(project.support_interface_top_layers).toBe('2')
+    expect(project.support_top_z_distance).toBe('0.2')
+    // the interface SPOOL is THH's to pick (ticket filament order) — never baked
+    expect('support_interface_filament' in project).toBe(false)
+  })
+
+  it('emits NO support keys by default (pre-#23 files stay byte-stable)', () => {
+    const { project } = read(assembleAbacus3mf(bodies, BAMBU_256_BED).bytes)
+    expect('enable_support' in project).toBe(false)
+    expect('support_type' in project).toBe(false)
+  })
+
+  it('allows a single body with support (no-TPU fallback merges feet into the frame slot)', () => {
+    const { bytes } = assembleAbacus3mf([bodies[0]], BAMBU_256_BED, { support: true })
+    const { model, project } = read(bytes)
+    expect(model.match(/<item\b/g)).toHaveLength(1)
+    expect(model.match(/<component\b/g)).toHaveLength(1)
+    expect(project.enable_support).toBe('1')
+  })
+
+  it('still refuses an empty body list, support or not', () => {
+    expect(() => assembleAbacus3mf([], BAMBU_256_BED, { support: true })).toThrow(/at least one/)
+  })
+
+  // Supports make Orca hand the model back rotated a quarter turn about the bed
+  // centre (measured on THH's sidecar). A tower pinned beside the declared pose
+  // then sits underneath the model and the plate fails the multi-extruder path
+  // check — so under supports the reserve has to clear BOTH poses.
+  it('keeps the tower clear of the rotated pose too, once supports are on', () => {
+    // a real abacus footprint: 192.5 × 100.5, the size that actually collided
+    const abacus: AssemblyBody[] = [
+      { positions: tri(0, 0, 192.5, 100.5), colorHex: '#c9a26e', label: 'Frame', extruder: 1 },
+      { positions: tri(10, 10, 40, 50), colorHex: '#1f2937', label: 'Feet', extruder: 2 },
+    ]
+    const { wipeTower } = assembleAbacus3mf(abacus, BAMBU_256_BED, { support: true })
+    const t = {
+      x0: wipeTower.xMm,
+      y0: wipeTower.yMm,
+      x1: wipeTower.xMm + 45,
+      y1: wipeTower.yMm + 40,
+    }
+    const hits = (b: { x0: number; y0: number; x1: number; y1: number }) =>
+      t.x0 < b.x1 && t.x1 > b.x0 && t.y0 < b.y1 && t.y1 > b.y0
+
+    // declared pose, grown by the support brim skirt
+    expect(hits({ x0: 31.75 - 8, y0: 77.75 - 8, x1: 224.25 + 8, y1: 178.25 + 8 })).toBe(false)
+    // the same footprint turned a quarter turn about the bed centre
+    expect(hits({ x0: 77.75 - 8, y0: 31.75 - 8, x1: 178.25 + 8, y1: 224.25 + 8 })).toBe(false)
+    // still on the bed and off the filament-cutter corner
+    expect(t.x0).toBeGreaterThanOrEqual(0)
+    expect(t.y0).toBeGreaterThanOrEqual(0)
+    expect(t.x1).toBeLessThanOrEqual(256)
+    expect(t.y1).toBeLessThanOrEqual(256)
+    expect(t.x0 < 18 && t.y0 < 28).toBe(false)
+  })
+
+  it('leaves the no-support placement beside the model, not cornered', () => {
+    // the pre-#23 path must not move: Orca honours our pose without supports.
+    const abacus: AssemblyBody[] = [
+      { positions: tri(0, 0, 192.5, 100.5), colorHex: '#c9a26e', label: 'Frame', extruder: 1 },
+      { positions: tri(10, 10, 40, 50), colorHex: '#2e86ab', label: 'Beads', extruder: 2 },
+    ]
+    const { wipeTower } = assembleAbacus3mf(abacus, BAMBU_256_BED)
+    // front gap, centered on the model in x — TOWER_GAP below the footprint
+    expect(wipeTower.xMm).toBeCloseTo(128 - 45 / 2, 3)
+    expect(wipeTower.yMm).toBeCloseTo(77.75 - 6 - 40, 3)
+  })
+})
+
+// Printed feet are not the only way supports get turned on: the operator's saved
+// ticket style can set `enable_support` for ANY design, and that is what broke prod
+// on 2026-07-29. Supports grow the first layer outward; a tower crowding that growth
+// makes Orca re-arrange (and rotate) the plate, leaving our absolute pin inside the
+// model. The fix is the wider gap that keeps the layout valid in the first place.
+describe('assembleAbacus3mf — supportsAtSlice (supports from the ticket style)', () => {
+  type Rect = { x0: number; y0: number; x1: number; y1: number }
+
+  // The design that actually failed: 3 columns → a 62.5 × 100.5 footprint,
+  // bed-centered at X[96.75, 159.25] Y[77.75, 178.25].
+  const cols3: AssemblyBody[] = [
+    { positions: tri(0, 0, 62.5, 100.5), colorHex: '#c9a26e', label: 'Frame', extruder: 1 },
+    { positions: tri(10, 10, 40, 50), colorHex: '#2e86ab', label: 'Beads', extruder: 2 },
+  ]
+  const hits = (a: Rect, b: Rect): boolean =>
+    a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0
+  const tower = (w: { xMm: number; yMm: number }): Rect => ({
+    x0: w.xMm,
+    y0: w.yMm,
+    x1: w.xMm + 45,
+    y1: w.yMm + 40,
+  })
+  const declared: Rect = { x0: 96.75, y0: 77.75, x1: 159.25, y1: 178.25 }
+  const skirted: Rect = { x0: 88.75, y0: 69.75, x1: 167.25, y1: 186.25 } // + SUPPORT_SKIRT
+
+  it('clears the support-grown footprint, with the full gap on top of the skirt', () => {
+    const t = tower(assembleAbacus3mf(cols3, BAMBU_256_BED, { supportsAtSlice: true }).wipeTower)
+    expect(hits(t, skirted)).toBe(false)
+    // beside the model on the roomy side, gap measured from the GROWN edge
+    expect(t.x0).toBeCloseTo(167.25 + 6, 3)
+    expect(t.y0).toBeCloseTo(108, 3)
+    expect(t.x1).toBeLessThanOrEqual(256)
+    expect(t.y1).toBeLessThanOrEqual(256)
+  })
+
+  it('does NOT corner the tower when a side has room', () => {
+    // Cornering is what the first cut of this fix did, and a corner pin is itself
+    // close to the ones that trip Orca's arrange — (195,200) sliced clean while
+    // (200,200) came back rotated. A roomy side is strictly safer.
+    const { wipeTower } = assembleAbacus3mf(cols3, BAMBU_256_BED, { supportsAtSlice: true })
+    expect(wipeTower.xMm).toBeLessThan(195)
+    expect(wipeTower.yMm).toBeLessThan(200)
+  })
+
+  it('bakes no support keys — a download must not inherit a print-panel setting', () => {
+    const { project } = read(
+      assembleAbacus3mf(cols3, BAMBU_256_BED, { supportsAtSlice: true }).bytes
+    )
+    expect('enable_support' in project).toBe(false)
+    expect('support_on_build_plate_only' in project).toBe(false)
+  })
+
+  it('reproduces the prod pin when the flag is absent', () => {
+    // Ground truth from the failing job: the tower pinned at (165.25, 108) — only
+    // TOWER_GAP (6 mm) off the model's declared edge. Fine for a supports-off slice,
+    // and the exact crowding that made Orca re-arrange with supports on.
+    const t = tower(assembleAbacus3mf(cols3, BAMBU_256_BED).wipeTower)
+    expect(t.x0).toBeCloseTo(165.25, 3)
+    expect(t.y0).toBeCloseTo(108, 3)
+    expect(hits(t, skirted)).toBe(true) // inside the support growth → the trigger
   })
 })

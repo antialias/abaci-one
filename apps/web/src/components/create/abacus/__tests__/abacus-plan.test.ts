@@ -21,7 +21,9 @@ import snapshot from './filament-map-snapshot.json'
 const SCHEMES = ['monochrome', 'heaven-earth', 'alternating', 'place-value']
 const PALETTES = ['default', 'colorblind', 'grayscale']
 const COUNTS = [8, 3, 1]
-// Keys the frozen fixture pins byte-for-byte.
+// Keys the frozen fixture pins byte-for-byte. `textRoles` is the one key allowed
+// to appear beyond them — see the assertion below for why the fixture stayed
+// untouched rather than being regenerated.
 const FROZEN_KEYS = [
   'beadRoles',
   'feet',
@@ -47,13 +49,25 @@ describe('computeFilamentMap — byte-parity with the pre-plan implementation', 
   // The whole point of moving computeFilamentMap into materialize(): the viewer's
   // marker + text-plug snapping must be untouched. This asserts the adapter
   // reproduces the frozen bench output EXACTLY for every scheme × palette × count.
+  //
+  // toMatchObject, not toEqual, since inset text gained a role: every frozen key
+  // must still match exactly (toMatchObject compares arrays by length AND
+  // element, so beadRoles/slots keep their byte-parity guarantee) while the new
+  // `textRoles` key is allowed through. The fixture itself is deliberately NOT
+  // regenerated — transcribing 180 freshly-generated numbers into a "frozen"
+  // file would just rubber-stamp whatever the code now does, which is the
+  // opposite of what a characterization fixture is for. The key-set guard below
+  // stops anything ELSE sneaking in unnoticed.
   for (const color_scheme of SCHEMES) {
     for (const color_palette of PALETTES) {
       for (const filament_count of COUNTS) {
         const key = `${color_scheme}|${color_palette}|${filament_count}`
         it(key, () => {
           const got = computeFilamentMap(paramsFor(color_scheme, color_palette, filament_count))
-          expect(got).toEqual((snapshot as Record<string, unknown>)[key])
+          expect(got).toMatchObject(
+            (snapshot as Record<string, Record<string, unknown>>)[key] as object
+          )
+          expect(Object.keys(got).sort()).toEqual([...FROZEN_KEYS, 'textRoles'].sort())
         })
       }
     }
@@ -585,5 +599,225 @@ describe('materialize — printed TPU feet (Gitea #23)', () => {
       slots
     )
     expect('feet' in off).toBe(false)
+  })
+})
+
+describe('materialize — inset text inlay roles', () => {
+  const { design, heavenHex, earthHex, spool, thh } = materialFixtures()
+  const plaRoster = () => [
+    spool('s-black', 'Matte Black', '#000000', 'PLA'),
+    spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+    spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+    spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
+    spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
+  ]
+  const textOf = (r: ReturnType<typeof materialize>) =>
+    r.assignments.filter((a) => a.role.kind === 'text')
+  // the defaults write friends-of-10 (5 tokens) on the top rail and friends-of-5
+  // (4) on the bottom, so rainbow text spans all five palette inks.
+  const withText = (over: Partial<Params> = {}) => toAbacusDesign({ ...design.params, ...over }, '')
+
+  it('mints one role per color group — this is what gives the plugs a slot to print in', () => {
+    const roles = textOf(materialize(withText(), thh(plaRoster())))
+    expect(roles.map((a) => a.role.key)).toEqual(['text-0', 'text-1', 'text-2', 'text-3', 'text-4'])
+    // the intrinsic hex is the palette ink the scad would color that token
+    expect(roles.map((a) => a.role.intrinsicHex)).toEqual(COLOR_PALETTES.default)
+    // labels name the writing the row controls, not an opaque index
+    expect(roles[0]?.role.label).toBe('1+9 1+4')
+  })
+
+  it('single fill is exactly one role, labelled for the whole inlay', () => {
+    const roles = textOf(
+      materialize(withText({ text_fill: 'single', text_color: '#00ff88' }), thh(plaRoster()))
+    )
+    expect(roles).toHaveLength(1)
+    expect(roles[0]?.role.key).toBe('text-0')
+    expect(roles[0]?.role.intrinsicHex).toBe('#00ff88')
+    expect(roles[0]?.role.label).toBe('Inlay text')
+  })
+
+  it('mints nothing when there is no inlay to ink (emboss mode, or no writing)', () => {
+    expect(textOf(materialize(withText({ text_mode: 'emboss' }), thh(plaRoster())))).toHaveLength(0)
+    const blank = withText({ top_preset: 'custom', bottom_preset: 'custom' })
+    expect(textOf(materialize(blank, thh(plaRoster())))).toHaveLength(0)
+  })
+
+  it('stays inside the anchor group — the inlay is welded into the frame', () => {
+    // the palette's reds/greens have exact matches on PETG, which a color-blind
+    // pick would take; the weld rule says the ink must print in the frame's family.
+    const roster = [
+      ...plaRoster(),
+      ...COLOR_PALETTES.default.map((hex, i) => spool(`s-petg-${i}`, `PETG ${i}`, hex, 'PETG')),
+    ]
+    const result = materialize(withText(), thh(roster))
+    expect(result.anchorGroup).toBe('PLA')
+    for (const a of textOf(result)) expect(a.spoolId.startsWith('s-petg')).toBe(false)
+    // and the weld warning stays silent precisely because of that
+    expect(result.warnings.find((w) => w.code === 'material-interface')).toBeUndefined()
+  })
+
+  it('does NOT move the structural mapping — text is assigned after the anchor pass', () => {
+    // The regression this whole ordering exists for: text must not vote in
+    // snapWithin's distinct-first loop or its cost, or every existing design's
+    // beads would shift. Three spools = real contention.
+    const tight = [
+      spool('s-black', 'Matte Black', '#000000', 'PLA'),
+      spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+    ]
+    const structural = (r: ReturnType<typeof materialize>) =>
+      r.assignments.filter((a) => a.role.kind !== 'text').map((a) => [a.role.key, a.spoolId])
+    const withInk = materialize(withText(), thh(tight))
+    const noInk = materialize(withText({ text_mode: 'emboss' }), thh(tight))
+    expect(structural(withInk)).toEqual(structural(noInk))
+    expect(textOf(withInk).length).toBeGreaterThan(0)
+  })
+
+  it('shares a spool freely rather than being forced distinct (ink is not a bead)', () => {
+    // one spool: every group collapses onto it, and nothing throws or goes
+    // undefined. Distinct-first would have had nowhere to go.
+    const one = [spool('s-only', 'Solo PLA', '#cccccc', 'PLA')]
+    const roles = textOf(materialize(withText(), thh(one)))
+    expect(roles).toHaveLength(5)
+    for (const a of roles) expect(a.spoolId).toBe('s-only')
+  })
+
+  it('honors a per-group pin', () => {
+    const roster = [...plaRoster(), spool('s-pink', 'Hot Pink', '#ff69b4', 'PLA')]
+    const result = materialize(withText(), thh(roster), { overrides: { 'text-2': 's-pink' } })
+    const roles = textOf(result)
+    expect(roles[2]?.spoolId).toBe('s-pink')
+    expect(roles[2]?.overridden).toBe(true)
+    expect(roles.filter((a) => a.overridden)).toHaveLength(1)
+  })
+
+  it('planToFilamentMap carries textRoles iff the roles exist, dense over the groups', () => {
+    const roster = plaRoster()
+    const slots = roster.map((s) => s.hex)
+    const map = planToFilamentMap(materialize(withText(), thh(roster)), slots)
+    expect(map.textRoles).toHaveLength(5)
+    for (const idx of map.textRoles ?? []) {
+      expect(Number.isInteger(idx)).toBe(true)
+      expect(idx).toBeGreaterThanOrEqual(0)
+      expect(idx).toBeLessThan(slots.length)
+    }
+    const off = planToFilamentMap(
+      materialize(withText({ text_mode: 'emboss' }), thh(roster)),
+      slots
+    )
+    expect('textRoles' in off).toBe(false)
+  })
+
+  it('a text group on its own spool still counts as a plate material (pins can split it)', () => {
+    // The narrow rule: text that merely shares a structural spool doesn't vote in
+    // the temperature majority, but text pinned somewhere nothing else prints
+    // genuinely introduces a material and must still be reported.
+    const roster = [...plaRoster(), spool('s-abs', 'Structural ABS', '#333333', 'ABS')]
+    const result = materialize(withText(), thh(roster), { overrides: { 'text-1': 's-abs' } })
+    const w = result.warnings.find((x) => x.code === 'material-mix')
+    expect(w).toBeDefined()
+    expect(w?.roleKeys).toEqual(['text-1'])
+    // ...and the weld rule sees it too: the inlay is fused into the frame
+    const weld = result.warnings.find((x) => x.code === 'material-interface')
+    expect(weld?.roleKeys).toEqual(['text-1'])
+    expect(weld?.message).toContain('the inset text')
+  })
+})
+
+describe('materialize — inset text reductions are warnings, never gates', () => {
+  const { design, heavenHex, earthHex, spool, thh } = materialFixtures()
+  const withText = (over: Partial<Params> = {}) => toAbacusDesign({ ...design.params, ...over }, '')
+  const plaRoster = () => [
+    spool('s-black', 'Matte Black', '#000000', 'PLA'),
+    spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+    spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+    spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
+    spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
+  ]
+  const find = (r: ReturnType<typeof materialize>, code: string) =>
+    r.warnings.find((w) => w.code === code)
+
+  it('rainbow-unrealizable fires when the loaded spools cannot serve five inks', () => {
+    // two spools, five groups: at least three tokens print somebody else's color.
+    const thin = [
+      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+      spool('s-black', 'Matte Black', '#000000', 'PLA'),
+    ]
+    const result = materialize(withText(), thh(thin))
+    const w = find(result, 'rainbow-unrealizable')
+    expect(w).toBeDefined()
+    expect(w?.severity).toBe('warning')
+    // concrete prose: how many were asked for, how many actually serve them
+    expect(w?.message).toContain('5 ink colors')
+    expect(w?.message).toMatch(/only [12] distinct/)
+    expect(w?.roleKeys).toEqual(['text-0', 'text-1', 'text-2', 'text-3', 'text-4'])
+  })
+
+  it('stays silent when every group lands on its own filament', () => {
+    // exact palette matches for all five groups (two already exist as bead spools)
+    const roster = [
+      ...plaRoster(),
+      ...COLOR_PALETTES.default.map((hex, i) => spool(`s-pal-${i}`, `Ink ${i}`, hex, 'PLA')),
+    ]
+    const result = materialize(withText(), thh(roster))
+    const text = result.assignments.filter((a) => a.role.kind === 'text')
+    expect(new Set(text.map((a) => a.spoolIndex)).size).toBe(5)
+    expect(find(result, 'rainbow-unrealizable')).toBeUndefined()
+  })
+
+  it('single fill never trips the rainbow warning — one group cannot collapse', () => {
+    const result = materialize(
+      withText({ text_fill: 'single', text_color: '#00ff88' }),
+      thh([spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA')])
+    )
+    expect(find(result, 'rainbow-unrealizable')).toBeUndefined()
+  })
+
+  it("text-invisible fires when the inlay lands on the frame's own filament", () => {
+    // ink asked for the frame color: the plug fills its pocket flush and in the
+    // same filament, so the writing disappears on the plate.
+    const result = materialize(
+      withText({ text_fill: 'single', text_color: defaultParams.frame_color }),
+      thh(plaRoster())
+    )
+    const w = find(result, 'text-invisible')
+    expect(w).toBeDefined()
+    expect(w?.severity).toBe('warning')
+    expect(w?.roleKeys).toEqual(['text-0'])
+    expect(w?.message).toContain('The inlay text prints')
+    expect(w?.message).toContain("frame's own filament")
+  })
+
+  it('names only the groups that vanished when some inks still read', () => {
+    const roster = [
+      ...plaRoster(),
+      ...COLOR_PALETTES.default.map((hex, i) => spool(`s-pal-${i}`, `Ink ${i}`, hex, 'PLA')),
+    ]
+    const result = materialize(withText(), thh(roster), { overrides: { 'text-2': 's-frame' } })
+    const w = find(result, 'text-invisible')
+    expect(w?.roleKeys).toEqual(['text-2'])
+    expect(w?.message).toContain('1 of the inlay text colors print')
+  })
+
+  it('stays silent when the inlay contrasts with the frame', () => {
+    const roster = [
+      ...plaRoster(),
+      ...COLOR_PALETTES.default.map((hex, i) => spool(`s-pal-${i}`, `Ink ${i}`, hex, 'PLA')),
+    ]
+    expect(find(materialize(withText(), thh(roster)), 'text-invisible')).toBeUndefined()
+  })
+
+  it('neither reduction blocks the export — plan.ok stays true', () => {
+    // The house rule this file states three times: warn, never gate. Rainbow is
+    // the DEFAULT text fill, so an error here would ship a studio whose default
+    // design refuses to print.
+    const worst = materialize(
+      withText(),
+      thh([spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA')])
+    )
+    expect(find(worst, 'rainbow-unrealizable')).toBeDefined()
+    expect(find(worst, 'text-invisible')).toBeDefined()
+    expect(worst.warnings.every((w) => w.severity !== 'error')).toBe(true)
+    expect(worst.ok).toBe(true)
   })
 })

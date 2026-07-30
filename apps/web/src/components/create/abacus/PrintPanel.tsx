@@ -21,8 +21,14 @@
 //     anything missed during a disconnect. Progress % between phase rings is
 //     deliberately coarse until THH ships throttled progress rings.
 
-import type { ParamScalarValue, TicketStartPolicy, TicketStyle } from '@eink/print-dialog'
-import { PrintSettingsEditor } from '@eink/print-dialog/ui'
+import type {
+  ParamScalarValue,
+  SupportRecommendation,
+  SupportRosterEntry,
+  TicketStartPolicy,
+  TicketStyle,
+} from '@eink/print-dialog'
+import { PrintSettingsEditor, SupportRoleEditor, supportsLine } from '@eink/print-dialog/ui'
 import '@eink/print-dialog/ui/style.css'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -36,21 +42,28 @@ import type { PrintUnavailableReason } from '@/lib/abacus/print/filament-wire'
 import { api } from '@/lib/queryClient'
 import { abacusPrintKeys } from '@/lib/queryKeys'
 import { type AbacusExportParts, buildAbacusThreeMf } from './abacus-3mf'
-import type { FilamentCatalog } from './abacus-catalog'
+import { type FilamentCatalog, spoolSupportKind } from './abacus-catalog'
 import type { FilamentMap, Params } from './abacus-model'
-import { abacusPrintPanelState } from './abacus-print-panel-state'
+import {
+  abacusPrintPanelState,
+  designSlotIds,
+  FEET_SUPPORT_PROCESS,
+  feetSupportGate,
+  supportsEnabled,
+} from './abacus-print-panel-state'
 import { buildAbacusAuthoring, buildAbacusTicket } from './abacus-ticket'
-import { studioHref } from './studio-url'
 import { ParkedJobCard } from './ParkedJobCard'
 import { PairPrinterPrompt } from './PrintConnectionsManager'
 import { PrintSubmitErrorNotice } from './PrintSubmitErrorNotice'
 import {
+  abacusModelFileName,
   abacusPrintSignature,
   type IdempotencyToken,
   resolveIdempotencyKey,
 } from './print-idempotency'
 import { isParked } from './print-jobs'
 import { PrintServiceError, type SubmitFailure } from './print-submit-failure'
+import { studioHref } from './studio-url'
 
 export interface PrintPanelProps {
   /** Rendered but hidden when false — internal state (style edits) survives. */
@@ -119,6 +132,10 @@ const COMMON_KEYS = [
   'sparse_infill_density',
   'wall_loops',
   'enable_support',
+  // Printed feet make this one first-screen material: the whole bottom face
+  // prints on supports, and off, Orca is free to grow them on the beads. See
+  // FEET_SUPPORT_PROCESS.
+  'support_on_build_plate_only',
   'brim_type',
 ] as const
 
@@ -218,6 +235,92 @@ export function PrintPanel(props: PrintPanelProps) {
   }, [caps.data])
   const style = styleEdits ?? savedSettings.data ?? seededStyle
 
+  // ---- support-interface negotiation (Gitea #23, THH#367) -------------------
+  // Active only when the style EXPLICITLY enables supports (the client owns
+  // enable_support; THH 400s a role entry on a supports-off ticket). The
+  // recommendation is the service's pre-slice availability-first ladder over the
+  // live roster — keyed on the FRAME spool's family (the body material the
+  // supports touch), refetched on a slow cadence so a mid-session spool swap
+  // updates the ★ without a manual refresh.
+  const supportsWanted = supportsEnabled(style)
+  const frameSpool = catalog.spools[filamentMap.frame]
+  const modelFamily = catalog.source === 'thh-ams' && frameSpool ? frameSpool.material : null
+  const supportRec = useQuery({
+    queryKey: abacusPrintKeys.supportRecommendation(
+      printerId ?? 'none',
+      modelFamily ?? 'unknown',
+      connectionId
+    ),
+    queryFn: async (): Promise<SupportRecommendation> => {
+      const qs = new URLSearchParams({ modelFamily: modelFamily ?? '' })
+      if (connectionId) qs.set('connectionId', connectionId)
+      const res = await api(
+        `abacus/print/printers/${encodeURIComponent(printerId ?? '')}/support-recommendation?${qs}`
+      )
+      if (!res.ok) throw new Error(`support recommendation read failed: ${res.status}`)
+      return (await res.json()) as SupportRecommendation
+    },
+    enabled: visible && serviceReady && supportsWanted && modelFamily !== null,
+    refetchInterval: 30_000,
+  })
+
+  // The operator's pick — controlled state for the kit's SupportRoleEditor.
+  // `null` is a REAL state (interface prints in the model material), so the
+  // recommendation seeds it exactly once: the first recommendation to land
+  // sets the pick, after which the user's choice — including choosing null —
+  // is never clobbered by a refetch.
+  const [supportSlotId, setSupportSlotId] = useState<string | null>(null)
+  // Seeded once per RECOMMENDATION, not once per mount: the recommendation is
+  // computed for a specific printer / connection / model family, so switching any
+  // of those (changing the frame spool changes the family) produces a different
+  // answer that the old pick has no claim on. Within one set of inputs the latch
+  // still holds, so a 30 s refetch never clobbers the operator.
+  const supportSeedKey = `${printerId ?? 'none'}|${modelFamily ?? 'unknown'}|${connectionId ?? ''}`
+  const supportSeededRef = useRef<string | null>(null)
+
+  // The roster the editor renders, projected from the loaded catalog. External
+  // spools are excluded (a role entry must be a LOADED slot); slots the design
+  // already prints in are excluded because the ticket can't honour them (see
+  // designSlotIds); the editor itself shows only supportKind === 'interface'
+  // rows as pickable.
+  const supportRoster = useMemo<SupportRosterEntry[]>(() => {
+    if (catalog.source !== 'thh-ams') return []
+    const taken = designSlotIds(filamentMap, catalog.spools)
+    return catalog.spools
+      .filter((s) => !s.external && !taken.has(s.id))
+      .map((s) => ({
+        slotId: s.id,
+        label: `Slot ${s.id}`,
+        family: s.material,
+        colorHex: s.hex,
+        product: s.name,
+        supportKind: spoolSupportKind(s),
+      }))
+  }, [catalog, filamentMap])
+
+  useEffect(() => {
+    if (supportSeededRef.current === supportSeedKey || !supportRec.data) return
+    supportSeededRef.current = supportSeedKey
+    // Seed only from a slot the editor can actually show. THH's ladder can drop
+    // to a cross-material rung and land on a spool the design itself uses; that
+    // pick is unhonourable, so it seeds as "model material" rather than leaving
+    // the controlled value pointing at a row that isn't rendered.
+    const recommended = supportRec.data.slotId
+    setSupportSlotId(
+      recommended !== null && supportRoster.some((r) => r.slotId === recommended)
+        ? recommended
+        : null
+    )
+  }, [supportRec.data, supportSeedKey, supportRoster])
+
+  // What actually rides the ticket + idempotency signature: the pick exists
+  // only while supports are on (flipping them off must not leave a phantom
+  // role entry — or a stale idempotency key), and only while its spool is still
+  // loaded. Unloading the picked spool otherwise gets as far as submit, where
+  // buildAbacusTicket throws "not in the loaded roster".
+  const supportPick =
+    supportsWanted && supportRoster.some((r) => r.slotId === supportSlotId) ? supportSlotId : null
+
   // Persist edits with a 600ms trailing debounce (event-driven — armed only by
   // onChange), deduped against the last-saved snapshot, flushed on unmount so
   // a tune-then-navigate never drops the last edit.
@@ -303,12 +406,29 @@ export function PrintPanel(props: PrintPanelProps) {
         ]),
         persistAbacusDesign({ v: 1, params, overrides, profileId }, { filamentMap, slotLabels }),
       ])
-      const model = buildAbacusThreeMf({ ...parts, filamentMap, slotLabels })
+      // Supports grow the first layer past the model outline, and a prime tower
+      // crowding that growth makes Orca re-arrange the plate — rotating the model out
+      // from under our absolute pin (exit 155 on prod, 2026-07-29). The style's
+      // `enable_support` is the print's real source of truth for that, not the
+      // design's feet setting, so the widened gap has to key off the style.
+      const model = buildAbacusThreeMf({
+        ...parts,
+        filamentMap,
+        slotLabels,
+        supportsAtSlice: supportsWanted,
+      })
 
       // Reuse the key only for an identical resubmit; any edit rotates it.
       const idem = resolveIdempotencyKey(
         idemRef.current,
-        abacusPrintSignature({ params, filamentMap, slotLabels, style, startPolicy }),
+        abacusPrintSignature({
+          params,
+          filamentMap,
+          slotLabels,
+          style,
+          startPolicy,
+          supportInterfaceSlotId: supportPick,
+        }),
         () => crypto.randomUUID()
       )
       idemRef.current = idem
@@ -335,6 +455,7 @@ export function PrintPanel(props: PrintPanelProps) {
         style,
         startPolicy,
         idempotencyKey: idem.key,
+        supportInterfaceSlotId: supportPick,
         // A link back to the editor, not print content — deliberately outside
         // the idempotency signature (changing players must not rotate the key,
         // and neither may a transiently failed snapshot persist).
@@ -344,7 +465,9 @@ export function PrintPanel(props: PrintPanelProps) {
       const form = new FormData()
       form.set(
         'model',
-        new File([model.bytes as BlobPart], `abacus-${params.cols}col.3mf`, { type: 'model/3mf' })
+        new File([model.bytes as BlobPart], abacusModelFileName(params.cols, idem.sig), {
+          type: 'model/3mf',
+        })
       )
       form.set('job', JSON.stringify(ticket))
       const cq = connectionId ? `?connectionId=${encodeURIComponent(connectionId)}` : ''
@@ -393,8 +516,18 @@ export function PrintPanel(props: PrintPanelProps) {
     [submitFailure, jobRows]
   )
 
+  // Printed TPU feet stand the bottom face off the bed — a supports-off submit
+  // would print a floating first layer. Blocked with a one-click fix (below),
+  // never a silent style injection (see feetSupportGate).
+  const feetGate = feetSupportGate(params, style)
+
   const submitBlocked =
-    exportBlocked || !serviceReady || !style || catalog.source !== 'thh-ams' || submit.isPending
+    exportBlocked ||
+    !serviceReady ||
+    !style ||
+    catalog.source !== 'thh-ams' ||
+    submit.isPending ||
+    feetGate.blocked
 
   return (
     <div
@@ -611,6 +744,73 @@ export function PrintPanel(props: PrintPanelProps) {
               </span>
             </div>
           )}
+          {/* Printed-feet support gate (Gitea #23), in two grades: supports OFF
+              blocks the submit, supports on but free to land on the model is
+              advice. Either way the button writes the missing keys through the
+              normal debounce-persisted style path — visible in the editor, never
+              a silent injection at ticket-build time (the v2 discipline holds).
+              These have to ride the STYLE: THH's --load-settings overrides the
+              3MF's project_settings, so the 3MF copy reaches downloads only. */}
+          {feetGate.missing.length > 0 && (
+            <div
+              data-element="print-feet-support-gate"
+              data-grade={feetGate.blocked ? 'blocking' : 'advisory'}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                padding: '8px 10px',
+                borderRadius: 8,
+                background: feetGate.blocked ? 'rgba(120,53,15,0.30)' : 'rgba(30,58,138,0.28)',
+                border: feetGate.blocked
+                  ? '1px solid rgba(251,191,36,0.45)'
+                  : '1px solid rgba(96,165,250,0.45)',
+                color: feetGate.blocked ? 'rgba(254,243,199,0.96)' : 'rgba(219,234,254,0.96)',
+                lineHeight: 1.45,
+              }}
+            >
+              <span>
+                <span aria-hidden="true">🦶 </span>
+                {feetGate.blocked
+                  ? 'Printed TPU feet stand the abacus off the bed, so the bottom face needs supports — turn them on to print.'
+                  : 'Supports are on. Keep them off the model too, or they can grow inside the bead channels where you cannot reach them.'}
+              </span>
+              <button
+                type="button"
+                data-action="enable-feet-supports"
+                disabled={!style}
+                onClick={() =>
+                  style &&
+                  handleStyleChange({
+                    ...style,
+                    process: {
+                      ...style.process,
+                      ...Object.fromEntries(
+                        feetGate.missing.map((key) => [key, FEET_SUPPORT_PROCESS[key]])
+                      ),
+                    },
+                  })
+                }
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '5px 11px',
+                  borderRadius: 6,
+                  border: feetGate.blocked
+                    ? '1px solid rgba(251,191,36,0.5)'
+                    : '1px solid rgba(96,165,250,0.5)',
+                  background: feetGate.blocked
+                    ? 'rgba(254,243,199,0.12)'
+                    : 'rgba(219,234,254,0.12)',
+                  color: feetGate.blocked ? 'rgba(254,243,199,0.98)' : 'rgba(219,234,254,0.98)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {feetGate.blocked ? 'Enable supports' : 'Keep supports off the model'}
+              </button>
+            </div>
+          )}
           <button
             type="button"
             data-action="submit-print-job"
@@ -619,7 +819,9 @@ export function PrintPanel(props: PrintPanelProps) {
             title={
               exportBlocked
                 ? 'Fix the printability errors first'
-                : 'Slice and print on the paired printer'
+                : feetGate.blocked
+                  ? 'Enable supports first — printed feet need them'
+                  : 'Slice and print on the paired printer'
             }
             style={{
               padding: '10px 12px',
@@ -709,6 +911,62 @@ export function PrintPanel(props: PrintPanelProps) {
                 />
               ) : (
                 <div style={{ color: 'rgba(148,163,184,0.95)' }}>Loading settings…</div>
+              )}
+            </div>
+          )}
+
+          {/* Support-interface routing (Gitea #23, THH#367) — visible whenever the
+              style enables supports, independent of the settings disclosure: the
+              pick changes what the printer lays down, so it must never hide behind
+              a collapsed editor. The recommendation ★ and any service caution
+              render inside the kit editor; the reminder ("load your Support for
+              PLA") is service DATA the kit leaves to the host. */}
+          {supportsWanted && (
+            <div
+              data-element="print-support-role"
+              style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+            >
+              {/* A `null` recommendation is the kit's "supports aren't needed"
+                  state, so an unresolved query must NOT be flattened into one —
+                  that would tell the operator no support is needed directly under
+                  the banner that just forced supports on. Say what's true instead:
+                  still asking, or couldn't ask. */}
+              {supportRec.data === undefined ? (
+                <span
+                  data-element="print-supports-line"
+                  style={{ fontSize: 11, fontWeight: 600, color: 'rgba(148,163,184,0.95)' }}
+                >
+                  {supportRec.isError
+                    ? "Couldn't reach the printer for a support-interface recommendation — the interface will print in the model's own filament."
+                    : 'Checking which filament should face the supports…'}
+                </span>
+              ) : (
+                <>
+                  <span
+                    data-element="print-supports-line"
+                    style={{ fontSize: 11, fontWeight: 600, color: 'rgba(148,163,184,0.95)' }}
+                  >
+                    {supportsLine(supportRec.data, supportSlotId, supportRoster)}
+                  </span>
+                  <SupportRoleEditor
+                    roster={supportRoster}
+                    recommendation={supportRec.data}
+                    value={supportSlotId}
+                    onChange={setSupportSlotId}
+                    errors={invalidDetail}
+                    theme="dark"
+                  />
+                </>
+              )}
+              {supportRec.data?.reminder && (
+                <div
+                  data-element="print-support-reminder"
+                  style={{ color: 'rgba(251,191,36,0.95)', lineHeight: 1.45 }}
+                >
+                  <span aria-hidden="true">💡 </span>
+                  Loading {supportRec.data.reminder.product} ({supportRec.data.reminder.family})
+                  would give these supports a cleaner release.
+                </div>
               )}
             </div>
           )}

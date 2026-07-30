@@ -17,7 +17,7 @@ import { AbacusReact } from '@soroban/abacus-react'
 import { PlayerPicker } from '@/components/shared/PlayerPicker'
 import { Disclosure } from '@/components/studio/Disclosure'
 import { StudioSelect } from '@/components/studio/StudioSelect'
-import { DebugCheckbox, DebugSlider } from '@/components/toys/ToyDebugPanel'
+import { DebugCheckbox, DebugColor, DebugSlider } from '@/components/toys/ToyDebugPanel'
 import {
   ABACUS_COLOR_PALETTES,
   ABACUS_COLOR_SCHEMES,
@@ -316,6 +316,28 @@ export function DesignInspectorRail({
           options={PRESET_OPTS}
           onChange={(v) => set('bottom_preset', v)}
         />
+        {/* Inlay ink (Gitea #26): the writing prints as filament plugs pressed
+            into its pockets, one 3MF body per color group. Rainbow costs up to
+            five ink slots on the plate — one per group — so the choice belongs
+            in front of the user, not buried in params. */}
+        <StudioSelect
+          label="text ink"
+          value={params.text_fill}
+          options={[
+            { value: 'rainbow', label: 'rainbow (up to 5 filaments)' },
+            { value: 'single', label: 'one color' },
+          ]}
+          onChange={(v) => set('text_fill', v)}
+          dataElement="abacus-text-fill"
+          dataAction="set-text-fill"
+        />
+        {params.text_fill === 'single' && (
+          <DebugColor
+            label="text color"
+            value={params.text_color}
+            onChange={(v) => set('text_color', v)}
+          />
+        )}
         <DebugCheckbox
           label="ArUco corner markers"
           checked={params.show_markers}

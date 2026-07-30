@@ -278,6 +278,31 @@ export const definesFrom = (p: Params): string[] => [
   `-Dedge_right=${JSON.stringify(tokenize(p.edge_right))}`,
 ]
 
+/** One export render request: the whole abacus (no pass) or a single `only=`
+ *  part pass. The marker passes render JUST the four corner plugs, and
+ *  `text_plugs` JUST the inset inlays, so the 3MF can carry each as its own
+ *  filament body — a flush plug rendered into the main STL welds into the frame
+ *  shell and is unsplittable. `feet` (Gitea #23) renders the TPU foot solids.
+ *
+ *  `text_plugs` carries a color GROUP because the inlay can span up to 5 inks
+ *  (see textGroups); each group is one render, one body, one extruder. */
+export type ExportPass =
+  | { only: 'marker_black' | 'marker_white' | 'feet' }
+  | { only: 'text_plugs'; group: number }
+
+/** The define list for one export render. Pure — and split out of the worker
+ *  postMessage so the exact strings are testable: `-Dplug_group` is the one
+ *  define whose absence fails SILENTLY (the scad's −1 default renders every
+ *  token, so a typo'd name ships N identical copies of the whole inlay on N
+ *  extruders instead of a partition). Emitted for the text pass only; the
+ *  preview pump deliberately omits it and gets the unfiltered soup. */
+export function exportDefines(p: Params, pass?: ExportPass): string[] {
+  if (!pass) return definesFrom(p)
+  const defs = [...definesFrom(p), `-Donly="${pass.only}"`]
+  if (pass.only === 'text_plugs') defs.push(`-Dplug_group=${pass.group}`)
+  return defs
+}
+
 // ---- myabacus color model ---------------------------------------------------
 // Bead colors come from the shared canonical resolver (beadColorActive, imported
 // above); this module only adds the print-side role → filament-slot mapping on
@@ -438,6 +463,12 @@ export type FilamentMap = {
   // so the feet-off map shape is unchanged (the snapshot pins it) and consumers
   // can't forget the printed-feet gate.
   feet?: number
+  // Slot index per inset-text color group, dense over 0…G−1 (see textGroups —
+  // the present groups are always a prefix, so this can never have holes).
+  // Present iff the plan minted text roles (text_mode === 'inset' && anyTokens),
+  // same conditional-key contract as `feet`: absent means "no inset text", which
+  // is what lets the 3MF distinguish that from "text on slot 0".
+  textRoles?: number[]
 }
 export const nearestSlot = (slots: string[], target: string, exclude = -1): number => {
   let best = 0
@@ -655,6 +686,23 @@ export function markersFollowFrameGhost(xrayOn: boolean, activeRole: string | nu
 }
 
 // ---- inset text-plug layout (QA for inlay fill colors) ----------------------
+// The 8 token rails in the scad's own order — rails() (top, bottom, left, right)
+// then walls() (front, back, left, right). Single source for every consumer:
+// tokenCenters, anyTokens, and the color-group math below all read this, so the
+// rail ORDER and the per-rail token index `k` mean the same thing everywhere.
+export function textSlots(p: Params): [string, number][][] {
+  return [
+    slotTokens(p.top_preset, p.top_text),
+    slotTokens(p.bottom_preset, p.bottom_text),
+    slotTokens(p.left_preset, p.left_text),
+    slotTokens(p.right_preset, p.right_text),
+    tokenize(p.edge_front),
+    tokenize(p.edge_back),
+    tokenize(p.edge_left),
+    tokenize(p.edge_right),
+  ]
+}
+
 // mirror of the scad rails()/walls() layout: token k of a slot sits at
 // A + (B−A)·(k+0.5)/n, on the top face (z≈s_fh) or a wall (z=z_edge).
 export type TokenCenter = { x: number; y: number; z: number; k: number }
@@ -669,42 +717,76 @@ export function tokenCenters(p: Params): TokenCenter[] {
   const stripY = stripX
   const zTop = p.frame_h * S
   const zEdge = (p.frame_h * S) / 2
-  const rails: [ReturnType<typeof slotTokens>, number, number, number, number, number][] = [
-    [slotTokens(p.top_preset, p.top_text), mkEnd, D - stripY / 2, W - mkEnd, D - stripY / 2, zTop],
-    [slotTokens(p.bottom_preset, p.bottom_text), mkEnd, stripY / 2, W - mkEnd, stripY / 2, zTop],
-    [slotTokens(p.left_preset, p.left_text), stripX / 2, mkEnd, stripX / 2, D - mkEnd, zTop],
-    [
-      slotTokens(p.right_preset, p.right_text),
-      W - stripX / 2,
-      D - mkEnd,
-      W - stripX / 2,
-      mkEnd,
-      zTop,
-    ],
-    [tokenize(p.edge_front), r + 2, 0, W - r - 2, 0, zEdge],
-    [tokenize(p.edge_back), W - r - 2, D, r + 2, D, zEdge],
-    [tokenize(p.edge_left), 0, D - r - 2, 0, r + 2, zEdge],
-    [tokenize(p.edge_right), W, r + 2, W, D - r - 2, zEdge],
+  // [ax, ay, bx, by, z] per rail, in textSlots order.
+  const geom: [number, number, number, number, number][] = [
+    [mkEnd, D - stripY / 2, W - mkEnd, D - stripY / 2, zTop],
+    [mkEnd, stripY / 2, W - mkEnd, stripY / 2, zTop],
+    [stripX / 2, mkEnd, stripX / 2, D - mkEnd, zTop],
+    [W - stripX / 2, D - mkEnd, W - stripX / 2, mkEnd, zTop],
+    [r + 2, 0, W - r - 2, 0, zEdge],
+    [W - r - 2, D, r + 2, D, zEdge],
+    [0, D - r - 2, 0, r + 2, zEdge],
+    [W, r + 2, W, D - r - 2, zEdge],
   ]
   const centers: TokenCenter[] = []
-  for (const [toks, ax, ay, bx, by, z] of rails)
+  textSlots(p).forEach((toks, s) => {
+    const [ax, ay, bx, by, z] = geom[s]
     toks.forEach((_, k) => {
       const f = (k + 0.5) / toks.length
       centers.push({ x: ax + (bx - ax) * f, y: ay + (by - ay) * f, z, k })
     })
+  })
   return centers
 }
-export const anyTokens = (p: Params): boolean =>
-  [
-    slotTokens(p.top_preset, p.top_text),
-    slotTokens(p.bottom_preset, p.bottom_text),
-    slotTokens(p.left_preset, p.left_text),
-    slotTokens(p.right_preset, p.right_text),
-    tokenize(p.edge_front),
-    tokenize(p.edge_back),
-    tokenize(p.edge_left),
-    tokenize(p.edge_right),
-  ].some((t) => t.length > 0)
+export const anyTokens = (p: Params): boolean => textSlots(p).some((t) => t.length > 0)
+
+// ---- inset text color groups (the print's ink partition) --------------------
+// The scad colors a token by its index WITHIN ITS OWN RAIL:
+//   tok_color(k) = text_fill == "rainbow" ? _palette(color_palette)[k % 5] : text_color
+// so a "color group" is that `k % 5` under rainbow, or the single fill otherwise.
+// Each group becomes one render pass (-Dplug_group=g), one plan role, and one
+// 3MF body — which is what makes the inlay print in filament instead of coming
+// out as a bare pocket.
+//
+// The modulus is pinned to abacus.scad's `tok_group`, NOT derived from
+// paletteLen(): the scad hardcodes 5 and never receives color_palette
+// (DEFINE_KEYS omits it — color() is inert on binstl), so reading a future
+// 6-entry palette here would have TS ask for a group the scad can never match,
+// and the render would come back empty. A test pins every palette to this length.
+export const TEXT_RAINBOW_GROUPS = 5
+
+/** The color group of one token, given its index WITHIN ITS OWN RAIL — the scad's
+ *  `tok_group(k)`. The single place this `% 5` lives: the viewer's preview
+ *  recolor, the plan's roles, and the export's `plug_group` passes must all agree
+ *  on it or the plate disagrees with the screen. */
+export const tokGroup = (p: Params, k: number): number =>
+  p.text_fill === 'rainbow' ? k % TEXT_RAINBOW_GROUPS : 0
+
+// Present groups are always the PREFIX 0…G−1: for one rail of n tokens,
+// {k % 5 : k ∈ [0,n)} = {0 … min(n,5)−1}, and the union over rails keeps that
+// shape. So G is just the longest rail, capped — and every downstream structure
+// (FilamentMap.textRoles, the per-group render list) is a dense, hole-free array
+// by construction.
+export function textGroupCount(p: Params): number {
+  const longest = textSlots(p).reduce((m, t) => Math.max(m, t.length), 0)
+  if (longest === 0) return 0
+  return p.text_fill === 'rainbow' ? Math.min(TEXT_RAINBOW_GROUPS, longest) : 1
+}
+
+/** `tokens` are the token strings this group inks, in rail order — the plan uses
+ *  the first couple as the mapping row's label so a user can tell which writing
+ *  a row controls ("1+9 2+8" reads better than "Text 3"). */
+export type TextGroup = { g: number; hex: string; tokens: string[] }
+export function textGroups(p: Params): TextGroup[] {
+  const pal = COLOR_PALETTES[p.color_palette] ?? COLOR_PALETTES.default
+  const rainbow = p.text_fill === 'rainbow'
+  const slots = textSlots(p)
+  return Array.from({ length: textGroupCount(p) }, (_, g) => ({
+    g,
+    hex: rainbow ? pal[g] : p.text_color,
+    tokens: slots.flatMap((toks) => toks.filter((_, k) => tokGroup(p, k) === g).map(([t]) => t)),
+  }))
+}
 
 // ---- feet layout mirror (Gitea #23) -----------------------------------------
 // Mirror of the scad's FEET derivation chain (abacus.scad "feet pockets" block),

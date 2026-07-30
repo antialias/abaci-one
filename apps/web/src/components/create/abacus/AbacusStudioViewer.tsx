@@ -26,15 +26,19 @@ import {
   analyzeShells,
   COLOR_PALETTES,
   emphasisCaption,
+  FEET_ROLE_KEY,
+  feetEffective,
+  feetPositions,
   frameW,
   MARKER_BITS,
   markersFollowFrameGhost,
-  nearestSlot,
   outerD,
   type ShellInfo,
   shellHex,
   shellRoleKey,
+  textGroupCount,
   tokenCenters,
+  tokGroup,
   xrayGroups,
 } from './abacus-model'
 import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
@@ -420,6 +424,68 @@ export function AbacusStudioViewer() {
       })
     }
 
+    // ---- printed-feet stud preview (Gitea #23) -------------------------------
+    // The MAIN STL never carries feet (the scad emits them only via the
+    // `only="feet"` part pass, so analyzeShells can't mis-classify studs as
+    // beads); preview them as mouth-diameter studs at the mirrored FEET_POS.
+    // The studs deliberately dip below the z=0 grid — the print stands on its
+    // feet, and showing them buried would hide the whole point of the feature.
+    const feetGroup = new THREE.Group()
+    centered.add(feetGroup)
+    // every stud is the same solid, so one geometry + one material back the whole
+    // group; held here (not walked off the children) so disposal is exact-once and
+    // the unmount teardown can reuse it.
+    let feetGeo: THREE.BufferGeometry | null = null
+    let feetMat: THREE.Material | null = null
+
+    function disposeFeet() {
+      feetGroup.clear()
+      feetGeo?.dispose()
+      feetMat?.dispose()
+      feetGeo = null
+      feetMat = null
+    }
+
+    function updateFeet() {
+      const p = paramsRef.current
+      disposeFeet()
+      const on = p.feet_mode === 'printed' && p.show_frame
+      feetGroup.visible = on
+      if (!on) return
+      const fx = feetEffective(p)
+      // The stud spans z ∈ [−proud, depthEff] at the MOUTH section. The real foot
+      // flares to `seat` at depth and carries the crossbar slot, but all of that
+      // is buried inside the pocket — the only part anyone can see is the straight
+      // mouth-section stand-off below the bottom face, which this matches exactly.
+      const h = fx.proud + fx.depthEff
+      feetGeo =
+        p.feet_shape === 'square'
+          ? new THREE.BoxGeometry(fx.mouth, fx.mouth, h)
+          : new THREE.CylinderGeometry(fx.mouth / 2, fx.mouth / 2, h, 32).rotateX(Math.PI / 2)
+      // reality-first: the studs wear the feet role's mapped spool, falling back
+      // to the frame slot exactly like planToFilamentMap's no-TPU fallback; the
+      // intrinsic-reveal hover shows the plan's designed feet hex instead.
+      const fm = revealIntrinsicRef.current ? null : filamentMapRef.current
+      const hex = fm ? fm.slots[fm.feet ?? fm.frame] : '#1f2937'
+      // feet are their own filament role, so they ghost with the rest of the
+      // board unless the feet row itself is the emphasis. xrayOn is fresh here:
+      // applyParams runs recolor before updateFeet (same contract as markers).
+      const ghosted = xrayOn && highlightRoleRef.current !== FEET_ROLE_KEY
+      feetMat = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(hex),
+        roughness: 0.55,
+        metalness: 0.05,
+        transparent: ghosted,
+        opacity: ghosted ? XRAY_OPACITY : 1,
+        depthWrite: !ghosted,
+      })
+      for (const [x, y] of feetPositions(p)) {
+        const stud = new THREE.Mesh(feetGeo, feetMat)
+        stud.position.set(x, y, (fx.depthEff - fx.proud) / 2)
+        feetGroup.add(stud)
+      }
+    }
+
     // ---- inset text-plug preview (second WASM pass) -------------------------
     const plugMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
@@ -465,8 +531,14 @@ export function AbacusStudioViewer() {
         const k = plugTriTok[t]
         let rgb = cache.get(k)
         if (!rgb) {
-          const intended = p.text_fill === 'rainbow' ? pal[k % 5] : p.text_color
-          _c.set(fm ? fm.slots[nearestSlot(fm.slots, intended)] : intended)
+          const g = tokGroup(p, k)
+          const intended = p.text_fill === 'rainbow' ? pal[g] : p.text_color
+          // The PLAN owns which spool this group's ink prints from (Gitea #26) —
+          // it snaps inside the frame's material family and honors pins, neither
+          // of which a local nearest-color match here would know about. Reading
+          // its slot is what keeps the preview honest about the plate.
+          const slot = fm?.textRoles?.[g]
+          _c.set(fm && slot !== undefined ? fm.slots[slot] : intended)
           rgb = [_c.r, _c.g, _c.b] as const
           cache.set(k, rgb)
         }
@@ -537,14 +609,16 @@ export function AbacusStudioViewer() {
       clearPlug,
       applyParams: () => {
         recenter()
-        // recolor first: it sets xrayOn, which updateMarkers reads to fade the marker
-        // decals with the frame during an x-ray (Gitea #17). recolor never touches the
-        // markers, so the swap is safe.
+        // recolor first: it sets xrayOn, which updateMarkers/updateFeet read to
+        // fade with the board during an x-ray (Gitea #17). recolor never touches
+        // the markers or the feet studs, so the swap is safe.
         recolor()
         updateMarkers()
+        updateFeet()
       },
     }
     updateMarkers()
+    updateFeet()
 
     // ---- hero→row picking (Gitea #18) ---------------------------------------
     // Click a bead/frame on the model → open its filament row. Raycast renderMesh
@@ -623,6 +697,7 @@ export function AbacusStudioViewer() {
         mat.map?.dispose()
         mat.dispose()
       }
+      disposeFeet()
       renderer.dispose()
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement)
       drawRef.current = null
@@ -645,26 +720,37 @@ export function AbacusStudioViewer() {
 
   // publish the worker-bound exporter into the store so the fabrication rail's
   // Export buttons + the print panel can trigger the one-shot high-quality
-  // renders. `exportParts` snapshots params ONCE for all three renders (frame +
-  // the two ArUco marker part passes) — a knob drag mid-export can therefore
-  // never mix a frame from one design with markers from another. The marker
-  // passes are gated on that same snapshot: markers must be on, and the frame
-  // must be rendered (the scad's `only=` selectors emit plugs unconditionally —
-  // without a frame they'd be four floating plates). Registered once
-  // (scad.exportStl reads a stable ref); torn down on unmount so the store's
-  // exporterReady flips back to false on the paper lane.
+  // renders. `exportParts` snapshots params ONCE for all the renders (frame +
+  // the two ArUco marker part passes + the feet pass + one inlay-text pass per
+  // color group) — a knob drag mid-export can therefore never mix a frame from
+  // one design with parts from another.
+  // The part passes are gated on that same snapshot: the part must be on, and
+  // the frame must be rendered (the scad's `only=` selectors emit parts
+  // unconditionally — without a frame the plugs would be four floating plates,
+  // the feet six floating studs, and the text a swarm of loose letters).
+  // Registered once (scad.exportStl reads a stable ref); torn down on unmount so
+  // the store's exporterReady flips back to false on the paper lane.
   useEffect(() => {
     registerExporter({
       exportStl: () => scadRef.current.exportStl(paramsRef.current),
       exportParts: async () => {
         const p = paramsRef.current
         const withMarkers = p.show_markers && p.show_frame
-        const [stl, markerBlack, markerWhite] = await Promise.all([
+        const withFeet = p.feet_mode === 'printed' && p.show_frame
+        // one render per ink group, each filtered by -Dplug_group. Single-fill
+        // text is one unfiltered-equivalent pass; rainbow costs up to five.
+        const groups = p.text_mode === 'inset' && p.show_frame ? textGroupCount(p) : 0
+        const [stl, markerBlack, markerWhite, feet, ...textStls] = await Promise.all([
           scadRef.current.exportStl(p),
-          withMarkers ? scadRef.current.exportStl(p, 'marker_black') : null,
-          withMarkers ? scadRef.current.exportStl(p, 'marker_white') : null,
+          withMarkers ? scadRef.current.exportStl(p, { only: 'marker_black' }) : null,
+          withMarkers ? scadRef.current.exportStl(p, { only: 'marker_white' }) : null,
+          withFeet ? scadRef.current.exportStl(p, { only: 'feet' }) : null,
+          ...Array.from({ length: groups }, (_, g) =>
+            scadRef.current.exportStl(p, { only: 'text_plugs', group: g })
+          ),
         ])
-        return { stl, markerBlack, markerWhite, params: p }
+        const textPlugs = textStls.map((stl, g) => ({ group: g, stl: stl as ArrayBuffer }))
+        return { stl, markerBlack, markerWhite, feet, textPlugs, params: p }
       },
     })
     return () => registerExporter(null)

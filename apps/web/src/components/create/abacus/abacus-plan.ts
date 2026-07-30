@@ -17,10 +17,12 @@
 // now re-exports it as a thin adapter over `materialize`, byte-for-byte identical
 // (see __tests__/filament-map-snapshot.json).
 //
-// Scope: frame + ArUco markers + bead roles + printed feet. Perimeter text roles
-// and the rainbow multi-material hard gate are deferred to P4 — hence every
-// warning here is severity 'warning' and `ok` stays true. Framework-free (no
-// React, no three).
+// Scope: frame + ArUco markers + bead roles + printed feet + one role per inset
+// text color group (Gitea #26 — those roles are what give the inlay plugs a slot
+// to print in; without them the writing shipped as empty pockets). Every warning
+// here is severity 'warning' and `ok` stays true, including the rainbow ink
+// budget: erroring on it would refuse to print the studio's own default design.
+// Framework-free (no React, no three).
 //
 // Material compatibility (gh#163 + the P4 weld rule's auto half, landed): with a
 // THH catalog (real families), auto-snap is ANCHOR-RESTRICTED — it picks one
@@ -51,6 +53,8 @@ import {
   contrastRatio,
   type FilamentMap,
   type Params,
+  type TextGroup,
+  textGroups,
 } from './abacus-model'
 
 export const PRINT_PLAN_SCHEMA_VERSION = 1
@@ -89,7 +93,8 @@ export type PlanWarningCode =
   | 'support-material' // a visible role pinned onto breakaway support filament
   | 'material-interface' // the weld-adhesion rule: the fused frame/marker/text cluster mixes families
   | 'feet-material' // printed feet found no flexible (TPU) spool — they fall back to the frame's
-  | 'rainbow-unrealizable' // reserved for P4 (the only 'error' — multi-material text)
+  | 'rainbow-unrealizable' // rainbow inset text asks for more inks than the loaded spools can give
+  | 'text-invisible' // an inlay group landed on the frame's own filament — unreadable writing
 
 export type PlanWarning = {
   code: PlanWarningCode
@@ -245,6 +250,13 @@ function emptyPlan(source: FilamentCatalog['source']): PrintPlan {
   }
 }
 
+// A text row's label: the writing that group actually inks, so the mapping panel
+// row explains itself ("1+9 2+8" beats "Text 3"). A present group always has at
+// least one token — it exists because some rail reached that index. Single fill
+// inks every token, so it says so instead of naming two arbitrary ones.
+const textGroupLabel = (t: TextGroup, single: boolean): string =>
+  single ? 'Inlay text' : t.tokens.slice(0, 2).join(' ')
+
 // Project a design onto a catalog. Role assignment order matches the bench's
 // historical precedence EXACTLY (markers first — they're CV-critical — then
 // frame, then bead roles distinct-first), so `computeFilamentMap` can adapt this
@@ -374,17 +386,60 @@ export function materialize(
     )
   }
 
+  // Inset text inlay: one role per color group (see textGroups — rainbow text
+  // spans up to 5 inks, single fill exactly 1). Without these the plugs ride no
+  // slot, which is why every 3MF to date printed the perimeter writing as bare
+  // pockets in frame filament.
+  //
+  // Assigned AFTER the anchor pass and deliberately NOT part of it. snapWithin's
+  // distinct-first loop and its cost are what choose the anchor group, so letting
+  // text vote there would move bead assignments on existing designs and could
+  // flip the whole plate to another temperature family. Text is decorative ink:
+  // it takes the nearest spool in the group the structure already picked, sharing
+  // freely (an honest near-match beats being forced onto the black marker spool).
+  // Restricting it to `allowed` is also what satisfies the weld rule by
+  // construction — the inlay is fused into the frame, and weldedKinds counts it.
+  //
+  // Gated like the geometry: only `inset` mode carves pockets that need filling.
+  // Not gated on show_frame — same reasoning as feet above, the plan describes
+  // design intent and the 3MF re-checks before consuming the slot.
+  const textAssignments: RoleAssignment[] =
+    design.params.text_mode === 'inset'
+      ? textGroups(design.params).map((t) => {
+          let idx = allowed[0] ?? 0
+          let bd = Number.POSITIVE_INFINITY
+          for (const i of allowed) {
+            const d = colorDist(t.hex, hexes[i])
+            if (d < bd) {
+              bd = d
+              idx = i
+            }
+          }
+          return assign(
+            {
+              kind: 'text',
+              key: `text-${t.g}`,
+              label: textGroupLabel(t, design.params.text_fill !== 'rainbow'),
+              intrinsicHex: t.hex,
+            },
+            idx
+          )
+        })
+      : []
+
   // Contrast of the FINAL marker pair (pins included) — the camera reads what
   // actually prints, so a pinned marker must move this warning too.
   const markerContrast = contrastRatio(hexes[markerWhite.spoolIndex], hexes[markerBlack.spoolIndex])
-  // Feet are appended LAST so every historical assignment keeps its index.
-  // Display order is independent — the panel sorts by kind.
+  // Text is appended LAST (after feet) for the same reason feet went last: every
+  // historical assignment keeps its index. Display order is independent — the
+  // panel sorts by kind.
   const assignments = [
     markerBlack,
     markerWhite,
     frame,
     ...beadAssignments,
     ...(feetAssignment ? [feetAssignment] : []),
+    ...textAssignments,
   ]
   const warnings = planWarnings(markerContrast, beadAssignments, roleHexes.length)
   const voters = materialVoters(assignments)
@@ -404,6 +459,7 @@ export function materialize(
       roleKeys: ['feet'],
     })
   }
+  warnings.push(...textWarnings(textAssignments, frame.spoolIndex))
   const ok = !warnings.some((w) => w.severity === 'error')
 
   return {
@@ -562,8 +618,8 @@ function supportMaterialWarning(
   }
 }
 
-// material-interface (the P4 weld rule — its warning half): frame + ArUco
-// markers (+ inset text when it lands) fuse into ONE printed piece, so they
+// material-interface (the weld rule — its warning half): frame + ArUco markers
+// + inset-text inlays fuse into ONE printed piece, so they
 // must share a weldable material. Auto-snap satisfies this by construction (one
 // anchor group, support excluded); this is the backstop for pins. The weld test
 // is RAW family equality among non-support members — PLA↔PLA-CF welds, but
@@ -619,6 +675,55 @@ function weldMixWarning(
     message: `${Subject} print as one welded piece, but ${callouts} while the rest is ${keys[0]} — mixed joints delaminate. ${remedy}`,
     roleKeys: named.map((a) => a.role.key),
   }
+}
+
+// The inset-text reductions. Both are warnings, deliberately: this file warns
+// and never blocks, and the reduction they describe still prints — just with
+// less color than the design asked for.
+function textWarnings(textAssignments: RoleAssignment[], frameIndex: number): PlanWarning[] {
+  const warnings: PlanWarning[] = []
+  if (textAssignments.length === 0) return warnings
+
+  // rainbow-unrealizable: the ink budget. Rainbow text wants one filament per
+  // color group; when the loaded spools can't serve that many distinctly, groups
+  // collapse and tokens that should read as different colors print identically.
+  //
+  // NOT an error, though the code was long reserved as one. Five distinct ink
+  // slots are unreachable on a 4-slot AMS that already owes slots to the frame,
+  // both ArUco markers, the bead roles and the feet — and rainbow text is the
+  // DEFAULT, so erroring here would ship a studio whose default design refuses
+  // to print.
+  const distinct = new Set(textAssignments.map((a) => a.spoolIndex)).size
+  if (distinct < textAssignments.length) {
+    warnings.push({
+      code: 'rainbow-unrealizable',
+      severity: 'warning',
+      message: `Your rainbow inlay text asks for ${textAssignments.length} ink colors, but only ${distinct} distinct ${
+        distinct === 1 ? 'filament serves' : 'filaments serve'
+      } it — some tokens print the same color as others.`,
+      roleKeys: textAssignments.map((a) => a.role.key),
+    })
+  }
+
+  // text-invisible: an inlay group landed on the frame's own filament. The plug
+  // fills its pocket FLUSH and in the same color, so the writing simply
+  // disappears — the one text outcome a user is guaranteed to notice on the
+  // plate, and the reason a near-color match is not good enough here.
+  const invisible = textAssignments.filter((a) => a.spoolIndex === frameIndex)
+  if (invisible.length > 0) {
+    const all = invisible.length === textAssignments.length
+    warnings.push({
+      code: 'text-invisible',
+      severity: 'warning',
+      message: `${
+        all ? 'The inlay text prints' : `${invisible.length} of the inlay text colors print`
+      } in the frame's own filament — flush and the same color, so the writing won't be readable. Pin ${
+        invisible.length === 1 ? 'it' : 'them'
+      } to a contrasting spool.`,
+      roleKeys: invisible.map((a) => a.role.key),
+    })
+  }
+  return warnings
 }
 
 // The lossy-reduction report — every entry warning-severity (nothing here blocks
@@ -691,6 +796,11 @@ export function planToFilamentMap(plan: PrintPlan, slots: string[]): FilamentMap
   // feet role (feet_mode === 'printed'), so the 3MF builder can distinguish
   // "no printed feet" from "feet on slot 0".
   const feet = plan.assignments.find((a) => a.role.kind === 'feet')?.spoolIndex
+  // text is CONDITIONAL for the same reason: absent means the design has no
+  // inset text to ink, which the 3MF must distinguish from "text on slot 0".
+  // Dense over the groups by construction (they're minted in group order and the
+  // present set is always the prefix 0…G−1 — see textGroups).
+  const textRoles = plan.assignments.filter((a) => a.role.kind === 'text').map((a) => a.spoolIndex)
   return {
     slots,
     frame: pick('frame'),
@@ -699,6 +809,7 @@ export function planToFilamentMap(plan: PrintPlan, slots: string[]): FilamentMap
     beadRoles: plan.assignments.filter((a) => a.role.kind === 'bead').map((a) => a.spoolIndex),
     markerContrast: plan.markerContrast,
     ...(feet !== undefined ? { feet } : {}),
+    ...(textRoles.length > 0 ? { textRoles } : {}),
   }
 }
 

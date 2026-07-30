@@ -91,7 +91,7 @@ export function FabricationRail() {
     try {
       const parts = await requestExportParts()
       const { bytes } = buildAbacusThreeMf({
-        ...parts, // stl + marker part renders + the params snapshot they rendered from
+        ...parts, // stl + marker/feet part renders + the params snapshot they rendered from
         filamentMap,
         slotLabels: catalog.spools.map((s) => s.name),
       })

@@ -98,7 +98,10 @@ export function abacusPrintPanelState(input: AbacusPrintPanelStateInput): Abacus
  * back to the "Model material" default that describes what would happen anyway.
  */
 export function designSlotIds(
-  map: Pick<FilamentMap, 'frame' | 'markerWhite' | 'markerBlack' | 'beadRoles' | 'feet'>,
+  map: Pick<
+    FilamentMap,
+    'frame' | 'markerWhite' | 'markerBlack' | 'beadRoles' | 'feet' | 'textRoles'
+  >,
   spools: readonly { id: string }[]
 ): Set<string> {
   const ids = new Set<string>()
@@ -111,6 +114,12 @@ export function designSlotIds(
   add(map.markerBlack)
   add(map.feet)
   map.beadRoles.forEach(add)
+  // Inlay text prints too (Gitea #26). A rainbow group pinned somewhere nothing
+  // else rides is exactly the case that would otherwise look "free" to the
+  // interface picker — and a printed-feet design with five ink groups can now
+  // consume the whole roster, leaving no interface choice. That is correct: there
+  // genuinely is no spare spool.
+  map.textRoles?.forEach(add)
   return ids
 }
 
