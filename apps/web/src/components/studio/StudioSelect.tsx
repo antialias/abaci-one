@@ -5,11 +5,17 @@
 // local Select so the design rail (scheme/palette/rails) and the fabrication rail
 // (printer profile) share one control instead of forking it. Options are plain
 // strings (value === label) or {value,label} pairs for id→label menus.
+//
+// An option may be `disabled` — kept visible on purpose. When a choice is real
+// hardware the user might own but the current geometry can't seat (a 1/2"
+// bumper on a stock-width brim), hiding it would read as "we don't support
+// that"; greying it with the reason in its own label says "not at these
+// settings", which is the true statement and names the fix.
 
 export interface StudioSelectProps {
   label: string
   value: string
-  options: Array<string | { value: string; label: string }>
+  options: Array<string | { value: string; label: string; disabled?: boolean }>
   onChange: (v: string) => void
   dataElement?: string
   dataAction?: string
@@ -44,7 +50,12 @@ export function StudioSelect({
         }}
       >
         {opts.map((o) => (
-          <option key={o.value} value={o.value} style={{ color: '#111' }}>
+          <option
+            key={o.value}
+            value={o.value}
+            disabled={o.disabled}
+            style={{ color: o.disabled ? '#888' : '#111' }}
+          >
             {o.label}
           </option>
         ))}

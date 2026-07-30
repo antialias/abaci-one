@@ -713,7 +713,7 @@ export function tokenCenters(p: Params): TokenCenter[] {
   const D = d.outerD
   const r = p.corner_r * S
   const mkEnd = d.mkI + p.marker_mm + 2
-  const stripX = p.border_w * S + d.sShelf
+  const stripX = borderStrip(p)
   const stripY = stripX
   const zTop = p.frame_h * S
   const zEdge = (p.frame_h * S) / 2
@@ -839,6 +839,197 @@ export function feetEffective(p: Params): FeetEffective {
     crossbarTooThin: wants && !fits,
   }
 }
+
+// ---- where a foot pocket is allowed to live ---------------------------------
+/** The solid border strip on the bottom face, in mm. This is the ONLY place a
+ *  foot pocket can go: at every column the bead and end channels open through
+ *  the bottom face, so the two border strips are the only unbroken material.
+ *  Mirrors the scad's strip_x / strip_y (equal by construction).
+ *
+ *  `border_w * S + sShelf` collapses to a max() once sShelf is substituted —
+ *  written that way here because it says the real thing: the strip is the
+ *  border-plus-shelf band, unless the marker inset is what's actually holding
+ *  it open. Only the first branch answers to the brim. */
+export const borderStrip = (p: Params): number => {
+  const d = derived(p)
+  return Math.max((p.border_w + p.shelf) * p.scale_factor, d.mkI + p.marker_mm)
+}
+
+export type FeetFit = {
+  fits: boolean
+  /** the seat is wider than the strip can hold — a PLAN-view failure */
+  tooWide: boolean
+  /** the pocket is deeper than the slab can spare — a SECTION-view failure.
+   *  Separate because the two have different remedies: only `tooWide` answers
+   *  to the brim. */
+  tooDeep: boolean
+  /** what one pocket consumes of the strip: inset + half the seat + 0.8 wall */
+  needs: number
+  /** what the strip currently offers */
+  has: number
+  /** what the pocket consumes of the slab's height: its depth + a 2 mm web */
+  needsDepth: number
+  /** the slab's own height, frame_h · S */
+  hasDepth: number
+  /** smallest `border_w` that seats this foot AT THE CURRENT SIZE. null when the
+   *  marker floor already dominates, i.e. widening the brim would change
+   *  nothing — and null whenever the pocket is also too deep, since no brim
+   *  makes the slab thicker. */
+  minBorderW: number | null
+  /** smallest `scale_factor` that seats it AT THE CURRENT BRIM. Solved by
+   *  bisection rather than algebra because `needs` itself drifts with scale (the
+   *  chamfer and corner radius do), so there is no clean closed form. */
+  minScale: number | null
+}
+
+/** Mirror of the scad's three foot-pocket asserts:
+ *    feet_c + feet_half + 0.8 <= strip_x   (end channels)
+ *    feet_c + feet_half + 0.8 <= strip_y   (bead channels)
+ *    feet_depth_eff + 2       <= s_fh      (web left above the pocket)
+ *  The scad enforces these with assert(), which throws mid-export with a
+ *  message written for whoever edits the scad. Mirroring them here is what lets
+ *  the inspector refuse a foot BEFORE the export, and say which lever fixes it
+ *  — the same job crossbarTooThin does for the crossbar.
+ *
+ *  The depth one matters as soon as the bumper presets exist: a bumper's
+ *  thickness is real-world hardware and never scales, but the slab it sinks
+ *  into is frame_h · S. A 1/8" bumper wants 3.59 mm of an 8 · S mm slab, so it
+ *  needs S ≥ 0.449 — under the 0.5 slider floor, but a saved ?design= snapshot
+ *  can carry any scale. */
+export function feetFit(p: Params): FeetFit {
+  const f = feetEffective(p)
+  const needs = f.c + f.seat / 2 + 0.8
+  const has = borderStrip(p)
+  const needsDepth = f.depthEff + 2
+  const hasDepth = p.frame_h * p.scale_factor
+  const tooWide = needs > has
+  const tooDeep = needsDepth > hasDepth
+  const S = p.scale_factor
+  const base = { tooWide, tooDeep, needs, has, needsDepth, hasDepth }
+  if (!tooWide && !tooDeep) return { ...base, fits: true, minBorderW: null, minScale: null }
+  // Inverting the brim is exact: mkI doesn't answer to border_w, so once the
+  // border-plus-shelf branch is the binding one — which it must be, since the
+  // strip already lost to `needs` and the strip is never below the marker floor
+  // — border_w = needs/S − shelf lands the strip exactly on `needs`.
+  // Offered only when width is the ONLY problem: the brim widens the strip, it
+  // does not thicken the slab, so proposing it against a too-deep pocket would
+  // send the user to a knob that cannot fix what's wrong.
+  const wantBorder = needs / S - p.shelf
+  // Size has no such inversion: `needs` drifts upward with scale too, because
+  // the chamfer and corner radius do. Bisect instead. Size is the one lever
+  // that moves both constraints, which is why it's the only remedy on offer
+  // when the pocket is too deep.
+  const seats = (s: number) => {
+    const q = { ...p, scale_factor: s }
+    const g = feetEffective(q)
+    return g.c + g.seat / 2 + 0.8 <= borderStrip(q) && g.depthEff + 2 <= q.frame_h * q.scale_factor
+  }
+  let minScale: number | null = null
+  if (seats(4)) {
+    let lo = S
+    let hi = 4
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2
+      if (seats(mid)) hi = mid
+      else lo = mid
+    }
+    minScale = hi
+  }
+  return {
+    ...base,
+    fits: false,
+    minBorderW: tooWide && !tooDeep && wantBorder > p.border_w ? wantBorder : null,
+    minScale,
+  }
+}
+
+// ---- stick-on bumper presets ------------------------------------------------
+export const IN_MM = 25.4
+export type BumperPreset = {
+  id: string
+  /** Sold in inches, so the UI says inches; only the mm conversion reaches the
+   *  model. Width is the footprint (diameter, or side for a square). */
+  widthIn: number
+  thickIn: number
+  shape: 'circle' | 'square'
+  /** Profile ABOVE the pocket. The geometry never sees it — a pocket only ever
+   *  meets the bumper's flat base — but it is what tells the two 1/2" bumpers
+   *  apart, and what decides whether the abacus stands on six points or six
+   *  discs. Kept here so the label can be honest about which one you bought. */
+  profile: 'dome' | 'flat'
+}
+/** The stick-on bumper range, smallest first. */
+export const BUMPER_PRESETS: BumperPreset[] = [
+  { id: 'd-250-062', widthIn: 1 / 4, thickIn: 1 / 16, shape: 'circle', profile: 'dome' },
+  { id: 'd-312-125', widthIn: 5 / 16, thickIn: 1 / 8, shape: 'circle', profile: 'dome' },
+  { id: 'd-375-125', widthIn: 3 / 8, thickIn: 1 / 8, shape: 'circle', profile: 'dome' },
+  { id: 'f-437-125', widthIn: 7 / 16, thickIn: 1 / 8, shape: 'circle', profile: 'flat' },
+  { id: 'f-500-125', widthIn: 1 / 2, thickIn: 1 / 8, shape: 'circle', profile: 'flat' },
+  { id: 's-500-125', widthIn: 1 / 2, thickIn: 1 / 8, shape: 'square', profile: 'flat' },
+]
+
+/** Inches as the fraction the packet is labelled with, not a decimal: this
+ *  hardware is sold as 1/16" and 1/2", so `0.063"` would be our arithmetic
+ *  showing through. Sixteenths reduced — every size in the range is one. */
+const inches = (v: number) => {
+  const n = Math.round(v * 16)
+  if (Math.abs(v * 16 - n) > 1e-9 || n <= 0) return `${v.toFixed(3)}`
+  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b))
+  const g = gcd(n, 16)
+  return g === 16 ? `${n / 16}` : `${n / g}/${16 / g}`
+}
+/** e.g. `3/8" × 1/8" dome` — two 1/2" bumpers differ only by round vs square,
+ *  so the shape word is load-bearing, not decoration. */
+export const bumperLabel = (b: BumperPreset): string =>
+  `${inches(b.widthIn)}" × ${inches(b.thickIn)}" ${b.profile}${b.shape === 'square' ? ', square' : b.profile === 'flat' ? ', round' : ''}`
+
+/** Params a bumper implies. The pocket is HALF the bumper's thickness: deep
+ *  enough to locate it square and bury the adhesive layer, shallow enough that
+ *  the other half stands proud as actual ride height (operator decision
+ *  2026-07-30). A pocket as deep as the bumper is thick would seat it flush and
+ *  defeat the point. */
+export const bumperParams = (b: BumperPreset) => ({
+  feet_shape: b.shape,
+  feet_w: b.widthIn * IN_MM,
+  feet_depth: (b.thickIn * IN_MM) / 2,
+})
+/** Stand-off the bumper actually gives, given the half-thickness pocket. */
+export const bumperProud = (b: BumperPreset): number => (b.thickIn * IN_MM) / 2
+
+/** Which preset the current params ARE, or null for hand-set dimensions. The
+ *  selection is derived, never stored: `feet_preset` used to be a param and was
+ *  deliberately retired (see defaultParams), so the dimensions stay the single
+ *  source of truth and the label is a projection of them. */
+export function matchBumper(p: Params): BumperPreset | null {
+  return (
+    BUMPER_PRESETS.find((b) => {
+      const q = bumperParams(b)
+      return (
+        q.feet_shape === p.feet_shape &&
+        Math.abs(q.feet_w - p.feet_w) < 0.02 &&
+        Math.abs(q.feet_depth - p.feet_depth) < 0.02
+      )
+    }) ?? null
+  )
+}
+
+// ---- brim (border width) presets --------------------------------------------
+/** `border_w` is the flush band around the bead field — the "brim". It has never
+ *  had a control, so every abacus printed so far used the 5.25 mm stock value.
+ *  It matters here because it is half of what sets the border strip, and the
+ *  strip is what decides whether a big stick-on bumper can be seated at all.
+ *  Millimetres, not inches: unlike the bumpers this is our own geometry, not
+ *  hardware someone sells by the fraction. */
+export type BrimPreset = { id: string; label: string; border_w: number }
+export const BRIM_PRESETS: BrimPreset[] = [
+  { id: 'stock', label: 'standard — 5.25 mm', border_w: 5.25 },
+  { id: 'wide', label: 'wide — 6.5 mm', border_w: 6.5 },
+  { id: 'wider', label: 'extra wide — 8 mm', border_w: 8 },
+  { id: 'widest', label: 'widest — 10 mm', border_w: 10 },
+]
+export const matchBrim = (p: Params): BrimPreset | null =>
+  BRIM_PRESETS.find((b) => Math.abs(b.border_w - p.border_w) < 0.01) ?? null
+
 // FEET_POS: 4 mandatory corners + PAIRS of intermediate feet splitting any
 // bottom run that exceeds feet_span derated by S^(4/3) (strip stiffness ∝ S⁴).
 // Order matches the scad exactly: corners, x-run pairs, y-run pairs.

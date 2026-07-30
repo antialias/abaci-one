@@ -25,7 +25,20 @@ import {
   type AbacusColorScheme,
 } from '@/lib/abacus/identity'
 import { useAbacusStudio } from './AbacusStudioContext'
-import { feetEffective, PRESET_OPTS } from './abacus-model'
+import {
+  BRIM_PRESETS,
+  BUMPER_PRESETS,
+  type BumperPreset,
+  bumperLabel,
+  bumperParams,
+  bumperProud,
+  type FeetFit,
+  feetEffective,
+  feetFit,
+  matchBrim,
+  matchBumper,
+  PRESET_OPTS,
+} from './abacus-model'
 import { DesignLinkChip } from './DesignLinkChip'
 import { MyDesignsList } from './MyDesignsList'
 
@@ -34,6 +47,22 @@ const SCHEME_LABEL: Record<string, string> = {
   'place-value': 'Place-value colors',
   'heaven-earth': 'Heaven & earth colors',
   alternating: 'Alternating colors',
+}
+/** Sentinel rows for dimensions that match no preset — a design saved before
+ *  the presets existed, or one hand-tuned through the params. Shown rather than
+ *  silently snapped to the nearest preset, which would edit geometry the user
+ *  never asked us to touch. */
+const CUSTOM_BUMPER = '__custom_bumper__'
+const CUSTOM_BRIM = '__custom_brim__'
+/** A greyed row's own label has to carry both the reason and the lever — a
+ *  <select> has nowhere else to put them. When neither lever reaches, say that
+ *  outright rather than trailing an empty "needs". */
+const unfitSuffix = (fit: FeetFit): string => {
+  const levers = [
+    fit.minBorderW ? `${fit.minBorderW.toFixed(1)} mm brim` : null,
+    fit.minScale ? `size ×${fit.minScale.toFixed(2)}` : null,
+  ].filter(Boolean)
+  return levers.length ? ` — needs ${levers.join(' or ')}` : ' — too big for this frame'
 }
 
 export interface DesignInspectorRailProps {
@@ -360,6 +389,92 @@ export function DesignInspectorRail({
           dataElement="abacus-feet-mode"
           dataAction="set-feet-mode"
         />
+        {/* Stick-on bumpers are bought, not printed, so the menu is the range
+            you can actually buy — labelled in the inches it's sold in, and
+            converted to mm on the way into the model.
+
+            Why some rows are greyed rather than absent: at every column the
+            bead and end channels open through the bottom face, so a pocket can
+            only live in the solid border strip. A 1/2" bumper wants 15.7 mm of
+            a 13.0 mm strip at stock settings. Hiding those rows would claim we
+            don't support the hardware; greying them with the number says "not
+            at these settings" and names the two levers that fix it. Without
+            this the scad's own assert() would throw mid-export instead. */}
+        {params.feet_mode === 'adhesive' && (
+          <>
+            <StudioSelect
+              label="stick-on bumper"
+              value={matchBumper(params)?.id ?? CUSTOM_BUMPER}
+              options={[
+                ...(matchBumper(params)
+                  ? []
+                  : [{ value: CUSTOM_BUMPER, label: `custom — ${params.feet_w.toFixed(2)} mm` }]),
+                ...BUMPER_PRESETS.map((b) => {
+                  const fit = feetFit({ ...params, ...bumperParams(b) })
+                  return {
+                    value: b.id,
+                    label: fit.fits ? bumperLabel(b) : `${bumperLabel(b)}${unfitSuffix(fit)}`,
+                    disabled: !fit.fits,
+                  }
+                }),
+              ]}
+              onChange={(v) => {
+                const b = BUMPER_PRESETS.find((x) => x.id === v)
+                if (!b) return
+                // one gesture, three params — the dimensions stay the single
+                // source of truth and the menu selection is derived back off
+                // them (matchBumper), so there's no preset id to fall out of
+                // sync with the geometry.
+                const q = bumperParams(b)
+                set('feet_shape', q.feet_shape)
+                set('feet_w', q.feet_w)
+                set('feet_depth', q.feet_depth)
+              }}
+              dataElement="abacus-bumper-preset"
+              dataAction="set-bumper-preset"
+            />
+            {/* The pocket takes half the bumper's thickness, so the rest is
+                real ride height. Saying the number beats making them measure. */}
+            {matchBumper(params) && (
+              <p
+                data-component="DesignInspectorRail"
+                data-element="abacus-bumper-note"
+                style={{
+                  fontSize: 11,
+                  color: 'rgba(148,163,184,0.95)',
+                  lineHeight: 1.4,
+                  margin: 0,
+                }}
+              >
+                {params.feet_depth.toFixed(2)} mm pocket, so it stands{' '}
+                {bumperProud(matchBumper(params) as BumperPreset).toFixed(2)} mm proud.
+              </p>
+            )}
+          </>
+        )}
+        {/* The brim is the flush band around the bead field (border_w) — never
+            had a control until now, so every abacus so far used stock 5.25 mm.
+            It sits here rather than with the frame knobs because this is what
+            it's for: it's half of what sets the border strip, and therefore
+            what decides whether a big bumper can be seated at stock size at
+            all. Millimetres, not inches — unlike the bumpers this is our
+            geometry, not something sold by the fraction. */}
+        <StudioSelect
+          label="brim (border width)"
+          value={matchBrim(params)?.id ?? CUSTOM_BRIM}
+          options={[
+            ...(matchBrim(params)
+              ? []
+              : [{ value: CUSTOM_BRIM, label: `custom — ${params.border_w.toFixed(2)} mm` }]),
+            ...BRIM_PRESETS.map((b) => ({ value: b.id, label: b.label })),
+          ]}
+          onChange={(v) => {
+            const b = BRIM_PRESETS.find((x) => x.id === v)
+            if (b) set('border_w', b.border_w)
+          }}
+          dataElement="abacus-brim-preset"
+          dataAction="set-brim-preset"
+        />
         {params.feet_mode === 'printed' && (
           <>
             <StudioSelect
@@ -388,6 +503,35 @@ export function DesignInspectorRail({
             )}
           </>
         )}
+        {/* Guards EVERY mode, not just the bumper menu. The width outlives the
+            mode it was chosen in: pick a 1/2" bumper, switch to printed, and
+            feet_w is still 12.7 mm — with a WIDER seat, since printed feet trade
+            the fit gap for a 0.35 mm retention flare. The greyed menu rows can't
+            catch that, and the alternative is the scad asserting mid-export.
+
+            Two failures, two sentences: too wide is a plan-view problem (the
+            seat vs the strip) and the brim can fix it; too deep is a section
+            one (the pocket vs the slab) and only size can, because a bumper's
+            thickness is real hardware that never scales. */}
+        {(() => {
+          const fit = params.feet_mode === 'none' ? null : feetFit(params)
+          if (!fit || fit.fits) return null
+          return (
+            <p
+              data-component="DesignInspectorRail"
+              data-element="abacus-feet-fit-note"
+              style={{ fontSize: 11, color: '#b45309', lineHeight: 1.4, margin: '2px 0 0' }}
+            >
+              {fit.tooWide
+                ? `These feet are too wide to seat here: each pocket needs ${fit.needs.toFixed(1)} mm of the ${fit.has.toFixed(1)} mm border strip, so it would cut into the bead channels.`
+                : `This pocket is too deep for the frame at this size: it needs ${fit.needsDepth.toFixed(1)} mm of the ${fit.hasDepth.toFixed(1)} mm slab to leave 2 mm of material above it.`}{' '}
+              {fit.minBorderW ? `Widen the brim to ${fit.minBorderW.toFixed(1)} mm` : ''}
+              {fit.minBorderW && fit.minScale ? ', or raise ' : fit.minScale ? 'Raise ' : ''}
+              {fit.minScale ? `size × to ${fit.minScale.toFixed(2)}` : ''}
+              {fit.minBorderW || fit.minScale ? '.' : 'Choose a smaller foot.'}
+            </p>
+          )
+        })()}
       </Disclosure>
     </div>
   )
