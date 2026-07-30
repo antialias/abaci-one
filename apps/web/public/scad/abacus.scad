@@ -315,32 +315,180 @@ function bead_color(i, is_heaven) =
    z3, a dia-10 belt at z5.5..7, domed to the top — while its Y extent is a flat 8
    (independent of X: at the waist it is 5 wide in X but still 8 in Y). So it is the
    intersection of an X-Z outline prism and a Y-Z outline prism, NOT a revolve/squash.
-   BASE_* are the measured half+mirror outlines for dia=10, z=10, len=8; they scale
+   BASE_* are the measured half+mirror outlines for dia=10, len=8; they scale
    with bead_dia (x,z) and bead_len (y). `grow` offsets both outlines by an absolute
-   amount → the clearance-grown cavity (clearance stays constant regardless of size). */
-BASE_XZ = [[0,0],[5,0],[5,0.5],[2.5,3],[5,5.5],[5,7],[2.5,9.5],[1.4,9.9],[0,10],
-           [-1.4,9.9],[-2.5,9.5],[-5,7],[-5,5.5],[-2.5,3],[-5,0.5],[-5,0]];
-BASE_YZ = [[0,0],[4,0],[4,7],[3.84,7.5],[3.68,8],[3.44,8.5],[3.06,9],[2.4,9.5],[1.3,9.9],[0,10],
-           [-1.3,9.9],[-2.4,9.5],[-3.06,9],[-3.44,8.5],[-3.68,8],[-3.84,7.5],[-4,7],[-4,0]];
+   amount → the clearance-grown cavity (clearance stays constant regardless of size).
+
+   The bead is TWO pieces that meet at the belt top (base z 7 = BEAD_CAPTURE_Z):
+
+     z ≤ 7   CAPTURE — foot, waist, belt: the part that rides in the channel.
+             The prism intersection below, with the measured outline verbatim.
+             This is what holds the bead on the rod and what `channel()` carves
+             the cavity from, it is printed and known good, and NOTHING here
+             moves. The cross-section stays a rectangle because that is what the
+             validated fit was measured against.
+
+     z > 7   EXPOSED — the hat. Lofted with a SUPERELLIPTICAL section instead of
+             the intersection's rectangle, and carrying the master's own 3 mm
+             dome. See "exposed cap" below. */
+BEAD_CAPTURE_Z = 7;                            // belt top: the capture/exposed line
+BASE_XZ = [[0,0],[5,0],[5,0.5],[2.5,3],[5,5.5],[5,BEAD_CAPTURE_Z],
+           [-5,BEAD_CAPTURE_Z],[-5,5.5],[-2.5,3],[-5,0.5],[-5,0]];
+BASE_YZ = [[0,0],[4,0],[4,BEAD_CAPTURE_Z],[-4,BEAD_CAPTURE_Z],[-4,0]];
 sx = s_bd / 10;   // scales the X-Z outline (x and z) — includes scale_factor
 sy = s_bl / 8;    // scales the Y-Z outline (y); its z still scales with sx
-/* dome stretch: the profile's dome section (base z 7..10, above the belt) remaps
-   so the tip clears the top face by bead_proud·scale — the master's 4mm hat
-   regardless of frame_h. Foot/waist/belt (z ≤ 7) are capture-critical and never
-   move; a taller dome is STEEPER (less overhang) so it prints at least as well,
-   and the channel sweep reuses the same profile so the roof follows. */
-bead_ztop = (s_fh + bead_proud * scale_factor) / sx;   // in base-profile units
-assert(bead_ztop > 8, "bead dome would collapse below the belt — raise bead_proud or lower frame_h");
-function bz(z) = z <= 7 ? z : 7 + (z - 7) * (bead_ztop - 7) / 3;
 module prism_xz(pts, grow, thick)             // cross-section in X-Z, extruded along Y
   rotate([90, 0, 0]) linear_extrude(height = thick, center = true) offset(r = grow) polygon(pts);
 module prism_yz(pts, grow, thick)             // cross-section in Y-Z, extruded along X
   rotate([90, 0, 90]) linear_extrude(height = thick, center = true) offset(r = grow) polygon(pts);
-module bead_solid(grow = 0)
+
+/* ===== exposed cap (everything above the belt) =====
+   Two things were wrong with the hat and both are ABOVE the capture line, so
+   both are fixed here without touching a single dimension the channel sees.
+
+   1. SECTION. The old bead was `intersection(prism_xz, prism_yz)` all the way
+      up, and that intersection makes every horizontal cross-section a RECTANGLE
+      — four hard edges running the full height and converging in a four-sided
+      pyramid (measured: 31 distinct face normals in the whole solid, corner gap
+      0.000 at every height; there was no curved surface on it anywhere). That
+      rectangle is an artifact of how the master was measured, not of the master:
+      the z-sweep recorded max-X and max-Y independently, and reconstructing the
+      section as their product is an ASSUMPTION. Here the section is a
+      superellipse |x/rx|^n + |y/ry|^n = 1 instead — n = 2 is an ellipse, n = 4
+      a squircle, n → ∞ recovers the old rectangle.
+
+   2. HEIGHT. frame_h went 6 → 8 for stiffness while bead_proud stayed 4, so the
+      tip must now reach z 12 while the master's cap is only 3 mm tall. The old
+      code stretched the dome 3 → 5 mm, taking the flank from 45° to 59° — that
+      is where "pointy" came from. Instead the master's 3 mm dome is kept
+      VERBATIM and the vertical belt band under it is what grows. That is not a
+      compromise, it is literally the master's own exposed geometry: with
+      frame_h 6 the master showed 1 mm of straight belt above the face and then
+      its 3 mm dome, and so does this. The extra belt is hidden inside the
+      chimney, which already opens the full belt width from z 7 to the rim. */
+bead_section_n = 4;                            // 2 = ellipse, 4 = squircle, ∞ = the old rectangle
+bead_ztop      = (s_fh + bead_proud * scale_factor) / sx;   // in base-profile units
+bead_belt_top  = bead_ztop - 3;                // the master's 3 mm dome sits on the belt
+assert(bead_ztop >= 10,
+       "bead cap needs frame_h + bead_proud·scale ≥ 10·(bead_dia/10) — raise bead_proud or lower frame_h");
+/* The rectangle→superellipse handover. It runs from the belt top to the frame's
+   top face, i.e. entirely INSIDE the frame: the corners are already gone by the
+   time the bead emerges, so nothing visible carries a seam and nothing below the
+   belt is touched. The section only ever shrinks across it (a superellipse is
+   strictly inside its bounding rectangle), so the cavity cannot bind on it and
+   it prints as an inward chamfer, never an overhang. */
+BEAD_BLEND_TOP = min(s_fh / sx, bead_belt_top);
+/* The dome, resampled from the measured anchors with a monotone cubic in z(r)
+   — z(r) and not r(z) because dr/dz → -∞ at the apex and a fit there invents a
+   point. Every measured anchor is reproduced exactly; these rows just fill in
+   between them, which the old 3-segment X-Z table never did (its dome was one
+   straight 45° flank from the belt to well past half height — the "edge"). */
+CAP_RX = [[5.0,0.0],[4.8741,0.1289],[4.68,0.3378],[4.4495,0.5975],[4.1937,0.8939],
+          [3.9197,1.2121],[3.6329,1.5355],[3.3378,1.8463],[3.0385,2.1263],[2.7387,2.3584],
+          [2.4416,2.5293],[2.1505,2.668],[1.8683,2.7829],[1.598,2.8642],[1.3419,2.9069],
+          [1.1027,2.9307],[0.8825,2.9475],[0.6833,2.9599],[0.5069,2.9698],[0.3549,2.9781],
+          [0.2286,2.9853],[0.1293,2.9913],[0.0577,2.996]];
+CAP_RY = [[4.0,0.0],[3.8993,0.3148],[3.744,0.8136],[3.5596,1.2777],[3.3549,1.6335],
+          [3.1357,1.9203],[2.9063,2.1439],[2.6703,2.3338],[2.4308,2.484],[2.1909,2.6031],
+          [1.9533,2.7102],[1.7204,2.7989],[1.4947,2.8642],[1.2784,2.9028],[1.0736,2.9255],
+          [0.8822,2.9422],[0.706,2.9549],[0.5466,2.9649],[0.4055,2.9734],[0.2839,2.9807],
+          [0.1829,2.9871],[0.1034,2.9924],[0.0461,2.9965]];
+function _cap_seg(tbl, dz) = max(0, min(len(tbl) - 2,
+    len([for (k = [0 : len(tbl) - 2]) if (tbl[k][1] <= dz) 1]) - 1));
+function _cap_r(tbl, dz) = let (i = _cap_seg(tbl, dz), a = tbl[i], b = tbl[i + 1])
+    a[0] + (b[1] == a[1] ? 0 : (b[0] - a[0]) * (dz - a[1]) / (b[1] - a[1]));
+function cap_rx(z) = z <= bead_belt_top ? 5 : _cap_r(CAP_RX, z - bead_belt_top);
+function cap_ry(z) = z <= bead_belt_top ? 4 : _cap_r(CAP_RY, z - bead_belt_top);
+function cap_blend(z) = let (u = BEAD_BLEND_TOP <= BEAD_CAPTURE_Z ? 1 :
+      max(0, min(1, (z - BEAD_CAPTURE_Z) / (BEAD_BLEND_TOP - BEAD_CAPTURE_Z))))
+    u * u * (3 - 2 * u);                       // smoothstep: no crease at either end
+/* Ring vertices. The angle list is ANCHORED ON THE RECTANGLE'S CORNER (a sample
+   lands exactly on it) and is shared by every ring, so at blend = 0 the ring
+   reproduces the capture body's section exactly — no chamfer, no lip where the
+   two solids meet — and vertices stack vertically instead of drifting.
+
+   The count is FIXED rather than derived from `fn`, so the previewed bead is the
+   printed bead. 32 around a 5 mm radius is a 0.024 mm sagitta — an order of
+   magnitude under a 0.4 mm nozzle — so letting `fn = 64` double it would buy
+   triangles, not smoothness. */
+bead_facets = 32;                              // snapped to the nearest multiple of 8, min 16
+CAP_Q = max(2, round(bead_facets / 8));        // 8·CAP_Q facets around
+function _cap_blk(a0, c) = concat([for (k = [0:CAP_Q-1]) a0 + (c - a0) * k / CAP_Q],
+                                  [for (k = [0:CAP_Q-1]) c + (a0 + 90 - c) * k / CAP_Q]);
+function cap_angles(rx, ry) = let (ca = atan2(ry, rx))
+    concat(_cap_blk(0, ca), _cap_blk(90, 180 - ca),
+           _cap_blk(180, 180 + ca), _cap_blk(270, 360 - ca));
+CAP_T = cap_angles(5 * sx, 4 * sy);
+function _cap_rect(t, rx, ry) = let (c = cos(t), s = sin(t),
+    d = min(rx / max(abs(c), 1e-9), ry / max(abs(s), 1e-9))) [d * c, d * s];
+function _cap_se(t, rx, ry) = let (c = cos(t), s = sin(t))
+    [rx * sign(c) * pow(abs(c), 2 / bead_section_n),
+     ry * sign(s) * pow(abs(s), 2 / bead_section_n)];
+function _cap_ring(z, grow) =
+  let (rx = cap_rx(z) * sx + grow, ry = cap_ry(z) * sy + grow, b = cap_blend(z))
+  [for (t = CAP_T) let (R = _cap_rect(t, rx, ry), E = _cap_se(t, rx, ry))
+     [R[0] + (E[0] - R[0]) * b, R[1] + (E[1] - R[1]) * b, z * sx]];
+/* Ring heights: a hair below the belt top (so the loft OVERLAPS the capture body
+   rather than sharing a face with it), the handover band, the belt top, then the
+   dome's own rows. CAP_RX[0] is dropped because bead_belt_top already covers it.
+   Both row counts are SAMPLING, not shape — CAP_RX/CAP_RY stay the profile of
+   record and are interpolated at whatever heights land here. The blend rows are
+   buried inside the chimney (nothing above `s_fh` is affected by their count),
+   and the dome rows are read against the 0.2 mm layer height: 12 across a 3 mm
+   cap is a row every 0.25 mm, already finer than the slicer can print. */
+bead_blend_rows = 3;
+bead_dome_rows  = 12;
+CAP_RINGS = concat(
+    [BEAD_CAPTURE_Z - 0.02],
+    BEAD_BLEND_TOP > BEAD_CAPTURE_Z
+      ? [for (k = [0 : bead_blend_rows - 1])
+           BEAD_CAPTURE_Z + (BEAD_BLEND_TOP - BEAD_CAPTURE_Z) * k / bead_blend_rows] : [],
+    BEAD_BLEND_TOP < bead_belt_top ? [BEAD_BLEND_TOP] : [],   // the blend lands ON the face
+    [bead_belt_top],
+    [for (k = [1 : bead_dome_rows])
+       bead_belt_top + CAP_RX[round((len(CAP_RX) - 1) * k / bead_dome_rows)][1]]);
+/* One polyhedron, not a stack of hull()s: the cavity sweep instantiates the bead
+   dozens of times per column and CSG cost there is what decides render time.
+   Walls are triangulated because a lofted quad is not planar. */
+module cap_solid(grow = 0) {
+  F = len(CAP_T);
+  M = len(CAP_RINGS);
+  // Build each ring ONCE. Inlining `_cap_ring(...)[k]` into the points loop
+  // would evaluate the whole F-point ring F times per level — O(M·F²) `pow`
+  // calls, which cost ~1.3 s PER BEAD in the evaluator (65× that is a minute,
+  // and it dwarfs the CSG). Hoisted it is O(M·F): ~40 ms for the same mesh.
+  RINGS = [for (z = CAP_RINGS) _cap_ring(z, grow)];
+  polyhedron(
+    points = concat([for (r = RINGS, p = r) p],
+                    [[0, 0, bead_ztop * sx + grow]]),
+    /* WINDING: OpenSCAD wants each face CLOCKWISE as seen from OUTSIDE, which is
+       the same as saying its right-hand-rule normal points INWARD. CAP_T runs
+       counter-clockwise seen from +z, so the outward-looking orders are the ones
+       below. Get this backwards and nothing complains — Manifold happily builds
+       a consistently inside-out solid, and the implicit union with the capture
+       body then SUBTRACTS the cap instead of adding it. `bead_solid` fell to
+       460 - 282 = 179 mm³ that way. A support-function or bounding-box check
+       cannot see it (both are winding-blind) and neither can an abs() volume;
+       only the SIGNED volume can, so that is what the harness reports. */
+    faces = concat(
+      [[for (k = [0:F-1]) k]],                                                     // floor
+      [for (i = [0:M-2], k = [0:F-1]) let (a = i*F + k, b = i*F + (k+1)%F) [a, b+F, b]],
+      [for (i = [0:M-2], k = [0:F-1]) let (a = i*F + k, b = i*F + (k+1)%F) [a, a+F, b+F]],
+      [for (k = [0:F-1]) let (a = (M-1)*F + k, b = (M-1)*F + (k+1)%F) [a, F*M, b]]), // apex
+    convexity = 8);
+}
+
+/* `cap = false` drops the exposed hat. The channel cavity does not need it: the
+   chimney below already opens the full belt width + clearance from the belt top
+   to above the bead tip, and the grown cap never exceeds that, so omitting it
+   leaves the cavity identical while keeping the swept union cheap. */
+module bead_solid(grow = 0, cap = true) {
   intersection() {
-    prism_xz([for (p = BASE_XZ) [p[0] * sx, bz(p[1]) * sx]], grow, s_bd * 4);
-    prism_yz([for (p = BASE_YZ) [p[0] * sy, bz(p[1]) * sx]], grow, s_bd * 4);
+    prism_xz([for (p = BASE_XZ) [p[0] * sx, p[1] * sx]], grow, s_bd * 4);
+    prism_yz([for (p = BASE_YZ) [p[0] * sy, p[1] * sx]], grow, s_bd * 4);
   }
+  if (cap) cap_solid(grow);
+}
 module bead(cx, cy) translate([cx, cy, 0]) bead_solid(0);
 
 /* channel cavity for one column: the bead grown by clearance, SWEPT along y0..y1
@@ -352,7 +500,7 @@ module bead(cx, cy) translate([cx, cy, 0]) bead_solid(0);
 module channel(cx, y0, y1) {
   n = max(1, ceil((y1 - y0) / 2));
   for (k = [0 : n])
-    translate([cx, y0 + (y1 - y0) * k / n, 0]) bead_solid(clearance);
+    translate([cx, y0 + (y1 - y0) * k / n, 0]) bead_solid(clearance, cap = false);
   /* vertical-walled chimney ABOVE the belt (base z 7 = belt top). With frame_h
      above the belt, the swept dome alone would neck the opening inward toward
      the rim (~0.6 mm/side at defaults) — a funnel the MASTER never had (its

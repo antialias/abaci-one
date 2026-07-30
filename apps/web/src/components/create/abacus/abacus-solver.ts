@@ -97,13 +97,14 @@ export const profileById = (id: string | undefined): PrinterProfile =>
 export const INLAY_DEPTH_MM = 0.6 // abacus.scad:71
 // Functional floors the .scad also asserts (NOT profile-driven — they come from
 // the mechanism, not the printer):
-export const MIN_THROW_MM = 2 // abacus.scad:190 — a bead must travel to register set/unset
+export const MIN_THROW_MM = 2 // abacus.scad:207 — a bead must travel to register set/unset
 //
-// NOTE: abacus.scad:278 also asserts the bead dome doesn't collapse below the
-// belt (`10*(frame_h+bead_proud)/bead_dia > 8`). It is S-independent and can't be
-// tripped from the studio controls (frame_h/bead_proud aren't studio knobs), so
-// it stays a .scad-only backstop and is intentionally NOT mirrored here. Add it
-// if a future UI exposes those knobs.
+// NOTE: abacus.scad:372 also asserts the bead's exposed cap has room for the
+// master's 3 mm dome (`10*(frame_h+bead_proud)/bead_dia >= 10`; it was `> 8`
+// while the dome was stretched to fit rather than sat on a taller belt). It is
+// S-independent and can't be tripped from the studio controls (frame_h and
+// bead_proud aren't studio knobs), so it stays a .scad-only backstop and is
+// intentionally NOT mirrored here. Add it if a future UI exposes those knobs.
 
 // ---- solve ------------------------------------------------------------------
 export type SolveDim = 'clearance' | 'wall' | 'feature' | 'throw' | 'inlay'
