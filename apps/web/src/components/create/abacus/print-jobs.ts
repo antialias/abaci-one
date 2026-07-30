@@ -12,6 +12,13 @@
  * are what let the panel RESOLVE a parked job in place instead of leaving it a
  * dead-end — so they must survive the projection too (dropping them is exactly
  * why a held job used to block every later submit with no way out).
+ *
+ * `notices` (THH #429) is a THIRD channel and a different kind of fact: not why
+ * the job stopped, but what the service couldn't CHECK before letting it run.
+ * We send `startPolicy: 'auto'`, so when the service's bed camera can't reach
+ * its vision provider our print now starts unattended with nothing having
+ * looked at the plate — and the notice is the only thing that says so. Dropping
+ * it here makes that silent.
  */
 
 export type JobError = { code: string; message: string | null }
@@ -23,6 +30,21 @@ export type JobError = { code: string; message: string | null }
  *  `attention-frame` endpoint, not this ref. */
 export type AttentionReason = { code: string; detail: string | null; frameRef?: string | null }
 
+/** One thing the service COULDN'T verify, from the job's `notices[]` (THH #429).
+ *
+ *  The opposite of an {@link AttentionReason} in every way that matters: it
+ *  blocks nothing, is never acknowledged, is never cleared, and is still on the
+ *  job at `completed` — which is the surface where "nothing looked at the build
+ *  plate" is most worth knowing. `detail` is the service's own sentence (prose,
+ *  and prose changes); `cause` is the stable machine class to branch on:
+ *  `insufficient_quota` | `http_<NNN>` | `network` | `no_frame` |
+ *  `capture_failed`.
+ *
+ *  An EMPTY list is not proof the bed was checked — a service with no vision
+ *  key configured checks nothing and says nothing. Absence means only that
+ *  nothing went wrong that the service considers worth reporting. */
+export type JobNotice = { code: string; detail: string | null; cause: string | null }
+
 export type JobRow = {
   id: string
   name: string
@@ -31,6 +53,8 @@ export type JobRow = {
   error: JobError | null
   /** Reasons the service is holding this job (empty unless it parked). */
   attention: AttentionReason[]
+  /** Checks the service couldn't run (empty when nothing went unchecked). */
+  notices: JobNotice[]
   /** `'auto'` | `'hold'` as the service recorded it, or null. */
   startPolicy: string | null
   /** Reason codes already confirmed on this job. */
@@ -83,6 +107,25 @@ function normalizeAttention(value: unknown): AttentionReason[] {
   return out
 }
 
+/** The service's `notices: [{code, detail, cause}]` — a BARE list, unlike
+ *  `attention`'s `{reasons: […]}` wrapper. Same rule as the reasons: an entry
+ *  without a usable `code` is dropped rather than guessed at. */
+function normalizeNotices(value: unknown): JobNotice[] {
+  if (!Array.isArray(value)) return []
+  const out: JobNotice[] = []
+  for (const item of value) {
+    if (typeof item !== 'object' || item === null) continue
+    const rec = item as Record<string, unknown>
+    if (typeof rec.code !== 'string' || rec.code.length === 0) continue
+    out.push({
+      code: rec.code,
+      detail: typeof rec.detail === 'string' && rec.detail.length > 0 ? rec.detail : null,
+      cause: typeof rec.cause === 'string' && rec.cause.length > 0 ? rec.cause : null,
+    })
+  }
+  return out
+}
+
 /** A list of non-empty strings (e.g. `acknowledged` reason codes), or []. */
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return []
@@ -119,6 +162,10 @@ export function normalizeJobs(data: unknown): JobRow[] {
       // needs. Absent/healthy jobs project to empty, so the card simply won't
       // render for them.
       attention: normalizeAttention(rec.attention),
+      // What the service couldn't check before running it. Never gates
+      // anything, so it rides every phase — including the finished job, which
+      // is where an unchecked bed is most worth knowing about.
+      notices: normalizeNotices(rec.notices),
       startPolicy: typeof rec.startPolicy === 'string' ? rec.startPolicy : null,
       acknowledged: normalizeStringArray(rec.acknowledged),
       updatedAt: typeof rec.updatedAt === 'number' ? rec.updatedAt : null,

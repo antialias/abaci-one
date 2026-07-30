@@ -38,7 +38,13 @@ export default meta
 
 type Story = StoryObj<typeof PrintSubmitErrorNotice>
 
-const resolveDefaults = { attention: [], startPolicy: null, acknowledged: [], updatedAt: null }
+const resolveDefaults = {
+  attention: [],
+  notices: [],
+  startPolicy: null,
+  acknowledged: [],
+  updatedAt: null,
+}
 const heldJob: JobRow = {
   id: 'j0',
   name: 'Abacus — 4 columns',

@@ -19,6 +19,7 @@ function job(overrides: Partial<JobRow>): JobRow {
     progress: null,
     error: null,
     attention: [],
+    notices: [],
     startPolicy: 'auto',
     acknowledged: [],
     updatedAt: 1_784_700_000,

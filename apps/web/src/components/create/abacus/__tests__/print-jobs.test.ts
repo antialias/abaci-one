@@ -45,6 +45,7 @@ describe('normalizeJobs', () => {
         progress: 40,
         error: null,
         attention: [],
+        notices: [],
         startPolicy: null,
         acknowledged: [],
         updatedAt: null,
@@ -56,6 +57,7 @@ describe('normalizeJobs', () => {
         progress: null,
         error: null,
         attention: [],
+        notices: [],
         startPolicy: null,
         acknowledged: [],
         updatedAt: null,
@@ -185,6 +187,84 @@ describe('normalizeJobs — resolve fields', () => {
     const [row] = normalizeJobs([{ jobId: 'j', startPolicy: 9, updatedAt: 'soon' }])
     expect(row.startPolicy).toBeNull()
     expect(row.updatedAt).toBeNull()
+  })
+})
+
+/** The advisory channel (THH #429): checks the service COULDN'T run. We submit
+ *  with `startPolicy: 'auto'`, so a job carrying one of these started with
+ *  nothing having looked at the build plate — and this projection is the only
+ *  thing standing between that fact and silence. */
+describe('normalizeJobs — notices', () => {
+  /** The shape THH documents for an exhausted vision quota. */
+  const quotaNotice = {
+    code: 'bed_check_unavailable',
+    detail:
+      'the bed wasn’t checked — the OpenAI account is out of quota. Nothing looked at the build plate. Top up billing at platform.openai.com to bring the check back.',
+    cause: 'insufficient_quota',
+  }
+
+  it('carries the notice through verbatim, with its machine cause', () => {
+    const [row] = normalizeJobs([{ jobId: 'j', phase: 'printing', notices: [quotaNotice] }])
+    expect(row.notices).toEqual([quotaNotice])
+  })
+
+  it('survives to the finished job — a notice is never cleared', () => {
+    const [row] = normalizeJobs([{ jobId: 'j', phase: 'completed', notices: [quotaNotice] }])
+    expect(row.phase).toBe('completed')
+    expect(row.notices).toEqual([quotaNotice])
+  })
+
+  it('is independent of attention — an unparked job can carry one', () => {
+    const [row] = normalizeJobs([{ jobId: 'j', phase: 'printing', notices: [quotaNotice] }])
+    expect(row.attention).toEqual([])
+    expect(row.notices).toHaveLength(1)
+  })
+
+  it('drops entries without a usable code but keeps the well-formed ones', () => {
+    const [row] = normalizeJobs([
+      {
+        jobId: 'j',
+        notices: [
+          { detail: 'no code' },
+          { code: '', detail: 'empty code' },
+          { code: 7, detail: 'numeric code' },
+          'not-an-object',
+          null,
+          { code: 'good', detail: 'kept', cause: 'network' },
+        ],
+      },
+    ])
+    expect(row.notices).toEqual([{ code: 'good', detail: 'kept', cause: 'network' }])
+  })
+
+  it('a missing/blank detail or cause keeps the code, the rest null', () => {
+    const [row] = normalizeJobs([
+      {
+        jobId: 'j',
+        notices: [{ code: 'bed_check_unavailable' }, { code: 'x', detail: '', cause: '' }],
+      },
+    ])
+    expect(row.notices).toEqual([
+      { code: 'bed_check_unavailable', detail: null, cause: null },
+      { code: 'x', detail: null, cause: null },
+    ])
+  })
+
+  it('tolerates malformed notices shapes without dropping the job', () => {
+    // NB the wire shape is a BARE list — a `{reasons: …}`-style wrapper is not
+    // the contract here, and must project to empty rather than be guessed at.
+    const cases: unknown[] = [
+      { jobId: 'j', notices: 'boom' },
+      { jobId: 'j', notices: 42 },
+      { jobId: 'j', notices: null },
+      { jobId: 'j', notices: {} },
+      { jobId: 'j', notices: { notices: [quotaNotice] } },
+    ]
+    for (const item of cases) {
+      const [row] = normalizeJobs([item])
+      expect(row, JSON.stringify(item)).toBeDefined()
+      expect(row.notices, JSON.stringify(item)).toEqual([])
+    }
   })
 })
 

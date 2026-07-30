@@ -52,6 +52,7 @@ import {
   supportsEnabled,
 } from './abacus-print-panel-state'
 import { buildAbacusAuthoring, buildAbacusTicket } from './abacus-ticket'
+import { JobNotices } from './JobNotices'
 import { ParkedJobCard } from './ParkedJobCard'
 import { PairPrinterPrompt } from './PrintConnectionsManager'
 import { PrintSubmitErrorNotice } from './PrintSubmitErrorNotice'
@@ -1030,6 +1031,12 @@ export function PrintPanel(props: PrintPanelProps) {
                       {job.error.message ?? job.error.code}
                     </div>
                   )}
+                  {/* What the service couldn't CHECK before running it (#29).
+                      Reads after the failure and before the resolver: facts
+                      first, then the thing you can press. Renders on every
+                      phase — a notice-only job never parks, so ParkedJobCard
+                      below would never mount to carry it. */}
+                  <JobNotices notices={job.notices} />
                   {/* Auto-start couldn't just go (or paused mid-print): resolve
                       it here — bed photo, the service's reasons, start-anyway or
                       cancel — instead of leaving it a dead-end. */}
