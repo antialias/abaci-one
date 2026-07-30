@@ -406,11 +406,11 @@ export function PrintPanel(props: PrintPanelProps) {
         ]),
         persistAbacusDesign({ v: 1, params, overrides, profileId }, { filamentMap, slotLabels }),
       ])
-      // Supports grow the first layer past the model outline, and a prime tower
-      // crowding that growth makes Orca re-arrange the plate — rotating the model out
-      // from under our absolute pin (exit 155 on prod, 2026-07-29). The style's
-      // `enable_support` is the print's real source of truth for that, not the
-      // design's feet setting, so the widened gap has to key off the style.
+      // Supports push the first layer past the model outline, eating into the 6 mm the
+      // tower was pinned at — the best available reading of prod's exit 155 on
+      // 2026-07-29 (a later A/B slices 6 mm clean, so treat the wider gap as margin,
+      // not a proven cure). The style's `enable_support`, not the design's feet
+      // setting, is the print's real source of truth, so the gap keys off the style.
       const model = buildAbacusThreeMf({
         ...parts,
         filamentMap,

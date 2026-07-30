@@ -151,10 +151,11 @@ describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
     expect(() => assembleAbacus3mf([], BAMBU_256_BED, { support: true })).toThrow(/at least one/)
   })
 
-  // Supports make Orca hand the model back rotated a quarter turn about the bed
-  // centre (measured on THH's sidecar). A tower pinned beside the declared pose
-  // then sits underneath the model and the plate fails the multi-extruder path
-  // check — so under supports the reserve has to clear BOTH poses.
+  // The printed-feet path reserves a second, quarter-turned keep-out box. Its premise
+  // (that supports make Orca re-orient the plate) has since been disproven — see
+  // SUPPORT_SKIRT in abacus-3mf-assembly.ts — and so has the reason to keep it: on real
+  // geometry both the pin it yields and the pin it displaces slice clean. Pinned here
+  // only so retiring it is a deliberate change; retire this test with the keep-out.
   it('keeps the tower clear of the rotated pose too, once supports are on', () => {
     // a real abacus footprint: 192.5 × 100.5, the size that actually collided
     const abacus: AssemblyBody[] = [
@@ -197,10 +198,10 @@ describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
 })
 
 // Printed feet are not the only way supports get turned on: the operator's saved
-// ticket style can set `enable_support` for ANY design, and that is what broke prod
-// on 2026-07-29. Supports grow the first layer outward; a tower crowding that growth
-// makes Orca re-arrange (and rotate) the plate, leaving our absolute pin inside the
-// model. The fix is the wider gap that keeps the layout valid in the first place.
+// ticket style can set `enable_support` for ANY design, and that is what broke prod on
+// 2026-07-29. Supports push the first layer outward while the tower's own brim reaches
+// back toward the model; 6 mm is not enough room for both, and Orca's post-slice
+// conflict check fails the plate. The fix is the wider gap.
 describe('assembleAbacus3mf — supportsAtSlice (supports from the ticket style)', () => {
   type Rect = { x0: number; y0: number; x1: number; y1: number }
 
@@ -232,9 +233,8 @@ describe('assembleAbacus3mf — supportsAtSlice (supports from the ticket style)
   })
 
   it('does NOT corner the tower when a side has room', () => {
-    // Cornering is what the first cut of this fix did, and a corner pin is itself
-    // close to the ones that trip Orca's arrange — (195,200) sliced clean while
-    // (200,200) came back rotated. A roomy side is strictly safer.
+    // Cornering is what the first cut of this fix did. A roomy side beats a corner:
+    // same clearance, without spending most of the bed to get it.
     const { wipeTower } = assembleAbacus3mf(cols3, BAMBU_256_BED, { supportsAtSlice: true })
     expect(wipeTower.xMm).toBeLessThan(195)
     expect(wipeTower.yMm).toBeLessThan(200)
@@ -250,8 +250,9 @@ describe('assembleAbacus3mf — supportsAtSlice (supports from the ticket style)
 
   it('reproduces the prod pin when the flag is absent', () => {
     // Ground truth from the failing job: the tower pinned at (165.25, 108) — only
-    // TOWER_GAP (6 mm) off the model's declared edge. Fine for a supports-off slice,
-    // and the exact crowding that made Orca re-arrange with supports on.
+    // TOWER_GAP (6 mm) off the model's declared edge, of which the tower's own brim
+    // takes 3. Enough for a supports-off slice, not enough once supports grow the
+    // model's first layer into the same gap.
     const t = tower(assembleAbacus3mf(cols3, BAMBU_256_BED).wipeTower)
     expect(t.x0).toBeCloseTo(165.25, 3)
     expect(t.y0).toBeCloseTo(108, 3)

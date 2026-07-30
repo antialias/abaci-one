@@ -18,13 +18,18 @@
  *   1. the object is centered on the target bed (build-item transform), and
  *   2. the prime tower is pinned (`wipe_tower_x/y` in `project_settings.config`)
  *      into a gap that clears the model.
- * A bed-centered single object is where auto-arrange would leave it anyway, so the
- * owned tower stays clear under THH's default (no `--arrange`) slice — verified
- * exit 0 with all filaments used, no THH-side change required.
+ * Both survive THH's slice for the same reason: a 3MF that carries
+ * `Metadata/project_settings.config` is a *project* file, and Orca skips arrange
+ * entirely for one (`need_arrange=0` in the log). So our transform and our pin are
+ * honoured as written — verified exit 0 with all filaments used, no THH-side change
+ * required. Centering is for bed margin, not for surviving arrange; it's the
+ * pre-fix files, which shipped no `Metadata/`, that got arranged and scattered.
  *
- * That last sentence holds only while supports are off. Turning them on makes Orca
- * hand the model back rotated a quarter turn, which is why `placeWipeTower` takes
- * the options — see SUPPORT_SKIRT.
+ * That last sentence holds only while the gap is wide enough. With supports on the
+ * first layer reaches past the model outline while the tower's own brim reaches back
+ * toward it; in a 6 mm gap the two extrusions meet and Orca's post-slice conflict
+ * check fails the plate (exit 155). That is why `placeWipeTower` takes the options
+ * — see SUPPORT_SKIRT.
  *
  * This is the multicolor path only. The single-filament export still rides
  * `meshesToThreeMf` unchanged (one object already slices clean).
@@ -64,12 +69,11 @@ export interface Assemble3mfOpts {
    *  than printed feet — the operator's ticket style turned `enable_support` on,
    *  which any design can do. Placement only: nothing is baked into
    *  `project_settings.config` (a downloaded file must not inherit a print-panel
-   *  setting), but the tower needs the wider gap, because supports grow the first
-   *  layer past the model outline and a tower crowding that growth makes Orca
-   *  re-arrange the plate — rotating the model out from under our pinned tower and
-   *  killing the slice with "gcode path conflicts found between WipeTower and
-   *  abacus" (exit 155). That is what prod hit on 2026-07-29. See SUPPORT_SKIRT.
-   *  `support` implies this. */
+   *  setting), but the tower needs a wider gap, because supports push the first
+   *  layer past the model outline and Orca's post-slice conflict check rejects a
+   *  plate whose tower extrusion touches the model's — "gcode path conflicts found
+   *  between WipeTower and abacus" (exit 155). That is what prod hit on 2026-07-29.
+   *  See SUPPORT_SKIRT. `support` implies this. */
   readonly supportsAtSlice?: boolean
 }
 
@@ -83,33 +87,36 @@ export const BAMBU_256_BED: BedSize = {
 }
 
 // Prime-tower footprint reserve. OrcaSlicer's default `prime_tower_width` (35 mm)
-// slices to ~41×35 mm including its brim; we reserve a hair more and keep a gap
-// from the model so a mm of arrange jitter can't touch it. Measured on THH's
+// slices to ~41×35 mm including its brim; we reserve a hair more and keep a gap from
+// the model so the tower's brim can't reach the model's first layer. Measured on THH's
 // sidecar at 5 filaments: the tower's extrusion spans 42.0 × 38.6 mm.
 const TOWER_W = 45
 const TOWER_D = 40
 const TOWER_GAP = 6
 
 // Extra reserve once supports are on: the first layer stops being the model's own
-// footprint. Supports grow outward from the overhangs they hold and take a brim, so
-// extrusion reaches past the model outline — measured on THH's sidecar 2026-07-29
-// from a printed-feet slice, 7.45 mm past the declared front edge (`brim_width` 5 +
-// `support_object_xy_distance` 0.35 + the support's own outward reach). SUPPORT_SKIRT
-// reserves that with a little headroom.
+// footprint. Support material grows outward from the overhangs it holds, so extrusion
+// reaches past the model outline. Measured 2026-07-29 from THH's supports-on slice
+// (the `Support` feature's extents vs the declared object box): 1.47 mm on the sides,
+// 5.32 mm at the front, 1.32 mm at the back. SUPPORT_SKIRT reserves the worst case
+// with headroom.
 //
-// WHY THIS MATTERS MORE THAN IT LOOKS — the exit-155 chain. TOWER_GAP alone is 6 mm,
-// so once supports are on the tower's brim overlaps that growth. Orca then judges the
-// plate layout invalid and AUTO-ARRANGES it; the CLI runs with `allow_rotations 1`
-// (visible in cli.log), so arrange turns the model a quarter turn about bed centre.
-// Our tower is pinned in absolute bed coordinates, so it does not follow — it ends up
-// underneath the rotated model, and slicing dies with "gcode path conflicts found
-// between WipeTower and abacus" (exit 155).
+// WHY 1.5 mm MATTERS MORE THAN IT LOOKS — the exit-155 chain. The gap has to hold two
+// growths, not one: the model's, and the tower's own brim (`prime_tower_brim_width` 3,
+// which extends back toward the model). TOWER_GAP alone is 6 mm, so with supports on
+// prod was left ~1.5 mm of real clearance, and a model brim (`brim_width` 5, auto_brim)
+// closes even that. Orca's post-slice `gcode path conflicts check` then fails the
+// plate: "gcode path conflicts found between WipeTower and abacus" (exit 155).
+// Widening the gap is what Orca's own error text prescribes — "try moving the wipe
+// tower further from other models".
 //
-// The rotation is therefore a SYMPTOM, not a behaviour of supports: keep the layout
-// valid and arrange never runs. Proof from two slices of the same model on the
-// sidecar, differing only in the pin: tower (195, 200) printed 192.08 × 100.08 (our
-// declared orientation), tower (200, 200) printed 100.08 × 192.08 (transposed). 5 mm
-// of pin flipped it. So the fix is to widen the GAP, not to chase the rotated pose.
+// NOT A ROTATION. An earlier version of this comment claimed supports make Orca
+// re-arrange and rotate the plate; that was a measurement error on our side (the
+// `Outer wall` extents include the prime tower, so moving the pin changed the bounding
+// box and looked like a transposed model). Two direct observations from our own slice
+// disprove it: the log says `before arrange, need_arrange=0` — arrange never runs on a
+// 3MF project — and the model printed at its declared min corner (declared 90.25,77.75
+// vs printed 90.46,75.96), in its declared orientation. Distance is the only lever.
 const SUPPORT_SKIRT = 8
 // How far a cornered tower keeps off the bed edge. The reserve above covers the
 // tower's own extrusion, but a tower pushed flush into the corner still trips the
@@ -206,8 +213,12 @@ function inflate(b: Box, d: number): Box {
   return { x0: b.x0 - d, y0: b.y0 - d, x1: b.x1 + d, y1: b.y1 + d }
 }
 
-/** The box turned a quarter turn about the bed centre — where Orca puts the model
- *  when it decides to re-orient it (see SUPPORT_SKIRT). */
+/** The box turned a quarter turn about the bed centre.
+ *
+ *  Used only by the printed-feet path, and on a premise since disproven — see
+ *  SUPPORT_SKIRT: Orca does not re-orient our plate (`need_arrange=0`, and the model
+ *  prints at its declared corner). Dead defense that costs bed area, not correctness;
+ *  retire it together with #23's placement once that can be re-verified. */
 function rotate90(b: Box, bed: BedSize): Box {
   const cx = bed.wMm / 2
   const cy = bed.dMm / 2
@@ -222,11 +233,11 @@ function rotate90(b: Box, bed: BedSize): Box {
  * The tower goes beside the model: the sides are tried in descending free-room
  * order (right / front / back / left) and the first that fits on the bed and clears
  * every keep-out zone wins. With supports on, the keep-out is the model grown by
- * SUPPORT_SKIRT, so the gap widens — that is what keeps Orca from re-arranging the
- * plate and rotating the model out from under the pin (see SUPPORT_SKIRT).
+ * SUPPORT_SKIRT, so the gap widens far enough that the tower's brim can never reach
+ * the model's support extrusion (see SUPPORT_SKIRT).
  *
- * The corner fallback is a last resort for a footprint no side can hold, and for
- * the printed-feet reserve, which also treats the rotated pose as keep-out and so
+ * The corner fallback is a last resort for a footprint no side can hold, and for the
+ * printed-feet reserve, which carries an extra keep-out (see `rotate90`) and so
  * usually has nothing but corners left. Not a packing algorithm: one object, one
  * tower, take the first spot that clears everything.
  */
@@ -245,19 +256,18 @@ function placeWipeTower(
   const cx = (obj.x0 + obj.x1) / 2
   const cy = (obj.y0 + obj.y1) / 2
 
-  // What the tower must stay off. Supports grow the first layer outward, so the
+  // What the tower must stay off. Supports push the first layer outward, so the
   // keep-out is the model plus SUPPORT_SKIRT — and the side candidates below hug
-  // THAT box, which is the whole fix: supports simply widen the gap, keeping the
-  // layout valid so Orca never auto-arranges (and so never rotates the model).
+  // THAT box, which is the whole fix: supports simply widen the gap, so the tower's
+  // brim and the model's support extrusion can never meet.
   const feetSupport = opts.support === true
   const grown = feetSupport || opts.supportsAtSlice === true ? inflate(obj, SUPPORT_SKIRT) : obj
 
-  // The rotated pose is only reachable once the layout is ALREADY invalid, so a
-  // wide enough gap makes it unreachable. The printed-feet path keeps defending
-  // against it anyway: its reserve was verified on the sidecar at one specific
-  // cornered pin, and re-placing it here would invalidate that without a fresh
-  // slice to back the new spot. Worth unifying once the sidecar can run an A/B
-  // again — cornering is itself close to the pins that trip arrange.
+  // The extra rotated keep-out is stale (see `rotate90` — Orca does not re-orient our
+  // plate), and it is inert rather than load-bearing: on a 5-column plate it still leaves
+  // the front side, and that front pin slices clean — as does the cornered pin older builds
+  // put on the same geometry (both verified on Orca 2.4.1 with prod's `0.24mm Draft @BBL
+  // X1C`). Dead weight; retire it together with `rotate90` whenever that's convenient.
   const keepOut: Box[] = feetSupport ? [grown, rotate90(grown, bed)] : [grown]
 
   // candidate min-corners on each side, ordered by how much room that side has
@@ -282,12 +292,10 @@ function placeWipeTower(
     if (fits(x, y)) return { xMm: x, yMm: y }
   }
 
-  // No side works, which under supports is the normal case: the two poses cross
-  // in the middle of the bed and leave only the corners. Push the tower right
-  // into each bed corner — the far corner of a contested bed is exactly where you
-  // want it — and keep whichever sits furthest from hot extrusion. Corners work
-  // because the escape axis can differ per pose: the winner is typically "beside
-  // the declared footprint AND past the end of the rotated one".
+  // No side works — the normal case for printed feet, whose keep-out pair crosses the
+  // middle of the bed and leaves only the corners. Push the tower right into each bed
+  // corner (the far corner of a contested bed is exactly where you want it) and keep
+  // whichever sits furthest from hot extrusion.
   const nearX = margin + TOWER_EDGE
   const farX = bed.wMm - margin - TOWER_EDGE - TOWER_W
   const nearY = margin + TOWER_EDGE

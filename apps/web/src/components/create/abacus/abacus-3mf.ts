@@ -312,12 +312,13 @@ export function buildAbacusThreeMf(args: {
   // only project_settings.config can carry the support keys the raised bottom
   // face needs, and meshesToThreeMf emits none.
   //
-  // `supportsAtSlice` is separate from `feetPrinted` on purpose: supports rotate the
-  // plate under Orca, so the tower has to dodge the rotated pose whenever they're on
-  // — and the operator's style can turn them on for a design with no printed feet at
-  // all. Keying the dodge off feet alone is what let prod pin a tower straight into
-  // the rotated model (exit 155, 2026-07-29). Single filament needs neither: no
-  // second extruder, no tower, nothing to collide with.
+  // `supportsAtSlice` is separate from `feetPrinted` on purpose: supports push the
+  // first layer past the model outline, so the tower needs a wider gap whenever
+  // they're on — and the operator's style can turn them on for a design with no
+  // printed feet at all. Keying the wider gap off feet alone is what let prod pin a
+  // tower just 6 mm from a supported model before exit 155 (2026-07-29); a later A/B
+  // slices that same 6 mm clean, so read the extra room as margin, not a proven cure.
+  // Single filament needs neither: no second extruder, no tower, nothing to collide with.
   if (assemblyBodies.length >= 2 || feetPrinted) {
     const { bytes } = assembleAbacus3mf(assemblyBodies, BAMBU_256_BED, {
       support: feetPrinted,
