@@ -118,9 +118,11 @@ export const abacusDesignKeys = {
   // and must not live as a prefix-invalidatable child of the immutable
   // snapshot key (which is cached with staleTime: Infinity).
   share: (designId: string) => [...abacusDesignKeys.all, 'share', designId] as const,
-  /** the caller's currently-shared designs (#24) — mutable, like `share`, and
-   *  invalidated by every flip in either direction. */
-  sharedList: () => [...abacusDesignKeys.all, 'shared-list'] as const,
+  /** the caller's designs — "my abacuses" (#11), grown from #24's shared-only
+   *  ledger. Mutable, like `share`: invalidated by every share flip, every
+   *  rename, and every save. It is also where a design's NAME lives, since the
+   *  immutable `detail` snapshot must not carry mutable metadata. */
+  list: () => [...abacusDesignKeys.all, 'list'] as const,
 }
 
 // Collected clips query keys (admin audio TTS generation)

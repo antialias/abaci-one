@@ -98,8 +98,9 @@ export function useAbacusDesignShare(designId: string | null) {
     },
     onSuccess: (settled) => {
       queryClient.setQueryData(key, settled)
-      // this design just entered or left the ledger of what you've made public
-      queryClient.invalidateQueries({ queryKey: abacusDesignKeys.sharedList() })
+      // this design's row in "my abacuses" just changed side — and if it was
+      // hidden, un-sharing is what finally drops it from that list (#11)
+      queryClient.invalidateQueries({ queryKey: abacusDesignKeys.list() })
     },
   })
 

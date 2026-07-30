@@ -20,29 +20,13 @@
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
+import { manageableDesign as manageable } from '@/lib/abacus/design-access'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getUserId } from '@/lib/viewer'
 
 const notFound = () => NextResponse.json({ error: 'Design not found' }, { status: 404 })
 
 const state = (sharedAt: Date | null) =>
   NextResponse.json({ shared: sharedAt !== null, sharedAt: sharedAt ? sharedAt.getTime() : null })
-
-/** The row, but only for someone allowed to MANAGE its sharing (owner or
- *  admin). Null means "answer 404" — the caller never learns which of
- *  unknown / not-yours it was. */
-async function manageable(designId: string, userRole: string) {
-  if (!designId) return null
-  const row = await db.query.abacusDesigns.findFirst({
-    where: eq(schema.abacusDesigns.id, designId),
-  })
-  if (!row) return null
-  if (userRole === 'admin') return row
-  // A signed-out visitor (getUserId throws) simply isn't the owner.
-  const userId = await getUserId().catch(() => null)
-  if (userId === null || row.createdBy !== userId) return null
-  return row
-}
 
 export const GET = withAuth(async (_request, { userRole, params }) => {
   try {

@@ -51,6 +51,25 @@ export const abacusDesigns = sqliteTable(
      *  nulls this back out, and re-sharing revives the SAME url, which is what
      *  makes the toggle its own undo. Access changes; content never does. */
     sharedAt: integer('shared_at', { mode: 'timestamp' }),
+    /** What the owner calls this design (#11). NULL = never named, and the UI
+     *  falls back to the engraved text, then to the column count.
+     *
+     *  Metadata, NOT content: `name` and `hiddenAt` are both outside
+     *  `contentHash`, which covers only the `{v, params, overrides, profileId}`
+     *  envelope. That is load-bearing — if a name entered the hash, renaming
+     *  would fork the design and orphan every `?design=` link already printed
+     *  on a job card. The flip side is that one snapshot carries exactly one
+     *  name: building the same design twice under two names dedups onto the
+     *  first row (operator decision 2026-07-29, over a saved-designs join
+     *  table). */
+    name: text('name'),
+    /** Taken out of the owner's "my abacuses" list (#11) — the honest form of
+     *  the delete this ticket withdrew. The row itself is permanent, so every
+     *  printed link keeps resolving; only the list forgets it. A SHARED design
+     *  is listed even when this is set (see the collection route): hiding a
+     *  public design would reopen the revocation hole #24 exists to close, so
+     *  un-sharing is what finally lets it go. */
+    hiddenAt: integer('hidden_at', { mode: 'timestamp' }),
   },
   (table) => ({
     createdByIdx: index('abacus_designs_created_by_idx').on(table.createdBy),

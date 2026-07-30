@@ -111,11 +111,17 @@ p, guest, /api/abacus/print/*, *
 # (the route layer admits the request, the handler 404s everyone else — with the
 # same body an unknown id gets, so nothing is leaked).
 p, guest, /api/abacus/designs, POST
-# GET on the collection is the caller's SHARED-design ledger (#24) — the only
-# way back to a design you shared and then edited past. Identity-scoped in the
-# handler, so a guest reading it sees exactly their own (usually none).
+# GET on the collection is the caller's design list — #24's shared ledger grown
+# into "my abacuses" (#11). It is also the only way back to a design you shared
+# and then edited past. Identity-scoped in the handler, so a guest reading it
+# sees exactly their own (usually none).
 p, guest, /api/abacus/designs, GET
 p, guest, /api/abacus/designs/*, GET
+# PATCH renames a design or takes it out of your list (#11). Its OWN line
+# because the GET above is verb-scoped: without this, renaming 401s in prod and
+# never in a unit test, since handler tests mock withAuth away. Ownership is
+# enforced in the handler, which answers the same 404 the read gives.
+p, guest, /api/abacus/designs/*, PATCH
 # Design sharing (#24) — the owner flips cross-account read on the SAME design
 # id. Guest subject on purpose (unlike song/observation shares): the studio is
 # guest-first, and because the flag rides the design row, the guest→user merge

@@ -33,12 +33,16 @@ describe('route RBAC policy', () => {
     const enforcer = await getRouteEnforcer()
     for (const [path, method] of [
       ['/api/abacus/designs', 'POST'],
-      // the shared-design ledger (#24). Its own line because the POST rule is
-      // verb-scoped — GET on the collection is genuinely uncovered without it,
-      // which would 401 the only route back to a design you shared and edited
-      // past.
+      // the caller's design list — #24's shared ledger grown into "my abacuses"
+      // (#11). Its own line because the POST rule is verb-scoped: GET on the
+      // collection is genuinely uncovered without it, which would 401 the only
+      // route back to a design you shared and edited past.
       ['/api/abacus/designs', 'GET'],
       ['/api/abacus/designs/abc123', 'GET'],
+      // renaming / un-listing a design (#11) — same trap, second time: the GET
+      // rule one line up is verb-scoped, so PATCH is genuinely uncovered
+      // without a rule of its own.
+      ['/api/abacus/designs/abc123', 'PATCH'],
       // the mid-path wildcard (#24) — this is the pin: keyMatch2 has to expand
       // designs/*/share, and a missing rule 401s in prod but never in a unit
       // test, because handler tests mock withAuth away.

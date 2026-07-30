@@ -68,7 +68,11 @@ describe('abacus design routes', () => {
     await db.run(sql.raw('CREATE TABLE `users` (`id` text PRIMARY KEY NOT NULL)'))
     // Every migration that touches abacus_designs, in order — miss one and the
     // failures read as "no such column", not "you forgot a migration".
-    for (const file of ['0140_abacus_designs.sql', '0141_abacus_design_sharing.sql']) {
+    for (const file of [
+      '0140_abacus_designs.sql',
+      '0141_abacus_design_sharing.sql',
+      '0142_abacus_design_names.sql',
+    ]) {
       const migration = readFileSync(
         path.join(__dirname, '../../../../../../drizzle', file),
         'utf-8'

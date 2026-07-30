@@ -49,16 +49,22 @@ export function useAbacusDesignSnapshot(designId: string | null) {
  * Persist the studio's current design; resolves the stored id, or null on ANY
  * failure (network, refusal, timeout, junk response) — never throws. Identical
  * resubmits converge on the same id server-side (owner-scoped content hash).
+ *
+ * `name` carries a name FORWARD across an edit (#11): a design's id is its
+ * content, so editing mints a new row, and without this "Ada's abacus" would
+ * quietly become an unnamed row on its first tweak. The server fills a blank
+ * name and never overwrites a chosen one, so passing it is always safe.
  */
 export async function persistAbacusDesign(
   design: AbacusDesignSnapshot,
-  provenance: AbacusDesignProvenance
+  provenance: AbacusDesignProvenance,
+  name?: string | null
 ): Promise<string | null> {
   try {
     const res = await api('abacus/designs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ design, provenance }),
+      body: JSON.stringify(name ? { design, provenance, name } : { design, provenance }),
       signal: AbortSignal.timeout(PERSIST_TIMEOUT_MS),
     })
     if (!res.ok) return null

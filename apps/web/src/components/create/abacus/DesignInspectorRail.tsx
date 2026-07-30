@@ -27,7 +27,7 @@ import {
 import { useAbacusStudio } from './AbacusStudioContext'
 import { PRESET_OPTS } from './abacus-model'
 import { DesignLinkChip } from './DesignLinkChip'
-import { SharedDesignsList } from './SharedDesignsList'
+import { MyDesignsList } from './MyDesignsList'
 
 const SCHEME_LABEL: Record<string, string> = {
   monochrome: 'Monochrome',
@@ -71,6 +71,7 @@ export function DesignInspectorRail({
     saveAsPlayerAbacus,
     saveIsPending,
     saveIsError,
+    savedDesignId,
   } = useAbacusStudio()
 
   const ownerLabel = playerUnavailable
@@ -245,11 +246,12 @@ export function DesignInspectorRail({
           the identity save is about a PERSON, this is about an ADDRESS */}
       <DesignLinkChip selectedPlayerId={selectedPlayerId} onDesignSaved={onDesignSaved} />
 
-      {/* the ledger of everything you've made public (#24). A sibling of the
-          chip rather than a child of it: the chip is pure orchestration over a
-          mocked context seam, and this fetches. Renders nothing until you have
-          actually shared something. */}
-      <SharedDesignsList />
+      {/* "My abacuses" (#11) — everything you've saved or printed, grown from
+          #24's ledger of what you've made public. A sibling of the chip rather
+          than a child of it: the chip is pure orchestration over a mocked
+          context seam, and this fetches. Renders nothing until you have saved
+          something. */}
+      <MyDesignsList currentDesignId={savedDesignId} />
 
       {/* the fabrication chooser (paper ↔ 3D print) now lives in the shell's
           persistent top toolbar (FabricationSwitch), not here */}

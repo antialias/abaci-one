@@ -46,6 +46,10 @@ vi.mock('@/hooks/useAbacusDesignSnapshot', () => ({
   useAbacusDesignSnapshot: vi.fn(() => ({ data: undefined, isError: false })),
   persistAbacusDesign: vi.fn(),
 }))
+// the controller reads "my abacuses" only to carry a NAME across an edit (#11)
+vi.mock('@/hooks/useMyDesigns', () => ({
+  useMyDesigns: () => ({ designs: [] }),
+}))
 
 const SNAPSHOT = {
   v: 1 as const,

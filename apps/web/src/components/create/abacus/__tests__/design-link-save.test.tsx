@@ -13,6 +13,7 @@ import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { persistAbacusDesign, useAbacusDesignSnapshot } from '@/hooks/useAbacusDesignSnapshot'
+import { useMyDesigns } from '@/hooks/useMyDesigns'
 import { AbacusStudioProvider, useAbacusStudio } from '../AbacusStudioContext'
 import { defaultParams } from '../abacus-model'
 
@@ -46,6 +47,11 @@ vi.mock('@/hooks/useAbacusDesignSnapshot', () => ({
   useAbacusDesignSnapshot: vi.fn(() => ({ data: undefined, isError: false })),
   persistAbacusDesign: vi.fn(),
 }))
+// "My abacuses" (#11) — the controller reads it for ONE thing: the name of the
+// design an edit came from, so a name survives being tweaked.
+vi.mock('@/hooks/useMyDesigns', () => ({
+  useMyDesigns: vi.fn(() => ({ designs: [] })),
+}))
 
 // What a stale/foreign read of the minted id might return — nothing like the
 // live state, so a hydration stomp would be unmissable.
@@ -78,6 +84,9 @@ beforeEach(() => {
     // biome-ignore lint/suspicious/noExplicitAny: partial React Query result
   } as any)
   vi.mocked(persistAbacusDesign).mockReset()
+  vi.mocked(useMyDesigns).mockReturnValue({ designs: [] } as unknown as ReturnType<
+    typeof useMyDesigns
+  >)
 })
 
 describe('saveDesignSnapshot (Gitea #25)', () => {
@@ -97,7 +106,8 @@ describe('saveDesignSnapshot (Gitea #25)', () => {
     expect(id).toBe('dsn-new')
     expect(persistAbacusDesign).toHaveBeenCalledWith(
       expect.objectContaining({ v: 1, params: expect.objectContaining({ cols: 9 }) }),
-      { origin: 'studio-link' }
+      { origin: 'studio-link' },
+      null // nothing to inherit — this design came from scratch
     )
     expect(result.current.savedDesignId).toBe('dsn-new')
   })
@@ -178,5 +188,88 @@ describe('saveDesignSnapshot (Gitea #25)', () => {
     expect(id).toBeNull()
     expect(result.current.savedDesignId).toBeNull()
     expect(result.current.designLinkPending).toBe(false)
+  })
+})
+
+/**
+ * Names across an edit (Gitea #11). A design's id IS its content, so editing
+ * mints a new row — and without carrying the name forward, "Ada's abacus" would
+ * quietly become an unnamed row the first time anyone moved a slider.
+ */
+describe('name inheritance', () => {
+  const listing = (designs: Array<{ id: string; name: string | null }>) =>
+    vi
+      .mocked(useMyDesigns)
+      .mockReturnValue({ designs } as unknown as ReturnType<typeof useMyDesigns>)
+
+  /** open a saved design, then diverge from it — the state a re-save mints from */
+  const openThenEdit = async (designId: string) => {
+    currentDesignId = designId
+    vi.mocked(useAbacusDesignSnapshot).mockReturnValue({
+      data: OTHER_SNAPSHOT,
+      isError: false,
+      // biome-ignore lint/suspicious/noExplicitAny: partial React Query result
+    } as any)
+    const { result } = renderHook(() => useAbacusStudio(), { wrapper: wrap() })
+    // the hydration effect adopts the id as "already linked"…
+    expect(result.current.savedDesignId).toBe(designId)
+    act(() => {
+      result.current.set('cols', 7)
+    })
+    // …and the edit detaches from it, which is why the STALE id is the one that
+    // knows the name
+    expect(result.current.savedDesignId).toBeNull()
+    expect(result.current.designLinkStale).toBe(true)
+    return result
+  }
+
+  it('carries the name of the design the edit came FROM', async () => {
+    listing([{ id: 'dsn-ada', name: 'Ada’s abacus' }])
+    vi.mocked(persistAbacusDesign).mockResolvedValue('dsn-ada-v2')
+    const result = await openThenEdit('dsn-ada')
+
+    await act(async () => {
+      await result.current.saveDesignSnapshot()
+    })
+
+    expect(persistAbacusDesign).toHaveBeenCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ cols: 7 }) }),
+      { origin: 'studio-link' },
+      'Ada’s abacus'
+    )
+  })
+
+  it('inherits nothing when forking a design that is not yours', async () => {
+    // a stranger's shared design is openable but absent from YOUR list, which
+    // is exactly what makes the fork start out unnamed
+    listing([{ id: 'dsn-mine', name: 'Mine' }])
+    vi.mocked(persistAbacusDesign).mockResolvedValue('dsn-fork')
+    const result = await openThenEdit('dsn-theirs')
+
+    await act(async () => {
+      await result.current.saveDesignSnapshot()
+    })
+
+    expect(persistAbacusDesign).toHaveBeenCalledWith(
+      expect.anything(),
+      { origin: 'studio-link' },
+      null
+    )
+  })
+
+  it('inherits nothing from an unnamed design', async () => {
+    listing([{ id: 'dsn-plain', name: null }])
+    vi.mocked(persistAbacusDesign).mockResolvedValue('dsn-plain-v2')
+    const result = await openThenEdit('dsn-plain')
+
+    await act(async () => {
+      await result.current.saveDesignSnapshot()
+    })
+
+    expect(persistAbacusDesign).toHaveBeenCalledWith(
+      expect.anything(),
+      { origin: 'studio-link' },
+      null
+    )
   })
 })

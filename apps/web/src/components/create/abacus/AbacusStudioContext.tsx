@@ -28,6 +28,7 @@ import {
 import { useAbacusDesignShare } from '@/hooks/useAbacusDesignShare'
 import { persistAbacusDesign, useAbacusDesignSnapshot } from '@/hooks/useAbacusDesignSnapshot'
 import { useAbacusPrintConnections } from '@/hooks/useAbacusPrintConnections'
+import { useMyDesigns } from '@/hooks/useMyDesigns'
 import {
   usePlayerAbacusIdentity,
   useSavePlayerAbacusIdentity,
@@ -239,15 +240,24 @@ function useStudioController(playerId: string | null, designId: string | null) {
   // editing a shared design hides the control until a new link is saved — the
   // old id's sharing says nothing about what you're looking at now.
   const designShare = useAbacusDesignShare(savedDesignId)
+  // "My abacuses" (#11) — read here for ONE reason: it is where a design's name
+  // lives, and a save has to carry that name forward across the edit. The rail's
+  // list calls the same hook; React Query serves both from one query.
+  const myDesigns = useMyDesigns()
   // the saved link no longer addresses what's on screen (save, then edit)
   const designLinkStale = savedDesign !== null && savedDesignId === null
   const saveDesignSnapshot = useCallback(async (): Promise<string | null> => {
     if (savedDesignId) return savedDesignId
     const snapshot: AbacusDesignSnapshot = { v: 1, params, overrides, profileId }
     const canonical = canonicalDesignSnapshot(snapshot)
+    // Carry the name of the design this edit came FROM (#11) — `savedDesign`,
+    // the STALE id, not `savedDesignId`, which is null precisely because the
+    // content diverged. So "Ada's abacus" stays named as you tweak it. A fork of
+    // someone else's design inherits nothing: their id isn't in your list.
+    const inheritedName = myDesigns.designs.find((d) => d.id === savedDesign?.id)?.name ?? null
     setDesignLinkPending(true)
     try {
-      const id = await persistAbacusDesign(snapshot, { origin: 'studio-link' })
+      const id = await persistAbacusDesign(snapshot, { origin: 'studio-link' }, inheritedName)
       if (id) {
         // This content came FROM live state: pre-seed the hydration guard and
         // the query cache BEFORE the URL ever carries the new id, so the
@@ -256,12 +266,14 @@ function useStudioController(playerId: string | null, designId: string | null) {
         hydratedDesignRef.current = id
         queryClient.setQueryData(abacusDesignKeys.detail(id), snapshot)
         setSavedDesign({ id, canonical })
+        // a design you just made belongs in your list, named or not
+        queryClient.invalidateQueries({ queryKey: abacusDesignKeys.list() })
       }
       return id
     } finally {
       setDesignLinkPending(false)
     }
-  }, [savedDesignId, params, overrides, profileId, queryClient])
+  }, [savedDesignId, savedDesign, myDesigns.designs, params, overrides, profileId, queryClient])
 
   // any manual edit detaches from the live config (see `synced`). THE chokepoint.
   const set = <K extends keyof Params>(k: K, v: Params[K]) => {
