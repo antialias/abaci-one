@@ -41,6 +41,27 @@ export function isSupportMaterial(material: FilamentMaterial): boolean {
   return m.endsWith('-S') || m === 'PVA' || m === 'HIPS'
 }
 
+// What KIND of support media is this spool? The service's `supportKind`
+// (things-haunt-house#367) is authoritative when present — including an
+// explicit null ("plain model material"). The family-name heuristic above only
+// answers when the wire didn't carry the field (pre-#367 service, manual
+// catalogs), and it maps a heuristic hit onto 'interface': PLA-S/PVA/HIPS are
+// interface-grade breakaway/dissolvable media, and guessing 'body' would hide
+// the spool from the support-interface picker. The kit's
+// `SupportRosterEntry.supportKind` consumes this projection directly.
+export function spoolSupportKind(spool: FilamentSpool): 'interface' | 'body' | null {
+  if (spool.supportKind !== undefined) return spool.supportKind
+  return isSupportMaterial(spool.material) ? 'interface' : null
+}
+
+// Is this SPOOL support media at all? Both 'interface' (dedicated interface,
+// PLA-S) and 'body' (support-body material) count: neither is a sensible
+// auto-pick for a visible surface. Every "never auto-pick / warn on
+// visible-role" check should go through THIS, not the raw name heuristic.
+export function isSupportSpool(spool: FilamentSpool): boolean {
+  return spoolSupportKind(spool) !== null
+}
+
 // Co-print group: families that share a plate temperature window. Support-for-X
 // and filled variants (X-CF/GF/HF) print alongside X by design; ASA and HIPS
 // ride with ABS; PVA rides with PLA. An unknown family forms its own group —
@@ -62,6 +83,11 @@ export type FilamentSpool = {
   // `id`. Absent/false for every AMS-slot and params spool. A print with an external
   // spool is single-filament by construction (one nozzle, one spool).
   external?: boolean
+  // Service-side support capability (things-haunt-house#367), projected verbatim
+  // from the wire. When PRESENT it is authoritative and `isSupportSpool` ignores
+  // the name heuristic; absent (pre-#367 service, params catalog) falls back to
+  // `isSupportMaterial`.
+  supportKind?: 'interface' | 'body' | null
 }
 
 export type FilamentCatalog = {
@@ -160,6 +186,9 @@ export function thhFilamentsToCatalog(rows: ThhFilamentRow[], fetchedAt: string)
       name: spoolName(row, i),
       hex: normalizeThhHex(row.colorHex),
       material: (row.family as FilamentMaterial) || 'PLA',
+      // supportKind projects verbatim (including an explicit null); omitted
+      // entirely when the service predates #367 so isSupportSpool falls back.
+      ...(row.supportKind !== undefined ? { supportKind: row.supportKind } : {}),
     })
   })
   return { source: 'thh-ams', spools, fetchedAt }

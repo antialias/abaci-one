@@ -1,8 +1,9 @@
 /**
- * v2 ticket builder tests (#9, #19): filaments mirror the 3MF's extruder grouping
- * (one spool per distinct body colour, body order); an AMS spool rides as its THH
- * slotId, a no-AMS external spool as {external, family}; style passes through
- * verbatim; and non-submittable states (incl. >1 external) fail loud.
+ * v2 ticket builder tests (#9, #19, #23): filaments mirror the 3MF's extruder
+ * assignment (one spool per distinct body SLOT, body order — never collapsed by
+ * colour); an AMS spool rides as its THH slotId, a no-AMS external spool as
+ * {external, family}; style passes through verbatim; and non-submittable states
+ * (incl. >1 external) fail loud.
  */
 import { describe, expect, it } from 'vitest'
 import type { SpoolBodySummary } from '../abacus-3mf'
@@ -55,13 +56,35 @@ describe('buildAbacusTicket', () => {
     expect(ticket.name).toBe('Abacus — 13 columns')
   })
 
-  it('collapses same-colour bodies to one spool, matching the 3MF extruder grouping', () => {
+  it('keeps same-colour bodies on DIFFERENT slots as separate spools (slot = extruder)', () => {
+    // The 3MF assembly assigns extruders per slot, never per colour: two
+    // same-hex slots are two extruders and must be two ticket entries, or
+    // THH's extruder→spool alignment shifts by one. (This replaced the old
+    // colour-collapse behavior — a latent bug the printed-feet default made
+    // real: black TPU feet next to a black PLA frame.)
     const twoWhites: SpoolBodySummary[] = [
       { slot: 1, label: 'Snow PLA', colorHex: '#F5F5F5', triangleCount: 10 },
-      { slot: 2, label: 'Also white', colorHex: '#f5f5f5', triangleCount: 10 }, // case-insensitive
+      { slot: 2, label: 'Also white', colorHex: '#f5f5f5', triangleCount: 10 },
     ]
     const ticket = buildAbacusTicket({ ...base, bodies: twoWhites })
-    expect(ticket.filaments).toEqual([{ slotId: '0.2' }])
+    expect(ticket.filaments).toEqual([{ slotId: '0.2' }, { slotId: '0.3' }])
+  })
+
+  it('black TPU feet next to a black PLA frame emit two filament entries (Gitea #23)', () => {
+    const blackOnBlack: FilamentCatalog = {
+      source: 'thh-ams',
+      fetchedAt: '2026-07-20T00:00:00Z',
+      spools: [
+        { id: '0.1', name: 'Ink PLA', hex: '#111111', material: 'PLA' },
+        { id: '0.2', name: 'Bambu TPU for AMS Black', hex: '#111111', material: 'TPU' },
+      ],
+    }
+    const blackBodies: SpoolBodySummary[] = [
+      { slot: 0, label: 'Ink PLA', colorHex: '#111111', triangleCount: 5000 },
+      { slot: 1, label: 'Bambu TPU for AMS Black', colorHex: '#111111', triangleCount: 300 },
+    ]
+    const ticket = buildAbacusTicket({ ...base, catalog: blackOnBlack, bodies: blackBodies })
+    expect(ticket.filaments).toEqual([{ slotId: '0.1' }, { slotId: '0.2' }])
   })
 
   it('refuses the params stand-in catalog', () => {
@@ -122,6 +145,129 @@ describe('buildAbacusTicket', () => {
     expect(buildAbacusTicket({ ...base, authoring: null })).not.toHaveProperty('authoring')
   })
 
+  describe('support-interface role (Gitea #23, THH#367)', () => {
+    // A roster with a dedicated interface spool (PLA-S) alongside the model spools.
+    const supportCatalog: FilamentCatalog = {
+      source: 'thh-ams',
+      fetchedAt: '2026-07-20T00:00:00Z',
+      spools: [
+        { id: '0.1', name: 'Latte PLA', hex: '#C9A26E', material: 'PLA' },
+        { id: '0.2', name: 'Snow PLA', hex: '#F5F5F5', material: 'PLA' },
+        {
+          id: '0.3',
+          name: 'Bambu Support for PLA',
+          hex: '#FFFFFF',
+          material: 'PLA-S',
+          supportKind: 'interface',
+        },
+      ],
+    }
+    const supportBodies: SpoolBodySummary[] = [
+      { slot: 0, label: 'Latte PLA', colorHex: '#C9A26E', triangleCount: 5000 },
+      { slot: 1, label: 'Snow PLA', colorHex: '#F5F5F5', triangleCount: 800 },
+    ]
+
+    it('appends {slotId, role} as the LAST entry, after every model spool', () => {
+      // THH computes support_interface_filament from entry ORDER — the role
+      // entry must trail the model entries, which stay in body/extruder order.
+      const ticket = buildAbacusTicket({
+        ...base,
+        catalog: supportCatalog,
+        bodies: supportBodies,
+        supportInterfaceSlotId: '0.3',
+      })
+      expect(ticket.filaments).toEqual([
+        { slotId: '0.1' },
+        { slotId: '0.2' },
+        { slotId: '0.3', role: 'support-interface' },
+      ])
+    })
+
+    it('null and absent both mean "interface prints in the model material" — no role entry', () => {
+      const withNull = buildAbacusTicket({
+        ...base,
+        catalog: supportCatalog,
+        bodies: supportBodies,
+        supportInterfaceSlotId: null,
+      })
+      const withAbsent = buildAbacusTicket({
+        ...base,
+        catalog: supportCatalog,
+        bodies: supportBodies,
+      })
+      expect(withNull.filaments).toEqual([{ slotId: '0.1' }, { slotId: '0.2' }])
+      expect(withAbsent.filaments).toEqual(withNull.filaments)
+    })
+
+    it('a pick that coincides with a model entry is not duplicated (extruder order holds)', () => {
+      // Tagging the coinciding entry would either duplicate the slot or move a
+      // model entry out of extruder order — and the interface already prints in
+      // that loaded material.
+      const ticket = buildAbacusTicket({
+        ...base,
+        catalog: supportCatalog,
+        bodies: supportBodies,
+        supportInterfaceSlotId: '0.2',
+      })
+      expect(ticket.filaments).toEqual([{ slotId: '0.1' }, { slotId: '0.2' }])
+    })
+
+    it('refuses a pick that is not in the loaded roster', () => {
+      expect(() =>
+        buildAbacusTicket({
+          ...base,
+          catalog: supportCatalog,
+          bodies: supportBodies,
+          supportInterfaceSlotId: '9.9',
+        })
+      ).toThrow(/not in the loaded roster/)
+    })
+
+    it('refuses an external spool as the interface — the role must be a loaded slot', () => {
+      const withExternal: FilamentCatalog = {
+        source: 'thh-ams',
+        fetchedAt: '2026-07-20T00:00:00Z',
+        spools: [
+          { id: '0.1', name: 'Latte PLA', hex: '#C9A26E', material: 'PLA' },
+          { id: 'external-1', name: 'Sunlu Red', hex: '#C0392B', material: 'PLA', external: true },
+        ],
+      }
+      expect(() =>
+        buildAbacusTicket({
+          ...base,
+          catalog: withExternal,
+          bodies: [{ slot: 0, label: 'latte', colorHex: '#C9A26E', triangleCount: 10 }],
+          supportInterfaceSlotId: 'external-1',
+        })
+      ).toThrow(/never the external spool/)
+    })
+
+    it('refuses routing an interface slot onto a no-AMS (external-spool) print', () => {
+      const externalCatalog: FilamentCatalog = {
+        source: 'thh-ams',
+        fetchedAt: '2026-07-20T00:00:00Z',
+        spools: [
+          { id: 'external-0', name: 'Sunlu PLA+', hex: '#1A7A3E', material: 'PLA', external: true },
+          {
+            id: '0.9',
+            name: 'Phantom interface',
+            hex: '#FFFFFF',
+            material: 'PLA-S',
+            supportKind: 'interface',
+          },
+        ],
+      }
+      expect(() =>
+        buildAbacusTicket({
+          ...base,
+          catalog: externalCatalog,
+          bodies: [{ slot: 0, label: 'Sunlu PLA+', colorHex: '#1A7A3E', triangleCount: 10 }],
+          supportInterfaceSlotId: '0.9',
+        })
+      ).toThrow(/no-AMS/)
+    })
+  })
+
   it('refuses more than one external spool — a no-AMS print is single-filament', () => {
     const twoExternal: FilamentCatalog = {
       source: 'thh-ams',
@@ -157,12 +303,12 @@ describe('buildAbacusAuthoring (things-haunt-house#408 / abaci#22)', () => {
   })
 
   it('deep-links the persisted design, with the player riding along (abaci#22)', () => {
-    expect(
-      buildAbacusAuthoring('p1', { designId: 'dsn123', origin: 'https://abaci.one' })
-    ).toEqual({
-      editUrl: 'https://abaci.one/create/abacus?design=dsn123&player=p1',
-      editTool: 'Abacus Studio',
-    })
+    expect(buildAbacusAuthoring('p1', { designId: 'dsn123', origin: 'https://abaci.one' })).toEqual(
+      {
+        editUrl: 'https://abaci.one/create/abacus?design=dsn123&player=p1',
+        editTool: 'Abacus Studio',
+      }
+    )
     expect(buildAbacusAuthoring(null, { designId: 'dsn123', origin: 'https://abaci.one' })).toEqual(
       {
         editUrl: 'https://abaci.one/create/abacus?design=dsn123',

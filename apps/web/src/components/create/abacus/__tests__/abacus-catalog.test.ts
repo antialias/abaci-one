@@ -3,7 +3,10 @@ import type { ThhFilamentRow } from '@/lib/abacus/print/filament-wire'
 import {
   catalogFromParams,
   coPrintGroup,
+  type FilamentSpool,
   isSupportMaterial,
+  isSupportSpool,
+  spoolSupportKind,
   thhFilamentsToCatalog,
 } from '../abacus-catalog'
 import { defaultParams, type Params } from '../abacus-model'
@@ -175,5 +178,66 @@ describe('family knowledge (gh#163)', () => {
   it('never assumes compatibility for an unknown family — it forms its own group', () => {
     expect(coPrintGroup('PPA-XYZ')).toBe('PPA-XYZ')
     expect(coPrintGroup('TPU')).toBe('TPU')
+  })
+})
+
+describe('spool support knowledge (THH#367 / Gitea #23)', () => {
+  const spool = (over: Partial<FilamentSpool>): FilamentSpool => ({
+    id: '0.1',
+    name: 'Spool',
+    hex: '#FFFFFF',
+    material: 'PLA',
+    ...over,
+  })
+
+  it('a present wire supportKind is authoritative — including an explicit null', () => {
+    // The service KNOWS; the name heuristic must not override it either way.
+    expect(spoolSupportKind(spool({ material: 'PLA-S', supportKind: null }))).toBe(null)
+    expect(spoolSupportKind(spool({ material: 'PLA', supportKind: 'interface' }))).toBe('interface')
+    expect(spoolSupportKind(spool({ material: 'PLA', supportKind: 'body' }))).toBe('body')
+    expect(isSupportSpool(spool({ material: 'PLA-S', supportKind: null }))).toBe(false)
+    expect(isSupportSpool(spool({ material: 'PLA', supportKind: 'interface' }))).toBe(true)
+    expect(isSupportSpool(spool({ material: 'PLA', supportKind: 'body' }))).toBe(true)
+  })
+
+  it('falls back to the family-name heuristic when the wire omitted the field', () => {
+    // Pre-#367 service / manual catalogs: the heuristic answers, mapped onto
+    // 'interface' (PLA-S/PVA/HIPS are interface-grade breakaway media).
+    expect(spoolSupportKind(spool({ material: 'PLA-S' }))).toBe('interface')
+    expect(spoolSupportKind(spool({ material: 'PVA' }))).toBe('interface')
+    expect(spoolSupportKind(spool({ material: 'PLA' }))).toBe(null)
+    expect(isSupportSpool(spool({ material: 'HIPS' }))).toBe(true)
+    expect(isSupportSpool(spool({ material: 'TPU' }))).toBe(false)
+  })
+
+  it('projects the wire supportKind through thhFilamentsToCatalog verbatim', () => {
+    const rows: ThhFilamentRow[] = [
+      { slotId: '0.1', family: 'PLA', colorHex: 'A0A0A0FF' },
+      { slotId: '0.2', family: 'PLA-S', colorHex: 'FFFFFFFF', supportKind: 'interface' },
+      { slotId: '0.3', family: 'PLA', colorHex: '111111FF', supportKind: null },
+    ]
+    const cat = thhFilamentsToCatalog(rows, '2026-07-28T00:00:00.000Z')
+    // Absent on the wire stays absent (heuristic territory), present projects
+    // verbatim — an explicit null must survive as a PRESENT null, not vanish.
+    expect('supportKind' in cat.spools[0]).toBe(false)
+    expect(cat.spools[1].supportKind).toBe('interface')
+    expect('supportKind' in cat.spools[2]).toBe(true)
+    expect(cat.spools[2].supportKind).toBe(null)
+  })
+
+  it('an external row never projects supportKind — it can never be the interface', () => {
+    const rows: ThhFilamentRow[] = [
+      {
+        external: true,
+        slotId: null,
+        family: 'PLA-S',
+        colorHex: 'FFFFFFFF',
+        supportKind: 'interface',
+      },
+    ]
+    const cat = thhFilamentsToCatalog(rows, '2026-07-28T00:00:00.000Z')
+    expect(cat.spools).toHaveLength(1)
+    expect(cat.spools[0].external).toBe(true)
+    expect('supportKind' in cat.spools[0]).toBe(false)
   })
 })

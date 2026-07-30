@@ -17,9 +17,10 @@
 // now re-exports it as a thin adapter over `materialize`, byte-for-byte identical
 // (see __tests__/filament-map-snapshot.json).
 //
-// P1 scope: frame + ArUco markers + bead roles. Perimeter text roles and the
-// rainbow multi-material hard gate are deferred to P4 — hence every warning here
-// is severity 'warning' and `ok` stays true. Framework-free (no React, no three).
+// Scope: frame + ArUco markers + bead roles + printed feet. Perimeter text roles
+// and the rainbow multi-material hard gate are deferred to P4 — hence every
+// warning here is severity 'warning' and `ok` stays true. Framework-free (no
+// React, no three).
 //
 // Material compatibility (gh#163 + the P4 weld rule's auto half, landed): with a
 // THH catalog (real families), auto-snap is ANCHOR-RESTRICTED — it picks one
@@ -39,7 +40,7 @@ import {
   coPrintGroup,
   type FilamentCatalog,
   type FilamentSpool,
-  isSupportMaterial,
+  isSupportSpool,
 } from './abacus-catalog'
 import type { AbacusDesign } from './abacus-design'
 import { toAbacusDesign } from './abacus-design'
@@ -59,7 +60,7 @@ export const PRINT_PLAN_SCHEMA_VERSION = 1
 // intent (WCAG ratio of the mapped marker pair).
 export const MARKER_CONTRAST_MIN = 3
 
-export type PrintRoleKind = 'frame' | 'markerBlack' | 'markerWhite' | 'bead' | 'text'
+export type PrintRoleKind = 'frame' | 'markerBlack' | 'markerWhite' | 'bead' | 'text' | 'feet'
 
 // A single printable color region, tagged with its INTRINSIC (pre-quantization)
 // hex. `key` is stable across a re-materialize so overrides can pin a role.
@@ -87,6 +88,7 @@ export type PlanWarningCode =
   | 'material-mix' // plate-wide temperature mix — the slicer's temp guard likely refuses it (gh#163)
   | 'support-material' // a visible role pinned onto breakaway support filament
   | 'material-interface' // the weld-adhesion rule: the fused frame/marker/text cluster mixes families
+  | 'feet-material' // printed feet found no flexible (TPU) spool — they fall back to the frame's
   | 'rainbow-unrealizable' // reserved for P4 (the only 'error' — multi-material text)
 
 export type PlanWarning = {
@@ -107,9 +109,10 @@ export type PrintPlan = {
   // the params catalog fabricates families, so it never claims an anchor. The
   // viewer's picker groups compatible-vs-not around this.
   anchorGroup?: string
-  // true iff no error-severity warning — mirrors the solver's export gate. In P1
-  // nothing is an error, so this is always true; the rainbow hard gate (P4) is the
-  // first thing that can flip it.
+  // true iff no error-severity warning — mirrors the solver's export gate.
+  // Nothing here is an error today and nothing should lightly become one: this
+  // file warns and never blocks (the slicer stays the authority), and the export
+  // gate users actually hit comes from the solver, not from here.
   ok: boolean
 }
 
@@ -197,13 +200,31 @@ function candidateGroups(catalog: FilamentCatalog): Map<string, number[]> | null
   if (catalog.source !== 'thh-ams') return null
   const groups = new Map<string, number[]>()
   catalog.spools.forEach((s, i) => {
-    if (isSupportMaterial(s.material)) return
+    if (isSupportSpool(s)) return
     const g = coPrintGroup(s.material)
     const idxs = groups.get(g) ?? []
     idxs.push(i)
     groups.set(g, idxs)
   })
   return groups.size > 0 ? groups : null
+}
+
+// The feet spool is picked by FAMILY, not color — printed TPU feet (Gitea #23)
+// want a flexible filament, and `coPrintGroup('TPU') === 'TPU'` means a TPU
+// spool can never sit inside the plate's (PLA-led) anchor group, so the pick
+// runs OUTSIDE the anchor loop entirely. Preference order: a spool literally
+// named "TPU for AMS" (Bambu's Shore-68D — the only AMS-safe TPU) beats any
+// other TPU, which beats AMS order. No TPU loaded → null; the caller falls back
+// to the frame's spool (rigid feet still print — the geometry is identical)
+// and raises the 'feet-material' warning on a real roster. The params catalog
+// fabricates families, so it never has a TPU to find and stays silent.
+function pickFeetSpool(spools: FilamentSpool[], source: FilamentCatalog['source']): number | null {
+  if (source !== 'thh-ams') return null
+  const tpus = spools
+    .map((s, i) => ({ s, i }))
+    .filter(({ s }) => coPrintGroup(s.material) === 'TPU' && !isSupportSpool(s))
+  if (tpus.length === 0) return null
+  return (tpus.find(({ s }) => /tpu\s*for\s*ams/i.test(s.name)) ?? tpus[0]).i
 }
 
 // A valid plan for an EMPTY catalog: no spools ⇒ nothing to assign. materialize's
@@ -276,13 +297,13 @@ export function materialize(
   const groups = candidateGroups(catalog)
   let snap: AutoSnap
   let anchorGroup: string | undefined
+  // The index set the winning pass drew from. Hoisted because the text roles
+  // below must stay INSIDE it (they weld to the frame) without being part of the
+  // pass that chooses it — see the text block for why.
+  let allowed: number[]
   if (!groups) {
-    snap = snapWithin(
-      hexes,
-      frameHex,
-      roleHexes,
-      spools.map((_, i) => i)
-    )
+    allowed = spools.map((_, i) => i)
+    snap = snapWithin(hexes, frameHex, roleHexes, allowed)
   } else {
     let bestIdxs: number[] = []
     let bestSnap: AutoSnap | null = null
@@ -299,6 +320,7 @@ export function materialize(
       }
     }
     snap = bestSnap as AutoSnap
+    allowed = bestIdxs
   }
 
   const markerBlack = assign(
@@ -325,17 +347,62 @@ export function materialize(
     )
   )
 
+  // Printed feet (Gitea #23): a family-picked role, minted only when the design
+  // wants in-place feet. The intrinsic hex is a fixed dark slate — feet are
+  // picked by MATERIAL, so their color distance is decorative and must never
+  // influence snapping (the pick runs outside the anchor loop, see
+  // pickFeetSpool). Appended LAST so every historical assignment keeps its
+  // index. A pin (`overrides['feet']`) can still repoint it anywhere.
+  //
+  // Deliberately NOT gated on `show_frame`, even though the feet BODY is (see
+  // abacus-3mf.ts). This plan describes design intent — which spool each role
+  // would use — not which bodies a particular render emits; that's why the frame
+  // and marker roles are minted whatever `show_frame`/`show_markers` say. The
+  // 3MF re-checks `show_frame` before consuming `filamentMap.feet`, so an unused
+  // role index here is inert, exactly as an unused marker index already is.
+  let feetAssignment: RoleAssignment | null = null
+  let feetFallback = false
+  if (design.params.feet_mode === 'printed') {
+    const tpuIdx = pickFeetSpool(spools, catalog.source)
+    feetFallback = tpuIdx === null && catalog.source === 'thh-ams'
+    feetAssignment = assign(
+      { kind: 'feet', key: 'feet', label: 'Feet', intrinsicHex: '#1f2937' },
+      // The fallback is "the frame's filament" as the warning below promises, so
+      // it has to read the FINAL frame spool — a pinned frame moves the feet with
+      // it. snap.frameIdx is only where the auto-snapper started.
+      tpuIdx ?? frame.spoolIndex
+    )
+  }
+
   // Contrast of the FINAL marker pair (pins included) — the camera reads what
   // actually prints, so a pinned marker must move this warning too.
   const markerContrast = contrastRatio(hexes[markerWhite.spoolIndex], hexes[markerBlack.spoolIndex])
-  const assignments = [markerBlack, markerWhite, frame, ...beadAssignments]
+  // Feet are appended LAST so every historical assignment keeps its index.
+  // Display order is independent — the panel sorts by kind.
+  const assignments = [
+    markerBlack,
+    markerWhite,
+    frame,
+    ...beadAssignments,
+    ...(feetAssignment ? [feetAssignment] : []),
+  ]
   const warnings = planWarnings(markerContrast, beadAssignments, roleHexes.length)
+  const voters = materialVoters(assignments)
   for (const w of [
-    materialMixWarning(assignments, spools, catalog.source),
+    materialMixWarning(voters, spools, catalog.source),
     supportMaterialWarning(assignments, spools, catalog.source),
-    weldMixWarning(assignments, spools, catalog.source),
+    weldMixWarning(voters, spools, catalog.source),
   ]) {
     if (w) warnings.push(w)
+  }
+  if (feetAssignment && feetFallback && !feetAssignment.overridden) {
+    warnings.push({
+      code: 'feet-material',
+      severity: 'warning',
+      message:
+        'No flexible (TPU) filament is loaded, so the printed feet fall back to the frame\'s filament — rigid feet slide and scuff. Load Bambu "TPU for AMS" for feet that grip.',
+      roleKeys: ['feet'],
+    })
   }
   const ok = !warnings.some((w) => w.severity === 'error')
 
@@ -357,6 +424,27 @@ const listProse = (xs: string[]): string =>
     : xs.length === 2
       ? `${xs[0]} and ${xs[1]}`
       : `${xs.slice(0, -1).join(', ')}, and ${xs[xs.length - 1]}`
+
+// Which assignments get a VOTE in the two material-majority warnings below.
+//
+// Inset text is ink riding a spool, and rainbow text is five roles that normally
+// land on one or two filaments the structure already prints in. Letting each of
+// those vote would make "what does this plate print at" answer a question about
+// how many ink groups a design happens to have rather than about what's loaded —
+// enough to flip a genuine 2/2 tie into a false majority. So a text role votes
+// only when it occupies a spool nothing else does: that alone introduces a
+// material to the plate (and to the weld), which is exactly what these warnings
+// are looking for. Text still shows up unfiltered in support-material, where
+// there's no majority math and a text group on breakaway media is a real defect.
+const materialVoters = (assignments: RoleAssignment[]): RoleAssignment[] => {
+  const spoken = new Set(assignments.filter((a) => a.role.kind !== 'text').map((a) => a.spoolIndex))
+  return assignments.filter((a) => {
+    if (a.role.kind !== 'text') return true
+    if (spoken.has(a.spoolIndex)) return false
+    spoken.add(a.spoolIndex) // two groups on one new spool are still one material
+    return true
+  })
+}
 
 // Bucket assignments by a key of their mapped spool, preserving assignment
 // order, and split majority vs. the callout set (with no majority — a tie —
@@ -404,7 +492,19 @@ function materialMixWarning(
   source: FilamentCatalog['source']
 ): PlanWarning | null {
   if (source !== 'thh-ams') return null
-  const split = splitByKey(assignments, (a) => coPrintGroup(spools[a.spoolIndex].material))
+  // Feet riding TPU are EXEMPT from the temperature bucketing: Bambu's "TPU for
+  // AMS" (220–240 °C) genuinely co-prints on a PLA-led plate — the whole point of
+  // the feet role is that deliberate mix (crossbar-retained, Gitea #23), and
+  // bucketing it would fire this warning on every default printed-feet plan.
+  // The exemption is the MATERIAL's, not the role's: the feet row has a full
+  // picker, so a foot pinned to ABS on a PLA plate is the ordinary plate-temp
+  // hazard this check exists for and must still warn.
+  const split = splitByKey(
+    assignments.filter(
+      (a) => a.role.kind !== 'feet' || coPrintGroup(spools[a.spoolIndex].material) !== 'TPU'
+    ),
+    (a) => coPrintGroup(spools[a.spoolIndex].material)
+  )
   if (!split) return null
   const { keys, named, tie } = split
 
@@ -444,7 +544,7 @@ function supportMaterialWarning(
   source: FilamentCatalog['source']
 ): PlanWarning | null {
   if (source !== 'thh-ams') return null
-  const named = assignments.filter((a) => isSupportMaterial(spools[a.spoolIndex].material))
+  const named = assignments.filter((a) => isSupportSpool(spools[a.spoolIndex]))
   if (named.length === 0) return null
   const callouts = named
     .map(
@@ -477,20 +577,36 @@ function weldMixWarning(
   source: FilamentCatalog['source']
 ): PlanWarning | null {
   if (source !== 'thh-ams') return null
+  // 'feet' is deliberately ABSENT: the TPU foot ↔ PLA pocket boundary is a
+  // cross-material weld by design, mechanically backed by the crossbar (the
+  // foot is a closed loop around a frame bar — retention doesn't depend on
+  // the weld, Gitea #23). 'bead' stays absent too (captive, never welded).
   const weldedKinds: PrintRoleKind[] = ['frame', 'markerBlack', 'markerWhite', 'text']
   const welded = assignments.filter(
-    (a) => weldedKinds.includes(a.role.kind) && !isSupportMaterial(spools[a.spoolIndex].material)
+    (a) => weldedKinds.includes(a.role.kind) && !isSupportSpool(spools[a.spoolIndex])
   )
   const split = splitByKey(welded, (a) => spools[a.spoolIndex].material)
   if (!split) return null
   const { keys, named, tie } = split
 
-  const remedy = 'Keep the frame and ArUco markers on one material.'
+  // Name the parts actually in the weld, not a fixed pair: inset text joins the
+  // cluster whenever the design has any (its plugs are fused flush into the
+  // frame's pockets), and a design can have markers off.
+  const has = (k: PrintRoleKind): boolean => welded.some((a) => a.role.kind === k)
+  const subject = listProse(
+    [
+      has('frame') ? 'the frame' : null,
+      has('markerBlack') || has('markerWhite') ? 'the ArUco markers' : null,
+      has('text') ? 'the inset text' : null,
+    ].filter((s): s is string => s !== null)
+  )
+  const Subject = subject.charAt(0).toUpperCase() + subject.slice(1)
+  const remedy = `Keep ${subject} on one material.`
   if (tie) {
     return {
       code: 'material-interface',
       severity: 'warning',
-      message: `The frame and ArUco markers print as one welded piece, but the mapping splits them across ${listProse(keys)} — mixed joints delaminate. ${remedy}`,
+      message: `${Subject} print as one welded piece, but the mapping splits them across ${listProse(keys)} — mixed joints delaminate. ${remedy}`,
       roleKeys: named.map((a) => a.role.key),
     }
   }
@@ -500,13 +616,13 @@ function weldMixWarning(
   return {
     code: 'material-interface',
     severity: 'warning',
-    message: `The frame and ArUco markers print as one welded piece, but ${callouts} while the rest is ${keys[0]} — mixed joints delaminate. ${remedy}`,
+    message: `${Subject} print as one welded piece, but ${callouts} while the rest is ${keys[0]} — mixed joints delaminate. ${remedy}`,
     roleKeys: named.map((a) => a.role.key),
   }
 }
 
-// The lossy-reduction report. All warning-severity in P1 (nothing blocks export
-// yet — the rainbow error lands in P4).
+// The lossy-reduction report — every entry warning-severity (nothing here blocks
+// export; the slicer and the solver own the real gates).
 function planWarnings(
   markerContrast: number,
   beadAssignments: RoleAssignment[],
@@ -571,6 +687,10 @@ export function planToFilamentMap(plan: PrintPlan, slots: string[]): FilamentMap
   // this changes nothing on the live path (the snapshot test pins that).
   const pick = (kind: PrintRoleKind): number =>
     plan.assignments.find((a) => a.role.kind === kind)?.spoolIndex ?? 0
+  // feet is CONDITIONAL, not defaulted: the key exists iff the plan minted a
+  // feet role (feet_mode === 'printed'), so the 3MF builder can distinguish
+  // "no printed feet" from "feet on slot 0".
+  const feet = plan.assignments.find((a) => a.role.kind === 'feet')?.spoolIndex
   return {
     slots,
     frame: pick('frame'),
@@ -578,6 +698,7 @@ export function planToFilamentMap(plan: PrintPlan, slots: string[]): FilamentMap
     markerBlack: pick('markerBlack'),
     beadRoles: plan.assignments.filter((a) => a.role.kind === 'bead').map((a) => a.spoolIndex),
     markerContrast: plan.markerContrast,
+    ...(feet !== undefined ? { feet } : {}),
   }
 }
 
@@ -603,6 +724,8 @@ export const SHIFT_DISTANCE_THRESHOLD = 85
 // Does a role print as a noticeably DIFFERENT color than the user designed? A pure
 // readout of the assignment's own redmean distance (see `colorDist`) vs the shift
 // threshold — no independent color math. The single source of truth the mapping
-// rows' corner fleck and the "N colors shift" footer both read.
+// rows' corner fleck and the "N colors shift" footer both read. Feet never
+// shift: their spool is picked by FAMILY (TPU), so the color distance from the
+// fixed intrinsic slate is decorative, not a reduction the user should audit.
 export const roleShifted = (a: RoleAssignment, threshold = SHIFT_DISTANCE_THRESHOLD): boolean =>
-  a.distance > threshold
+  a.role.kind !== 'feet' && a.distance > threshold

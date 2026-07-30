@@ -33,7 +33,7 @@ import {
   coPrintGroup,
   type FilamentCatalog,
   type FilamentSpool,
-  isSupportMaterial,
+  isSupportSpool,
 } from './abacus-catalog'
 import type { AbacusDesign } from './abacus-design'
 import { pickerInk } from './abacus-model'
@@ -70,6 +70,7 @@ const CHIP_WARNING_CODES = new Set([
   'material-mix',
   'support-material',
   'material-interface',
+  'feet-material',
 ])
 
 // The neutral part glyph stays a single slate so the flecked TILE is the row's
@@ -122,6 +123,20 @@ function PartGlyph({ kind }: { kind: PrintRoleKind }) {
         <text x={8} y={12} textAnchor="middle" fontSize={11} fontWeight={700} fill={GLYPH_NEUTRAL}>
           T
         </text>
+      </svg>
+    )
+  }
+  if (kind === 'feet') {
+    // a foot in profile: dovetail trapezoid (wide seat up) over its stand-off pad
+    return (
+      <svg width={16} height={16} viewBox="0 0 16 16" aria-hidden="true">
+        <path
+          d="M 3 4 L 13 4 L 11 10 L 5 10 Z"
+          fill="none"
+          stroke={GLYPH_NEUTRAL}
+          strokeWidth={1.25}
+        />
+        <rect x={4.5} y={11} width={7} height={2.5} rx={1} fill={GLYPH_NEUTRAL} />
       </svg>
     )
   }
@@ -239,12 +254,13 @@ export function FilamentPlanPanel({
       w.code === 'budget-exceeded' ||
       w.code === 'material-mix' ||
       w.code === 'support-material' ||
-      w.code === 'material-interface'
+      w.code === 'material-interface' ||
+      w.code === 'feet-material'
   )
   // override rows, grouped frame → ArUco pair → beads. `activeOverrides` counts
   // pins that actually took (an ignored, unloaded-spool pin has overridden=false).
   const orderedAssignments = useMemo(() => {
-    const order = { frame: 0, markerBlack: 1, markerWhite: 2, bead: 3, text: 4 } as const
+    const order = { frame: 0, markerBlack: 1, markerWhite: 2, bead: 3, text: 4, feet: 5 } as const
     return [...plan.assignments].sort((a, b) => order[a.role.kind] - order[b.role.kind])
   }, [plan])
   const activeOverrides = plan.assignments.filter((a) => a.overridden).length
@@ -276,10 +292,13 @@ export function FilamentPlanPanel({
       : s.name
   // tiny uppercase family token beside a spool name — only when the catalog is
   // mixed-material. Support media wear the amber variant: breakaway filament,
-  // never a sensible pick for a visible part.
-  const materialTag = (material: string) => {
+  // never a sensible pick for a visible part. Takes the whole spool so the
+  // service's supportKind (authoritative, #367) drives the amber, not the
+  // family-name heuristic.
+  const materialTag = (spool: FilamentSpool) => {
     if (!showMaterial) return null
-    const support = isSupportMaterial(material)
+    const material = spool.material
+    const support = isSupportSpool(spool)
     return (
       <span
         data-element="abacus-studio-material-tag"
@@ -301,24 +320,31 @@ export function FilamentPlanPanel({
       </span>
     )
   }
-  // gh#163 Layer 2 — the picker's swatches, sectioned by co-print group when the
-  // catalog knows materials. The plan's anchor group leads undimmed; other
-  // temperature families and support media follow, dimmed but fully clickable —
-  // an off-anchor pin is allowed and answered by the warning strip, never
-  // blocked. Color-only catalogs keep the flat grid (label-less section).
-  const pickerSections = useMemo<PickerSection[]>(() => {
+  // gh#163 Layer 2 — the catalog bucketed for the picker: co-print groups plus
+  // the support-media bucket, computed once and consumed by both section
+  // orderings below (never fork the grouping).
+  const pickerGroups = useMemo(() => {
     const entries = catalog.spools.map((spool, idx) => ({ spool, idx }))
-    const anchor = plan.anchorGroup
-    if (!showMaterial || !anchor) return [{ key: 'all', label: null, dim: false, spools: entries }]
-    const support = entries.filter(({ spool }) => isSupportMaterial(spool.material))
+    const support = entries.filter(({ spool }) => isSupportSpool(spool))
     const byGroup = new Map<string, typeof entries>()
     for (const entry of entries) {
-      if (isSupportMaterial(entry.spool.material)) continue
+      if (isSupportSpool(entry.spool)) continue
       const g = coPrintGroup(entry.spool.material)
       const arr = byGroup.get(g)
       if (arr) arr.push(entry)
       else byGroup.set(g, [entry])
     }
+    return { entries, support, byGroup }
+  }, [catalog])
+  // The picker's swatches, sectioned by co-print group when the catalog knows
+  // materials. The plan's anchor group leads undimmed; other temperature
+  // families and support media follow, dimmed but fully clickable — an
+  // off-anchor pin is allowed and answered by the warning strip, never
+  // blocked. Color-only catalogs keep the flat grid (label-less section).
+  const pickerSections = useMemo<PickerSection[]>(() => {
+    const { entries, support, byGroup } = pickerGroups
+    const anchor = plan.anchorGroup
+    if (!showMaterial || !anchor) return [{ key: 'all', label: null, dim: false, spools: entries }]
     const sections: PickerSection[] = []
     const anchorSpools = byGroup.get(anchor)
     if (anchorSpools) {
@@ -347,7 +373,59 @@ export function FilamentPlanPanel({
       })
     }
     return sections
-  }, [catalog, plan.anchorGroup, showMaterial])
+  }, [pickerGroups, plan.anchorGroup, showMaterial])
+  // The FEET row's ordering (Gitea #23) inverts the caution: TPU is off-anchor
+  // by plate temperature, but for feet it's the part's NATURAL material (TPU
+  // for AMS genuinely co-prints on a PLA-led plate — the mix is deliberate and
+  // crossbar-retained), so it leads undimmed with its own reason line; the
+  // anchor group follows undimmed (the rigid no-TPU fallback); every other
+  // family keeps the dimmed temperature caution.
+  const feetPickerSections = useMemo<PickerSection[]>(() => {
+    const { support, byGroup } = pickerGroups
+    const anchor = plan.anchorGroup
+    if (!showMaterial || !anchor) return pickerSections
+    const sections: PickerSection[] = []
+    const tpu = byGroup.get('TPU')
+    if (tpu) {
+      sections.push({
+        key: 'TPU',
+        label: 'TPU · flexible — grips the desk',
+        dim: false,
+        spools: tpu,
+      })
+    }
+    if (anchor !== 'TPU') {
+      const anchorSpools = byGroup.get(anchor)
+      if (anchorSpools) {
+        sections.push({
+          key: anchor,
+          label: `${anchor} · prints rigid`,
+          dim: false,
+          spools: anchorSpools,
+        })
+      }
+    }
+    for (const [g, groupSpools] of byGroup) {
+      if (g === 'TPU' || g === anchor) continue
+      sections.push({
+        key: g,
+        label: `${g} · needs a different plate temperature`,
+        dim: true,
+        spools: groupSpools,
+      })
+    }
+    if (support.length > 0) {
+      sections.push({
+        key: 'support',
+        label: 'Support · breakaway material',
+        dim: true,
+        spools: support,
+      })
+    }
+    return sections
+  }, [pickerGroups, plan.anchorGroup, showMaterial, pickerSections])
+  const pickerSectionsFor = (kind: PrintRoleKind) =>
+    kind === 'feet' ? feetPickerSections : pickerSections
   // which role's picker is expanded (at most one — opening a row collapses the
   // rest). Single-open by construction; the row expands in place (no floating
   // popover to trap clicks over the WebGL canvas).
@@ -494,7 +572,7 @@ export function FilamentPlanPanel({
         >
           {shortName(assigned)}
         </span>
-        {materialTag(assigned.material)}
+        {materialTag(assigned)}
         {interactive && (
           <span
             aria-hidden="true"
@@ -582,7 +660,7 @@ export function FilamentPlanPanel({
                   aria-label={`filament for ${a.role.label}`}
                   style={{ display: 'flex', flexDirection: 'column', gap: 7 }}
                 >
-                  {pickerSections.map((sec) => (
+                  {pickerSectionsFor(a.role.kind).map((sec) => (
                     <div
                       key={sec.key}
                       data-element="abacus-studio-picker-group"
@@ -843,7 +921,7 @@ export function FilamentPlanPanel({
                           >
                             {shortName(spool)}
                           </span>
-                          {materialTag(spool.material)}
+                          {materialTag(spool)}
                         </button>
                       )
                     })}

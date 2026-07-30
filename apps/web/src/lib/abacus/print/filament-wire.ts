@@ -37,6 +37,11 @@ export interface ThhFilamentRow {
   product?: string
   /** Remaining filament, 0–100 (#382); absent/unknown on sensorless spools. */
   remainingPct?: number
+  /** Service-side support capability (things-haunt-house#367): 'interface' for a
+   *  dedicated support-interface material (family PLA-S exactly), 'body' for a
+   *  support-body material, null for a plain model material. Absent when talking
+   *  to a pre-#367 service — consumers fall back to the local heuristic then. */
+  supportKind?: 'interface' | 'body' | null
 }
 
 export interface ThhFilamentsResponse {

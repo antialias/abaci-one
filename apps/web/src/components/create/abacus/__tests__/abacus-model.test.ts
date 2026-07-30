@@ -1,15 +1,20 @@
 import { BEAD_COLOR_PALETTES, beadColorActive } from '@soroban/abacus-react/color'
 import { describe, expect, it } from 'vitest'
 import {
+  anyTokens,
   beadRoleColors,
   beadRoleIndex,
-  clampCols,
   COLOR_PALETTES,
-  defaultParams,
-  derived,
+  clampCols,
   type DisplayConfigInput,
+  defaultParams,
+  definesFrom,
+  derived,
+  feetEffective,
+  feetPositions,
   type Params,
   paramsFromDisplayConfig,
+  tokenCenters,
 } from '../abacus-model'
 
 const cfg = (over: Partial<DisplayConfigInput> = {}): DisplayConfigInput => ({
@@ -116,9 +121,7 @@ describe('mixed scaling — clearance is absolute, size is proportional (#6 spin
     expect(big.outerD).toBeGreaterThan(base.outerD)
     // same absolute clearance occupies a smaller share of a bigger frame — the
     // point of the whole locked/proportional split.
-    expect(defaultParams.clearance / big.frameW).toBeLessThan(
-      defaultParams.clearance / base.frameW,
-    )
+    expect(defaultParams.clearance / big.frameW).toBeLessThan(defaultParams.clearance / base.frameW)
   })
 
   it('column pitch is S·(bead+web) + a constant 2·clearance intercept (the mixed-scale fingerprint)', () => {
@@ -163,7 +166,7 @@ describe('print-path color dedup — role table sources from the canonical resol
             const expected = beadColorActive(
               { placeValue: cols - 1 - i, type: isHeaven ? 'heaven' : 'earth' },
               scheme,
-              palette,
+              palette
             )
             expect(hex).toBe(expected)
           }
@@ -177,7 +180,7 @@ describe('print-path color dedup — role table sources from the canonical resol
     // from palette length — so this holds by construction, not by coincidence.
     for (const palette of PALETTES) {
       expect(beadRoleColors('place-value', palette)).toHaveLength(
-        BEAD_COLOR_PALETTES[palette].length,
+        BEAD_COLOR_PALETTES[palette].length
       )
     }
   })
@@ -190,5 +193,124 @@ describe('print-path color dedup — role table sources from the canonical resol
     expect(beadRoleIndex(cols - 1 - 5, false, 'place-value', cols, 'default')).toBe(0)
     // placeValue 6 → role 1
     expect(beadRoleIndex(cols - 1 - 6, false, 'place-value', cols, 'default')).toBe(1)
+  })
+})
+
+describe('printed-feet defines (Gitea #23)', () => {
+  const defines = definesFrom(defaultParams)
+
+  it('forwards the feet_mode / feet_proud / feet_retention knobs to the scad', () => {
+    expect(defines).toContain('-Dfeet_mode="printed"')
+    expect(defines).toContain('-Dfeet_proud=1.6')
+    expect(defines).toContain('-Dfeet_retention="crossbar"')
+  })
+
+  it('never emits a bare -Dfeet= (the scad DERIVES feet from feet_mode; a stale boolean define would override that derivation)', () => {
+    expect(defines.some((d) => d.startsWith('-Dfeet='))).toBe(false)
+  })
+
+  it('defaults to printed crossbar feet — the point of the feature', () => {
+    expect(defaultParams.feet_mode).toBe('printed')
+    expect(defaultParams.feet_retention).toBe('crossbar')
+  })
+})
+
+describe('feet layout mirror (Gitea #23) — hand-computed against the scad chain', () => {
+  // Defaults: S=1, chamf=1, s_cr=4, frame_w=192.5, outer_d=100.5 (pinned by the
+  // mixed-scaling tests above). Printed: fit_eff=0, undercut_eff=0.35 →
+  // mouth=9, seat=9.7, half=4.85; circle feet_c = max(1+0.5+4.85,
+  // 4 − (4−1−4.85)/√2) = max(6.35, 5.308…) = 6.35.
+  it('printed defaults: welded mouth, upgraded flare, crossbar depth stack', () => {
+    const fx = feetEffective(defaultParams)
+    expect(fx.mouth).toBe(9)
+    expect(fx.seat).toBeCloseTo(9.7, 10)
+    expect(fx.c).toBeCloseTo(6.35, 10)
+    expect(fx.depthEff).toBeCloseTo(3.8, 10) // xbar_under 1 + xbar_h 1.6 + xbar_over 1.2
+    expect(fx.proud).toBe(1.6)
+    expect(fx.crossbar).toBe(true)
+  })
+
+  it('adhesive mode uses the raw knobs — and has no stand-off (pockets are empty)', () => {
+    const fx = feetEffective({ ...defaultParams, feet_mode: 'adhesive' })
+    expect(fx.mouth).toBeCloseTo(9.3, 10) // feet_w 9 + 2·feet_fit 0.15
+    expect(fx.seat).toBeCloseTo(9.3, 10) // raw feet_undercut 0 stays 0
+    expect(fx.c).toBeCloseTo(6.15, 10) // chamf 1 + 0.5 + half 4.65 dominates
+    expect(fx.depthEff).toBe(1.5)
+    expect(fx.proud).toBe(0)
+    expect(fx.crossbar).toBe(false)
+  })
+
+  it('printed dovetail: no crossbar → the raw pocket depth, stand-off kept', () => {
+    const fx = feetEffective({ ...defaultParams, feet_retention: 'dovetail' })
+    expect(fx.crossbar).toBe(false)
+    expect(fx.depthEff).toBe(1.5)
+    expect(fx.proud).toBe(1.6)
+    expect(fx.crossbarTooThin).toBe(false) // it was never asked for
+  })
+
+  // The 3.8 mm bar stack is absolute; the frame it hides in is frame_h·S. Below
+  // s_fh = 5.8 the scad's web assert would fail the render outright, so both
+  // sides degrade to the dovetail instead — this pins them in step.
+  it('degrades crossbar → dovetail once the frame is too thin to hide the bar', () => {
+    // stock frame_h 8 ⇒ the bar needs S ≥ (3.8+2)/8 = 0.725
+    const at = (scale_factor: number) => feetEffective({ ...defaultParams, scale_factor })
+    const thin = at(0.7)
+    expect(thin.crossbar).toBe(false)
+    expect(thin.crossbarTooThin).toBe(true)
+    expect(thin.depthEff).toBe(1.5) // the dovetail pocket, which fits: 1.5+2 ≤ 5.6
+    expect(thin.depthEff + 2).toBeLessThanOrEqual(defaultParams.frame_h * 0.7)
+
+    const ok = at(0.725)
+    expect(ok.crossbar).toBe(true)
+    expect(ok.crossbarTooThin).toBe(false)
+    expect(ok.depthEff).toBe(3.8)
+  })
+
+  it('every size the slider offers renders: the web assert holds across 0.5…1.5', () => {
+    for (let s = 0.5; s <= 1.5001; s += 0.05) {
+      const p = { ...defaultParams, scale_factor: Number(s.toFixed(2)) }
+      const fx = feetEffective(p)
+      expect(fx.depthEff + 2).toBeLessThanOrEqual(p.frame_h * p.scale_factor + 1e-9)
+    }
+  })
+
+  it('square feet: the corner-point-inside-the-arc branch of feet_c', () => {
+    // half + s_cr − (s_cr − chamf)/√2 = 4.85 + 4 − 3/√2 = 6.72867… > 6.35
+    const fx = feetEffective({ ...defaultParams, feet_shape: 'square' })
+    expect(fx.c).toBeCloseTo(4.85 + 4 - 3 / Math.SQRT2, 10)
+  })
+
+  it('defaults place 6 feet: 4 corners + ONE intermediate pair on the long edges', () => {
+    // run_x = 192.5 − 12.7 = 179.8 > span 110 → nx=1 (pair at run midpoint);
+    // run_y = 100.5 − 12.7 = 87.8 < 110 → ny=0. Scad order: corners, then pairs.
+    const pos = feetPositions(defaultParams)
+    expect(pos.length).toBe(6)
+    const c = 6.35
+    const W = 192.5
+    const D = 100.5
+    expect(pos.slice(0, 4)).toEqual([
+      [c, c],
+      [W - c, c],
+      [W - c, D - c],
+      [c, D - c],
+    ])
+    const [mid1, mid2] = pos.slice(4)
+    expect(mid1[0]).toBeCloseTo(c + 179.8 / 2, 10) // 96.25 — the true centerline
+    expect(mid1[1]).toBeCloseTo(c, 10)
+    expect(mid2[0]).toBeCloseTo(c + 179.8 / 2, 10)
+    expect(mid2[1]).toBeCloseTo(D - c, 10)
+  })
+
+  it('a short frame (cols=3) needs no intermediates — exactly the 4 corners', () => {
+    // frame_w = 62.5 → run_x = 49.8 < 110; run_y unchanged 87.8 < 110.
+    expect(feetPositions({ ...defaultParams, cols: 3 }).length).toBe(4)
+  })
+
+  it('scaling DOWN adds feet: span derates ∝ S^(4/3) faster than runs shrink ∝ S', () => {
+    // S=0.5: frame_w=112.5, outer_d=66.75, feet_c stays 6.35 (absolute feet) →
+    // run_x=99.8, run_y=54.05; span_eff = 110·0.5^(4/3) ≈ 43.65 → nx=2, ny=1
+    // → 4 + 2·2 + 2·1 = 10 feet on a HALF-size board (stiffness ∝ S⁴).
+    const pos = feetPositions({ ...defaultParams, scale_factor: 0.5 })
+    expect(pos.length).toBe(10)
   })
 })

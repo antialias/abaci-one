@@ -71,6 +71,13 @@ const limitedCatalog = thh([
   spool('s-white', 'Bambu Lab PLA Basic Jade White', '#F2F2F2', 'PLA'),
 ])
 
+// prodEcho plus the feet's preferred spool (Gitea #23): the one AMS-safe TPU.
+// The feet role family-picks it regardless of color.
+const tpuCatalog = thh([
+  ...prodEchoCatalog.spools,
+  spool('s-tpu', 'Bambu Lab TPU for AMS Black', '#141414', 'TPU'),
+])
+
 // ---- harness -------------------------------------------------------------------
 // The panel is controlled (the studio owns `overrides` so its recolor pipeline
 // sees the same pins); stories own that state with a plain useState.
@@ -209,4 +216,28 @@ export const BrandPrefixAndMapping: Story = {
  */
 export const ColorOnlyCatalog: Story = {
   render: () => <Harness catalog={catalogFromParams(params)} defaultOpenRole="bead-0" />,
+}
+
+/**
+ * Printed TPU feet with the right spool loaded (Gitea #23): the feet role
+ * family-picks "TPU for AMS" regardless of color — no warning, no pin. The
+ * feet row's picker inverts the usual caution: TPU leads undimmed ("flexible —
+ * grips the desk"), the PLA anchor follows undimmed ("prints rigid"), and only
+ * genuinely incompatible families keep the dimmed temperature note. Compare
+ * with GroupedPicker, where the same TPU spool would sit dimmed for any other
+ * role.
+ */
+export const FeetOnTpu: Story = {
+  render: () => <Harness catalog={tpuCatalog} defaultOpenRole="feet" />,
+}
+
+/**
+ * Printed feet with NO TPU loaded: the feet fall back to the frame's spool so
+ * the print still works (rigid feet — the crossbar retains them regardless),
+ * and the amber feet-material chip says what to load instead. The chip
+ * deep-links into the feet row, whose picker shows the PLA anchor undimmed —
+ * there's simply no TPU section to lead it.
+ */
+export const FeetNoTpuFallback: Story = {
+  render: () => <Harness catalog={prodEchoCatalog} />,
 }

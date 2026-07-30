@@ -6,8 +6,9 @@
  * environment — jsdom's FormData/File don't interop with undici's
  * multipart body parsing.
  */
-import { readFileSync } from 'node:fs'
+
 import { randomBytes } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { sql } from 'drizzle-orm'
 import { NextRequest } from 'next/server'
@@ -36,6 +37,7 @@ import { GET as getCapabilities } from '../capabilities/route'
 import { GET as getJob } from '../jobs/[id]/route'
 import { GET as getJobs } from '../jobs/route'
 import { POST as submitJob } from '../printers/[id]/jobs/route'
+import { GET as getSupportRecommendation } from '../printers/[id]/support-recommendation/route'
 
 const KEY = randomBytes(32).toString('base64')
 
@@ -112,6 +114,61 @@ describe('print proxy routes', () => {
       const res = await getCapabilities(request, ctx())
       expect(res.status).toBe(404)
       expect(fetchMock).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('GET printers/[id]/support-recommendation (THH#367 / Gitea #23)', () => {
+    it('400s early on a missing modelFamily, before touching the upstream', async () => {
+      await insertConnection()
+      const request = new NextRequest(
+        'http://localhost:3000/api/abacus/print/printers/printer-1/support-recommendation'
+      )
+      const res = await getSupportRecommendation(request, ctx({ id: 'printer-1' }))
+      expect(res.status).toBe(400)
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('bakes modelFamily into the upstream path (proxyPass forwards no query params)', async () => {
+      await insertConnection()
+      const recommendation = {
+        rung: 'dedicated',
+        interfaceFamily: 'PLA-S',
+        slotId: '0.3',
+        modelFamily: 'PLA',
+        caution: null,
+        reminder: null,
+      }
+      fetchMock.mockResolvedValue(
+        new Response(JSON.stringify(recommendation), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      )
+
+      const request = new NextRequest(
+        // connectionId rides the query too — proxyPass consumes it for tenancy
+        // and must NOT forward it; only the baked modelFamily may reach THH.
+        'http://localhost:3000/api/abacus/print/printers/printer-1/support-recommendation?modelFamily=PLA'
+      )
+      const res = await getSupportRecommendation(request, ctx({ id: 'printer-1' }))
+
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual(recommendation)
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        'https://things.haunt.house/api/print/v1/printers/printer-1/support-recommendation?modelFamily=PLA'
+      )
+    })
+
+    it('URL-encodes a family that needs it', async () => {
+      await insertConnection()
+      fetchMock.mockResolvedValue(new Response('{}', { status: 200 }))
+      const request = new NextRequest(
+        'http://localhost:3000/api/abacus/print/printers/printer-1/support-recommendation?modelFamily=PLA+S%2B'
+      )
+      await getSupportRecommendation(request, ctx({ id: 'printer-1' }))
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        'https://things.haunt.house/api/print/v1/printers/printer-1/support-recommendation?modelFamily=PLA%20S%2B'
+      )
     })
   })
 
@@ -268,7 +325,10 @@ describe('print proxy routes', () => {
       await ownJob(connection.id, 'job-mine')
       fetchMock.mockResolvedValue(
         new Response(
-          JSON.stringify({ jobs: [{ id: 'job-mine' }, { id: 'job-other-user' }], nextCursor: 'c1' }),
+          JSON.stringify({
+            jobs: [{ id: 'job-mine' }, { id: 'job-other-user' }],
+            nextCursor: 'c1',
+          }),
           { status: 200 }
         )
       )

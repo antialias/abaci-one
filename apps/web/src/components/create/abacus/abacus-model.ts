@@ -80,16 +80,24 @@ export const defaultParams = {
   text_color: '#f5f5f5',
   text_size: 6,
   edge_text_size: 5,
-  // adhesive feet (bottom face; absolute — real feet don't scale)
-  feet: true,
-  feet_preset: 'circle 9',
+  // feet (bottom face; absolute — real feet don't scale). feet_mode:
+  // 'printed' = in-place TPU feet (the default: the print stands on them,
+  // frame bottom on supports); 'adhesive' = empty pockets for stick-on feet;
+  // 'none'. feet_retention (printed only): 'crossbar' threads a frame bar
+  // through each foot — topologically captive; 'dovetail' = flare only.
+  // Old saved designs carried `feet`/`feet_preset`/`retention` keys — those
+  // names are gone, so the snapshot parser silently drops them and every
+  // legacy design loads with these defaults (deliberate: printed feet are
+  // the point of Gitea #23, and the old knobs were UI-unreachable).
+  feet_mode: 'printed',
   feet_shape: 'circle',
   feet_w: 9,
-  feet_depth: 1.5,
+  feet_depth: 1.5, // adhesive pocket depth (printed crossbar derives its own)
   feet_fit: 0.15,
-  retention: 'none',
   feet_undercut: 0,
   feet_span: 110, // max unsupported bottom run (mm @ scale 1) before mid feet
+  feet_proud: 1.6, // printed: stand-off below the bottom face (absolute mm)
+  feet_retention: 'crossbar',
   // toggles / quality
   show_frame: true,
   show_beads: true,
@@ -138,18 +146,6 @@ export const TEXT_PRESETS: Record<string, string[]> = {
   'friends-of-5': ['1+4', '2+3', '3+2', '4+1'],
 }
 export const PRESET_OPTS = ['custom', ...Object.keys(TEXT_PRESETS)]
-
-// common stick-on foot sizes; sizes above ~10 need a bigger border_w (the scad
-// asserts). Pick 'custom' (or touch any knob) to free-edit.
-export const FEET_PRESETS: Record<
-  string,
-  { feet_shape: string; feet_w: number; feet_depth: number }
-> = {
-  'circle 8': { feet_shape: 'circle', feet_w: 8, feet_depth: 1.2 },
-  'circle 9': { feet_shape: 'circle', feet_w: 9, feet_depth: 1.5 },
-  'circle 10': { feet_shape: 'circle', feet_w: 10, feet_depth: 1.5 },
-  'square 8': { feet_shape: 'square', feet_w: 8, feet_depth: 1.2 },
-}
 
 // token → [string, fontIdx]; fontIdx 1 = Noto Emoji for emoji tokens (OpenSCAD
 // has no per-glyph fallback, so mixed emoji+text inside ONE token will tofu).
@@ -255,13 +251,15 @@ export const DEFINE_KEYS: (keyof Params)[] = [
   'text_color',
   'text_size',
   'edge_text_size',
-  'feet',
+  'feet_mode',
   'feet_shape',
   'feet_w',
   'feet_depth',
   'feet_fit',
   'feet_undercut',
   'feet_span',
+  'feet_proud',
+  'feet_retention',
   'show_frame',
   'show_beads',
   'show_markers',
@@ -436,6 +434,10 @@ export type FilamentMap = {
   markerBlack: number
   beadRoles: number[] // slot index per bead role (see beadRoleIndex)
   markerContrast: number // WCAG ratio of the mapped marker pair (CV wants ≥3)
+  // Present iff the plan minted a feet role (feet_mode === 'printed'). Optional
+  // so the feet-off map shape is unchanged (the snapshot pins it) and consumers
+  // can't forget the printed-feet gate.
+  feet?: number
 }
 export const nearestSlot = (slots: string[], target: string, exclude = -1): number => {
   let best = 0
@@ -592,6 +594,10 @@ export const shellRoleKey = (info: ShellInfo, p: Params): string =>
 // Exposed so the marker-ghost predicate can ask "is the frame the emphasized part?"
 // without hardcoding the literal in two places.
 export const FRAME_ROLE_KEY = 'frame'
+// The printed-feet role key (minted in abacus-plan.ts's materialize). No shell
+// carries it — feet live in their own part pass — but the viewer's stud preview
+// still asks "are the feet the emphasized part?" during an x-ray (Gitea #23).
+export const FEET_ROLE_KEY = 'feet'
 
 // ---- studio hover-lens pures (Gitea #17) ------------------------------------
 // The two hover lenses (reveal designed colors / emphasize one role via x-ray) drive
@@ -699,3 +705,80 @@ export const anyTokens = (p: Params): boolean =>
     tokenize(p.edge_left),
     tokenize(p.edge_right),
   ].some((t) => t.length > 0)
+
+// ---- feet layout mirror (Gitea #23) -----------------------------------------
+// Mirror of the scad's FEET derivation chain (abacus.scad "feet pockets" block),
+// for the viewer's foot-stud preview — same shape as tokenCenters: pure math,
+// unit-testable with zero mocks. The scad stays the single source of truth for
+// the PRINTED geometry (part pass `only="feet"`); this mirror only places studs.
+// Like the scad, it computes unconditionally — callers gate on feet_mode.
+export type FeetEffective = {
+  mouth: number // pocket opening at the bottom face, z=0 (feet_w + 2·fit_eff)
+  seat: number // widest section at depth — the dovetail flare (mouth + 2·undercut_eff)
+  c: number // pocket-center inset from BOTH outer edges (seat clears the chamfered outline)
+  depthEff: number // pocket depth into the frame (crossbar mode derives its own stack)
+  proud: number // stand-off below z=0 — printed feet only (adhesive pockets are empty)
+  crossbar: boolean // printed + crossbar retention: a frame bar threads each foot
+  /** Crossbar was asked for but the frame is too thin to hide the bar, so the
+   *  feet fall back to the dovetail flare. Drives the inspector's note. */
+  crossbarTooThin: boolean
+}
+/** Pocket depth the crossbar stack needs: xbar_under + xbar_h + xbar_over. */
+const XBAR_STACK = 1 + 1.6 + 1.2
+export function feetEffective(p: Params): FeetEffective {
+  const printed = p.feet_mode === 'printed'
+  // printed feet weld (fit 0) and always keep a flare (a left-alone undercut of 0
+  // upgrades to 0.35/side); adhesive uses the raw knobs — same as the scad.
+  const fitEff = printed ? 0 : p.feet_fit
+  const undercutEff = printed && p.feet_undercut === 0 ? 0.35 : p.feet_undercut
+  const mouth = p.feet_w + 2 * fitEff
+  const seat = mouth + 2 * undercutEff
+  const half = seat / 2
+  const d = derived(p)
+  const sCr = p.corner_r * p.scale_factor
+  const c =
+    p.feet_shape === 'square'
+      ? Math.max(d.chamf + 0.5 + half, sCr <= 0 ? 0 : half + sCr - (sCr - d.chamf) / Math.SQRT2)
+      : Math.max(d.chamf + 0.5 + half, sCr <= 0 ? 0 : sCr - (sCr - d.chamf - half) / Math.SQRT2)
+  // The bar stack is absolute but the frame it hides in scales, so below
+  // s_fh = XBAR_STACK + 2 (S ≈ 0.725 at stock frame_h) the bar has nowhere to go
+  // and retention degrades to the dovetail flare — same rule as the scad.
+  const wants = printed && p.feet_retention === 'crossbar'
+  const fits = XBAR_STACK + 2 <= p.frame_h * p.scale_factor
+  const crossbar = wants && fits
+  const depthEff = crossbar ? XBAR_STACK : p.feet_depth
+  return {
+    mouth,
+    seat,
+    c,
+    depthEff,
+    proud: printed ? p.feet_proud : 0,
+    crossbar,
+    crossbarTooThin: wants && !fits,
+  }
+}
+// FEET_POS: 4 mandatory corners + PAIRS of intermediate feet splitting any
+// bottom run that exceeds feet_span derated by S^(4/3) (strip stiffness ∝ S⁴).
+// Order matches the scad exactly: corners, x-run pairs, y-run pairs.
+export function feetPositions(p: Params): [number, number][] {
+  const { c } = feetEffective(p)
+  const d = derived(p)
+  const W = d.frameW
+  const D = d.outerD
+  const spanEff = p.feet_span * p.scale_factor ** (4 / 3)
+  const runX = W - 2 * c
+  const runY = D - 2 * c
+  const nx = Math.max(0, Math.ceil(runX / spanEff) - 1)
+  const ny = Math.max(0, Math.ceil(runY / spanEff) - 1)
+  const pos: [number, number][] = [
+    [c, c],
+    [W - c, c],
+    [W - c, D - c],
+    [c, D - c],
+  ]
+  for (let m = 1; m <= nx; m++)
+    for (const e of [0, 1]) pos.push([c + (runX * m) / (nx + 1), e === 0 ? c : D - c])
+  for (let m = 1; m <= ny; m++)
+    for (const e of [0, 1]) pos.push([e === 0 ? c : W - c, c + (runY * m) / (ny + 1)])
+  return pos
+}

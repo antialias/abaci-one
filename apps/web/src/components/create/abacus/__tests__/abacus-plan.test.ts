@@ -1,21 +1,36 @@
 import { describe, expect, it } from 'vitest'
 import { catalogFromParams, type FilamentCatalog, type FilamentSpool } from '../abacus-catalog'
 import { toAbacusDesign } from '../abacus-design'
-import { beadRoleColors, defaultParams, type Params } from '../abacus-model'
+import { beadRoleColors, COLOR_PALETTES, defaultParams, type Params } from '../abacus-model'
 import {
   computeFilamentMap,
   materialize,
   PRINT_PLAN_SCHEMA_VERSION,
   planToFilamentMap,
+  roleShifted,
+  SHIFT_DISTANCE_THRESHOLD,
 } from '../abacus-plan'
 import snapshot from './filament-map-snapshot.json'
 
-// The matrix the characterization snapshot was captured over. computeFilamentMap
-// depends only on color_scheme, color_palette, frame_color, and the loaded
-// filament slots — NOT on cols — so this is the full behavioral surface.
+// The matrix the characterization snapshot was captured over: the structure
+// roles (frame, ArUco pair, beads) depend only on color_scheme, color_palette,
+// frame_color and the loaded filament slots — NOT on cols. That is the surface
+// the frozen fixture pins. The map ALSO carries text roles now, which depend on
+// text_mode / text_fill / text_color and the four rail presets; that axis is
+// covered by its own describe below rather than by widening this matrix 5×.
 const SCHEMES = ['monochrome', 'heaven-earth', 'alternating', 'place-value']
 const PALETTES = ['default', 'colorblind', 'grayscale']
 const COUNTS = [8, 3, 1]
+// Keys the frozen fixture pins byte-for-byte.
+const FROZEN_KEYS = [
+  'beadRoles',
+  'feet',
+  'frame',
+  'markerBlack',
+  'markerContrast',
+  'markerWhite',
+  'slots',
+]
 
 const paramsFor = (
   color_scheme: string,
@@ -47,6 +62,12 @@ describe('computeFilamentMap — byte-parity with the pre-plan implementation', 
   it('covers every captured combination (no snapshot rot)', () => {
     const expected = SCHEMES.length * PALETTES.length * COUNTS.length
     expect(Object.keys(snapshot as Record<string, unknown>)).toHaveLength(expected)
+  })
+
+  it('the frozen fixture still pins the exact key set it was captured with', () => {
+    for (const entry of Object.values(snapshot as Record<string, Record<string, unknown>>)) {
+      expect(Object.keys(entry).sort()).toEqual(FROZEN_KEYS)
+    }
   })
 })
 
@@ -264,8 +285,12 @@ describe('materialize — material warnings answer pins (gh#163)', () => {
     expect(weld?.roleKeys).toEqual(['frame'])
     expect(weld?.message).toContain('Frame is on PETG while the rest is PLA')
     expect(weld?.message).toContain('delaminate')
-    // the temperature warning fires too — different consequence, same fix
-    expect(warnOf('material-mix', catalog, overrides)?.roleKeys).toEqual(['frame'])
+    // The temperature warning fires too — different consequence, same fix. It
+    // names the feet as well: this catalog loads no TPU, so the feet fall back to
+    // the frame's spool, which the pin just moved to PETG. They really do print in
+    // PETG and really do share the split, and only a TPU foot is exempt from the
+    // bucketing (Gitea #23).
+    expect(warnOf('material-mix', catalog, overrides)?.roleKeys).toEqual(['frame', 'feet'])
   })
 
   it('marker-contrast: tracks the FINAL pair, so pinning a marker dark kills the warning-free state', () => {
@@ -430,5 +455,135 @@ describe('planToFilamentMap — the viewer preview seam', () => {
     // pinning the frame does not disturb the ArUco pair the camera reads.
     expect(pinned.markerBlack).toBe(base.markerBlack)
     expect(pinned.markerWhite).toBe(base.markerWhite)
+  })
+})
+
+describe('materialize — printed TPU feet (Gitea #23)', () => {
+  const { design, heavenHex, earthHex, spool, thh } = materialFixtures()
+  // an all-PLA roster with an exact-match spool per historical role, so the
+  // feet role is the only thing under test.
+  const plaRoster = () => [
+    spool('s-black', 'Matte Black', '#000000', 'PLA'),
+    spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+    spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+    spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
+    spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
+  ]
+  const feetOf = (result: ReturnType<typeof materialize>) =>
+    result.assignments.find((a) => a.role.kind === 'feet')
+
+  it('mints the feet role only for printed mode, appended after the historical roles', () => {
+    // The invariant is that every HISTORICAL index is stable, so each new role
+    // kind appends. Feet went on the end first; inset text now appends after it,
+    // so feet is last among the pre-text roles rather than last outright.
+    const printed = materialize(design, thh(plaRoster()))
+    const preText = printed.assignments.filter((a) => a.role.kind !== 'text')
+    expect(preText[preText.length - 1]?.role.kind).toBe('feet')
+    // and nothing but text follows it in the real array
+    const feetAt = printed.assignments.findIndex((a) => a.role.kind === 'feet')
+    expect(printed.assignments.slice(feetAt + 1).every((a) => a.role.kind === 'text')).toBe(true)
+    for (const feet_mode of ['adhesive', 'none']) {
+      const d = toAbacusDesign({ ...design.params, feet_mode }, '')
+      expect(feetOf(materialize(d, thh(plaRoster())))).toBeUndefined()
+    }
+  })
+
+  it('lands feet on TPU by FAMILY (outside the anchor), and the deliberate mix never warns', () => {
+    // the TPU is hot pink — a color-driven pick would never choose it, and a
+    // naive temperature bucketing would warn about it. Both must not happen.
+    const result = materialize(
+      design,
+      thh([...plaRoster(), spool('s-tpu', 'SUNLU TPU 95A', '#ff69b4', 'TPU')])
+    )
+    expect(feetOf(result)?.spoolId).toBe('s-tpu')
+    expect(result.anchorGroup).toBe('PLA') // TPU never bids for the plate anchor
+    expect(result.warnings.find((w) => w.code === 'feet-material')).toBeUndefined()
+    expect(result.warnings.find((w) => w.code === 'material-mix')).toBeUndefined()
+    expect(result.warnings.find((w) => w.code === 'material-interface')).toBeUndefined()
+  })
+
+  it('prefers the spool literally named "TPU for AMS" over an earlier generic TPU', () => {
+    const result = materialize(
+      design,
+      thh([
+        ...plaRoster(),
+        spool('s-tpu-generic', 'SUNLU TPU 95A', '#222222', 'TPU'),
+        spool('s-tpu-ams', 'Bambu TPU for AMS Black', '#101010', 'TPU'),
+      ])
+    )
+    expect(feetOf(result)?.spoolId).toBe('s-tpu-ams')
+  })
+
+  it('no TPU on a real roster: feet fall back to the frame spool + feet-material warning', () => {
+    const result = materialize(design, thh(plaRoster()))
+    const feet = feetOf(result)
+    const frame = result.assignments.find((a) => a.role.kind === 'frame')
+    expect(feet?.spoolIndex).toBe(frame?.spoolIndex)
+    const w = result.warnings.find((x) => x.code === 'feet-material')
+    expect(w?.severity).toBe('warning')
+    expect(w?.roleKeys).toEqual(['feet'])
+    expect(result.ok).toBe(true) // advisory, never a block
+  })
+
+  it('stays silent on the params catalog (fabricated families have no TPU to miss)', () => {
+    const p = paramsFor('heaven-earth', 'default', 8)
+    const result = materialize(toAbacusDesign(p, ''), catalogFromParams(p))
+    expect(feetOf(result)).toBeDefined()
+    expect(result.warnings.find((w) => w.code === 'feet-material')).toBeUndefined()
+  })
+
+  it('honors a feet pin, and the pin answers the fallback warning', () => {
+    const result = materialize(design, thh(plaRoster()), { overrides: { feet: 's-earth' } })
+    const feet = feetOf(result)
+    expect(feet?.spoolId).toBe('s-earth')
+    expect(feet?.overridden).toBe(true)
+    expect(result.warnings.find((w) => w.code === 'feet-material')).toBeUndefined()
+  })
+
+  it("the fallback follows a PINNED frame, not the snapper's original pick", () => {
+    // "falls back to the frame's filament" is what the warning promises, so a
+    // frame pin has to carry the feet with it.
+    const roster = [...plaRoster(), spool('s-petg', 'Smoke PETG', '#8899aa', 'PETG')]
+    const result = materialize(design, thh(roster), { overrides: { frame: 's-petg' } })
+    expect(feetOf(result)?.spoolId).toBe('s-petg')
+  })
+
+  it('the plate-temperature exemption belongs to TPU, not to the feet ROW', () => {
+    // A TPU foot on a PLA plate is the deliberate mix the feature is built on.
+    const roster = [...plaRoster(), spool('s-tpu', 'Bambu TPU for AMS', '#101010', 'TPU')]
+    expect(
+      materialize(design, thh(roster)).warnings.find((w) => w.code === 'material-mix')
+    ).toBeUndefined()
+    // Pin those same feet to ABS and it is just an ordinary plate-temp split —
+    // the picker offers it, so the guard has to still fire (gh#163).
+    const abs = [...roster, spool('s-abs', 'Structural ABS', '#333333', 'ABS')]
+    const pinned = materialize(design, thh(abs), { overrides: { feet: 's-abs' } })
+    const w = pinned.warnings.find((x) => x.code === 'material-mix')
+    expect(w).toBeDefined()
+    expect(w?.roleKeys).toEqual(['feet'])
+  })
+
+  it('never reports feet as a color shift (family-picked; the distance is decorative)', () => {
+    // near-white TPU vs the slate intrinsic: a huge redmean distance that would
+    // fleck any user-colored role — feet must stay clean.
+    const result = materialize(
+      design,
+      thh([...plaRoster(), spool('s-tpu', 'Generic TPU Natural', '#f8f8f8', 'TPU')])
+    )
+    const feet = feetOf(result)
+    expect(feet?.distance).toBeGreaterThan(SHIFT_DISTANCE_THRESHOLD)
+    expect(feet && roleShifted(feet)).toBe(false)
+  })
+
+  it('planToFilamentMap carries the feet slot iff the role exists', () => {
+    const roster = [...plaRoster(), spool('s-tpu', 'Bambu TPU for AMS', '#101010', 'TPU')]
+    const slots = roster.map((s) => s.hex)
+    const printed = planToFilamentMap(materialize(design, thh(roster)), slots)
+    expect(printed.feet).toBe(5)
+    const off = planToFilamentMap(
+      materialize(toAbacusDesign({ ...design.params, feet_mode: 'adhesive' }, ''), thh(roster)),
+      slots
+    )
+    expect('feet' in off).toBe(false)
   })
 })

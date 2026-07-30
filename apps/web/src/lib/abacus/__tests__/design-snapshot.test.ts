@@ -3,6 +3,8 @@
  * (refuse junk) and GET (never hydrate garbage) sides, plus the canonical
  * serialization the dedup content-hash is computed over.
  */
+
+import { describe, expect, it } from 'vitest'
 import { defaultParams } from '@/components/create/abacus/abacus-model'
 import { DEFAULT_PROFILE_ID } from '@/components/create/abacus/abacus-solver'
 import {
@@ -10,7 +12,6 @@ import {
   canonicalDesignSnapshot,
   parseDesignSnapshot,
 } from '@/lib/abacus/design-snapshot'
-import { describe, expect, it } from 'vitest'
 
 const valid = () => ({
   v: ABACUS_DESIGN_SNAPSHOT_VERSION,
@@ -104,5 +105,35 @@ describe('canonicalDesignSnapshot', () => {
     const base = parseDesignSnapshot(valid())!
     const edited = parseDesignSnapshot({ ...valid(), overrides: {} })!
     expect(canonicalDesignSnapshot(edited)).not.toBe(canonicalDesignSnapshot(base))
+  })
+})
+
+describe('legacy feet params (pre-#23 snapshots)', () => {
+  it('drops the retired feet/feet_preset/retention keys and loads printed-feet defaults', () => {
+    // Every pre-#23 snapshot carried these exact values (the knobs were
+    // UI-unreachable, so they never varied). The keys no longer exist in
+    // defaultParams, so the parser must drop them — a surviving
+    // `retention: "none"` would reach the scad and fail its literal assert.
+    const parsed = parseDesignSnapshot({
+      v: 1,
+      params: {
+        ...defaultParams,
+        feet: true,
+        feet_preset: 'circle 9',
+        retention: 'none',
+        feet_mode: undefined,
+        feet_retention: undefined,
+        feet_proud: undefined,
+      },
+      overrides: {},
+      profileId: DEFAULT_PROFILE_ID,
+    })
+    expect(parsed).not.toBeNull()
+    expect('feet' in parsed!.params).toBe(false)
+    expect('retention' in parsed!.params).toBe(false)
+    expect('feet_preset' in parsed!.params).toBe(false)
+    expect(parsed!.params.feet_mode).toBe('printed')
+    expect(parsed!.params.feet_retention).toBe('crossbar')
+    expect(parsed!.params.feet_proud).toBe(defaultParams.feet_proud)
   })
 })

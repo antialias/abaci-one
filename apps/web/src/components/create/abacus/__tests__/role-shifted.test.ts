@@ -61,13 +61,20 @@ const limitedCatalog = thh([
 ])
 
 describe('roleShifted', () => {
-  it('is a pure readout of RoleAssignment.distance vs the threshold', () => {
+  it('is a pure readout of RoleAssignment.distance vs the threshold (feet excepted)', () => {
     // the core contract: the fleck is a readout of the assignment's own distance,
-    // no independent color math in the row.
+    // no independent color math in the row. The one carve-out is the feet role
+    // (Gitea #23): its spool is picked by FAMILY (TPU), so its distance from the
+    // fixed slate intrinsic is decorative — never a shift for the user to audit.
     const plan = materialize(design, limitedCatalog)
     for (const a of plan.assignments) {
-      expect(roleShifted(a)).toBe(a.distance > SHIFT_DISTANCE_THRESHOLD)
+      const expected = a.role.kind !== 'feet' && a.distance > SHIFT_DISTANCE_THRESHOLD
+      expect(roleShifted(a)).toBe(expected)
     }
+    // the carve-out is exercised, not vacuous: this plate has a feet assignment
+    // whose distance crosses the threshold.
+    const feet = plan.assignments.find((a) => a.role.kind === 'feet')
+    expect(feet && feet.distance > SHIFT_DISTANCE_THRESHOLD).toBe(true)
   })
 
   it('flags no shift when every colored surface prints true (exact-match plate)', () => {

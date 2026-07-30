@@ -70,23 +70,34 @@ marker_inset = 0;    // EXTRA tile inset floor (mk_i below derives the real one:
                      // quiet-zone corner — set >0 only to push tiles further in)
 inlay_d     = 0.6;   // color-inlay depth (markers, inset text) — matches the master
 
-/* ===== adhesive feet (bottom face; ABSOLUTE — real feet don't scale) =====
-   One seat pocket per corner, carved up into the bottom face, for stick-on
-   feet. The wall flares CONTINUOUSLY from the mouth (at the face) out to a
-   wider seat floor — a dovetail, not a step — so with feet_undercut > 0 the
-   rim overhangs the foot's base edge and mechanically grabs it (press the
-   compliant foot in past the mouth). Printed face-down the flare is just a
-   gentle sloped overhang. */
-feet          = true;      // carve the four corner pockets
+/* ===== feet (bottom face; ABSOLUTE — real feet don't scale) =====
+   feet_mode picks the fabrication story:
+   - "printed": in-place TPU feet. The foot solid (the only="feet" part pass)
+     fills the pocket and stands proud below the bottom face (feet_proud);
+     the whole print then stands on its feet while the frame's bottom face
+     prints on supports + interface. The pocket welds to the foot (fit 0)
+     and always keeps a dovetail flare; feet_retention="crossbar" further
+     runs a frame bar THROUGH the foot at mid-depth so the foot is a closed
+     loop around frame geometry — topologically captive, cannot fall out.
+   - "adhesive": empty seat pockets for stick-on feet (the classic). The wall
+     flares CONTINUOUSLY from the mouth (at the face) out to a wider seat
+     floor — a dovetail, not a step — so with feet_undercut > 0 the rim
+     overhangs the foot's base edge and mechanically grabs it (press the
+     compliant foot in past the mouth).
+   - "none": no pockets at all. */
+feet_mode     = "printed"; // printed | adhesive | none
 feet_shape    = "circle";  // circle | square (the foot's footprint)
 feet_w        = 9;         // foot diameter / square side (the FOOT itself)
-feet_depth    = 1.5;       // pocket depth — locates the foot; the rest stands proud
-feet_fit      = 0.15;      // per-side mouth clearance around the foot (snug press)
-feet_undercut = 0;         // per-side dovetail flare (seat = mouth + 2·this);
-                           // 0 = straight walls, ~0.4 = aggressive retention
+feet_depth    = 1.5;       // ADHESIVE pocket depth (printed crossbar derives its own)
+feet_fit      = 0.15;      // adhesive per-side mouth clearance (printed welds: 0)
+feet_undercut = 0;         // adhesive per-side dovetail flare (seat = mouth + 2·this);
+                           // printed mode upgrades a left-alone 0 to 0.35/side
 feet_span     = 110;       // max unsupported bottom run between feet, mm AT scale 1
                            // (derated by S^(4/3) — see the FEET_POS napkin below);
                            // lower it for soft filament / sparse infill
+feet_proud    = 1.6;       // printed: stand-off below the bottom face (ABSOLUTE mm;
+                           // ≈8 layers @0.2 = support base + interface + z gap)
+feet_retention = "crossbar"; // printed: crossbar (linked loop) | dovetail (flare only)
 
 /* ===== myabacus style (driven by abaci.one AbacusDisplayConfig) ===== */
 color_scheme  = "place-value";  // monochrome | place-value | heaven-earth | alternating
@@ -126,7 +137,9 @@ inlay_plugs  = false;  // true → also model the white/black inlay solids (3MF 
                        // path). false → pockets only: the bench STL shows markers as
                        // engravings (flush plugs would WELD into the frame shell and
                        // vanish — color() is inert on binstl; see SPEC).
-only         = "";     // debug renders: "" | "marker_black" | "marker_white" | "text_plugs"
+only         = "";     // part passes: "" | "marker_black" | "marker_white" | "text_plugs" | "feet"
+                       // "feet" renders the printed foot solids (pocket fill + stand-off,
+                       // crossbar voided) — emitted UNCONDITIONALLY; the TS caller gates.
 fn           = 40;   // worker passes -Dfn=...; wire it to $fn
 $fn = fn;
 
@@ -188,27 +201,65 @@ outer_d   = s_fd + 2 * s_bw;                // OUTER depth  (100.5 at defaults)
 assert(web * S >= 1.2,  "web thinner than a printable wall — raise web");
 assert(bar * S >= 2,    "reckoning bar too thin to survive — raise bar");
 assert(throw * S >= 2,  "throw < 2mm: beads can't express set/unset — raise throw");
-/* adhesive-feet pockets: corner-tucked like the markers. feet_c (pocket center
+/* feet pockets: corner-tucked like the markers. feet_c (pocket center
    ← both outer edges) is derived so the SEAT — the widest section, at depth —
    clears the bottom-face outline (inset chamf, corner arc radius s_cr−chamf;
    the square shape additionally needs its corner point inside that arc), and
    the asserts keep a real wall to the bead channels, which open through the
    bottom face — a breakthrough would break capture, so feet get no
    contact allowance. */
-feet_mouth = feet_w + 2 * feet_fit;
-feet_seat  = feet_mouth + 2 * feet_undercut;
+feet         = feet_mode != "none";
+feet_printed = feet_mode == "printed";
+assert(feet_mode == "printed" || feet_mode == "adhesive" || feet_mode == "none",
+       "feet_mode must be printed | adhesive | none");
+assert(feet_retention == "crossbar" || feet_retention == "dovetail",
+       "feet_retention must be crossbar | dovetail");
+assert(!feet_printed || (feet_proud >= 0.4 && feet_proud <= 5),
+       "feet_proud outside the printable band (0.4–5 mm)");
+/* printed feet WELD to the pocket (no fit gap) and always keep a retention
+   flare: a left-alone feet_undercut of 0 upgrades to 0.35/side, a deliberate
+   non-zero knob wins. Adhesive mode uses the raw knobs — byte-identical to
+   the pre-feet_mode geometry. */
+feet_fit_eff      = feet_printed ? 0 : feet_fit;
+feet_undercut_eff = feet_printed && feet_undercut == 0 ? 0.35 : feet_undercut;
+feet_mouth = feet_w + 2 * feet_fit_eff;
+feet_seat  = feet_mouth + 2 * feet_undercut_eff;
 feet_half  = feet_seat / 2;
 feet_c     = feet_shape == "square"
   ? max(chamf + 0.5 + feet_half,
         s_cr <= 0 ? 0 : feet_half + s_cr - (s_cr - chamf) / sqrt(2))
   : max(chamf + 0.5 + feet_half,
         s_cr <= 0 ? 0 : s_cr - (s_cr - chamf - feet_half) / sqrt(2));
+/* crossbar retention (printed): a small frame bar spans the pocket at
+   mid-depth, ends merged into the surrounding wall; the TPU foot prints
+   under, around, and over it — a chain link. In-place co-printing makes the
+   topology free (each layer, PLA and TPU mutually support the next), so the
+   enclosed bar needs no supports. Fuse math (design review, Gitea #23): the
+   2×1.6 PLA bar snaps at ~40–60 N per foot — ≥4× over real abuse — and a
+   snapped bar degrades to dovetail+weld, never to loose. */
+xbar_w     = 2;    // bar width across the pocket (lobes = (feet_mouth − xbar_w)/2)
+xbar_h     = 1.6;  // bar height
+xbar_under = 1;    // TPU below the bar (the bar's print bed)
+xbar_over  = 1.2;  // TPU above the bar (the shear strap that closes the loop)
+xbar_embed = 2;    // bar end reach past the seat, rooting into the frame
+xbar_stack = xbar_under + xbar_h + xbar_over;  // pocket depth the bar needs
+/* The bar stack is ABSOLUTE (feet are real-world hardware, never scaled by S)
+   but the frame it hides in is not: s_fh = frame_h·S. Below S ≈ 0.725 the stack
+   plus the ≥2 mm web is taller than the whole frame, so the crossbar simply has
+   nowhere to live and retention falls back to the dovetail flare — which fits
+   the entire size range. Degrading here rather than asserting keeps the bottom
+   third of the size slider renderable; feetEffective() mirrors this exactly so
+   the studio can say so in the inspector. */
+feet_crossbar  = feet_printed && feet_retention == "crossbar" && xbar_stack + 2 <= s_fh;
+feet_depth_eff = feet_crossbar ? xbar_stack : feet_depth;
+assert(!feet_crossbar || feet_mouth - xbar_w >= 2,
+       "crossbar leaves the TPU lobes too thin — grow feet_w or shrink xbar_w");
 assert(!feet || feet_c + feet_half + 0.8 <= strip_x,
        "feet pockets would cut the end channels — smaller feet_w or bigger border_w");
 assert(!feet || feet_c + feet_half + 0.8 <= strip_y,
        "feet pockets would cut the bead channels — smaller feet_w or bigger border_w");
-assert(!feet || feet_depth + 2 <= s_fh,
-       "feet_depth leaves too thin a web above the pocket — shrink it or grow frame_h");
+assert(!feet || feet_depth_eff + 2 <= s_fh,
+       "feet pocket leaves too thin a web above — shrink feet_depth, grow frame_h/size, or feet_retention=dovetail");
 /* anti-bend intermediate feet (napkin): at any column the channels open through
    BOTH faces, so only the two solid border strips carry long-axis bending —
    I ≈ 2·strip_y·s_fh³/12 ≈ 1.1e3 mm⁴ at defaults. A mid-span hand press
@@ -499,16 +550,54 @@ module outer_solid() {
   else
     linear_extrude(s_fh) rounded_rect(frame_w, outer_d, s_cr);
 }
-module feet_pocket_at(k) {   // mouth at z=0, seat floor at z=feet_depth (dovetail)
+module feet_pocket_at(k) {   // mouth at z=0, seat floor at z=feet_depth_eff (dovetail)
   translate([FEET_POS[k][0], FEET_POS[k][1], -0.01]) {
     if (feet_shape == "circle")
-      cylinder(h = feet_depth + 0.01, d1 = feet_mouth, d2 = feet_seat);
+      cylinder(h = feet_depth_eff + 0.01, d1 = feet_mouth, d2 = feet_seat);
     else
-      linear_extrude(feet_depth + 0.01, scale = feet_seat / feet_mouth)
+      linear_extrude(feet_depth_eff + 0.01, scale = feet_seat / feet_mouth)
         square(feet_mouth, center = true);
   }
 }
-module frame() {
+/* The retention bar runs ALONG the border strip its foot sits on (FEET_POS
+   order: 4 corners, then bottom/top-strip pairs, then left/right-strip pairs)
+   so both rooted ends stay in solid strip material — never hanging into a
+   bead channel. Corner bars can poke past the outer wall; frame() clips them
+   flush against outer_solid(). Same solid is SUBTRACTED from the foot with
+   zero shrink (marker-plug precedent): coincident PLA/TPU faces, no gap. */
+function xbar_along_x(k) = k < 4 + 2 * feet_nx;
+module xbar_at(k) {
+  xlen = feet_seat + 2 * xbar_embed;
+  translate([FEET_POS[k][0], FEET_POS[k][1], xbar_under]) {
+    if (xbar_along_x(k))
+      translate([-xlen / 2, -xbar_w / 2, 0]) cube([xlen, xbar_w, xbar_h]);
+    else
+      translate([-xbar_w / 2, -xlen / 2, 0]) cube([xbar_w, xlen, xbar_h]);
+  }
+}
+/* The printed foot (only="feet" part pass): the pocket-filling frustum —
+   coincident with feet_pocket_at, zero shrink — plus a straight stand-off of
+   the MOUTH cross-section below the face (two stacked primitives on purpose:
+   one continuous taper from −feet_proud would change the mouth diameter at
+   z=0), minus the crossbar the frame threads through it. */
+module foot_at(k) {
+  difference() {
+    translate([FEET_POS[k][0], FEET_POS[k][1], 0]) union() {
+      translate([0, 0, -feet_proud]) {
+        if (feet_shape == "circle") cylinder(h = feet_proud + 0.01, d = feet_mouth);
+        else linear_extrude(feet_proud + 0.01) square(feet_mouth, center = true);
+      }
+      if (feet_shape == "circle")
+        cylinder(h = feet_depth_eff, d1 = feet_mouth, d2 = feet_seat);
+      else
+        linear_extrude(feet_depth_eff, scale = feet_seat / feet_mouth)
+          square(feet_mouth, center = true);
+    }
+    if (feet_crossbar) xbar_at(k);
+  }
+}
+module frame() {   // two children = implicit union (keeps the no-bar CSG tree
+                   // EXACTLY the pre-#23 one — adhesive mode stays byte-stable)
   difference() {
     outer_solid();
     translate([s_bw, s_bw, 0])            // bead field lives at (s_bw, s_bw)
@@ -520,12 +609,20 @@ module frame() {
     if (text_mode == "inset") text_pockets();
     if (feet) for (k = [0 : len(FEET_POS) - 1]) feet_pocket_at(k);
   }
+  // the crossbars are FRAME geometry threading the foot pockets; added back
+  // after the carve, clipped so corner bars end flush at the outer wall.
+  if (feet_crossbar)
+    intersection() {
+      outer_solid();
+      for (k = [0 : len(FEET_POS) - 1]) xbar_at(k);
+    }
 }
 
 /* ===== assemble ===== (color() is preview/3MF only — ignored by binstl, no geom change) */
 if (only == "marker_black")      for (k = [0 : 3]) color("black") marker_plug(k, true);
 else if (only == "marker_white") for (k = [0 : 3]) color("white") marker_plug(k, false);
 else if (only == "text_plugs")   text_plugs();
+else if (only == "feet")         for (k = [0 : len(FEET_POS) - 1]) color("#1f2937") foot_at(k);
 else {
   if (show_frame) {
     color(frame_color) {

@@ -25,7 +25,7 @@ import {
   type AbacusColorScheme,
 } from '@/lib/abacus/identity'
 import { useAbacusStudio } from './AbacusStudioContext'
-import { PRESET_OPTS } from './abacus-model'
+import { feetEffective, PRESET_OPTS } from './abacus-model'
 import { DesignLinkChip } from './DesignLinkChip'
 import { MyDesignsList } from './MyDesignsList'
 
@@ -321,6 +321,51 @@ export function DesignInspectorRail({
           checked={params.show_markers}
           onChange={(v) => set('show_markers', v)}
         />
+        {/* Feet (Gitea #23): printed = in-place TPU feet, the default — the
+            print stands on them and the bottom face rides supports; adhesive =
+            today's empty dovetail pockets for stick-on bumpers; none. Retention
+            only means anything for printed feet, so the second select follows
+            the first conditionally. */}
+        <StudioSelect
+          label="feet"
+          value={params.feet_mode}
+          options={[
+            { value: 'printed', label: 'printed TPU feet' },
+            { value: 'adhesive', label: 'pockets for stick-on feet' },
+            { value: 'none', label: 'no feet' },
+          ]}
+          onChange={(v) => set('feet_mode', v)}
+          dataElement="abacus-feet-mode"
+          dataAction="set-feet-mode"
+        />
+        {params.feet_mode === 'printed' && (
+          <>
+            <StudioSelect
+              label="feet retention"
+              value={params.feet_retention}
+              options={[
+                { value: 'crossbar', label: 'linked crossbar (strongest)' },
+                { value: 'dovetail', label: 'dovetail (friction fit)' },
+              ]}
+              onChange={(v) => set('feet_retention', v)}
+              dataElement="abacus-feet-retention"
+              dataAction="set-feet-retention"
+            />
+            {/* The bar is real-world sized but the frame it hides in scales, so a
+                small enough abacus has nowhere to put it. Say so rather than
+                letting the select claim retention the print won't have. */}
+            {feetEffective(params).crossbarTooThin && (
+              <p
+                data-component="DesignInspectorRail"
+                data-element="abacus-feet-crossbar-note"
+                style={{ fontSize: 11, color: '#b45309', lineHeight: 1.4, margin: '2px 0 0' }}
+              >
+                At this size the frame is too thin to hide a crossbar — these feet use the dovetail
+                flare. Raise size × to about 0.75 to get the linked bar back.
+              </p>
+            )}
+          </>
+        )}
       </Disclosure>
     </div>
   )

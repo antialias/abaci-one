@@ -13,36 +13,27 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "monochrome|default|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "monochrome|default|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0],
+    "markerContrast": 1,
+    "feet": 0
   },
   "monochrome|colorblind|8": {
     "slots": [
@@ -58,36 +49,27 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "monochrome|colorblind|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "monochrome|colorblind|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0],
+    "markerContrast": 1,
+    "feet": 0
   },
   "monochrome|grayscale|8": {
     "slots": [
@@ -103,36 +85,27 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "monochrome|grayscale|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "monochrome|grayscale|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0],
+    "markerContrast": 1,
+    "feet": 0
   },
   "heaven-earth|default|8": {
     "slots": [
@@ -148,39 +121,27 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      5,
-      3
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [5, 3],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "heaven-earth|default|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      0,
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [0, 2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "heaven-earth|default|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0,
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0, 0],
+    "markerContrast": 1,
+    "feet": 0
   },
   "heaven-earth|colorblind|8": {
     "slots": [
@@ -196,39 +157,27 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      5,
-      3
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [5, 3],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "heaven-earth|colorblind|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      0,
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [0, 2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "heaven-earth|colorblind|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0,
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0, 0],
+    "markerContrast": 1,
+    "feet": 0
   },
   "heaven-earth|grayscale|8": {
     "slots": [
@@ -244,39 +193,27 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      5,
-      3
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [5, 3],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "heaven-earth|grayscale|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      0,
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [0, 2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "heaven-earth|grayscale|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0,
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0, 0],
+    "markerContrast": 1,
+    "feet": 0
   },
   "alternating|default|8": {
     "slots": [
@@ -292,39 +229,27 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      3,
-      6
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [3, 6],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "alternating|default|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      0,
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [0, 2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "alternating|default|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0,
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0, 0],
+    "markerContrast": 1,
+    "feet": 0
   },
   "alternating|colorblind|8": {
     "slots": [
@@ -340,39 +265,27 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      3,
-      6
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [3, 6],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "alternating|colorblind|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      0,
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [0, 2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "alternating|colorblind|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0,
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0, 0],
+    "markerContrast": 1,
+    "feet": 0
   },
   "alternating|grayscale|8": {
     "slots": [
@@ -388,39 +301,27 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      3,
-      6
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [3, 6],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "alternating|grayscale|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      0,
-      2
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [0, 2],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "alternating|grayscale|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0,
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0, 0],
+    "markerContrast": 1,
+    "feet": 0
   },
   "place-value|default|8": {
     "slots": [
@@ -436,48 +337,27 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      3,
-      4,
-      5,
-      6,
-      7
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [3, 4, 5, 6, 7],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "place-value|default|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      0,
-      2,
-      1,
-      0,
-      0
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [0, 2, 1, 0, 0],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "place-value|default|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0, 0, 0, 0, 0],
+    "markerContrast": 1,
+    "feet": 0
   },
   "place-value|colorblind|8": {
     "slots": [
@@ -493,48 +373,27 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      3,
-      5,
-      0,
-      6,
-      7
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [3, 5, 0, 6, 7],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "place-value|colorblind|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      2,
-      0,
-      1,
-      0,
-      0
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [2, 0, 1, 0, 0],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "place-value|colorblind|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0, 0, 0, 0, 0],
+    "markerContrast": 1,
+    "feet": 0
   },
   "place-value|grayscale|8": {
     "slots": [
@@ -550,47 +409,26 @@
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      2,
-      4,
-      6,
-      0,
-      1
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [2, 4, 6, 0, 1],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "place-value|grayscale|3": {
-    "slots": [
-      "#c9a26e",
-      "#f5f5f5",
-      "#111111"
-    ],
+    "slots": ["#c9a26e", "#f5f5f5", "#111111"],
     "frame": 0,
     "markerWhite": 1,
     "markerBlack": 2,
-    "beadRoles": [
-      2,
-      0,
-      1,
-      0,
-      1
-    ],
-    "markerContrast": 17.320238625461315
+    "beadRoles": [2, 0, 1, 0, 1],
+    "markerContrast": 17.320238625461315,
+    "feet": 0
   },
   "place-value|grayscale|1": {
-    "slots": [
-      "#c9a26e"
-    ],
+    "slots": ["#c9a26e"],
     "frame": 0,
     "markerWhite": 0,
     "markerBlack": 0,
-    "beadRoles": [
-      0,
-      0,
-      0,
-      0,
-      0
-    ],
-    "markerContrast": 1
+    "beadRoles": [0, 0, 0, 0, 0],
+    "markerContrast": 1,
+    "feet": 0
   }
 }
