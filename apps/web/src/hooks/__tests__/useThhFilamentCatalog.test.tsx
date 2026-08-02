@@ -11,7 +11,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ThhFilamentRow } from '@/lib/abacus/print/filament-wire'
+import type { ThhFilamentRow, ThhPrinterRow } from '@/lib/abacus/print/filament-wire'
 import { api } from '@/lib/queryClient'
 import { useThhFilamentCatalog } from '../useThhFilamentCatalog'
 
@@ -27,13 +27,16 @@ function mockRoster(opts: {
   multiMaterial?: boolean
   filaments: ThhFilamentRow[]
   amsPresent?: boolean
+  printer?: Partial<ThhPrinterRow>
 }) {
   const filamentsBody: Record<string, unknown> = { filaments: opts.filaments }
   if (opts.amsPresent !== undefined) filamentsBody.amsPresent = opts.amsPresent
   mockApi.mockImplementation((path: string) => {
     if (path.includes('/filaments')) return Promise.resolve(ok(filamentsBody))
     return Promise.resolve(
-      ok({ printers: [{ id: 'p1', multiMaterial: opts.multiMaterial ?? false }] })
+      ok({
+        printers: [{ id: 'p1', multiMaterial: opts.multiMaterial ?? false, ...opts.printer }],
+      })
     )
   })
 }
@@ -95,9 +98,21 @@ describe('useThhFilamentCatalog — external (no-AMS) spool', () => {
 
 describe('useThhFilamentCatalog — AMS + back-compat', () => {
   it('an AMS roster reports amsPresent:true and no external-unprintable', async () => {
+    const wipeTower = {
+      version: 1 as const,
+      profile: 'orca-rectangle-60-v1',
+      maxFilaments: 6,
+      envelopeMm: { minX: -4, minY: -4, maxX: 66, maxY: 56 },
+      process: {
+        prime_tower_width: 60,
+        prime_tower_brim_width: 3,
+        wipe_tower_wall_type: 'rectangle',
+      },
+    }
     mockRoster({
       multiMaterial: true,
       amsPresent: true,
+      printer: { bed: { sizeMm: { x: 256, y: 256, z: 250 } }, wipeTower },
       filaments: [{ slotId: '0.1', family: 'PLA', colorHex: 'A0A0A0FF', brand: 'Bambu Lab' }],
     })
     const { result } = renderHook(() => useThhFilamentCatalog({ enabled: true }), { wrapper })
@@ -107,6 +122,8 @@ describe('useThhFilamentCatalog — AMS + back-compat', () => {
     expect(result.current.catalog?.spools[0].external).toBeUndefined()
     expect(result.current.amsPresent).toBe(true)
     expect(result.current.externalUnprintable).toBe(false)
+    expect(result.current.printerBed?.sizeMm).toEqual({ x: 256, y: 256, z: 250 })
+    expect(result.current.wipeTower).toBe(wipeTower)
   })
 
   it('a pre-#382 response (no amsPresent field) yields amsPresent: undefined', async () => {

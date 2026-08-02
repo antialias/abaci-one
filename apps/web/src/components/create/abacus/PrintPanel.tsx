@@ -38,7 +38,11 @@ import { useAbacusPrintSettings, useSaveAbacusPrintSettings } from '@/hooks/useA
 import { usePrintJobRing } from '@/hooks/usePrintJobRing'
 import { useUserId } from '@/hooks/useUserId'
 import { createAbacusPrintClient } from '@/lib/abacus/print/browser-transport'
-import type { PrintUnavailableReason } from '@/lib/abacus/print/filament-wire'
+import type {
+  PrintUnavailableReason,
+  ThhBedGeometry,
+  ThhWipeTowerCapability,
+} from '@/lib/abacus/print/filament-wire'
 import { api } from '@/lib/queryClient'
 import { abacusPrintKeys } from '@/lib/queryKeys'
 import { type AbacusExportParts, buildAbacusThreeMf } from './abacus-3mf'
@@ -89,6 +93,10 @@ export interface PrintPanelProps {
    *  back-compat fallback for wording the empty-roster notice when the live
    *  `amsPresent` signal is absent (pre things-haunt-house#382 service). */
   printerMultiMaterial?: boolean
+  /** Live bed dimensions/exclusions from THH's addressed Orca machine profile. */
+  printerBed?: ThhBedGeometry
+  /** Bounded wipe-tower profile advertised by the selected THH printer. */
+  wipeTower?: ThhWipeTowerCapability | null
   /** Live AMS presence from the roster read (#382): `true`/`false` when reported,
    *  `undefined` against a pre-#382 service. Preferred over `printerMultiMaterial`
    *  for empty-roster wording (`amsPresent ?? printerMultiMaterial`) — a live
@@ -176,6 +184,8 @@ export function PrintPanel(props: PrintPanelProps) {
     profileId,
     printerId,
     printerMultiMaterial = false,
+    printerBed,
+    wipeTower,
     amsPresent,
     externalUnprintable = false,
     rosterEmpty = false,
@@ -417,6 +427,28 @@ export function PrintPanel(props: PrintPanelProps) {
         filamentMap,
         slotLabels,
         supportsAtSlice: supportsWanted,
+        bed: printerBed
+          ? {
+              wMm: printerBed.sizeMm.x,
+              dMm: printerBed.sizeMm.y,
+              exclude: (printerBed.exclusionsMm ?? []).flatMap((zone) => {
+                if (zone.pointsMm.length === 0) return []
+                const xs = zone.pointsMm.map((point) => point[0])
+                const ys = zone.pointsMm.map((point) => point[1])
+                const x0 = Math.min(...xs)
+                const y0 = Math.min(...ys)
+                return [
+                  {
+                    xMm: x0,
+                    yMm: y0,
+                    wMm: Math.max(...xs) - x0,
+                    dMm: Math.max(...ys) - y0,
+                  },
+                ]
+              }),
+            }
+          : undefined,
+        wipeTower: wipeTower ?? undefined,
       })
 
       // Reuse the key only for an identical resubmit; any edit rotates it.
@@ -429,11 +461,13 @@ export function PrintPanel(props: PrintPanelProps) {
           style,
           startPolicy,
           supportInterfaceSlotId: supportPick,
+          printerBed,
+          wipeTower,
         }),
         () => crypto.randomUUID()
       )
       idemRef.current = idem
-      const ticket = buildAbacusTicket({
+      const baseTicket = buildAbacusTicket({
         name: `Abacus — ${params.cols} columns`,
         // With a persisted snapshot the artifact IS the design row (abaci#22);
         // a failed persist degrades to the pre-#22 shallow provenance.
@@ -462,6 +496,17 @@ export function PrintPanel(props: PrintPanelProps) {
         // and neither may a transiently failed snapshot persist).
         authoring: buildAbacusAuthoring(playerId, { designId }),
       })
+      // Send the machine-readable contract only when this service advertised it and the
+      // FINAL routed filament list (including an added support-interface spool) is inside
+      // the profile's tested bound. Older/over-capacity jobs still carry the embedded pin
+      // and follow THH's non-blocking legacy leg.
+      const ticket =
+        wipeTower &&
+        model.wipeTower &&
+        baseTicket.filaments.length > 1 &&
+        baseTicket.filaments.length <= wipeTower.maxFilaments
+          ? { ...baseTicket, wipeTower: model.wipeTower }
+          : baseTicket
 
       const form = new FormData()
       form.set(

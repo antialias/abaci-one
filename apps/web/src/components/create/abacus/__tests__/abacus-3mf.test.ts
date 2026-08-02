@@ -278,13 +278,16 @@ describe('buildAbacusThreeMf (printed feet — Gitea #23)', () => {
     // which emits no project_settings.config — a direct download would print the
     // raised bottom face unsupported.
     const mono: FilamentMap = { ...fm, frame: 0, beadRoles: [0, 0], feet: 0 }
-    const { bodies, bytes } = buildAbacusThreeMf({
+    const { bodies, bytes, wipeTower } = buildAbacusThreeMf({
       stl: fixtureStl(feetParams),
       feet: markerStl(6, 10, 10),
       params: feetParams,
       filamentMap: mono,
     })
     expect(bodies).toHaveLength(1)
+    // A separate support-interface spool is added later by ticket routing. Preserve this pin so
+    // that final two-filament job can use THH's bounded tower contract.
+    expect(wipeTower).toMatchObject({ profile: 'orca-rectangle-60-v1', pinMm: expect.any(Object) })
     const zip = unzipSync(bytes)
     const project = JSON.parse(strFromU8(zip['Metadata/project_settings.config']))
     expect(project.enable_support).toBe('1')

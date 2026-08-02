@@ -15,6 +15,36 @@ export interface ThhPrinterRow {
   name?: string
   /** True for AMS-equipped printers — preferred for multi-color abacus prints */
   multiMaterial?: boolean
+  /** Live machine-profile geometry — the same bed/exclusions THH gives Orca. */
+  bed?: ThhBedGeometry
+  /** Versioned, pin-relative reservation THH promises to enforce for this printer. */
+  wipeTower?: ThhWipeTowerCapability | null
+}
+
+export interface ThhBedGeometry {
+  sizeMm: { x: number; y: number; z?: number }
+  exclusionsMm?: { pointsMm: readonly (readonly [number, number])[] }[]
+}
+
+export interface ThhWipeTowerEnvelope {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
+
+export interface ThhWipeTowerCapability {
+  version: 1
+  profile: string
+  orcaVersion?: string
+  maxFilaments: number
+  pinReference?: string
+  envelopeMm: ThhWipeTowerEnvelope
+  process: {
+    prime_tower_width: number
+    prime_tower_brim_width: number
+    wipe_tower_wall_type: string
+  }
 }
 
 export interface ThhPrintersResponse {

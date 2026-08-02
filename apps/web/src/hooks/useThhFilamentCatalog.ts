@@ -151,6 +151,8 @@ export function useThhFilamentCatalog({
     catalog,
     printerId,
     printerMultiMaterial: chosenPrinter?.multiMaterial ?? false,
+    printerBed: chosenPrinter?.bed,
+    wipeTower: chosenPrinter?.wipeTower ?? null,
     rosterEmpty,
     amsPresent,
     externalUnprintable,

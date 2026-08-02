@@ -103,6 +103,34 @@ describe('abacusPrintSignature', () => {
     expect(abacusPrintSignature(repicked)).not.toBe(abacusPrintSignature(picked))
   })
 
+  it('changes when THH refreshes the bed or bounded tower geometry', () => {
+    const constrained = {
+      ...base,
+      printerBed: { sizeMm: { x: 256, y: 256, z: 250 } },
+      wipeTower: {
+        version: 1 as const,
+        profile: 'orca-rectangle-60-v1',
+        maxFilaments: 6,
+        envelopeMm: { minX: -4, minY: -4, maxX: 66, maxY: 56 },
+        process: {
+          prime_tower_width: 60,
+          prime_tower_brim_width: 3,
+          wipe_tower_wall_type: 'rectangle',
+        },
+      },
+    }
+    expect(abacusPrintSignature(constrained)).not.toBe(abacusPrintSignature(base))
+    expect(
+      abacusPrintSignature({
+        ...constrained,
+        wipeTower: {
+          ...constrained.wipeTower,
+          envelopeMm: { ...constrained.wipeTower.envelopeMm, maxY: 60 },
+        },
+      })
+    ).not.toBe(abacusPrintSignature(constrained))
+  })
+
   it('array order is significant (bead-role assignment is not a set)', () => {
     const swapped = { ...base, filamentMap: { ...filamentMap, beadRoles: [1, 0, 0, 1] } }
     expect(abacusPrintSignature(swapped)).not.toBe(abacusPrintSignature(base))

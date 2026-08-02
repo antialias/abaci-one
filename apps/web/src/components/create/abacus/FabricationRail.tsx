@@ -327,6 +327,8 @@ export function FabricationRail() {
         profileId={profileId}
         printerId={thhFilaments.printerId}
         printerMultiMaterial={thhFilaments.printerMultiMaterial}
+        printerBed={thhFilaments.printerBed}
+        wipeTower={thhFilaments.wipeTower}
         amsPresent={thhFilaments.amsPresent}
         externalUnprintable={thhFilaments.externalUnprintable}
         rosterEmpty={thhFilaments.rosterEmpty}

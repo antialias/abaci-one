@@ -54,6 +54,18 @@ export interface AbacusTicketArgs {
    *  a role entry on a supports-off ticket, and the v2 discipline here means
    *  this builder never reads or edits `style.process` to check. */
   supportInterfaceSlotId?: string | null
+  /** THH's bounded profile + the pin packed into the emitted 3MF. Null on a
+   *  single-filament job (no tower) or against a pre-contract service. */
+  wipeTower?: AbacusWipeTowerRequest | null
+}
+
+export interface AbacusWipeTowerRequest {
+  profile: string
+  pinMm: { x: number; y: number }
+}
+
+export interface AbacusPrintTicket extends PrintTicketV2 {
+  wipeTower?: AbacusWipeTowerRequest
 }
 
 /** The abacus studio's `authoring` block (things-haunt-house#408). With a
@@ -79,7 +91,7 @@ export function buildAbacusAuthoring(
   return { editUrl, editTool: 'Abacus Studio' }
 }
 
-export function buildAbacusTicket(args: AbacusTicketArgs): PrintTicketV2 {
+export function buildAbacusTicket(args: AbacusTicketArgs): AbacusPrintTicket {
   const {
     name,
     source,
@@ -90,6 +102,7 @@ export function buildAbacusTicket(args: AbacusTicketArgs): PrintTicketV2 {
     idempotencyKey,
     authoring,
     supportInterfaceSlotId = null,
+    wipeTower,
   } = args
 
   if (catalog.source !== 'thh-ams') {
@@ -172,5 +185,6 @@ export function buildAbacusTicket(args: AbacusTicketArgs): PrintTicketV2 {
     style,
     start: { policy: startPolicy },
     idempotencyKey,
+    ...(wipeTower ? { wipeTower } : {}),
   }
 }

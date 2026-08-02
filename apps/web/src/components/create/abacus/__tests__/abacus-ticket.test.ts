@@ -56,6 +56,17 @@ describe('buildAbacusTicket', () => {
     expect(ticket.name).toBe('Abacus — 13 columns')
   })
 
+  it('carries the bounded wipe-tower profile and pin without touching style', () => {
+    const wipeTower = {
+      profile: 'orca-rectangle-60-v1',
+      pinMm: { x: 177.25, y: 102 },
+    }
+    const ticket = buildAbacusTicket({ ...base, wipeTower })
+    expect(ticket.wipeTower).toBe(wipeTower)
+    expect(ticket.style).toBe(base.style)
+    expect(buildAbacusTicket({ ...base, wipeTower: null })).not.toHaveProperty('wipeTower')
+  })
+
   it('keeps same-colour bodies on DIFFERENT slots as separate spools (slot = extruder)', () => {
     // The 3MF assembly assigns extruders per slot, never per colour: two
     // same-hex slots are two extruders and must be two ticket entries, or

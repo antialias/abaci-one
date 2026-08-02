@@ -18,6 +18,7 @@
  * rotates the key, so the edit becomes a new job instead of a silent no-op.
  */
 import type { TicketStartPolicy, TicketStyle } from '@eink/print-dialog'
+import type { ThhBedGeometry, ThhWipeTowerCapability } from '@/lib/abacus/print/filament-wire'
 import { fnv1a32Hex } from '@/lib/fnv1a'
 import { stableStringify } from '@/lib/stable-stringify'
 import type { FilamentMap, Params } from './abacus-model'
@@ -40,6 +41,10 @@ export interface AbacusPrintSignatureInputs {
    *  supports are off or the interface prints in the model material. Changing
    *  the pick changes the physical print, so it must rotate the key. */
   readonly supportInterfaceSlotId: string | null
+  /** Live layout constraints used to center the model and pack its tower. A THH profile refresh
+   *  can change the emitted 3MF without a user edit, so it must rotate the key too. */
+  readonly printerBed?: ThhBedGeometry
+  readonly wipeTower?: ThhWipeTowerCapability | null
 }
 
 /** The content signature: identical inputs → identical string, any change → a
@@ -53,6 +58,8 @@ export function abacusPrintSignature(inputs: AbacusPrintSignatureInputs): string
     style: inputs.style,
     startPolicy: inputs.startPolicy,
     supportInterfaceSlotId: inputs.supportInterfaceSlotId,
+    printerBed: inputs.printerBed,
+    wipeTower: inputs.wipeTower,
   })
 }
 

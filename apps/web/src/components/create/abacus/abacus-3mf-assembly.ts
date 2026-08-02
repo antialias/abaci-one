@@ -53,11 +53,41 @@ export interface AssemblyBody {
 
 export interface Assembled3mf {
   readonly bytes: Uint8Array
-  /** The pinned prime-tower min corner (mm, bed frame) — surfaced for tests. */
+  /** Orca's wipe_tower_x/y pin (mm, bed frame) — surfaced for the THH job contract. */
   readonly wipeTower: { readonly xMm: number; readonly yMm: number }
 }
 
+export interface WipeTowerProfileGeometry {
+  readonly profile: string
+  readonly envelopeMm: {
+    readonly minX: number
+    readonly minY: number
+    readonly maxX: number
+    readonly maxY: number
+  }
+  readonly process: {
+    readonly prime_tower_width: number
+    readonly prime_tower_brim_width: number
+    readonly wipe_tower_wall_type: string
+  }
+}
+
+/** Download/back-compat twin of THH's v1 bounded profile. The print path replaces this
+ * with the selected printer's advertised copy, so a deploy can update geometry without
+ * an Abaci release. */
+export const DEFAULT_WIPE_TOWER_PROFILE: WipeTowerProfileGeometry = {
+  profile: 'orca-rectangle-60-v1',
+  envelopeMm: { minX: -4, minY: -4, maxX: 66, maxY: 56 },
+  process: {
+    prime_tower_width: 60,
+    prime_tower_brim_width: 3,
+    wipe_tower_wall_type: 'rectangle',
+  },
+}
+
 export interface Assemble3mfOpts {
+  /** Bounded profile advertised by the selected THH printer. */
+  readonly wipeTower?: WipeTowerProfileGeometry
   /** Bake support-enabling keys into `project_settings.config` (printed TPU feet,
    *  Gitea #23: the whole bottom face prints on plate-grown supports + interface).
    *  Also relaxes the >= 2 bodies guard: a printed-feet export must ride the
@@ -77,21 +107,13 @@ export interface Assemble3mfOpts {
   readonly supportsAtSlice?: boolean
 }
 
-/** The Bambu 256×256 plate (X1C / P1S / A1) with the front-left filament-cutter
- *  keep-out — the studio's multicolor/AMS target. Not fed from THH today (the wire
- *  carries no bed geometry); a printer-supplied `BedSize` can replace it later. */
+/** Download fallback. Print submission uses the selected printer's live bed geometry. */
 export const BAMBU_256_BED: BedSize = {
   wMm: 256,
   dMm: 256,
   exclude: [{ xMm: 0, yMm: 0, wMm: 18, dMm: 28 }],
 }
 
-// Prime-tower footprint reserve. OrcaSlicer's default `prime_tower_width` (35 mm)
-// slices to ~41×35 mm including its brim; we reserve a hair more and keep a gap from
-// the model so the tower's brim can't reach the model's first layer. Measured on THH's
-// sidecar at 5 filaments: the tower's extrusion spans 42.0 × 38.6 mm.
-const TOWER_W = 45
-const TOWER_D = 40
 const TOWER_GAP = 6
 
 // Extra reserve once supports are on: the first layer stops being the model's own
@@ -118,12 +140,6 @@ const TOWER_GAP = 6
 // 3MF project — and the model printed at its declared min corner (declared 90.25,77.75
 // vs printed 90.46,75.96), in its declared orientation. Distance is the only lever.
 const SUPPORT_SKIRT = 8
-// Printed feet are the harder support case: the entire raised bottom face gets plate-grown
-// support plus an interface material. A real 3-column, 5-model-material + interface job on
-// 2026-08-02 still collided with the tower at SUPPORT_SKIRT=8 (pin y=23.75). Replaying those
-// exact bytes with only the pin moved to y=16 sliced clean. Doubling the feet keep-out moves
-// the computed front pin to y=15.75 while leaving ordinary ticket-enabled supports unchanged.
-const PRINTED_FEET_SUPPORT_SKIRT = 16
 // How far a cornered tower keeps off the bed edge. The reserve above covers the
 // tower's own extrusion, but a tower pushed flush into the corner still trips the
 // multi-extruder printable-area check (exit 154, "gcode in unprintable area") —
@@ -219,20 +235,6 @@ function inflate(b: Box, d: number): Box {
   return { x0: b.x0 - d, y0: b.y0 - d, x1: b.x1 + d, y1: b.y1 + d }
 }
 
-/** The box turned a quarter turn about the bed centre.
- *
- *  Used only by the printed-feet path, and on a premise since disproven — see
- *  SUPPORT_SKIRT: Orca does not re-orient our plate (`need_arrange=0`, and the model
- *  prints at its declared corner). Dead defense that costs bed area, not correctness;
- *  retire it together with #23's placement once that can be re-verified. */
-function rotate90(b: Box, bed: BedSize): Box {
-  const cx = bed.wMm / 2
-  const cy = bed.dMm / 2
-  const halfW = (b.x1 - b.x0) / 2
-  const halfD = (b.y1 - b.y0) / 2
-  return { x0: cx - halfD, y0: cy - halfW, x1: cx + halfD, y1: cy + halfW }
-}
-
 /**
  * Pin the prime tower into a gap that stays clear of the model.
  *
@@ -242,10 +244,10 @@ function rotate90(b: Box, bed: BedSize): Box {
  * SUPPORT_SKIRT, so the gap widens far enough that the tower's brim can never reach
  * the model's support extrusion (see SUPPORT_SKIRT).
  *
- * The corner fallback is a last resort for a footprint no side can hold, and for the
- * printed-feet reserve, which carries an extra keep-out (see `rotate90`) and so
- * usually has nothing but corners left. Not a packing algorithm: one object, one
- * tower, take the first spot that clears everything.
+ * The rectangle being packed is THH's pin-relative reservation — not
+ * `prime_tower_width`, and not a guessed min corner. That distinction is the whole
+ * contract: Orca's real bbox extends on both sides of its x/y pin and changes with
+ * purge inputs. THH verifies the output remains within this reservation.
  */
 function placeWipeTower(
   bed: BedSize,
@@ -261,56 +263,72 @@ function placeWipeTower(
   }))
   const cx = (obj.x0 + obj.x1) / 2
   const cy = (obj.y0 + obj.y1) / 2
+  const profile = opts.wipeTower ?? DEFAULT_WIPE_TOWER_PROFILE
+  const envelope = profile.envelopeMm
+  const pinMidX = (envelope.minX + envelope.maxX) / 2
+  const pinMidY = (envelope.minY + envelope.maxY) / 2
 
   // What the tower must stay off. Supports push the first layer outward, so the
   // keep-out is the model plus SUPPORT_SKIRT — and the side candidates below hug
   // THAT box, which is the whole fix: supports simply widen the gap, so the tower's
   // brim and the model's support extrusion can never meet.
-  const feetSupport = opts.support === true
-  const supportSkirt = feetSupport
-    ? PRINTED_FEET_SUPPORT_SKIRT
-    : opts.supportsAtSlice === true
-      ? SUPPORT_SKIRT
-      : 0
+  const supportSkirt = opts.support === true || opts.supportsAtSlice === true ? SUPPORT_SKIRT : 0
   const grown = supportSkirt > 0 ? inflate(obj, supportSkirt) : obj
+  const keepOut: Box[] = [grown]
 
-  // The extra rotated keep-out is stale (see `rotate90` — Orca does not re-orient our
-  // plate), and it is inert rather than load-bearing: on a 5-column plate it still leaves
-  // the front side, and that front pin slices clean — as does the cornered pin older builds
-  // put on the same geometry (both verified on Orca 2.4.1 with prod's `0.24mm Draft @BBL
-  // X1C`). Dead weight; retire it together with `rotate90` whenever that's convenient.
-  const keepOut: Box[] = feetSupport ? [grown, rotate90(grown, bed)] : [grown]
-
-  // candidate min-corners on each side, ordered by how much room that side has
+  // Candidate PINS on each side, ordered by free room. Convert the desired reservation
+  // edge back through its pin-relative offset; wipe_tower_x/y is not the bbox min corner.
   const sides = [
-    { room: bed.wMm - margin - grown.x1, x: grown.x1 + TOWER_GAP, y: cy - TOWER_D / 2 }, // right
-    { room: grown.y0 - margin, x: cx - TOWER_W / 2, y: grown.y0 - TOWER_GAP - TOWER_D }, // front
-    { room: bed.dMm - margin - grown.y1, x: cx - TOWER_W / 2, y: grown.y1 + TOWER_GAP }, // back
-    { room: grown.x0 - margin, x: grown.x0 - TOWER_GAP - TOWER_W, y: cy - TOWER_D / 2 }, // left
+    {
+      room: bed.wMm - margin - grown.x1,
+      x: grown.x1 + TOWER_GAP - envelope.minX,
+      y: cy - pinMidY,
+    }, // right
+    {
+      room: grown.y0 - margin,
+      x: cx - pinMidX,
+      y: grown.y0 - TOWER_GAP - envelope.maxY,
+    }, // front
+    {
+      room: bed.dMm - margin - grown.y1,
+      x: cx - pinMidX,
+      y: grown.y1 + TOWER_GAP - envelope.minY,
+    }, // back
+    {
+      room: grown.x0 - margin,
+      x: grown.x0 - TOWER_GAP - envelope.maxX,
+      y: cy - pinMidY,
+    }, // left
   ].sort((a, b) => b.room - a.room)
 
-  const fits = (x: number, y: number): Box | null => {
-    const rect: Box = { x0: x, y0: y, x1: x + TOWER_W, y1: y + TOWER_D }
+  const fits = (pinX: number, pinY: number): Box | null => {
+    const rect: Box = {
+      x0: pinX + envelope.minX,
+      y0: pinY + envelope.minY,
+      x1: pinX + envelope.maxX,
+      y1: pinY + envelope.maxY,
+    }
     const onBed =
-      x >= margin && y >= margin && rect.x1 <= bed.wMm - margin && rect.y1 <= bed.dMm - margin
+      rect.x0 >= margin &&
+      rect.y0 >= margin &&
+      rect.x1 <= bed.wMm - margin &&
+      rect.y1 <= bed.dMm - margin
     const clear = ![...keepOut, ...excludes].some((k) => intersects(rect, k))
     return onBed && clear ? rect : null
   }
 
   for (const s of sides) {
-    const x = clamp(s.x, margin, bed.wMm - margin - TOWER_W)
-    const y = clamp(s.y, margin, bed.dMm - margin - TOWER_D)
+    const x = clamp(s.x, margin - envelope.minX, bed.wMm - margin - envelope.maxX)
+    const y = clamp(s.y, margin - envelope.minY, bed.dMm - margin - envelope.maxY)
     if (fits(x, y)) return { xMm: x, yMm: y }
   }
 
-  // No side works — the normal case for printed feet, whose keep-out pair crosses the
-  // middle of the bed and leaves only the corners. Push the tower right into each bed
-  // corner (the far corner of a contested bed is exactly where you want it) and keep
-  // whichever sits furthest from hot extrusion.
-  const nearX = margin + TOWER_EDGE
-  const farX = bed.wMm - margin - TOWER_EDGE - TOWER_W
-  const nearY = margin + TOWER_EDGE
-  const farY = bed.dMm - margin - TOWER_EDGE - TOWER_D
+  // No side works: push the reservation into each bed corner and keep whichever sits
+  // furthest from hot extrusion. This is a last resort for unusually full plates.
+  const nearX = margin + TOWER_EDGE - envelope.minX
+  const farX = bed.wMm - margin - TOWER_EDGE - envelope.maxX
+  const nearY = margin + TOWER_EDGE - envelope.minY
+  const farY = bed.dMm - margin - TOWER_EDGE - envelope.maxY
   const corners = [
     { x: farX, y: farY },
     { x: nearX, y: farY },
@@ -441,6 +459,16 @@ export function assembleAbacus3mf(
     filament_map: bodies.map(() => '1'),
     wipe_tower_x: fmt(tower.xMm),
     wipe_tower_y: fmt(tower.yMm),
+    // Direct-download slices use the same bounded shape as API prints. THH owns and
+    // re-applies these on submit; embedding them here keeps the standalone 3MF honest.
+    prime_tower_width: fmt(
+      (opts.wipeTower ?? DEFAULT_WIPE_TOWER_PROFILE).process.prime_tower_width
+    ),
+    prime_tower_brim_width: fmt(
+      (opts.wipeTower ?? DEFAULT_WIPE_TOWER_PROFILE).process.prime_tower_brim_width
+    ),
+    wipe_tower_wall_type: (opts.wipeTower ?? DEFAULT_WIPE_TOWER_PROFILE).process
+      .wipe_tower_wall_type,
     ...(opts.support
       ? {
           enable_support: '1',

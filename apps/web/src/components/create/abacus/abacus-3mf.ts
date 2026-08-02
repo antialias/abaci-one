@@ -45,9 +45,15 @@
  * all and every 3MF shipped the text pockets EMPTY — bare relief in frame
  * filament, the same class of silent bug the marker pass fixed.
  */
-import { type ColorBody, meshesToThreeMf } from '@eink/frames-engine/print-bundle'
+import { type BedSize, type ColorBody, meshesToThreeMf } from '@eink/frames-engine/print-bundle'
 import { parseStl, writeBinaryStl } from '@eink/frames-engine/stl'
-import { type AssemblyBody, assembleAbacus3mf, BAMBU_256_BED } from './abacus-3mf-assembly'
+import {
+  type AssemblyBody,
+  assembleAbacus3mf,
+  BAMBU_256_BED,
+  DEFAULT_WIPE_TOWER_PROFILE,
+  type WipeTowerProfileGeometry,
+} from './abacus-3mf-assembly'
 import {
   analyzeShells,
   anyTokens,
@@ -102,6 +108,11 @@ export interface AbacusThreeMf {
   bytes: Uint8Array
   /** One entry per emitted body, ascending slot order. Slots with no geometry are absent. */
   bodies: SpoolBodySummary[]
+  /** Present only when the emitted body count makes Orca generate a tower. */
+  wipeTower: {
+    profile: string
+    pinMm: { x: number; y: number }
+  } | null
 }
 
 /**
@@ -142,6 +153,10 @@ export function buildAbacusThreeMf(args: {
   filamentMap: FilamentMap
   slotLabels?: readonly string[]
   supportsAtSlice?: boolean
+  /** Selected printer geometry from THH; download-only callers use the fallback plate. */
+  bed?: BedSize
+  /** Selected printer's bounded profile; download-only callers use the bundled twin. */
+  wipeTower?: WipeTowerProfileGeometry
 }): AbacusThreeMf {
   const {
     stl,
@@ -153,6 +168,8 @@ export function buildAbacusThreeMf(args: {
     filamentMap,
     slotLabels,
     supportsAtSlice,
+    bed = BAMBU_256_BED,
+    wipeTower = DEFAULT_WIPE_TOWER_PROFILE,
   } = args
 
   const mesh = parseStl(stl)
@@ -320,11 +337,22 @@ export function buildAbacusThreeMf(args: {
   // slices that same 6 mm clean, so read the extra room as margin, not a proven cure.
   // Single filament needs neither: no second extruder, no tower, nothing to collide with.
   if (assemblyBodies.length >= 2 || feetPrinted) {
-    const { bytes } = assembleAbacus3mf(assemblyBodies, BAMBU_256_BED, {
+    const assembled = assembleAbacus3mf(assemblyBodies, bed, {
       support: feetPrinted,
       supportsAtSlice,
+      wipeTower,
     })
-    return { bytes, bodies }
+    return {
+      bytes: assembled.bytes,
+      bodies,
+      // Printed feet force this assembly path even when the model itself is monochrome. Keep
+      // the pin available because ticket routing may add a distinct support-interface spool,
+      // turning that one-body model into a real two-filament/tower slice.
+      wipeTower: {
+        profile: wipeTower.profile,
+        pinMm: { x: assembled.wipeTower.xMm, y: assembled.wipeTower.yMm },
+      },
+    }
   }
 
   const only = assemblyBodies[0]
@@ -332,7 +360,7 @@ export function buildAbacusThreeMf(args: {
   const stlBuffer = new ArrayBuffer(stlBytes.byteLength) // ColorBody wants a plain ArrayBuffer
   new Uint8Array(stlBuffer).set(stlBytes)
   const colorBodies: ColorBody[] = [{ label: only.label, stl: stlBuffer, colorHex: only.colorHex }]
-  return { bytes: meshesToThreeMf(colorBodies), bodies }
+  return { bytes: meshesToThreeMf(colorBodies), bodies, wipeTower: null }
 }
 
 /**

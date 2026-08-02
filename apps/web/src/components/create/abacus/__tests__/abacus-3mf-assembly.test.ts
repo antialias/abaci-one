@@ -10,7 +10,12 @@
  */
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
-import { type AssemblyBody, assembleAbacus3mf, BAMBU_256_BED } from '../abacus-3mf-assembly'
+import {
+  type AssemblyBody,
+  assembleAbacus3mf,
+  BAMBU_256_BED,
+  DEFAULT_WIPE_TOWER_PROFILE,
+} from '../abacus-3mf-assembly'
 
 /** One triangle spanning [x0,x1]×[y0,y1] at z=0..2 (9 floats). */
 const tri = (x0: number, y0: number, x1: number, y1: number): Float32Array =>
@@ -69,11 +74,12 @@ describe('assembleAbacus3mf', () => {
 
     // centered footprint (60×80 at bed center) and a generous tower reserve
     const obj = { x0: 128 - 30, y0: 128 - 40, x1: 128 + 30, y1: 128 + 40 }
+    const e = DEFAULT_WIPE_TOWER_PROFILE.envelopeMm
     const t = {
-      x0: wipeTower.xMm,
-      y0: wipeTower.yMm,
-      x1: wipeTower.xMm + 45,
-      y1: wipeTower.yMm + 40,
+      x0: wipeTower.xMm + e.minX,
+      y0: wipeTower.yMm + e.minY,
+      x1: wipeTower.xMm + e.maxX,
+      y1: wipeTower.yMm + e.maxY,
     }
     // on bed
     expect(t.x0).toBeGreaterThanOrEqual(0)
@@ -93,6 +99,13 @@ describe('assembleAbacus3mf', () => {
     expect(project.filament_map_mode).toBe('Manual')
     expect(project.filament_map).toEqual(['1', '1'])
     expect(project.filament_colour).toEqual(['#C9A26E', '#2E86AB'])
+  })
+
+  it('embeds the bounded profile controls for a direct Orca slice', () => {
+    const { project } = read(assembleAbacus3mf(bodies, BAMBU_256_BED).bytes)
+    expect(project.prime_tower_width).toBe('60')
+    expect(project.prime_tower_brim_width).toBe('3')
+    expect(project.wipe_tower_wall_type).toBe('rectangle')
   })
 
   it('refuses a single body (single filament rides meshesToThreeMf)', () => {
@@ -151,31 +164,26 @@ describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
     expect(() => assembleAbacus3mf([], BAMBU_256_BED, { support: true })).toThrow(/at least one/)
   })
 
-  // The printed-feet path reserves a second, quarter-turned keep-out box. Its premise
-  // (that supports make Orca re-orient the plate) has since been disproven — see
-  // SUPPORT_SKIRT in abacus-3mf-assembly.ts — and so has the reason to keep it: on real
-  // geometry both the pin it yields and the pin it displaces slice clean. Pinned here
-  // only so retiring it is a deliberate change; retire this test with the keep-out.
-  it('keeps the tower clear of the rotated pose too, once supports are on', () => {
+  it('keeps the full advertised reservation clear of a wide supported abacus', () => {
     // a real abacus footprint: 192.5 × 100.5, the size that actually collided
     const abacus: AssemblyBody[] = [
       { positions: tri(0, 0, 192.5, 100.5), colorHex: '#c9a26e', label: 'Frame', extruder: 1 },
       { positions: tri(10, 10, 40, 50), colorHex: '#1f2937', label: 'Feet', extruder: 2 },
     ]
     const { wipeTower } = assembleAbacus3mf(abacus, BAMBU_256_BED, { support: true })
+    const e = DEFAULT_WIPE_TOWER_PROFILE.envelopeMm
     const t = {
-      x0: wipeTower.xMm,
-      y0: wipeTower.yMm,
-      x1: wipeTower.xMm + 45,
-      y1: wipeTower.yMm + 40,
+      x0: wipeTower.xMm + e.minX,
+      y0: wipeTower.yMm + e.minY,
+      x1: wipeTower.xMm + e.maxX,
+      y1: wipeTower.yMm + e.maxY,
     }
     const hits = (b: { x0: number; y0: number; x1: number; y1: number }) =>
       t.x0 < b.x1 && t.x1 > b.x0 && t.y0 < b.y1 && t.y1 > b.y0
 
-    // declared pose, grown by the printed-feet support brim skirt
-    expect(hits({ x0: 31.75 - 16, y0: 77.75 - 16, x1: 224.25 + 16, y1: 178.25 + 16 })).toBe(false)
-    // the same footprint turned a quarter turn about the bed centre
-    expect(hits({ x0: 77.75 - 16, y0: 31.75 - 16, x1: 178.25 + 16, y1: 224.25 + 16 })).toBe(false)
+    // Declared pose grown by the measured support reserve. Orca keeps this pose;
+    // there is no speculative quarter-turn keep-out anymore.
+    expect(hits({ x0: 31.75 - 8, y0: 77.75 - 8, x1: 224.25 + 8, y1: 178.25 + 8 })).toBe(false)
     // still on the bed and off the filament-cutter corner
     expect(t.x0).toBeGreaterThanOrEqual(0)
     expect(t.y0).toBeGreaterThanOrEqual(0)
@@ -184,29 +192,29 @@ describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
     expect(t.x0 < 18 && t.y0 < 28).toBe(false)
   })
 
-  it('moves the 3-column printed-feet tower to the production-proven front clearance', () => {
-    // Exact XY footprint from the 2026-08-02 failed job. At the old 8 mm skirt this pinned
-    // y=23.75 and Orca reported a WipeTower/abacus conflict. A controlled replay at y=16
-    // returned code 0 and produced a sliced 3MF.
+  it('places the 3-column printed-feet reservation on the roomy right side', () => {
+    // Exact XY footprint from the 2026-08-02 failed job. The old code guessed a 45×40
+    // min-corner; the real tower was ~61×59 and overlapped the supports. The bounded
+    // pin-relative reservation makes the right-side placement unambiguous.
     const cols3: AssemblyBody[] = [
       { positions: tri(0, 0, 62.5, 100.5), colorHex: '#c9a26e', label: 'Frame', extruder: 1 },
       { positions: tri(10, 10, 40, 50), colorHex: '#1f2937', label: 'Feet', extruder: 2 },
     ]
     const { wipeTower } = assembleAbacus3mf(cols3, BAMBU_256_BED, { support: true })
-    expect(wipeTower.xMm).toBeCloseTo(105.5, 3)
-    expect(wipeTower.yMm).toBeCloseTo(15.75, 3)
+    expect(wipeTower.xMm).toBeCloseTo(177.25, 3)
+    expect(wipeTower.yMm).toBeCloseTo(102, 3)
   })
 
   it('leaves the no-support placement beside the model, not cornered', () => {
-    // the pre-#23 path must not move: Orca honours our pose without supports.
+    // Orca honours our pose without supports; the full reservation fits in front.
     const abacus: AssemblyBody[] = [
       { positions: tri(0, 0, 192.5, 100.5), colorHex: '#c9a26e', label: 'Frame', extruder: 1 },
       { positions: tri(10, 10, 40, 50), colorHex: '#2e86ab', label: 'Beads', extruder: 2 },
     ]
     const { wipeTower } = assembleAbacus3mf(abacus, BAMBU_256_BED)
     // front gap, centered on the model in x — TOWER_GAP below the footprint
-    expect(wipeTower.xMm).toBeCloseTo(128 - 45 / 2, 3)
-    expect(wipeTower.yMm).toBeCloseTo(77.75 - 6 - 40, 3)
+    expect(wipeTower.xMm).toBeCloseTo(97, 3)
+    expect(wipeTower.yMm).toBeCloseTo(77.75 - 6 - 56, 3)
   })
 })
 
@@ -227,10 +235,10 @@ describe('assembleAbacus3mf — supportsAtSlice (supports from the ticket style)
   const hits = (a: Rect, b: Rect): boolean =>
     a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0
   const tower = (w: { xMm: number; yMm: number }): Rect => ({
-    x0: w.xMm,
-    y0: w.yMm,
-    x1: w.xMm + 45,
-    y1: w.yMm + 40,
+    x0: w.xMm + DEFAULT_WIPE_TOWER_PROFILE.envelopeMm.minX,
+    y0: w.yMm + DEFAULT_WIPE_TOWER_PROFILE.envelopeMm.minY,
+    x1: w.xMm + DEFAULT_WIPE_TOWER_PROFILE.envelopeMm.maxX,
+    y1: w.yMm + DEFAULT_WIPE_TOWER_PROFILE.envelopeMm.maxY,
   })
   const declared: Rect = { x0: 96.75, y0: 77.75, x1: 159.25, y1: 178.25 }
   const skirted: Rect = { x0: 88.75, y0: 69.75, x1: 167.25, y1: 186.25 } // + SUPPORT_SKIRT
@@ -240,7 +248,7 @@ describe('assembleAbacus3mf — supportsAtSlice (supports from the ticket style)
     expect(hits(t, skirted)).toBe(false)
     // beside the model on the roomy side, gap measured from the GROWN edge
     expect(t.x0).toBeCloseTo(167.25 + 6, 3)
-    expect(t.y0).toBeCloseTo(108, 3)
+    expect(t.y0).toBeCloseTo(98, 3)
     expect(t.x1).toBeLessThanOrEqual(256)
     expect(t.y1).toBeLessThanOrEqual(256)
   })
@@ -261,14 +269,13 @@ describe('assembleAbacus3mf — supportsAtSlice (supports from the ticket style)
     expect('support_on_build_plate_only' in project).toBe(false)
   })
 
-  it('reproduces the prod pin when the flag is absent', () => {
-    // Ground truth from the failing job: the tower pinned at (165.25, 108) — only
-    // TOWER_GAP (6 mm) off the model's declared edge, of which the tower's own brim
-    // takes 3. Enough for a supports-off slice, not enough once supports grow the
-    // model's first layer into the same gap.
+  it('shows why a supports-on slice must grow the model keep-out', () => {
+    // The bounded reservation is 6 mm off the DECLARED edge. That is correct for a
+    // supports-off slice, but overlaps the support-grown footprint when the caller
+    // fails to declare that supports will be on.
     const t = tower(assembleAbacus3mf(cols3, BAMBU_256_BED).wipeTower)
     expect(t.x0).toBeCloseTo(165.25, 3)
-    expect(t.y0).toBeCloseTo(108, 3)
+    expect(t.y0).toBeCloseTo(98, 3)
     expect(hits(t, skirted)).toBe(true) // inside the support growth → the trigger
   })
 })
