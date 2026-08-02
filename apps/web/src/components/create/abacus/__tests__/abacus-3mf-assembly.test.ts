@@ -15,6 +15,9 @@ import {
   assembleAbacus3mf,
   BAMBU_256_BED,
   DEFAULT_WIPE_TOWER_PROFILE,
+  SUPPORT_TRANSITION_HEIGHT_MM,
+  SUPPORT_TRANSITION_NAME,
+  SUPPORT_TRANSITION_SPEED_MM_S,
 } from '../abacus-3mf-assembly'
 
 /** One triangle spanning [x0,x1]×[y0,y1] at z=0..2 (9 floats). */
@@ -146,17 +149,42 @@ describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
     expect('support_interface_filament' in project).toBe(false)
   })
 
+  it('caps every first-frame feature with a 0.6 mm Orca modifier volume', () => {
+    const { model, modelSettings } = read(
+      assembleAbacus3mf(bodies, BAMBU_256_BED, { support: true }).bytes
+    )
+    expect(model).toContain('<component objectid="1001"')
+    expect(modelSettings).toContain('<part id="1001" subtype="modifier_part">')
+    expect(modelSettings).toContain(`<metadata key="name" value="${SUPPORT_TRANSITION_NAME}"/>`)
+    for (const key of [
+      'outer_wall_speed',
+      'inner_wall_speed',
+      'internal_solid_infill_speed',
+      'bridge_speed',
+      'overhang_totally_speed',
+    ]) {
+      expect(modelSettings).toContain(
+        `<metadata key="${key}" value="${SUPPORT_TRANSITION_SPEED_MM_S}"/>`
+      )
+    }
+    // The frame begins at source Z=0; the feet/build transform later lift this
+    // source-space band to the support contact height on the plate.
+    expect(model).toContain(`<vertex x="0" y="0" z="0"/>`)
+    expect(model).toContain(`<vertex x="0" y="0" z="${SUPPORT_TRANSITION_HEIGHT_MM}"/>`)
+  })
+
   it('emits NO support keys by default (pre-#23 files stay byte-stable)', () => {
-    const { project } = read(assembleAbacus3mf(bodies, BAMBU_256_BED).bytes)
+    const { project, modelSettings } = read(assembleAbacus3mf(bodies, BAMBU_256_BED).bytes)
     expect('enable_support' in project).toBe(false)
     expect('support_type' in project).toBe(false)
+    expect(modelSettings).not.toContain(SUPPORT_TRANSITION_NAME)
   })
 
   it('allows a single body with support (no-TPU fallback merges feet into the frame slot)', () => {
     const { bytes } = assembleAbacus3mf([bodies[0]], BAMBU_256_BED, { support: true })
     const { model, project } = read(bytes)
     expect(model.match(/<item\b/g)).toHaveLength(1)
-    expect(model.match(/<component\b/g)).toHaveLength(1)
+    expect(model.match(/<component\b/g)).toHaveLength(2) // model body + non-printing modifier
     expect(project.enable_support).toBe('1')
   })
 

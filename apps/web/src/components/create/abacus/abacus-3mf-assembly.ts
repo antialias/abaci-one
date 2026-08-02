@@ -107,6 +107,14 @@ export interface Assemble3mfOpts {
   readonly supportsAtSlice?: boolean
 }
 
+/** The printed-feet frame starts at source Z=0, above feet that dip below zero.
+ *  This modifier follows that frame/support boundary through Orca's slice: the
+ *  contact layer plus the next two 0.20 mm layers print slowly enough to settle
+ *  onto a low-adhesion support interface before normal process speeds resume. */
+export const SUPPORT_TRANSITION_HEIGHT_MM = 0.6
+export const SUPPORT_TRANSITION_SPEED_MM_S = 25
+export const SUPPORT_TRANSITION_NAME = 'abaci-support-transition-v1'
+
 /** Download fallback. Print submission uses the selected printer's live bed geometry. */
 export const BAMBU_256_BED: BedSize = {
   wMm: 256,
@@ -147,6 +155,25 @@ const SUPPORT_SKIRT = 8
 const TOWER_EDGE = 16
 
 const ASSEMBLY_ID = 1000 // printable object id; child meshes take 2..N+1
+const SUPPORT_TRANSITION_ID = ASSEMBLY_ID + 1
+
+// A parameter modifier has to cap every feature Orca may assign to the frame's
+// first few layers. In particular, the contact layer is Bridge/Overhang wall,
+// while the very next layer becomes ordinary walls + internal solid infill.
+const SUPPORT_TRANSITION_SPEED_KEYS = [
+  'outer_wall_speed',
+  'inner_wall_speed',
+  'sparse_infill_speed',
+  'internal_solid_infill_speed',
+  'top_surface_speed',
+  'gap_infill_speed',
+  'bridge_speed',
+  'overhang_1_4_speed',
+  'overhang_2_4_speed',
+  'overhang_3_4_speed',
+  'overhang_4_4_speed',
+  'overhang_totally_speed',
+] as const
 
 /** Compact mm formatter: fixed 3-decimals (µm), trailing zeros trimmed. */
 function fmt(v: number): string {
@@ -218,6 +245,47 @@ function emitBodyMesh(positions: Float32Array): { verts: string; tris: string } 
     tris += `<triangle v1="${tri[i]}" v2="${tri[i + 1]}" v3="${tri[i + 2]}"/>`
   }
   return { verts, tris }
+}
+
+/** Closed box used as an Orca parameter-modifier volume (it is never printed). */
+function emitModifierBox(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  z0: number,
+  z1: number
+): { verts: string; tris: string } {
+  const vertices = [
+    [x0, y0, z0],
+    [x1, y0, z0],
+    [x1, y1, z0],
+    [x0, y1, z0],
+    [x0, y0, z1],
+    [x1, y0, z1],
+    [x1, y1, z1],
+    [x0, y1, z1],
+  ] as const
+  const faces = [
+    [0, 2, 1],
+    [0, 3, 2],
+    [4, 5, 6],
+    [4, 6, 7],
+    [0, 1, 5],
+    [0, 5, 4],
+    [1, 2, 6],
+    [1, 6, 5],
+    [2, 3, 7],
+    [2, 7, 6],
+    [3, 0, 4],
+    [3, 4, 7],
+  ] as const
+  return {
+    verts: vertices
+      .map(([x, y, z]) => `<vertex x="${fmt(x)}" y="${fmt(y)}" z="${fmt(z)}"/>`)
+      .join(''),
+    tris: faces.map(([a, b, c]) => `<triangle v1="${a}" v2="${b}" v3="${c}"/>`).join(''),
+  }
 }
 
 interface Box {
@@ -418,14 +486,29 @@ export function assembleAbacus3mf(
       return `<object id="${childIds[i]}" type="model" pid="1" pindex="${i}"><mesh><vertices>${verts}</vertices><triangles>${tris}</triangles></mesh></object>`
     })
     .join('')
+  // A generic core 3MF cannot carry Orca's height-range file reliably: Orca
+  // ignores that file unless the package is a fully native Bambu project. A
+  // modifier part in model_settings.config works on both generic and native
+  // projects, moves with this one assembly, and survives THH's --arrange 0 path.
+  const transitionMesh = opts.support
+    ? emitModifierBox(minX, minY, maxX, maxY, 0, SUPPORT_TRANSITION_HEIGHT_MM)
+    : null
+  const transitionObjectXml = transitionMesh
+    ? `<object id="${SUPPORT_TRANSITION_ID}" type="model"><mesh><vertices>${transitionMesh.verts}</vertices><triangles>${transitionMesh.tris}</triangles></mesh></object>`
+    : ''
   const componentsXml = childIds
     .map((id) => `<component objectid="${id}" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>`)
+    .concat(
+      transitionMesh
+        ? [`<component objectid="${SUPPORT_TRANSITION_ID}" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>`]
+        : []
+    )
     .join('')
   const assemblyXml = `<object id="${ASSEMBLY_ID}" type="model"><components>${componentsXml}</components></object>`
   const model =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
     `<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">` +
-    `<resources><basematerials id="1">${baseEntries}</basematerials>${objectsXml}${assemblyXml}</resources>` +
+    `<resources><basematerials id="1">${baseEntries}</basematerials>${objectsXml}${transitionObjectXml}${assemblyXml}</resources>` +
     `<build><item objectid="${ASSEMBLY_ID}" transform="1 0 0 0 1 0 0 0 1 ${fmt(tx)} ${fmt(ty)} ${fmt(tz)}"/></build>` +
     `</model>`
 
@@ -436,9 +519,17 @@ export function assembleAbacus3mf(
         `<part id="${childIds[i]}" subtype="normal_part"><metadata key="name" value="${escapeXml(b.label)}"/><metadata key="extruder" value="${b.extruder}"/></part>`
     )
     .join('')
+  const transitionPartXml = transitionMesh
+    ? `<part id="${SUPPORT_TRANSITION_ID}" subtype="modifier_part">` +
+      `<metadata key="name" value="${SUPPORT_TRANSITION_NAME}"/>` +
+      SUPPORT_TRANSITION_SPEED_KEYS.map(
+        (key) => `<metadata key="${key}" value="${fmt(SUPPORT_TRANSITION_SPEED_MM_S)}"/>`
+      ).join('') +
+      `</part>`
+    : ''
   const modelSettings =
     `<?xml version="1.0" encoding="UTF-8"?>\n<config>` +
-    `<object id="${ASSEMBLY_ID}"><metadata key="name" value="abacus"/>${partsXml}</object>` +
+    `<object id="${ASSEMBLY_ID}"><metadata key="name" value="abacus"/>${partsXml}${transitionPartXml}</object>` +
     `</config>`
 
   // ---- Metadata/project_settings.config (owned tower + filament pin) ----
