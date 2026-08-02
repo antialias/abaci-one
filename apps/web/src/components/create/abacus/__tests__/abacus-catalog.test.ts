@@ -173,6 +173,7 @@ describe('family knowledge (gh#163)', () => {
     expect(coPrintGroup('ASA')).toBe('ABS')
     expect(coPrintGroup('HIPS')).toBe('ABS')
     expect(coPrintGroup('PA-CF')).toBe('PA')
+    expect(coPrintGroup('TPU-AMS')).toBe('TPU')
   })
 
   it('never assumes compatibility for an unknown family — it forms its own group', () => {

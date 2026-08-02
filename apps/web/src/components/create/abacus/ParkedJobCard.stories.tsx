@@ -106,6 +106,22 @@ export const VerdictFailed: Story = {
   },
 }
 
+/** THH has not catalogued the spool's exact family yet. The job still sliced
+ *  with the closest generic profile and now waits on an explicit acceptance. */
+export const UnverifiedFilamentProfile: Story = {
+  args: {
+    job: job({
+      attention: [
+        {
+          code: 'filament_profile_unverified:0',
+          detail:
+            "Filament 1 reports unrecognized material family 'PLA-WOOD'. THH inferred the PLA material class and sliced it with fallback profile 'pla-basic'. Verify the material and temperature settings before starting.",
+        },
+      ],
+    }),
+  },
+}
+
 /** A clean `hold` slice waiting on a human ▶. Auto-start won't produce these,
  *  but a pre-existing held job resolves the same way — plain Start, no photo. */
 export const ReadyToStart: Story = {

@@ -68,6 +68,11 @@ export function isSupportSpool(spool: FilamentSpool): boolean {
 // compatibility is never assumed.
 export function coPrintGroup(material: FilamentMaterial): string {
   const base = material.toUpperCase().replace(/-(S|CF|GF|HF)$/, '')
+  // Bambu's rigid Shore-68D "TPU for AMS" reports the slicer family TPU-AMS.
+  // It is still TPU for every studio decision: feet auto-picking, the deliberate
+  // feet/material-interface exemption, and picker grouping. Keep the wire value
+  // on the spool for provenance; only fold it at this compatibility boundary.
+  if (base === 'TPU-AMS') return 'TPU'
   if (base === 'ASA' || base === 'HIPS') return 'ABS'
   if (base === 'PVA') return 'PLA'
   return base

@@ -82,11 +82,16 @@ export function ParkedJobCard({
   const parked = isParked(job.phase)
   const printing = job.phase === 'printing'
   const hasReasons = job.attention.length > 0
+  const hasUnverifiedProfile = job.attention.some((reason) =>
+    reason.code.startsWith('filament_profile_unverified:')
+  )
 
   const title = printing
     ? 'Paused mid-print — confirm at the printer, then it resumes.'
     : job.phase === 'needs_attention'
-      ? 'Paused before printing — the printer flagged something to check.'
+      ? hasUnverifiedProfile
+        ? 'Review required — this filament was sliced with a fallback profile.'
+        : 'Paused before printing — the printer flagged something to check.'
       : 'Sliced and waiting — start it when you’re ready.'
 
   const handleStart = () => {

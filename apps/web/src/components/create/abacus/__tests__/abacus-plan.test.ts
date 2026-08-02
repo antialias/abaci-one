@@ -536,6 +536,17 @@ describe('materialize — printed TPU feet (Gitea #23)', () => {
     expect(feetOf(result)?.spoolId).toBe('s-tpu-ams')
   })
 
+  it("recognizes Bambu's TPU-AMS wire family as flexible TPU for the feet", () => {
+    const result = materialize(
+      design,
+      thh([...plaRoster(), spool('s-tpu-ams', 'Bambu TPU for AMS Black', '#101010', 'TPU-AMS')])
+    )
+    expect(feetOf(result)?.spoolId).toBe('s-tpu-ams')
+    expect(result.warnings.find((w) => w.code === 'feet-material')).toBeUndefined()
+    expect(result.warnings.find((w) => w.code === 'material-mix')).toBeUndefined()
+    expect(result.warnings.find((w) => w.code === 'material-interface')).toBeUndefined()
+  })
+
   it('no TPU on a real roster: feet fall back to the frame spool + feet-material warning', () => {
     const result = materialize(design, thh(plaRoster()))
     const feet = feetOf(result)

@@ -41,6 +41,31 @@ describe('ParkedJobCard', () => {
     expect(screen.getByText('A verdict failed.')).toBeInTheDocument()
   })
 
+  it('gives an unverified filament fallback a specific, workable acceptance gate', () => {
+    const onStart = vi.fn()
+    const fallback = job({
+      attention: [
+        {
+          code: 'filament_profile_unverified:0',
+          detail:
+            "Filament 1 reports unrecognized material family 'PLA-WOOD'. THH inferred the PLA material class and sliced it with fallback profile 'pla-basic'. Verify the material and temperature settings before starting.",
+        },
+      ],
+    })
+    const { container } = render(
+      <ParkedJobCard job={fallback} onStart={onStart} onCancel={vi.fn()} />
+    )
+    expect(
+      screen.getByText('Review required — this filament was sliced with a fallback profile.')
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Verify the material and temperature settings/)).toBeInTheDocument()
+
+    const start = container.querySelector('[data-action="acknowledge-start"]') as HTMLButtonElement
+    fireEvent.click(start)
+    fireEvent.click(start)
+    expect(onStart).toHaveBeenCalledWith(['filament_profile_unverified:0'])
+  })
+
   it('acknowledging is two-tap and sends EVERY reason code', () => {
     const onStart = vi.fn()
     const { container } = render(
