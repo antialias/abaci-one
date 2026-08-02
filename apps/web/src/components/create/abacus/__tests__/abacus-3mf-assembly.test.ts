@@ -172,16 +172,29 @@ describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
     const hits = (b: { x0: number; y0: number; x1: number; y1: number }) =>
       t.x0 < b.x1 && t.x1 > b.x0 && t.y0 < b.y1 && t.y1 > b.y0
 
-    // declared pose, grown by the support brim skirt
-    expect(hits({ x0: 31.75 - 8, y0: 77.75 - 8, x1: 224.25 + 8, y1: 178.25 + 8 })).toBe(false)
+    // declared pose, grown by the printed-feet support brim skirt
+    expect(hits({ x0: 31.75 - 16, y0: 77.75 - 16, x1: 224.25 + 16, y1: 178.25 + 16 })).toBe(false)
     // the same footprint turned a quarter turn about the bed centre
-    expect(hits({ x0: 77.75 - 8, y0: 31.75 - 8, x1: 178.25 + 8, y1: 224.25 + 8 })).toBe(false)
+    expect(hits({ x0: 77.75 - 16, y0: 31.75 - 16, x1: 178.25 + 16, y1: 224.25 + 16 })).toBe(false)
     // still on the bed and off the filament-cutter corner
     expect(t.x0).toBeGreaterThanOrEqual(0)
     expect(t.y0).toBeGreaterThanOrEqual(0)
     expect(t.x1).toBeLessThanOrEqual(256)
     expect(t.y1).toBeLessThanOrEqual(256)
     expect(t.x0 < 18 && t.y0 < 28).toBe(false)
+  })
+
+  it('moves the 3-column printed-feet tower to the production-proven front clearance', () => {
+    // Exact XY footprint from the 2026-08-02 failed job. At the old 8 mm skirt this pinned
+    // y=23.75 and Orca reported a WipeTower/abacus conflict. A controlled replay at y=16
+    // returned code 0 and produced a sliced 3MF.
+    const cols3: AssemblyBody[] = [
+      { positions: tri(0, 0, 62.5, 100.5), colorHex: '#c9a26e', label: 'Frame', extruder: 1 },
+      { positions: tri(10, 10, 40, 50), colorHex: '#1f2937', label: 'Feet', extruder: 2 },
+    ]
+    const { wipeTower } = assembleAbacus3mf(cols3, BAMBU_256_BED, { support: true })
+    expect(wipeTower.xMm).toBeCloseTo(105.5, 3)
+    expect(wipeTower.yMm).toBeCloseTo(15.75, 3)
   })
 
   it('leaves the no-support placement beside the model, not cornered', () => {

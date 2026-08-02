@@ -118,6 +118,12 @@ const TOWER_GAP = 6
 // 3MF project — and the model printed at its declared min corner (declared 90.25,77.75
 // vs printed 90.46,75.96), in its declared orientation. Distance is the only lever.
 const SUPPORT_SKIRT = 8
+// Printed feet are the harder support case: the entire raised bottom face gets plate-grown
+// support plus an interface material. A real 3-column, 5-model-material + interface job on
+// 2026-08-02 still collided with the tower at SUPPORT_SKIRT=8 (pin y=23.75). Replaying those
+// exact bytes with only the pin moved to y=16 sliced clean. Doubling the feet keep-out moves
+// the computed front pin to y=15.75 while leaving ordinary ticket-enabled supports unchanged.
+const PRINTED_FEET_SUPPORT_SKIRT = 16
 // How far a cornered tower keeps off the bed edge. The reserve above covers the
 // tower's own extrusion, but a tower pushed flush into the corner still trips the
 // multi-extruder printable-area check (exit 154, "gcode in unprintable area") —
@@ -261,7 +267,12 @@ function placeWipeTower(
   // THAT box, which is the whole fix: supports simply widen the gap, so the tower's
   // brim and the model's support extrusion can never meet.
   const feetSupport = opts.support === true
-  const grown = feetSupport || opts.supportsAtSlice === true ? inflate(obj, SUPPORT_SKIRT) : obj
+  const supportSkirt = feetSupport
+    ? PRINTED_FEET_SUPPORT_SKIRT
+    : opts.supportsAtSlice === true
+      ? SUPPORT_SKIRT
+      : 0
+  const grown = supportSkirt > 0 ? inflate(obj, supportSkirt) : obj
 
   // The extra rotated keep-out is stale (see `rotate90` — Orca does not re-orient our
   // plate), and it is inert rather than load-bearing: on a 5-column plate it still leaves
