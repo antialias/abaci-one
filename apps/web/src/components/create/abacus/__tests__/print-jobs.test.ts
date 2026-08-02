@@ -5,7 +5,7 @@
  * is how the first real print failure rendered as a bare `failed`).
  */
 import { describe, expect, it } from 'vitest'
-import { isParked, normalizeJobs, PARKED_PHASES } from '../print-jobs'
+import { describeJobError, isParked, normalizeJobs, PARKED_PHASES } from '../print-jobs'
 
 /** The real THH failed-job shape from prod, 2026-07-21 (trimmed to wire fields). */
 const failedJob = {
@@ -26,9 +26,11 @@ describe('normalizeJobs', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].id).toBe('printapi-1784671559560-4926465f')
     expect(rows[0].phase).toBe('failed')
-    expect(rows[0].error).toEqual({
+    expect(rows[0].error).toMatchObject({
       code: 'slice_failed',
       message: failedJob.error.message,
+      cause: null,
+      summary: null,
     })
   })
 
@@ -49,6 +51,8 @@ describe('normalizeJobs', () => {
         startPolicy: null,
         acknowledged: [],
         updatedAt: null,
+        source: null,
+        authoring: null,
       },
       {
         id: 'j2',
@@ -61,6 +65,8 @@ describe('normalizeJobs', () => {
         startPolicy: null,
         acknowledged: [],
         updatedAt: null,
+        source: null,
+        authoring: null,
       },
     ])
   })
@@ -69,7 +75,7 @@ describe('normalizeJobs', () => {
     const rows = normalizeJobs([
       { jobId: 'j1', phase: 'printing', error: { code: 'print_failed', message: 'nozzle jam' } },
     ])
-    expect(rows[0].error).toEqual({ code: 'print_failed', message: 'nozzle jam' })
+    expect(rows[0].error).toMatchObject({ code: 'print_failed', message: 'nozzle jam' })
   })
 
   it('rejects malformed error shapes without dropping the job', () => {
@@ -90,13 +96,54 @@ describe('normalizeJobs', () => {
   })
 
   it('a code with a missing or empty message keeps the code, message null', () => {
-    expect(normalizeJobs([{ jobId: 'j', error: { code: 'stage_failed' } }])[0].error).toEqual({
-      code: 'stage_failed',
-      message: null,
-    })
+    expect(normalizeJobs([{ jobId: 'j', error: { code: 'stage_failed' } }])[0].error).toMatchObject(
+      {
+        code: 'stage_failed',
+        message: null,
+      }
+    )
     expect(
       normalizeJobs([{ jobId: 'j', error: { code: 'stage_failed', message: '' } }])[0].error
-    ).toEqual({ code: 'stage_failed', message: null })
+    ).toMatchObject({ code: 'stage_failed', message: null })
+  })
+
+  it('keeps structured wipe-tower guidance, context, technical detail, and authoring', () => {
+    const [row] = normalizeJobs([
+      {
+        jobId: 'wipe-1',
+        phase: 'failed',
+        source: { app: 'abaci-one', artifactId: 'design-7' },
+        authoring: {
+          editUrl: 'https://abaci.one/create/abacus?design=7',
+          editTool: 'Abacus Studio',
+        },
+        error: {
+          code: 'wipe_tower_collision',
+          message: 'slicer failed (exit 155): G-code conflicts detected',
+          cause: 'wipe_tower_collision',
+          summary: 'The wipe tower overlaps generated supports. No print was sent.',
+          context: { supportsEnabled: true, wipeTower: { profile: 'v1' } },
+          recovery: {
+            retrySameInput: false,
+            recommended: 'relayout_plate',
+            options: ['relayout_plate'],
+            message: 'Rebuild the plate and resubmit.',
+          },
+          technical: { component: 'slicer', exitCode: 155, detail: 'G-code conflict' },
+        },
+      },
+    ])
+    expect(row.error?.cause).toBe('wipe_tower_collision')
+    expect(row.error?.context?.supportsEnabled).toBe(true)
+    expect(row.source?.artifactId).toBe('design-7')
+    expect(row.authoring?.editTool).toBe('Abacus Studio')
+    expect(describeJobError(row.error!)).toEqual({
+      summary: 'The wipe tower overlaps generated supports. No print was sent.',
+      action: 'Rebuild the plate and resubmit.',
+      retrySameInput: false,
+      recommended: 'relayout_plate',
+      technical: 'exit 155 · G-code conflict',
+    })
   })
 
   it('tolerates garbage top-level shapes', () => {

@@ -21,7 +21,67 @@
  * it here makes that silent.
  */
 
-export type JobError = { code: string; message: string | null }
+export type JobRecovery = {
+  retrySameInput: boolean
+  recommended: string
+  options: string[]
+  message: string
+}
+
+export type JobTechnical = {
+  component?: string
+  exitCode?: number
+  detail?: string
+  [key: string]: unknown
+}
+
+export type JobError = {
+  code: string
+  message: string | null
+  cause: string | null
+  summary: string | null
+  context: Record<string, unknown> | null
+  recovery: JobRecovery | null
+  technical: JobTechnical | null
+}
+
+export type JobFailureView = {
+  summary: string
+  action: string
+  retrySameInput: boolean
+  recommended: string
+  technical: string | null
+}
+
+const FAILURE_FALLBACKS: Record<string, Omit<JobFailureView, 'technical'>> = {
+  wipe_tower_collision: {
+    summary: 'The wipe tower overlaps the abacus or its generated supports. No print was sent.',
+    action:
+      'Rebuild the plate with more space around the wipe tower, then resubmit. Changing only the feet filament will not fix this geometry collision.',
+    retrySameInput: false,
+    recommended: 'relayout_plate',
+  },
+  slicer_configuration_error: {
+    summary:
+      'The print service could not apply one of the selected print profiles. No print was sent.',
+    action: 'Review the selected material and print settings before trying again.',
+    retrySameInput: false,
+    recommended: 'review_print_profile',
+  },
+  filament_temp_incompatible: {
+    summary: 'The selected filaments require incompatible nozzle temperatures. No print was sent.',
+    action: 'Choose compatible model and support filaments, then resubmit.',
+    retrySameInput: false,
+    recommended: 'change_filament_mapping',
+  },
+}
+
+const UNKNOWN_FAILURE: Omit<JobFailureView, 'technical'> = {
+  summary: 'The print service could not prepare this job. No print was sent.',
+  action: 'Open the technical details or return to Abacus Studio before trying again.',
+  retrySameInput: true,
+  recommended: 'review_technical_details',
+}
 
 /** One reason the service parked a job, from `attention.reasons[]`. `detail`
  *  is the service's own human sentence; `code` is what {@link isParked} jobs
@@ -61,6 +121,9 @@ export type JobRow = {
   acknowledged: string[]
   /** The service's last-touched epoch (seconds); a cache-buster for the frame. */
   updatedAt: number | null
+  /** Source/editor linkage belongs to the failed job, not the page's current design. */
+  source?: Record<string, unknown> | null
+  authoring?: { editUrl: string; editTool: string | null; editLabel: string | null } | null
 }
 
 /** The two non-terminal phases a job rests in while it waits for a human: a
@@ -75,13 +138,69 @@ export function isParked(phase: string): boolean {
 }
 
 /** The service's `error: {code, message}` — attached only when the job failed. */
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
 function normalizeJobError(value: unknown): JobError | null {
   if (typeof value !== 'object' || value === null) return null
   const rec = value as Record<string, unknown>
   if (typeof rec.code !== 'string' || rec.code.length === 0) return null
+  const context = asRecord(rec.context)
+  const recoveryRaw = asRecord(rec.recovery)
+  const recoveryOptions = Array.isArray(recoveryRaw?.options)
+    ? recoveryRaw.options.filter((v): v is string => typeof v === 'string')
+    : []
+  const recovery =
+    recoveryRaw &&
+    typeof recoveryRaw.retrySameInput === 'boolean' &&
+    typeof recoveryRaw.recommended === 'string' &&
+    typeof recoveryRaw.message === 'string'
+      ? {
+          retrySameInput: recoveryRaw.retrySameInput,
+          recommended: recoveryRaw.recommended,
+          options: recoveryOptions,
+          message: recoveryRaw.message,
+        }
+      : null
   return {
     code: rec.code,
     message: typeof rec.message === 'string' && rec.message.length > 0 ? rec.message : null,
+    cause: typeof rec.cause === 'string' && rec.cause.length > 0 ? rec.cause : null,
+    summary: typeof rec.summary === 'string' && rec.summary.length > 0 ? rec.summary : null,
+    context,
+    recovery,
+    technical: asRecord(rec.technical) as JobTechnical | null,
+  }
+}
+
+/** User copy for both the v27 structured contract and older cause-only services. */
+export function describeJobError(error: JobError): JobFailureView {
+  const fallback = (error.cause && FAILURE_FALLBACKS[error.cause]) || UNKNOWN_FAILURE
+  const detail =
+    typeof error.technical?.detail === 'string' ? error.technical.detail : error.message
+  const exit =
+    typeof error.technical?.exitCode === 'number' ? `exit ${error.technical.exitCode}` : null
+  return {
+    summary: error.summary ?? fallback.summary,
+    action: error.recovery?.message ?? fallback.action,
+    retrySameInput: error.recovery?.retrySameInput ?? fallback.retrySameInput,
+    recommended: error.recovery?.recommended ?? fallback.recommended,
+    technical: [exit, detail].filter(Boolean).join(' · ') || null,
+  }
+}
+
+function normalizeAuthoring(
+  value: unknown
+): { editUrl: string; editTool: string | null; editLabel: string | null } | null {
+  const rec = asRecord(value)
+  if (!rec || typeof rec.editUrl !== 'string' || rec.editUrl.length === 0) return null
+  return {
+    editUrl: rec.editUrl,
+    editTool: typeof rec.editTool === 'string' ? rec.editTool : null,
+    editLabel: typeof rec.editLabel === 'string' ? rec.editLabel : null,
   }
 }
 
@@ -169,6 +288,8 @@ export function normalizeJobs(data: unknown): JobRow[] {
       startPolicy: typeof rec.startPolicy === 'string' ? rec.startPolicy : null,
       acknowledged: normalizeStringArray(rec.acknowledged),
       updatedAt: typeof rec.updatedAt === 'number' ? rec.updatedAt : null,
+      source: asRecord(rec.source),
+      authoring: normalizeAuthoring(rec.authoring),
     })
   }
   return rows

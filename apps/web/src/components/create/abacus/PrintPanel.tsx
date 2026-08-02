@@ -66,7 +66,7 @@ import {
   type IdempotencyToken,
   resolveIdempotencyKey,
 } from './print-idempotency'
-import { isParked } from './print-jobs'
+import { describeJobError, isParked } from './print-jobs'
 import { PrintServiceError, type SubmitFailure } from './print-submit-failure'
 import { studioHref } from './studio-url'
 
@@ -1033,71 +1033,120 @@ export function PrintPanel(props: PrintPanelProps) {
               >
                 Jobs
               </span>
-              {jobRows.slice(0, 5).map((job) => (
-                <div
-                  key={job.id}
-                  data-element="print-job-row"
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 3,
-                    padding: '5px 8px',
-                    borderRadius: 6,
-                    background: 'rgba(255,255,255,0.05)',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <span
-                      style={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {job.name}
-                    </span>
-                    <span style={{ color: 'rgba(148,163,184,0.95)', whiteSpace: 'nowrap' }}>
-                      {job.phase}
-                      {job.progress !== null && ` · ${Math.round(job.progress)}%`}
-                    </span>
-                  </div>
-                  {job.error && (
-                    // The service's own explanation, verbatim and never
-                    // truncated — the actionable part is often the tail.
-                    <div
-                      data-element="print-job-error"
-                      style={{
-                        color: 'rgba(251,191,36,0.95)',
-                        whiteSpace: 'normal',
-                        overflowWrap: 'anywhere',
-                      }}
-                    >
-                      <span aria-hidden="true">✕ </span>
-                      {job.error.message ?? job.error.code}
+              {jobRows.slice(0, 5).map((job) => {
+                const failure = job.error ? describeJobError(job.error) : null
+                const supportCollision = job.error?.context?.supportsEnabled === true
+                return (
+                  <div
+                    key={job.id}
+                    data-element="print-job-row"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 3,
+                      padding: '5px 8px',
+                      borderRadius: 6,
+                      background: 'rgba(255,255,255,0.05)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                      <span
+                        style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {job.name}
+                      </span>
+                      <span style={{ color: 'rgba(148,163,184,0.95)', whiteSpace: 'nowrap' }}>
+                        {job.phase}
+                        {job.progress !== null && ` · ${Math.round(job.progress)}%`}
+                      </span>
                     </div>
-                  )}
-                  {/* What the service couldn't CHECK before running it (#29).
+                    {job.error && failure && (
+                      <div
+                        data-element="print-job-error"
+                        role="alert"
+                        style={{
+                          color: 'rgba(251,191,36,0.95)',
+                          whiteSpace: 'normal',
+                          overflowWrap: 'anywhere',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 5,
+                        }}
+                      >
+                        <div>
+                          <span aria-hidden="true">✕ </span>
+                          <strong>{failure.summary}</strong>
+                        </div>
+                        <div>{failure.action}</div>
+                        {supportCollision && (
+                          <div>
+                            Printed feet add supports beneath the abacus. Those supports occupy
+                            plate space too, so replacing TPU with another filament does not remove
+                            the collision.
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {failure.recommended === 'relayout_plate' && (
+                            <button
+                              type="button"
+                              onClick={() => submit.mutate()}
+                              disabled={submit.isPending}
+                              style={{
+                                border: '1px solid rgba(251,191,36,0.55)',
+                                borderRadius: 5,
+                                background: 'rgba(251,191,36,0.08)',
+                                color: 'inherit',
+                                padding: '4px 8px',
+                                cursor: submit.isPending ? 'wait' : 'pointer',
+                              }}
+                            >
+                              {submit.isPending ? 'Rebuilding…' : 'Rebuild plate & resubmit'}
+                            </button>
+                          )}
+                          {job.authoring && (
+                            <a
+                              href={job.authoring.editUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{ color: 'rgba(147,197,253,0.98)', padding: '4px 0' }}
+                            >
+                              Edit in {job.authoring.editTool ?? 'Abacus Studio'} ↗
+                            </a>
+                          )}
+                        </div>
+                        <details>
+                          <summary style={{ cursor: 'pointer' }}>Technical details</summary>
+                          <div style={{ marginTop: 3 }}>{failure.technical ?? job.error.code}</div>
+                        </details>
+                      </div>
+                    )}
+                    {/* What the service couldn't CHECK before running it (#29).
                       Reads after the failure and before the resolver: facts
                       first, then the thing you can press. Renders on every
                       phase — a notice-only job never parks, so ParkedJobCard
                       below would never mount to carry it. */}
-                  <JobNotices notices={job.notices} />
-                  {/* Auto-start couldn't just go (or paused mid-print): resolve
+                    <JobNotices notices={job.notices} />
+                    {/* Auto-start couldn't just go (or paused mid-print): resolve
                       it here — bed photo, the service's reasons, start-anyway or
                       cancel — instead of leaving it a dead-end. */}
-                  {(isParked(job.phase) || job.attention.length > 0) && (
-                    <ParkedJobCard
-                      job={job}
-                      onStart={(acknowledge) => startJob.mutate({ jobId: job.id, acknowledge })}
-                      onCancel={(stopPrint) => cancelJob.mutate({ jobId: job.id, stopPrint })}
-                      startPending={startJob.isPending && startJob.variables?.jobId === job.id}
-                      cancelPending={cancelJob.isPending && cancelJob.variables?.jobId === job.id}
-                      startFailure={startFailureFor(job.id)}
-                      cancelFailure={cancelFailureFor(job.id)}
-                    />
-                  )}
-                </div>
-              ))}
+                    {(isParked(job.phase) || job.attention.length > 0) && (
+                      <ParkedJobCard
+                        job={job}
+                        onStart={(acknowledge) => startJob.mutate({ jobId: job.id, acknowledge })}
+                        onCancel={(stopPrint) => cancelJob.mutate({ jobId: job.id, stopPrint })}
+                        startPending={startJob.isPending && startJob.variables?.jobId === job.id}
+                        cancelPending={cancelJob.isPending && cancelJob.variables?.jobId === job.id}
+                        startFailure={startFailureFor(job.id)}
+                        cancelFailure={cancelFailureFor(job.id)}
+                      />
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </>
