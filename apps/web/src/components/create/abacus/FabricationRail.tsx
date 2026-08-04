@@ -16,10 +16,12 @@
 
 import { type CSSProperties, useState } from 'react'
 import { StudioSelect } from '@/components/studio/StudioSelect'
+import { useFeatureFlag } from '@/hooks/useFeatureFlag'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { buildAbacusThreeMf } from './abacus-3mf'
 import { PRINTER_PROFILES } from './abacus-solver'
 import { FilamentPlanPanel } from './FilamentPlanPanel'
+import { MODULAR_COLUMNS_FLAG, ModularColumnsPanel } from './ModularColumnsPanel'
 import { PrintPanel } from './PrintPanel'
 
 const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
@@ -76,6 +78,10 @@ export function FabricationRail() {
   } = useAbacusStudio()
 
   const canExport = exporterReady && !exportBlocked
+
+  // Default-off: an unset flag reads as disabled, so the prototype is invisible
+  // until somebody turns it on for themselves.
+  const modularColumns = useFeatureFlag(MODULAR_COLUMNS_FLAG)
 
   // A failed export render (e.g. a marker part pass) now REJECTS instead of
   // hanging — surfaced inline under the button. Silently swallowing it would
@@ -315,6 +321,14 @@ export function FabricationRail() {
           dataAction="select-print-connection"
         />
       )}
+
+      {/* The AbacusLink prototype. Flag-gated and default-off: the toggle moves
+          real geometry (a wider web and border), so it stays invisible until
+          somebody deliberately turns it on at /admin/feature-flags. It sits
+          BELOW the ordinary exports and above the print service — it is a
+          fabrication strategy, but an experimental one, and the shipped path
+          should stay the one you meet first. */}
+      {modularColumns.enabled ? <ModularColumnsPanel /> : null}
 
       {/* print-service panel (Gitea #9) — embedded (normal flow) in the rail */}
       <PrintPanel

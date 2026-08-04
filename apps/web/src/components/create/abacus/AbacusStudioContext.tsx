@@ -48,7 +48,12 @@ import {
   type FabricationTarget,
 } from './abacus-fabrication'
 import { selectSourceIdentity } from './abacus-identity-source'
-import { type DisplayConfigInput, type Params, paramsFromDisplayConfig } from './abacus-model'
+import {
+  type DisplayConfigInput,
+  type Params,
+  paramsFromDisplayConfig,
+  type RenderPass,
+} from './abacus-model'
 import { materialize, planToFilamentMap } from './abacus-plan'
 import { DEFAULT_PROFILE_ID, profileById, solve } from './abacus-solver'
 
@@ -63,6 +68,13 @@ const PRINT_CONNECTION_STORAGE_KEY = 'abacus-studio-print-connection'
 export type AbacusExporter = {
   exportStl: () => Promise<ArrayBuffer>
   exportParts: () => Promise<AbacusExportParts>
+  /** One arbitrary `only=` slice. `exportStl` renders the whole abacus and
+   *  `exportParts` renders the fixed set the 3MF needs, so neither can reach an
+   *  inspection part — which is what the AbacusLink prototype's downloads are.
+   *  Kept general rather than adding a per-part method: the part vocabulary is
+   *  already a type (`RenderPass`), and it is pinned against the scad's dispatch
+   *  by export-defines.test.ts. */
+  exportPass: (pass: RenderPass) => Promise<ArrayBuffer>
 }
 
 // The identity slice of the current params, or null when a custom scheme/palette
@@ -345,6 +357,13 @@ function useStudioController(playerId: string | null, designId: string | null) {
         : Promise.reject(new Error('3D exporter not ready')),
     []
   )
+  const requestExportPass = useCallback(
+    (pass: RenderPass): Promise<ArrayBuffer> =>
+      exporterRef.current
+        ? exporterRef.current.exportPass(pass)
+        : Promise.reject(new Error('3D exporter not ready')),
+    []
+  )
 
   // The 3D model previews the REAL print (filament colors) by default; hovering a
   // tile's true-color fleck in the reconcile strip momentarily flips the whole
@@ -441,6 +460,7 @@ function useStudioController(playerId: string | null, designId: string | null) {
     registerExporter,
     requestExportStl,
     requestExportParts,
+    requestExportPass,
     registerRevealIntrinsic,
     setRevealIntrinsic,
     registerHighlightRole,

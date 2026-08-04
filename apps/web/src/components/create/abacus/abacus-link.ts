@@ -24,6 +24,8 @@
 //
 // Framework-free: no React, no three, no geometry kernel. Pure numbers.
 
+import { borderEff, derived, type Params } from './abacus-model'
+
 /** PLA's effective modulus for printed parts at 3–4 walls + ~40% infill. The
  *  same 2 GPa abacus.scad's anti-bend feet napkin uses — kept identical so the
  *  two structural arguments in this project can be compared without conversion. */
@@ -223,6 +225,11 @@ export type LinkProblemCode =
   | 'slot-binds'
   | 'wall-too-thin'
   | 'slot-past-station'
+  | 'slot-past-pitch'
+  // The last two have no counterpart in `link_assert()`. The library is
+  // deliberately foot-agnostic — a specialty column may seat something else
+  // entirely — so where the bumper goes is the CONSUMER's business, and
+  // abacus.scad asserts these two beside its own foot placement.
   | 'foot-hits-slot'
   | 'foot-off-strip'
 
@@ -243,8 +250,17 @@ export const MIN_TAKEUP = 0.12
 /** Clear space demanded between two footprints on the same solid strip. */
 export const BOX_CLEAR = 0.8
 
+/** At least `clear` apart on some axis. The comparison is `>=`, not `>`: `clear`
+ *  is the REQUIRED gap, so a placement that delivers exactly that much has met
+ *  it. Strict `>` rejected the scad's own foot position, which is derived to sit
+ *  exactly BOX_CLEAR past the slot — a guard that refuses the geometry it was
+ *  written to describe. EPS absorbs the float drift of that derivation. */
+const BOX_EPS = 1e-9
 const disjoint = (a: LinkBox, b: LinkBox, clear: number): boolean =>
-  a[0] > b[2] + clear || a[2] < b[0] - clear || a[1] > b[3] + clear || a[3] < b[1] - clear
+  a[0] + BOX_EPS >= b[2] + clear ||
+  a[2] - BOX_EPS <= b[0] - clear ||
+  a[1] + BOX_EPS >= b[3] + clear ||
+  a[3] - BOX_EPS <= b[1] - clear
 
 export function linkFit(p: LinkParams): LinkFit {
   const d = linkDerived(p)
@@ -294,6 +310,12 @@ export function linkFit(p: LinkParams): LinkFit {
       'latch slot runs past the solid strip into the bead channel',
       'station'
     )
+  if (d.slotEnd + 1.0 >= p.pitch)
+    bad(
+      'slot-past-pitch',
+      "latch slot runs past the module's far wall — the tongue is longer than a column is wide",
+      'pitch'
+    )
   if (!disjoint(d.footBox, d.slotBox, BOX_CLEAR))
     bad(
       'foot-hits-slot',
@@ -311,4 +333,38 @@ export function linkFit(p: LinkParams): LinkFit {
     bad('foot-off-strip', "foot pocket runs off the module's solid strip", 'footW')
 
   return { fits: problems.length === 0, problems }
+}
+
+/** Project a studio design onto the joint's parameter surface — the bridge that
+ *  makes `linkFit` a guard on the ACTUAL abacus rather than on a fixture with
+ *  its own numbers.
+ *
+ *  The envelope (height, pitch, station depth) comes from the design's derived
+ *  chain, so it tracks size and the modular floors; the joint's own proportions
+ *  come from the `link_*` params. Foot placement mirrors the scad's
+ *  `link_foot_y()` — measured off the slot's FAR edge, which is `slot` past the
+ *  tongue, and NOT off the barb on its near side, which would put the pocket
+ *  through the slot it is supposed to clear. */
+export const linkParamsOf = (p: Params): LinkParams => {
+  const d = derived(p)
+  return {
+    ...defaultLinkParams,
+    h: p.frame_h * p.scale_factor,
+    pitch: d.sCp,
+    // the solid end strip: border band + shelf — the scad's strip_y
+    station: borderEff(p) * p.scale_factor + d.sShelf,
+    fit: p.link_fit,
+    relief: p.link_relief,
+    rampDeg: p.link_ramp,
+    bump: p.link_bump,
+    slot: p.link_slot_w,
+    footW: p.link_foot_w,
+    footX: d.sCp / 2,
+    footY:
+      defaultLinkParams.beamY0 +
+      defaultLinkParams.beamT +
+      p.link_slot_w +
+      BOX_CLEAR +
+      p.link_foot_w / 2,
+  }
 }

@@ -5,13 +5,25 @@ and sized; the numbers below are analytical and need one coupon print to confirm
 (see §9). The existing monolith is untouched and stays the default.
 
 **Companion files**
-- `apps/web/public/scad/abacus-link.scad` — the joint geometry + a printable
-  two-piece test coupon. Geometry source of truth for the joint.
+- `apps/web/public/scad/abacus-link.scad` — the joint geometry, as a LIBRARY
+  (`include`d by `abacus.scad`; it emits nothing on its own). Source of truth for
+  the joint's shape.
+- `apps/web/public/scad/abacus.scad` — consumes it: the `link_*` knobs, the two
+  modular dimension floors, and the `link_coupon` / `link_column` part passes.
 - `apps/web/src/components/create/abacus/abacus-link.ts` — the TS mirror of the
   joint's derived chain and its fit guards, same relationship `derived()` and
-  `feetEffective()` have to `abacus.scad`.
+  `feetEffective()` have to `abacus.scad`. `linkParamsOf()` is the bridge that
+  runs those guards against a real design rather than against coupon defaults.
+- `apps/web/src/components/create/abacus/ModularColumnsPanel.tsx` — the studio
+  surface: the mode toggle, the size delta, the fit verdict, the ramp sweep, and
+  the two plate downloads. Behind the `abacus.modular_columns` feature flag,
+  default off.
 - `master-model-spec.md` — the monolith this builds on. Read §1 (anatomy) and §4
   (locked vs proportional) first; this document assumes both.
+
+**What exists today:** everything above. What it does *not* do yet is make the
+assembled abacus modular — see §7 → *Code changes* for why that waits, and §9 for
+what to print first.
 
 ---
 
@@ -521,16 +533,25 @@ pocket overlapping the latch slot. Both of those render, slice, print and click
 together while being wrong, which is why they are pinned in CI rather than left
 to the scad's `assert()`.
 
-0. **Render it.** `part="coupon"` through the studio's worker or desktop
-   OpenSCAD, and confirm every `assert` passes and the mesh is manifold. This
-   step has not been done.
-1. **Coupon** (`abacus-link.scad`, `part="coupon"`) — two half-modules carrying
-   one full interface. Print, then measure: seam gap (target **0.00 mm** at the
-   chevron flanks, ~0.12 mm at the relieved flats — the whole point of the cam),
-   Z step across the seam (target < 0.05 mm), insertion force (predicted ~15 N
-   peak), release force, and retention force to failure. Sweep `link_ramp` over
-   8° / 12° / 16° and `link_fit` over three values on one plate — all three ramp
-   rungs are legal geometries, so the sweep is a define change and nothing else.
+0. **Render it.** Open Storybook → *Create/Abacus/Parts* → `LinkCoupon` and
+   `LinkColumnPair`. Those stories drive the real WASM worker, so this is the
+   first time the joint is solved by a machine at all — expect to fix asserts and
+   winding here. Check three things by eye: the chevron teeth mesh, the latch
+   tongue stands clear inside its slot, and the release bore opens into the slot
+   *past* the shoulder rather than through it.
+1. **Coupon** — studio → *3D print* rail → **Modular columns (prototype)** →
+   *Download joint coupon*, or the story's own Download STL. Two half-modules
+   carrying one full interface. Print, then measure: seam gap (target **0.00 mm**
+   at the chevron flanks, ~0.12 mm at the relieved flats — the whole point of the
+   cam), Z step across the seam (target < 0.05 mm), insertion force (predicted
+   ~15 N peak), release force, and retention force to failure. Sweep `link_ramp`
+   over 8° / 12° / 16° with the panel's slider and print all three on one plate —
+   every rung is a legal geometry, so the sweep is a define change and nothing
+   else.
+1b. **Column pair** — the same panel's second button: two real column modules
+   with their captive beads. This is the one that answers whether halving the web
+   disturbed capture. Check the beads still slide and still can't lift out, then
+   click the two modules together and check the top faces are flush.
 2. **Cycle life** — 100 insert/release cycles on one coupon, re-measure seam gap.
    The flexure root is the fatigue site.
 3. **Creep** — leave a coupon clamped for a week at room temperature and

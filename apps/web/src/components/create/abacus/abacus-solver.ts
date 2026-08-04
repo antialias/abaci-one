@@ -28,7 +28,7 @@
 // a verdict + reasons, never mutated params — size stays a deliberate fabrication
 // choice; the UI (S3) turns each reason's `fix` into a one-click action.
 
-import { anyTokens, type Params } from './abacus-model'
+import { anyTokens, isModular, type Params, webEff } from './abacus-model'
 
 // ---- printer profile --------------------------------------------------------
 // A small static tolerance table. `nozzleMm`/`layerMm` are informational (shown
@@ -83,8 +83,9 @@ export const PRINTER_PROFILES: readonly PrinterProfile[] = [
 ]
 
 export const DEFAULT_PROFILE_ID = 'fdm-0.4'
-export const DEFAULT_PROFILE: PrinterProfile =
-  PRINTER_PROFILES.find((p) => p.id === DEFAULT_PROFILE_ID) as PrinterProfile
+export const DEFAULT_PROFILE: PrinterProfile = PRINTER_PROFILES.find(
+  (p) => p.id === DEFAULT_PROFILE_ID
+) as PrinterProfile
 
 // Resolve a profile id to its profile, falling back to the default for an
 // unknown id (e.g. a stale `profileId` deserialized from an old saved design).
@@ -138,8 +139,7 @@ const EPS = 1e-9
 
 // Smallest scale_factor at which `knob * S >= floor`, rounded UP to 4 decimals so
 // the returned value comfortably clears the floor (never lands just under it).
-const clearsAtScale = (knob: number, floor: number): number =>
-  Math.ceil((floor / knob) * 1e4) / 1e4
+const clearsAtScale = (knob: number, floor: number): number => Math.ceil((floor / knob) * 1e4) / 1e4
 
 /**
  * Check a design against a printer profile. Pure: no I/O, no mutation. Returns a
@@ -166,17 +166,28 @@ export function solve(p: Params, profile: PrinterProfile): SolveResult {
   }
 
   // 2. channel wall (`web`) — proportional.
-  const wall = p.web * S
+  //
+  // In MODULAR mode the seam runs down the middle of the web, so each module
+  // keeps only half of it and the wall that has to survive the printer is that
+  // half — never the nominal web. This is what gives modular mode a size floor
+  // the monolith doesn't have (the joint's own proportions are absolute, the
+  // frame around them scales), and it is the same shape as the feet_crossbar
+  // degrade. Mirrors the scad's `web_eff * S / (modular ? 2 : 1)` assert.
+  const halves = isModular(p) ? 2 : 1
+  const wallKnob = webEff(p) / halves
+  const wall = wallKnob * S
   if (wall < profile.minWallMm - EPS) {
     reasons.push({
       dim: 'wall',
       severity: 'error',
-      label: 'channel wall',
+      label: isModular(p) ? 'channel wall (half-web)' : 'channel wall',
       measuredMm: wall,
       floorMm: profile.minWallMm,
-      message: `Channel wall ${wall.toFixed(2)} mm is below the ${profile.label} floor of ${profile.minWallMm.toFixed(2)} mm — walls between columns would be too thin to print.`,
-      fix: `Print larger (≈${clearsAtScale(p.web, profile.minWallMm)}× or more), or raise the wall knob.`,
-      suggestedScale: clearsAtScale(p.web, profile.minWallMm),
+      message: isModular(p)
+        ? `Each module's channel wall is ${wall.toFixed(2)} mm — half the ${(webEff(p) * S).toFixed(2)} mm web, because the seam splits it — and that is below the ${profile.label} floor of ${profile.minWallMm.toFixed(2)} mm.`
+        : `Channel wall ${wall.toFixed(2)} mm is below the ${profile.label} floor of ${profile.minWallMm.toFixed(2)} mm — walls between columns would be too thin to print.`,
+      fix: `Print larger (≈${clearsAtScale(wallKnob, profile.minWallMm)}× or more), or raise the wall knob.`,
+      suggestedScale: clearsAtScale(wallKnob, profile.minWallMm),
     })
   }
 

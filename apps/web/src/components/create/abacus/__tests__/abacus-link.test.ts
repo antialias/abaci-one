@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_PROFILE, solve } from '../abacus-solver'
+import { borderEff, defaultParams, derived, type Params, webEff } from '../abacus-model'
 import {
+  BOX_CLEAR,
   defaultLinkParams,
   type LinkParams,
   linkDerived,
   linkFit,
   linkHingeDroop,
   linkMechanics,
+  linkParamsOf,
   MIN_TAKEUP,
   SELF_LOCK_MAX_DEG,
 } from '../abacus-link'
@@ -154,5 +158,85 @@ describe('linkHingeDroop', () => {
       6
     )
     expect(linkHingeDroop(defaultLinkParams, 0, 12)).toBe(0)
+  })
+})
+
+describe('linkParamsOf — the bridge onto a real design', () => {
+  it('takes its envelope from the design, not from the coupon defaults', () => {
+    const modular: Params = { ...defaultParams, link_mode: 'modular' }
+    const lp = linkParamsOf(modular)
+    // pitch and station come off derived(), so they track the modular floors:
+    // web 2.5 → 4.5 gives a 15 mm pitch, border 5.25 → 7.0 a 14.75 mm strip.
+    expect(lp.pitch).toBeCloseTo(15, 6)
+    expect(lp.station).toBeCloseTo(14.75, 6)
+    expect(lp.h).toBeCloseTo(8, 6)
+    expect(linkFit(lp).fits).toBe(true)
+  })
+
+  it('follows scale_factor, because the joint envelope scales but the joint does not', () => {
+    const big = linkParamsOf({ ...defaultParams, link_mode: 'modular', scale_factor: 1.5 })
+    expect(big.h).toBeCloseTo(12, 6)
+    expect(big.pitch).toBeGreaterThan(20)
+    // the tongue and barb are absolute hardware and must NOT have scaled
+    expect(big.beamL).toBe(defaultLinkParams.beamL)
+    expect(big.bump).toBe(defaultParams.link_bump)
+  })
+
+  it('seats the foot clear of the latch slot, measured off the slot far edge', () => {
+    // The scad's link_foot_y() and this have to agree, or the pocket is punched
+    // through the shoulder. Measuring off the barb (the slot's NEAR edge) is the
+    // mistake this pins against.
+    const lp = linkParamsOf({ ...defaultParams, link_mode: 'modular' })
+    const d = linkDerived(lp)
+    expect(lp.footY - lp.footW / 2).toBeCloseTo(d.slotBox[3] + BOX_CLEAR, 6)
+    expect(linkFit(lp).problems.map((p) => p.code)).not.toContain('foot-hits-slot')
+  })
+
+  it('refuses a design whose modular pitch is too narrow for the tongue', () => {
+    // The tongue is absolute, so shrinking the abacus is what eventually breaks
+    // the joint — the size floor modular mode has and the monolith does not.
+    const tiny = linkParamsOf({ ...defaultParams, link_mode: 'modular', scale_factor: 0.5 })
+    expect(linkFit(tiny).problems.map((p) => p.code)).toContain('slot-past-pitch')
+  })
+})
+
+describe('the modular dimension floors', () => {
+  it('raise web and border only in modular mode, and never lower them', () => {
+    expect(webEff(defaultParams)).toBe(defaultParams.web)
+    expect(borderEff(defaultParams)).toBe(defaultParams.border_w)
+    const m: Params = { ...defaultParams, link_mode: 'modular' }
+    expect(webEff(m)).toBe(4.5)
+    expect(borderEff(m)).toBe(7.0)
+    // a design that already asked for more keeps it
+    expect(webEff({ ...m, web: 6 })).toBe(6)
+    expect(borderEff({ ...m, border_w: 9 })).toBe(9)
+  })
+
+  it('grows the abacus by the amount the spec quotes', () => {
+    const mono = derived(defaultParams)
+    const mod = derived({ ...defaultParams, link_mode: 'modular' })
+    expect(mono.frameW).toBeCloseTo(192.5, 4)
+    expect(mono.outerD).toBeCloseTo(100.5, 4)
+    expect(mod.frameW).toBeCloseTo(220.0, 4)
+    expect(mod.outerD).toBeCloseTo(104.0, 4)
+  })
+
+  it('makes the solver judge the HALF-web, which is the wall that has to print', () => {
+    // The two modes diverge in a narrow band, and 0.5× sits in it: the mono web
+    // is 2.5 · 0.5 = 1.25 and clears the 1.2 floor, while the modular half-web is
+    // 2.25 · 0.5 = 1.125 and does not. Same design, same scale — the only
+    // difference is that the seam splits the wall in half.
+    const at = (s: number, link_mode: string): string[] =>
+      solve({ ...defaultParams, scale_factor: s, link_mode }, DEFAULT_PROFILE).reasons.map(
+        (r) => r.dim
+      )
+    expect(at(0.5, 'mono')).not.toContain('wall')
+    expect(at(0.5, 'modular')).toContain('wall')
+    // and the modular message names the half-web, so the fix is discoverable
+    const r = solve(
+      { ...defaultParams, scale_factor: 0.5, link_mode: 'modular' },
+      DEFAULT_PROFILE
+    ).reasons.find((x) => x.dim === 'wall')
+    expect(r?.label).toBe('channel wall (half-web)')
   })
 })

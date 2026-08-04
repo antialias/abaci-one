@@ -99,6 +99,41 @@ feet_proud    = 1.6;       // printed: stand-off below the bottom face (ABSOLUTE
                            // ≈8 layers @0.2 = support base + interface + z gap)
 feet_retention = "crossbar"; // printed: crossbar (linked loop) | dovetail (flare only)
 
+/* ===== modular columns — the AbacusLink prototype (see
+   docs/abacus-studio/modular-columns-spec.md) =====
+   "mono" is the shipped one-piece abacus and is BYTE-STABLE: every derivation
+   below reduces to its pre-modular form when link_mode == "mono".
+
+   "modular" does exactly ONE thing in this revision — it raises two dimension
+   floors so the design on screen is the one the joint coupon is cut from. The
+   assembled abacus is still rendered as a single solid; only the `only=`
+   part passes (link_coupon, link_column) emit modular geometry. That is
+   deliberate: analyzeShells() identifies the frame as "the one shell wider than
+   a column pitch", which every column module fails, so making the assembly N
+   solids breaks the viewer's whole recolor pass. That comes after the coupon
+   proves the latch.
+
+   Why the two floors: the seam splits the web between channels down its middle,
+   so each module keeps only half of it, and half of 2.5 is thinner than a
+   printable wall. And the front/back strips have to hold a latch tongue AND a
+   foot pocket, which do not fit in the mono border's 13.0 mm strip. */
+link_mode   = "mono";   // mono | modular
+link_web    = 4.5;      // modular floor on `web` — 2.25 mm of wall per module
+link_border = 7.0;      // modular floor on `border_w` — a 14.75 mm strip
+link_ramp   = 8;        // cam ramp, degrees off the tongue's travel. SELF-LOCKING
+                        // REQUIRES < ~16.7 (atan of PLA-on-PLA friction).
+link_fit    = 0.10;     // per-face chevron groove clearance
+link_relief = 0.25;     // flat-face standoff — the chevron flanks are the ONLY
+                        // contact, so nothing else may hold them off their seat
+link_bump   = 1.1;      // barb height = cam travel = the spread the joint can
+                        // swallow (take-up = link_bump · tan(link_ramp))
+link_slot_w = 1.4;      // spring room on the tongue's far side. MUST exceed
+                        // link_bump or the barb can't deflect past the throat.
+link_foot_w = 6.35;     // 1/4" stick-on bumper — the largest that clears the slot
+link_foot_d = 1.2;
+assert(link_mode == "mono" || link_mode == "modular",
+       "link_mode must be mono | modular");
+
 /* ===== myabacus style (driven by abaci.one AbacusDisplayConfig) ===== */
 color_scheme  = "place-value";  // monochrome | place-value | heaven-earth | alternating
 color_palette = "default";      // default | colorblind | mnemonic | grayscale | nature
@@ -138,6 +173,10 @@ inlay_plugs  = false;  // true → also model the white/black inlay solids (3MF 
                        // engravings (flush plugs would WELD into the frame shell and
                        // vanish — color() is inert on binstl; see SPEC).
 only         = "";     // part passes: "" | "marker_black" | "marker_white" | "text_plugs" | "feet"
+                       // Plus the AbacusLink prototype slices — "link_coupon" |
+                       // "link_column" — which are inspection parts too, but
+                       // print-ready ones: each emits TWO pieces in print pose so
+                       // the seam between them is what you test.
                        // "feet" renders the printed foot solids (pocket fill + stand-off,
                        // crossbar voided) — emitted UNCONDITIONALLY; the TS caller gates.
                        // Plus the INSPECTION slices — "bead" | "bead_capture" | "bead_cap"
@@ -157,11 +196,33 @@ $fn = fn;
    `clearance` and `print_gap` are deliberately excluded so print gaps stay absolute
    as the abacus grows — the mixed-scaling spine. All downstream geometry uses the
    s_* working dims, every one of which now composes from the intent knobs. */
+/* The modular floors. Derived HERE, not up with the knobs, because they read
+   `only`: a link part pass IS modular geometry — asking for the coupon while
+   link_mode still says "mono" would otherwise hand you a coupon cut to a pitch
+   no modular abacus will ever have, which is the sort of fixture that passes its
+   test and teaches you nothing.
+   max() rather than assignment, so a design that already asked for a fatter web
+   or a wider brim keeps it — the floor raises, never lowers. */
+// Written as a predicate over its argument rather than testing `only` inline,
+// because export-defines.test.ts pins the part vocabulary by scanning this file
+// for comparisons against `only`, and requires exactly ONE dispatch branch per
+// name. A second comparison here would read as a duplicate branch — so the
+// chain at the bottom of the file stays the single mention of each.
+function is_link_part(o) = o == "link_coupon" || o == "link_column";
+link_part    = is_link_part(only);
+modular      = link_mode == "modular" || link_part;
+web_eff      = modular ? max(web, link_web) : web;
+border_w_eff = modular ? max(border_w, link_border) : border_w;
+
 S      = scale_factor;
 s_fh   = frame_h * S;
 s_bd   = bead_dia * S;   s_bl  = bead_len * S;
-s_bw   = border_w * S;   s_cr  = corner_r * S;
+s_bw   = border_w_eff * S;   s_cr  = corner_r * S;
 chamf  = min(top_chamfer, s_fh * 0.4);      // effective top-rim chamfer
+
+/* The modular-column joint. A LIBRARY — it emits nothing and only defines
+   modules/functions, so including it costs a mono render exactly nothing. */
+include <abacus-link.scad>
 
 /* effective tile inset: the tile hugs the top-face edge (inset = chamf) and the
    rounded-corner arc TRIMS its white quiet-zone corner — the tile 2D is clipped
@@ -192,7 +253,7 @@ m_y     = s_shelf;
    one bead + throw, resting UP (also 0). The field depth FALLS OUT of the
    stack — there is no way to position beads outside the frame or through the
    bar, because the frame is built around wherever the beads landed. */
-s_cp   = s_bd + 2 * clearance + web * S;    // column pitch (13.0 at defaults)
+s_cp   = s_bd + 2 * clearance + web_eff * S;  // column pitch (13.0 mono, 15.0 modular)
 s_em   = s_shelf + clearance + s_bd / 2;    // field edge → first column center
 s_ep   = s_bl + print_gap;                  // printed inter-bead rest pitch (10)
 s_elo  = s_shelf + clearance + s_bl / 2;    // bottom-most earth center   (12)
@@ -207,7 +268,14 @@ frame_w   = field_w + 2 * s_bw;             // OUTER width  (192.5 at defaults)
 outer_d   = s_fd + 2 * s_bw;                // OUTER depth  (100.5 at defaults)
 
 /* coherence floors — the few things intent knobs could still under-specify */
-assert(web * S >= 1.2,  "web thinner than a printable wall — raise web");
+/* In modular mode the seam halves the web, so the wall that has to survive is
+   half of it — which is what gives modular mode a size floor the monolith
+   does not have. Same shape as the feet_crossbar degrade: the joint is the
+   thing with an absolute minimum, inside a frame that scales. */
+assert(web_eff * S / (modular ? 2 : 1) >= 1.2,
+       modular
+         ? "modular half-web thinner than a printable wall — raise size or link_web"
+         : "web thinner than a printable wall — raise web");
 assert(bar * S >= 2,    "reckoning bar too thin to survive — raise bar");
 assert(throw * S >= 2,  "throw < 2mm: beads can't express set/unset — raise throw");
 /* feet pockets: corner-tucked like the markers. feet_c (pocket center
@@ -728,15 +796,21 @@ module outer_solid() {
   else
     linear_extrude(s_fh) rounded_rect(frame_w, outer_d, s_cr);
 }
-module feet_pocket_at(k) {   // mouth at z=0, seat floor at z=feet_depth_eff (dovetail)
-  translate([FEET_POS[k][0], FEET_POS[k][1], -0.01]) {
+// mouth at z=0, seat floor at z=feet_depth_eff (dovetail). Split from
+// feet_pocket_at so the modular column pass can seat a bumper at its OWN
+// per-module position without a second copy of the pocket profile.
+module feet_pocket_xy(x, y, mouth = undef, seat = undef, depth = undef) {
+  m = is_undef(mouth) ? feet_mouth : mouth;
+  st = is_undef(seat) ? feet_seat : seat;
+  dp = is_undef(depth) ? feet_depth_eff : depth;
+  translate([x, y, -0.01]) {
     if (feet_shape == "circle")
-      cylinder(h = feet_depth_eff + 0.01, d1 = feet_mouth, d2 = feet_seat);
+      cylinder(h = dp + 0.01, d1 = m, d2 = st);
     else
-      linear_extrude(feet_depth_eff + 0.01, scale = feet_seat / feet_mouth)
-        square(feet_mouth, center = true);
+      linear_extrude(dp + 0.01, scale = st / m) square(m, center = true);
   }
 }
+module feet_pocket_at(k) feet_pocket_xy(FEET_POS[k][0], FEET_POS[k][1]);
 /* The retention bar runs ALONG the border strip its foot sits on (FEET_POS
    order: 4 corners, then bottom/top-strip pairs, then left/right-strip pairs)
    so both rooted ends stay in solid strip material — never hanging into a
@@ -774,6 +848,141 @@ module foot_at(k) {
     if (feet_crossbar) xbar_at(k);
   }
 }
+/* ===== modular column parts (AbacusLink prototype) ========================
+   Two `only=` slices, both cut from the CURRENT design's derived dims — so what
+   goes on the plate is a true proxy for the abacus on screen, not a fixture with
+   its own numbers that could drift from it.
+
+   THE THREE STATIONS. A seam plane is the full outer_d deep, but the module is
+   only THICK in three places; everywhere else the seam is two channel walls face
+   to face, far too thin to carry a joint feature. Those three are the front
+   strip, the reckoning bar, and the back strip, and they fall out of the same
+   derivation the channels do rather than being measured off a drawing:
+
+     [outer edge, mirror dir, y0, y1]   dir 0 = chevron but no latch (the bar has
+                                        no outer wall to be released from)  */
+function link_stations() = [
+  [0,       1, 0,                     strip_y],
+  [0,       0, s_bw + s_ehi + s_bl / 2 + clearance,
+               s_bw + s_hlo - s_bl / 2 - clearance],
+  [outer_d, -1, outer_d - strip_y,    outer_d]
+];
+/* Per-module foot seats: one on each end strip, pushed inboard of the latch slot
+   in Y (they cannot clear it in X — the slot eats the seam end of the strip, and
+   what is left over is narrower than the smallest bumper). Measured off the
+   slot's FAR edge, which is link_slot_w past the tongue — not off the barb,
+   which is on the near side and would put the pocket through the slot.
+   linkFit()'s foot-hits-slot guard is the mirror of this arithmetic, and
+   link_assert's station check is what keeps the pair inside the strip. */
+function link_foot_y() =
+  link_beam_y0 + link_beam_t + link_slot_w + 0.8 + link_foot_w / 2;
+// ALWAYS an adhesive seat — straight-walled, mouth == seat — whatever feet_mode
+// says. The monolith's "printed" mode co-prints TPU feet into dovetailed pockets
+// with a crossbar threaded through them; doing that per module is a separate
+// unsolved problem (each foot would need its own TPU body in a per-module 3MF),
+// and the prototype's question is about the joint, not about feet. So a modular
+// column gets a bumper seat, and feet_mode only decides whether it gets one.
+module link_column_feet() {
+  fy = link_foot_y();
+  for (y = [fy, outer_d - fy])
+    feet_pocket_xy(s_cp / 2, y, link_foot_w, link_foot_w, link_foot_d);
+}
+
+/* ONE column module: its own complete channel with a full-thickness wall on both
+   sides, so capture never crosses a seam and the validated spool/track geometry
+   is untouched. Male on the right face, female on the left — every module the
+   same handedness, so they chain. */
+module link_column() {
+  difference() {
+    union() {
+      cube([s_cp, outer_d, s_fh]);
+      translate([s_cp, 0, 0])
+        link_male_face(s_fh, link_stations(), link_ramp, link_bump);
+    }
+    // the column's two channels, at the module's own centre
+    translate([0, s_bw, 0]) {
+      channel(s_cp / 2, s_elo, s_ehi);
+      channel(s_cp / 2, s_hlo, s_hhi);
+    }
+    link_female_face(s_fh, link_stations(), link_ramp, link_bump,
+                     link_slot_w, link_relief, link_fit);
+    // the flat-face relief: the chevron flanks are the only contact, so the rest
+    // of the seam is held clear. Cut from the female face only — one side of the
+    // pair carries the whole standoff.
+    translate([-0.01, -0.1, -0.01]) cube([link_relief + 0.01, outer_d + 0.2, s_fh + 0.02]);
+    if (feet) link_column_feet();
+  }
+}
+
+/* This module's own beads — free shells in its own channels, exactly as the
+   assembly emits them. The point of printing a PAIR is to confirm that halving
+   the web didn't disturb capture, and you cannot see that without the beads. */
+module link_column_beads() translate([0, s_bw, 0]) {
+  // coloured as the ones place (place_value 0), so a module previewed alone
+  // looks like the column it would actually be at the right-hand end.
+  for (j = [0 : earth - 1])
+    color(bead_color(cols - 1, false)) bead(s_cp / 2, earthy(j));
+  color(bead_color(cols - 1, true)) bead(s_cp / 2, s_hy);
+}
+
+/* The joint coupon: the same interface on two plain blocks of one pitch. No
+   channels, no beads — it exists to fail fast on the latch alone, in a quarter
+   of the time a column pair takes. Only the front station, since that is the one
+   with a release bore. */
+function link_coupon_stations() = [[0, 1, 0, strip_y]];
+module link_coupon_male() {
+  union() {
+    cube([s_cp, strip_y, s_fh]);
+    translate([s_cp, 0, 0])
+      link_male_face(s_fh, link_coupon_stations(), link_ramp, link_bump);
+  }
+}
+module link_coupon_female() {
+  difference() {
+    cube([s_cp, strip_y, s_fh]);
+    link_female_face(s_fh, link_coupon_stations(), link_ramp, link_bump,
+                     link_slot_w, link_relief, link_fit);
+    translate([-0.01, -0.1, -0.01]) cube([link_relief + 0.01, strip_y + 0.2, s_fh + 0.02]);
+  }
+}
+
+/* The two plates, in PRINT POSE: two pieces laid out flat and clear of each
+   other, ready to slice as they stand. The gap clears the male face's tongue,
+   which reaches link_beam_l − |link_beam_x0| past its module's right wall.
+
+   The guards run HERE — at the one moment somebody is about to spend filament —
+   rather than at file scope, where they would fire on every mono render too. */
+module link_plate_guard() {
+  link_assert(s_fh, s_cp, strip_y, link_ramp, link_fit, link_relief,
+              link_bump, link_slot_w);
+  // The foot's guards live in this file, not the library: the library is
+  // deliberately foot-agnostic (a specialty column may seat something else
+  // entirely), so where the bumper goes is the CONSUMER's business — and so is
+  // checking it still fits once the latch has taken its half of the strip.
+  assert(!feet || link_foot_y() + link_foot_w / 2 + 0.8 <= strip_y,
+         "per-module foot pocket runs off the end strip — raise link_border or use a smaller bumper");
+  assert(link_foot_w / 2 + 0.8 <= s_cp / 2,
+         "per-module foot wider than the module — smaller link_foot_w, or raise link_web");
+}
+function link_plate_gap() = s_cp + link_beam_l + link_beam_x0 + 5;
+
+module link_coupon_plate() {
+  link_plate_guard();
+  color(frame_color) link_coupon_male();
+  translate([link_plate_gap(), 0, 0]) color(frame_color) link_coupon_female();
+}
+
+// A PAIR, so the seam itself is what you test — and each module carries its own
+// beads, because whether halving the web disturbed capture is the other half of
+// the question and you cannot see it without them.
+module link_column_plate() {
+  link_plate_guard();
+  for (m = [0, 1]) translate([m * link_plate_gap(), 0, 0]) {
+    color(frame_color) link_column();
+    if (show_beads) link_column_beads();
+  }
+}
+
 module frame() {   // two children = implicit union (keeps the no-bar CSG tree
                    // EXACTLY the pre-#23 one — adhesive mode stays byte-stable)
   difference() {
@@ -827,6 +1036,18 @@ else if (only == "bead_exposed")
    on the origin rather than at its column, and one earth channel's travel. */
 else if (only == "channel")      color(frame_color) channel(0, -(s_ehi - s_elo) / 2, (s_ehi - s_elo) / 2);
 else if (only == "frame")        color(frame_color) frame();
+/* ---- the AbacusLink prototype slices, in PRINT POSE -----------------------
+   Both emit two pieces laid out flat and clear of each other, ready to slice as
+   they stand — the parts bench and the studio's download hand these straight to
+   a plate. The gap clears the male face's tongue, which reaches a full
+   link_beam_l − |link_beam_x0| past its module's right wall.
+
+   These render regardless of link_mode: asking for the coupon IS asking for the
+   modular geometry, and refusing unless a mode toggle happened to be on would be
+   a trap. link_assert() runs here, so a bad joint knob fails loudly at the one
+   moment somebody is about to spend filament on it. */
+else if (only == "link_coupon")  link_coupon_plate();
+else if (only == "link_column")  link_column_plate();
 else {
   if (show_frame) {
     color(frame_color) {
