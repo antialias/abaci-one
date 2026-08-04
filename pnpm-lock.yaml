@@ -69,9 +69,6 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
-      '@eink/frames-engine':
-        specifier: 1.1148.1
-        version: 1.1148.1
       '@eink/print-dialog':
         specifier: 1.1153.1
         version: 1.1153.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -412,6 +409,9 @@ importers:
       '@auth/core':
         specifier: 0.40.0
         version: 0.40.0(nodemailer@8.0.1)
+      '@eink/frames-engine':
+        specifier: 1.1159.1
+        version: 1.1159.1
       '@next/bundle-analyzer':
         specifier: ^16.1.1
         version: 16.1.1
@@ -1562,8 +1562,8 @@ packages:
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
 
-  '@eink/frames-engine@1.1148.1':
-    resolution: {integrity: sha512-YTwVgOVrrp64AQeaxriWL2YQYDh3KIW7gDK7AbWk1/cFtr2EvhI3ncnoEos05grsLey4/H27m0u5CrBJI/46cw==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40eink%2Fframes-engine/-/1.1148.1/frames-engine-1.1148.1.tgz}
+  '@eink/frames-engine@1.1159.1':
+    resolution: {integrity: sha512-FKqNiQKsbDOy807s27cvUR9rvEPist/bSflWZLN1VaLQQAM2ovofWDXYYq0nb740DXSm5s40ijoTmW+dnxqexA==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40eink%2Fframes-engine/-/1.1159.1/frames-engine-1.1159.1.tgz}
 
   '@eink/print-dialog@1.1153.1':
     resolution: {integrity: sha512-3WJ6QwSv1qRBz9wnyOM24TsJAQUTcp08CFYvZWrBtJLXPJrK1oOv9IDbJ75DLRYkiH1K/7yeGdAYMvphLkff6w==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40eink%2Fprint-dialog/-/1.1153.1/print-dialog-1.1153.1.tgz}
@@ -14694,7 +14694,7 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
-  '@eink/frames-engine@1.1148.1':
+  '@eink/frames-engine@1.1159.1':
     dependencies:
       fflate: 0.8.3
       qrcode: 1.5.4

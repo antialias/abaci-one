@@ -68,6 +68,19 @@ export const Channel: Story = part({ pass: { only: 'channel' } })
  *  most of the model), so it renders at a lower $fn; bump it to inspect a fillet. */
 export const Frame: Story = part({ pass: { only: 'frame' }, fn: 32 })
 
+// ── modular seam spike (Gitea #30) ──────────────────────────────────────────
+
+/** The Phase-0 modular-seam coupon: a single-column mini-module with dovetail
+ *  tabs on its right face, sockets in its left, and a snap clip in the bar
+ *  strip. Print the STL TWICE and the copies click into a chain — then tune
+ *  `joint_fit` until the seam has zero free play. */
+export const SeamCoupon: Story = part({ pass: { only: 'seam_coupon' } })
+
+/** Two coupons seated — the assembled seam for inspection. Faces meet at zero
+ *  gap by design (the tabs carry `joint_fit`); the harness's disjointness
+ *  proof is that this pass's volume is exactly 2× `SeamCoupon`'s. */
+export const SeamCouponPair: Story = part({ pass: { only: 'seam_coupon_pair' } })
+
 // ── export passes: one body per filament in the 3MF ─────────────────────────
 
 /** The TPU feet (Gitea #23), printed in place: the print stands on these, with

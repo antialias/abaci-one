@@ -388,6 +388,8 @@ export const INSPECT_PARTS = [
   'bead_exposed',
   'channel',
   'frame',
+  'seam_coupon',
+  'seam_coupon_pair',
 ] as const
 export type InspectPart = (typeof INSPECT_PARTS)[number]
 

@@ -99,6 +99,42 @@ feet_proud    = 1.6;       // printed: stand-off below the bottom face (ABSOLUTE
                            // ≈8 layers @0.2 = support base + interface + z gap)
 feet_retention = "crossbar"; // printed: crossbar (linked loop) | dovetail (flare only)
 
+/* ===== modular seam — SPIKE (Gitea #30) =====
+   Phase-0 coupon for the modular (per-column, snap-together) abacus. The
+   coupon is a single-column mini-module: dovetail TABS on its right face,
+   matching SOCKETS in its left face, a snap CLIP in the bar strip — so TWO
+   PRINTS OF THE SAME PART snap into a chain (that IS the module topology;
+   print three and you have a two-seam torture test).
+
+   The physics that sizes everything (epic #30): the monolithic slab is so
+   overstiff (~1e7 N·mm² about the weak axis) that joint COMPLIANCE is nearly
+   free — what a kid feels is BACKLASH. So the seam is designed to seat with
+   zero free play, `joint_fit` is the one tuning knob, and the go/no-go
+   ritual is: print two, click, wiggle, reprint tighter until the wiggle dies.
+
+   All three joint features are VERTICAL prisms (full s_fh height): modules
+   drop in from above like jigsaw pieces, so any MIDDLE column lifts straight
+   out once its clip releases — no unzipping the chain to swap the hundreds
+   column. Everything prints flat with no supports; every flexing feature
+   bends within the layer plane (the strong orientation).
+   Joint dims are ABSOLUTE (a fit contract between prints, like clearance —
+   two modules at different scale_factor must still mate at the seam). */
+joint_fit     = 0.1;   // per-side clearance on every seam mating face. 0.1 =
+                       // first-print default; walk toward 0 (or negative)
+                       // until backlash dies. Also deepens the click: ridge
+                       // engagement = joint_ridge − joint_fit + 0.05.
+joint_tab     = 4.5;   // dovetail protrusion depth (X past the module face)
+joint_neck    = 6;     // dovetail neck width (Y, measured at the face)
+joint_flare   = 1;     // per-side head widening — the pull-apart grab (~12.5°)
+joint_clip_w  = 4;     // snap clip overall width (Y; lives in the bar strip)
+joint_clip_l  = 9.5;   // clip protrusion depth. Prong flex length L = this −
+                       // sc_slot; click strain 1.5·t·δ/L² is gated against
+                       // WOOD PLA (the house filament, ~1.5% strain at break —
+                       // it SNAPS where plain PLA bends): 0.70% at defaults
+                       // incl. tuning headroom = 2.1× margin. The assert by
+                       // sc_prong refuses geometry wood PLA would crack.
+joint_ridge   = 0.2;   // click ridge proud height (0 = no click, friction only)
+
 /* ===== myabacus style (driven by abaci.one AbacusDisplayConfig) ===== */
 color_scheme  = "place-value";  // monochrome | place-value | heaven-earth | alternating
 color_palette = "default";      // default | colorblind | mnemonic | grayscale | nature
@@ -141,8 +177,9 @@ only         = "";     // part passes: "" | "marker_black" | "marker_white" | "t
                        // "feet" renders the printed foot solids (pocket fill + stand-off,
                        // crossbar voided) — emitted UNCONDITIONALLY; the TS caller gates.
                        // Plus the INSPECTION slices — "bead" | "bead_capture" | "bead_cap"
-                       // | "bead_exposed" | "channel" | "frame" — which are not filament
-                       // bodies, just one piece rendered alone for the Storybook bench.
+                       // | "bead_exposed" | "channel" | "frame" | "seam_coupon" |
+                       // "seam_coupon_pair" — which are not filament bodies, just one
+                       // piece rendered alone for the Storybook bench.
                        // Both sets are dispatched at the bottom of this file; the full
                        // vocabulary is pinned against the TS side by export-defines.test.ts.
 plug_group   = -1;     // "text_plugs" pass filter: −1 = every token (one soup, what the
@@ -796,6 +833,126 @@ module frame() {   // two children = implicit union (keeps the no-bar CSG tree
     }
 }
 
+/* ===== modular seam coupon — derived + geometry (SPIKE, Gitea #30) =====
+   The seam crosses the slab's three solid full-thickness Y-bands — front
+   strip, reckoning bar, back strip. Their edges are derived below from the
+   SAME travel stack the channels came from, so a joint cannot collide with a
+   bead channel by construction: joints and channels live in disjoint Y. */
+sc_wall = web * S;             // module edge wall = a FULL web. A monolithic
+                               // mid-web cut would leave web/2 = 1.25 per side
+                               // — too flimsy to capture beads — so modular
+                               // pitch is s_cp + web·S: the honest +2.5 mm/col
+                               // cost of modularity, stated once, here.
+sc_w    = s_bd + 2 * clearance + 2 * sc_wall;    // coupon width (15.5 @ defaults)
+sc_f1   = s_bw + s_elo - s_bl / 2 - clearance;   // front band  [0, 13.0]
+sc_b0   = s_bw + s_ehi + s_bl / 2 + clearance;   // bar band    [61.5,
+sc_b1   = s_bw + s_hlo - s_bl / 2 - clearance;   //              69.0]
+sc_k0   = s_bw + s_hhi + s_bl / 2 + clearance;   // back band   [87.5, outer_d]
+SC_DOVE_Y = [sc_f1 / 2, (sc_k0 + outer_d) / 2];  // dovetail centers (front, back)
+sc_clip_y = (sc_b0 + sc_b1) / 2;                 // clip center (bar strip)
+sc_slot   = 1.5;               // prong root web — flex length = joint_clip_l − this
+sc_prong  = 1.2;               // prong thickness (= 2 lines of the 0.6 nozzle wood
+                               // PLA wants; bends in-plane w.r.t. layers)
+sc_ridge_h = 0.6;              // ridge half-height: flank ≈ 72° from horizontal,
+                               // printable on a vertical wall, gentle cam in AND out
+/* wood-PLA flexure gate — the eink dfm-checks screen (#367 "PLA flexures don't
+   flex"), applied here at authoring time: peak outer-fibre strain ε% =
+   150·t·Y/L² at the worst INTENDED engagement (ridge fully proud + 0.05 of
+   negative-joint_fit tuning headroom) must clear wood PLA's ~1.5% break
+   strain with 1.5× safety. In-plane bend ⇒ no layer derate. The TS mirror
+   (seam-flexure-dfm.test.ts) runs these same numbers through
+   @eink/frames-engine's real gate, force checks included. */
+assert(150 * sc_prong * (joint_ridge + 0.05) / pow(joint_clip_l - sc_slot, 2) <= 1.0,
+       "snap-clip strain would crack wood PLA — lengthen joint_clip_l or shrink sc_prong/joint_ridge");
+assert(joint_neck + 2 * (joint_flare + joint_fit) + 3.2 <= min(sc_f1, outer_d - sc_k0),
+       "dovetail socket leaves <1.6mm walls in the border strips — shrink joint_neck/joint_flare");
+assert(joint_clip_w + 2 * (joint_fit + joint_ridge + 0.05) + 2.4 <= sc_b1 - sc_b0,
+       "clip socket leaves <1.2mm walls in the bar strip — shrink joint_clip_w/joint_ridge");
+
+/* 2D plan profiles. Both are CONVEX — the top-taper hulls below depend on it. */
+module sc_dove_2d(g = 0)       // dovetail plan: base on x=0, pointing +x
+  offset(delta = g) polygon([[0, -joint_neck / 2], [joint_tab, -joint_neck / 2 - joint_flare],
+                             [joint_tab, joint_neck / 2 + joint_flare], [0, joint_neck / 2]]);
+module sc_clip_2d(g = 0)       // clip envelope plan (the prong slot is cut in 3D)
+  offset(delta = g) square([joint_clip_l, joint_clip_w], center = false);
+module sc_deep_2d(ext = 0.3)   // socket-only: deepen a profile so FACES seat
+  hull() { children(); translate([ext, 0]) children(); }   // before any tab tip
+                                                           // bottoms out
+module sc_post() {             // full-height tab prism, top edge broken 0.4
+  linear_extrude(s_fh - 0.4) children();
+  translate([0, 0, s_fh - 0.4]) hull() {
+    linear_extrude(0.01) children();
+    translate([0, 0, 0.39]) linear_extrude(0.01) offset(delta = -0.4) children();
+  }
+}
+module sc_pocket() {           // full-height socket cut + 0.8 flared rim lead-in
+  translate([0, 0, -0.01]) linear_extrude(s_fh + 0.02) children();
+  translate([0, 0, s_fh - 0.8]) hull() {
+    linear_extrude(0.01) children();
+    translate([0, 0, 0.81]) linear_extrude(0.01) offset(delta = 0.8) children();
+  }
+}
+module sc_ridge_xz(len, g = 0) // click ridge along +x: YZ triangle, apex +y
+  rotate([90, 0, 90]) linear_extrude(height = len)
+    offset(delta = g) polygon([[0, -sc_ridge_h], [joint_ridge, 0], [0, sc_ridge_h]]);
+
+/* The snap clip: two prongs whose outer-flank ridges click into grooves in the
+   socket walls at mid-height. This is the locking flexure — it holds Z (lift-
+   out) AND registers Z across the seam (a ridge seated in its groove resists
+   one module sliding down relative to its neighbor). Compliance lives in the
+   PRONGS, not the load-bearing socket walls; if a prong ever snaps, the
+   dovetails still hold the chain together. The ridge stops sc_slot+1 short of
+   the root: ridge over the rigid root would jam rigid-on-rigid at insertion. */
+module sc_clip_tab() {
+  translate([0, -joint_clip_w / 2, 0]) difference() {
+    sc_post() sc_clip_2d();
+    translate([sc_slot, sc_prong, -0.5])
+      cube([joint_clip_l, joint_clip_w - 2 * sc_prong, s_fh + 1]);
+  }
+  if (joint_ridge > 0)
+    for (m = [0, 1]) mirror([0, m, 0])
+      translate([sc_slot + 1, joint_clip_w / 2, s_fh / 2])
+        sc_ridge_xz(joint_clip_l - sc_slot - 1);
+}
+module sc_clip_pocket() {
+  sc_pocket() sc_deep_2d() translate([0, -joint_clip_w / 2, 0]) sc_clip_2d(joint_fit);
+  if (joint_ridge > 0)
+    for (m = [0, 1]) mirror([0, m, 0])
+      translate([-0.01, joint_clip_w / 2 + joint_fit, s_fh / 2])
+        sc_ridge_xz(joint_clip_l + joint_fit + 0.31, 0.05);
+}
+
+module sc_tabs()               // on the RIGHT face (x = sc_w)
+  translate([sc_w, 0, 0]) {
+    for (yc = SC_DOVE_Y) translate([0, yc, 0]) sc_post() sc_dove_2d();
+    translate([0, sc_clip_y, 0]) sc_clip_tab();
+  }
+module sc_pockets() {          // into the LEFT face (x = 0)
+  for (yc = SC_DOVE_Y) translate([0, yc, 0]) sc_pocket() sc_deep_2d() sc_dove_2d(joint_fit);
+  translate([0, sc_clip_y, 0]) sc_clip_pocket();
+}
+
+/* The coupon: a real single column — live captive beads, real strip positions,
+   full outer_d depth — with the seam features on its faces. No markers, feet,
+   text or rim chamfer: those are Phase-1 module concerns, not seam questions. */
+module seam_coupon() {
+  color(frame_color) difference() {
+    union() {
+      linear_extrude(s_fh) square([sc_w, outer_d]);
+      sc_tabs();
+    }
+    translate([0, s_bw, 0]) {
+      channel(sc_w / 2, s_elo, s_ehi);
+      channel(sc_w / 2, s_hlo, s_hhi);
+    }
+    sc_pockets();
+  }
+  translate([0, s_bw, 0]) {   // the ones column, per place_value(cols−1)
+    for (j = [0 : earth - 1]) color(bead_color(cols - 1, false)) bead(sc_w / 2, earthy(j));
+    color(bead_color(cols - 1, true)) bead(sc_w / 2, s_hy);
+  }
+}
+
 /* ===== assemble ===== (color() is preview/3MF only — ignored by binstl, no geom change) */
 if (only == "marker_black")      for (k = [0 : 3]) color("black") marker_plug(k, true);
 else if (only == "marker_white") for (k = [0 : 3]) color("white") marker_plug(k, false);
@@ -827,6 +984,13 @@ else if (only == "bead_exposed")
    on the origin rather than at its column, and one earth channel's travel. */
 else if (only == "channel")      color(frame_color) channel(0, -(s_ehi - s_elo) / 2, (s_ehi - s_elo) / 2);
 else if (only == "frame")        color(frame_color) frame();
+/* The modular-seam coupon (SPIKE, Gitea #30). `seam_coupon` is the printable
+   part — print it TWICE and the two copies snap into a chain. The pair pass
+   shows the assembled seam for inspection; it is also the disjointness proof
+   the harness leans on: at joint_fit > 0 the pair's volume must equal exactly
+   2× the single coupon's, or a tab is fused into its socket. */
+else if (only == "seam_coupon")      seam_coupon();
+else if (only == "seam_coupon_pair") { seam_coupon(); translate([sc_w, 0, 0]) seam_coupon(); }
 else {
   if (show_frame) {
     color(frame_color) {

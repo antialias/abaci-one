@@ -9,6 +9,9 @@ built on. It is not a historical record — it describes the model that ships to
 - **Source of truth (code):** [`src/components/create/abacus/abacus-model.ts`](../../src/components/create/abacus/abacus-model.ts)
   — framework-free `defaultParams` + `derived()`; the geometry itself is
   [`public/scad/abacus.scad`](../../public/scad/abacus.scad).
+- **Geometry verification (local-only):** [`scripts/scad/`](../../scripts/scad/README.md)
+  — signed-volume harness + OpenSCAD render recipes; no headless OpenSCAD
+  exists in CI, so the solids are only ever evaluated on a dev machine.
 - **Empirical anchor:** the user's proven, printed master
   `~/projects/abacus/Soroban_Abacus.stl` — **186 × 90 × 6 mm**, **13 columns ×
   (1 heaven + 4 earth) = 65 beads**, rodless captive-track, 3-color. Everything
