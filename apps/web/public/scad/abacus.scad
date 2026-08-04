@@ -112,11 +112,15 @@ feet_retention = "crossbar"; // printed: crossbar (linked loop) | dovetail (flar
    zero free play, `joint_fit` is the one tuning knob, and the go/no-go
    ritual is: print two, click, wiggle, reprint tighter until the wiggle dies.
 
-   All three joint features are VERTICAL prisms (full s_fh height): modules
-   drop in from above like jigsaw pieces, so any MIDDLE column lifts straight
-   out once its clip releases — no unzipping the chain to swap the hundreds
-   column. Everything prints flat with no supports; every flexing feature
-   bends within the layer plane (the strong orientation).
+   All three joint features are VERTICAL prisms: modules drop in from above
+   like jigsaw pieces, so any MIDDLE column lifts straight out once its clip
+   releases — no unzipping the chain to swap the hundreds column. The clip
+   runs full s_fh height; the dovetails stop sc_seat above the bottom on a
+   solid socket floor (the positive seat: downward slide-through is
+   impossible by geometry, seated Z is a hard stop, and only upward — the
+   intentional removal direction — is left to the clip ridge). Everything
+   prints flat with no supports; every flexing feature bends within the
+   layer plane (the strong orientation).
    Joint dims are ABSOLUTE (a fit contract between prints, like clearance —
    two modules at different scale_factor must still mate at the seam). */
 joint_fit     = 0.1;   // per-side clearance on every seam mating face. 0.1 =
@@ -855,6 +859,17 @@ sc_prong  = 1.2;               // prong thickness (= 2 lines of the 0.6 nozzle w
                                // PLA wants; bends in-plane w.r.t. layers)
 sc_ridge_h = 0.6;              // ridge half-height: flank ≈ 72° from horizontal,
                                // printable on a vertical wall, gentle cam in AND out
+sc_seat   = 1.2;               // positive bottom seat: dovetail posts stop this far
+                               // above the module bottom and the socket keeps a
+                               // matching solid floor — a HARD stop that makes
+                               // downward slide-through impossible and defines
+                               // seated Z (tops flush by contact, not by eye).
+                               // Upward removal stays clip-gated. 45° chamfer on
+                               // the post underside / 45° ramp on the floor keep
+                               // both supportless; the pair mates full-contact.
+sc_deep   = 0.3;               // socket deepening past the tab tip — faces seat
+                               // before any tip bottoms out (also the extra ramp
+                               // run that keeps the socket floor at exactly 45°)
 /* wood-PLA flexure gate — the eink dfm-checks screen (#367 "PLA flexures don't
    flex"), applied here at authoring time: peak outer-fibre strain ε% =
    150·t·Y/L² at the worst INTENDED engagement (ridge fully proud + 0.05 of
@@ -864,10 +879,22 @@ sc_ridge_h = 0.6;              // ridge half-height: flank ≈ 72° from horizon
    @eink/frames-engine's real gate, force checks included. */
 assert(150 * sc_prong * (joint_ridge + 0.05) / pow(joint_clip_l - sc_slot, 2) <= 1.0,
        "snap-clip strain would crack wood PLA — lengthen joint_clip_l or shrink sc_prong/joint_ridge");
-assert(joint_neck + 2 * (joint_flare + joint_fit) + 3.2 <= min(sc_f1, outer_d - sc_k0),
-       "dovetail socket leaves <1.6mm walls in the border strips — shrink joint_neck/joint_flare");
-assert(joint_clip_w + 2 * (joint_fit + joint_ridge + 0.05) + 2.4 <= sc_b1 - sc_b0,
-       "clip socket leaves <1.2mm walls in the bar strip — shrink joint_clip_w/joint_ridge");
+sc_active = only == "seam_coupon" || only == "seam_coupon_pair";
+                               // seam geometry in this render? The strain gate
+                               // above is knob-only (S-free) and stays loud in
+                               // EVERY render, but the asserts below compare
+                               // ABSOLUTE joint dims against SCALED strip widths
+                               // and s_fh — they genuinely fail at small
+                               // scale_factor (clip walls below S≈0.95!) and
+                               // must never trip a render that instantiates no
+                               // seam geometry at all. (CP3 extends this
+                               // predicate to the module passes.)
+assert(!sc_active || joint_neck + 2 * (joint_flare + joint_fit) + 3.2 <= min(sc_f1, outer_d - sc_k0),
+       "dovetail socket leaves <1.6mm walls in the border strips — shrink joint_neck/joint_flare or raise scale_factor");
+assert(!sc_active || joint_clip_w + 2 * (joint_fit + joint_ridge + 0.05) + 2.4 <= sc_b1 - sc_b0,
+       "clip socket leaves <1.2mm walls in the bar strip — shrink joint_clip_w/joint_ridge or raise scale_factor");
+assert(!sc_active || (sc_seat >= 0.6 && sc_seat + joint_tab + 1 <= s_fh),
+       "bottom seat + 45° chamfer leave <1mm of straight dovetail wall — raise scale_factor or shrink sc_seat/joint_tab");
 
 /* 2D plan profiles. Both are CONVEX — the top-taper hulls below depend on it. */
 module sc_dove_2d(g = 0)       // dovetail plan: base on x=0, pointing +x
@@ -875,18 +902,36 @@ module sc_dove_2d(g = 0)       // dovetail plan: base on x=0, pointing +x
                              [joint_tab, joint_neck / 2 + joint_flare], [0, joint_neck / 2]]);
 module sc_clip_2d(g = 0)       // clip envelope plan (the prong slot is cut in 3D)
   offset(delta = g) square([joint_clip_l, joint_clip_w], center = false);
-module sc_deep_2d(ext = 0.3)   // socket-only: deepen a profile so FACES seat
+module sc_deep_2d(ext = sc_deep)   // socket-only: deepen a profile so FACES seat
   hull() { children(); translate([ext, 0]) children(); }   // before any tab tip
                                                            // bottoms out
-module sc_post() {             // full-height tab prism, top edge broken 0.4
-  linear_extrude(s_fh - 0.4) children();
+module sc_post(z0 = 0) {       // tab prism z∈[z0, s_fh], top edge broken 0.4
+  translate([0, 0, z0]) linear_extrude(s_fh - 0.4 - z0) children();
   translate([0, 0, s_fh - 0.4]) hull() {
     linear_extrude(0.01) children();
     translate([0, 0, 0.39]) linear_extrude(0.01) offset(delta = -0.4) children();
   }
 }
-module sc_pocket() {           // full-height socket cut + 0.8 flared rim lead-in
-  translate([0, 0, -0.01]) linear_extrude(s_fh + 0.02) children();
+module sc_seat_wedge(rise)     // 45° chamfer/ramp: the profile pinched to a sliver
+  hull() {                     // on the module face at z=sc_seat, full at
+    translate([0, 0, sc_seat]) // z=sc_seat+rise. Pass rise = the profile's x-depth
+      linear_extrude(0.01) scale([0.002, 1]) children();   // ⇒ exactly 45°. Tab
+    translate([0, 0, sc_seat + rise]) linear_extrude(0.01) children();
+  }                            // underside and socket floor use this SAME
+                               // construction, so the ramps mate full-contact at
+                               // seated flush; every printed layer roots on the
+                               // module wall ⇒ supportless in both parts.
+module sc_seated_post() {      // dovetail tab with the bottom seat: no material
+  sc_seat_wedge(joint_tab) children();      // below z=sc_seat ⇒ downward
+  sc_post(sc_seat + joint_tab) children();  // slide-through is impossible
+}
+module sc_seated_pocket() {    // matching socket: the cut floats above a solid
+                               // floor (rise = deepened+grown profile depth)
+  sc_seat_wedge(joint_tab + joint_fit + sc_deep) children();
+  sc_pocket(sc_seat + joint_tab + joint_fit + sc_deep - 0.01) children();
+}
+module sc_pocket(z0 = -0.01) { // socket cut z∈[z0, s_fh+0.01] + 0.8 flared rim lead-in
+  translate([0, 0, z0]) linear_extrude(s_fh + 0.01 - z0) children();
   translate([0, 0, s_fh - 0.8]) hull() {
     linear_extrude(0.01) children();
     translate([0, 0, 0.81]) linear_extrude(0.01) offset(delta = 0.8) children();
@@ -924,11 +969,11 @@ module sc_clip_pocket() {
 
 module sc_tabs()               // on the RIGHT face (x = sc_w)
   translate([sc_w, 0, 0]) {
-    for (yc = SC_DOVE_Y) translate([0, yc, 0]) sc_post() sc_dove_2d();
+    for (yc = SC_DOVE_Y) translate([0, yc, 0]) sc_seated_post() sc_dove_2d();
     translate([0, sc_clip_y, 0]) sc_clip_tab();
   }
 module sc_pockets() {          // into the LEFT face (x = 0)
-  for (yc = SC_DOVE_Y) translate([0, yc, 0]) sc_pocket() sc_deep_2d() sc_dove_2d(joint_fit);
+  for (yc = SC_DOVE_Y) translate([0, yc, 0]) sc_seated_pocket() sc_deep_2d() sc_dove_2d(joint_fit);
   translate([0, sc_clip_y, 0]) sc_clip_pocket();
 }
 

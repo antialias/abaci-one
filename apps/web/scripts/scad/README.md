@@ -24,6 +24,10 @@ node scripts/scad/signed-volume.mjs coupon.stl pair.stl
 
 # additivity: whole == sum of parts (e.g. module body + TPU feet must not overlap)
 node scripts/scad/signed-volume.mjs union.stl body.stl feet.stl
+
+# fingerprint: same solid across two renders (volume + area at 1e-9 rel) —
+# THE mono-drift check; see "Mono render stability" below for why not sha256
+node scripts/scad/signed-volume.mjs --same mono-before.stl mono-after.stl
 ```
 
 Exits non-zero on failure, so it can gate a pipeline. Sensitivity is proven:
@@ -39,6 +43,24 @@ at `joint_fit = −0.05` (deliberate interference) the pair check detects a
   the 7-arg form plus `--viewall` renders blank:
   `openscad --render -Donly='"seam_coupon"' --camera=55,25,35,15.5,65,4 --imgsize=1200,900 -o out.png …`
 - The `textmetrics` warning is harmless (2021.01 predates it; the file falls back).
-- Mono byte-stability: after any scad change that should not affect the
-  monolithic abacus, render the default (no `-Donly`) STL and compare its
-  sha256 against the reference recorded before the change.
+- **Assert gating needs STL export.** A failed top-level `assert` exits 1 on STL
+  export but exits **0** on `.csg` export (which writes a 1-byte file) — so
+  negative-control runs must export STL, and fast `.csg` eval runs must grep the
+  log for `ERROR:` instead of trusting the exit code.
+- Any top-level scad variable can be forced with `-D` for negative controls
+  (e.g. `-Dsc_seat=5` to trip the bottom-seat assert at default scale).
+- **Boolean ops on imported STLs crash CGAL** (`SNC_FM_decorator.h` assertion) —
+  a z-slice wrapper that `import()`s an exported mesh does not work. For
+  through-hole checks, render from source with an orthographic straight-down
+  camera instead: `--projection=o --camera=cx,cy±0.01,-240,cx,cy,4` (the ±0.01
+  dodges the degenerate up-vector; ortho zoom scales with eye distance).
+- **Mono render stability — do NOT sha256 the STL.** OpenSCAD 2021.01's STL
+  export is not byte-reproducible: two solo renders of the *identical* mono
+  source produced different sha256s (measured 2026-08-04: four renders, four
+  hashes; arc tessellation comes out phase-jittered run to run while volume,
+  surface area, facet count and bbox all match exactly). After any scad change
+  that should not affect the monolithic abacus, render the default (no
+  `-Donly`) STL and run `signed-volume.mjs --same reference.stl new.stl`
+  instead — a phase-shifted arc polygon is volume- and area-invariant, so the
+  fingerprint passes across renders of the same solid and fails at ~1e-3 for
+  any real edit.

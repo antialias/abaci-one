@@ -95,7 +95,14 @@ const EXPORT_ONLY: Record<ExportPass['only'], true> = {
 const SCAD = join(process.cwd(), 'public/scad/abacus.scad')
 
 describe('the only= vocabulary matches abacus.scad', () => {
-  const dispatched = [...readFileSync(SCAD, 'utf8').matchAll(/\bonly\s*==\s*"([^"]+)"/g)].map(
+  // Scrape ONLY the dispatch chain (everything after the assemble marker).
+  // `only ==` also appears above it in predicates — e.g. sc_active gates the
+  // scale-dependent seam asserts so mono renders at small scale_factor don't
+  // trip them — and those are not dispatch branches.
+  const src = readFileSync(SCAD, 'utf8')
+  const assembleAt = src.indexOf('===== assemble =====')
+  if (assembleAt === -1) throw new Error('assemble marker missing from abacus.scad — dispatch scrape is unanchored')
+  const dispatched = [...src.slice(assembleAt).matchAll(/\bonly\s*==\s*"([^"]+)"/g)].map(
     (m) => m[1]
   )
 
