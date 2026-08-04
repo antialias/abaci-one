@@ -769,8 +769,13 @@ module outer_solid() {
   else
     linear_extrude(s_fh) rounded_rect(frame_w, outer_d, s_cr);
 }
-module feet_pocket_at(k) {   // mouth at z=0, seat floor at z=feet_depth_eff (dovetail)
-  translate([FEET_POS[k][0], FEET_POS[k][1], -0.01]) {
+/* The feet trio takes explicit positions (x, y[, along_x]) so module columns
+   (Gitea #30) can place per-module feet at their own derived spots; the
+   *_at(k) wrappers bind the monolith's FEET_POS table and stay the only
+   callers in mono. Pure refactor — verified by the --same fingerprint on
+   both the mono and only="feet" renders. */
+module feet_pocket_xy(x, y) {  // mouth at z=0, seat floor at z=feet_depth_eff (dovetail)
+  translate([x, y, -0.01]) {
     if (feet_shape == "circle")
       cylinder(h = feet_depth_eff + 0.01, d1 = feet_mouth, d2 = feet_seat);
     else
@@ -778,6 +783,7 @@ module feet_pocket_at(k) {   // mouth at z=0, seat floor at z=feet_depth_eff (do
         square(feet_mouth, center = true);
   }
 }
+module feet_pocket_at(k) feet_pocket_xy(FEET_POS[k][0], FEET_POS[k][1]);
 /* The retention bar runs ALONG the border strip its foot sits on (FEET_POS
    order: 4 corners, then bottom/top-strip pairs, then left/right-strip pairs)
    so both rooted ends stay in solid strip material — never hanging into a
@@ -785,23 +791,24 @@ module feet_pocket_at(k) {   // mouth at z=0, seat floor at z=feet_depth_eff (do
    flush against outer_solid(). Same solid is SUBTRACTED from the foot with
    zero shrink (marker-plug precedent): coincident PLA/TPU faces, no gap. */
 function xbar_along_x(k) = k < 4 + 2 * feet_nx;
-module xbar_at(k) {
+module xbar_xy(x, y, along_x) {
   xlen = feet_seat + 2 * xbar_embed;
-  translate([FEET_POS[k][0], FEET_POS[k][1], xbar_under]) {
-    if (xbar_along_x(k))
+  translate([x, y, xbar_under]) {
+    if (along_x)
       translate([-xlen / 2, -xbar_w / 2, 0]) cube([xlen, xbar_w, xbar_h]);
     else
       translate([-xbar_w / 2, -xlen / 2, 0]) cube([xbar_w, xlen, xbar_h]);
   }
 }
+module xbar_at(k) xbar_xy(FEET_POS[k][0], FEET_POS[k][1], xbar_along_x(k));
 /* The printed foot (only="feet" part pass): the pocket-filling frustum —
    coincident with feet_pocket_at, zero shrink — plus a straight stand-off of
    the MOUTH cross-section below the face (two stacked primitives on purpose:
    one continuous taper from −feet_proud would change the mouth diameter at
    z=0), minus the crossbar the frame threads through it. */
-module foot_at(k) {
+module foot_xy(x, y, along_x) {
   difference() {
-    translate([FEET_POS[k][0], FEET_POS[k][1], 0]) union() {
+    translate([x, y, 0]) union() {
       translate([0, 0, -feet_proud]) {
         if (feet_shape == "circle") cylinder(h = feet_proud + 0.01, d = feet_mouth);
         else linear_extrude(feet_proud + 0.01) square(feet_mouth, center = true);
@@ -812,9 +819,10 @@ module foot_at(k) {
         linear_extrude(feet_depth_eff, scale = feet_seat / feet_mouth)
           square(feet_mouth, center = true);
     }
-    if (feet_crossbar) xbar_at(k);
+    if (feet_crossbar) xbar_xy(x, y, along_x);
   }
 }
+module foot_at(k) foot_xy(FEET_POS[k][0], FEET_POS[k][1], xbar_along_x(k));
 module frame() {   // two children = implicit union (keeps the no-bar CSG tree
                    // EXACTLY the pre-#23 one — adhesive mode stays byte-stable)
   difference() {
