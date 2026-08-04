@@ -390,11 +390,30 @@ export const INSPECT_PARTS = [
   'frame',
   'seam_coupon',
   'seam_coupon_pair',
+  'module_pair',
 ] as const
 export type InspectPart = (typeof INSPECT_PARTS)[number]
 
+/** Module-column passes (Gitea #30): the per-module renders the modular kit
+ *  exporter requests — three PLA bodies (left/mid/right) and their three TPU
+ *  feet sets. A third category on purpose: not `ExportPass` (those are bodies
+ *  of the WHOLE-abacus 3MF; these each seed their own per-module 3MF), and not
+ *  `InspectPart` (they ARE printable deliverables, not bench slices). Six
+ *  explicit names rather than a `-Dmodule_role` define — a role define that
+ *  went missing would silently render its scad default, the exact silent
+ *  failure family `-Dplug_group` taught us about (see exportDefines). */
+export const MODULE_PASSES = [
+  'module_left',
+  'module_mid',
+  'module_right',
+  'module_left_feet',
+  'module_mid_feet',
+  'module_right_feet',
+] as const
+export type ModulePass = (typeof MODULE_PASSES)[number]
+
 /** Anything the worker can be asked to render as a single `only=` pass. */
-export type RenderPass = ExportPass | { only: InspectPart }
+export type RenderPass = ExportPass | { only: InspectPart } | { only: ModulePass }
 
 /** The define list for one export render. Pure — and split out of the worker
  *  postMessage so the exact strings are testable: `-Dplug_group` is the one

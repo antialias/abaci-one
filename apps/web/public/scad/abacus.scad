@@ -774,13 +774,15 @@ module outer_solid() {
    *_at(k) wrappers bind the monolith's FEET_POS table and stay the only
    callers in mono. Pure refactor — verified by the --same fingerprint on
    both the mono and only="feet" renders. */
-module feet_pocket_xy(x, y) {  // mouth at z=0, seat floor at z=feet_depth_eff (dovetail)
+module feet_pocket_xy(x, y, mouth = feet_mouth, seat = feet_seat) {
+  // mouth at z=0, seat floor at z=feet_depth_eff (dovetail). mouth/seat
+  // default to the monolith's foot class; module columns pass their own.
   translate([x, y, -0.01]) {
     if (feet_shape == "circle")
-      cylinder(h = feet_depth_eff + 0.01, d1 = feet_mouth, d2 = feet_seat);
+      cylinder(h = feet_depth_eff + 0.01, d1 = mouth, d2 = seat);
     else
-      linear_extrude(feet_depth_eff + 0.01, scale = feet_seat / feet_mouth)
-        square(feet_mouth, center = true);
+      linear_extrude(feet_depth_eff + 0.01, scale = seat / mouth)
+        square(mouth, center = true);
   }
 }
 module feet_pocket_at(k) feet_pocket_xy(FEET_POS[k][0], FEET_POS[k][1]);
@@ -791,8 +793,8 @@ module feet_pocket_at(k) feet_pocket_xy(FEET_POS[k][0], FEET_POS[k][1]);
    flush against outer_solid(). Same solid is SUBTRACTED from the foot with
    zero shrink (marker-plug precedent): coincident PLA/TPU faces, no gap. */
 function xbar_along_x(k) = k < 4 + 2 * feet_nx;
-module xbar_xy(x, y, along_x) {
-  xlen = feet_seat + 2 * xbar_embed;
+module xbar_xy(x, y, along_x, seat = feet_seat) {
+  xlen = seat + 2 * xbar_embed;
   translate([x, y, xbar_under]) {
     if (along_x)
       translate([-xlen / 2, -xbar_w / 2, 0]) cube([xlen, xbar_w, xbar_h]);
@@ -806,20 +808,20 @@ module xbar_at(k) xbar_xy(FEET_POS[k][0], FEET_POS[k][1], xbar_along_x(k));
    the MOUTH cross-section below the face (two stacked primitives on purpose:
    one continuous taper from −feet_proud would change the mouth diameter at
    z=0), minus the crossbar the frame threads through it. */
-module foot_xy(x, y, along_x) {
+module foot_xy(x, y, along_x, mouth = feet_mouth, seat = feet_seat) {
   difference() {
     translate([x, y, 0]) union() {
       translate([0, 0, -feet_proud]) {
-        if (feet_shape == "circle") cylinder(h = feet_proud + 0.01, d = feet_mouth);
-        else linear_extrude(feet_proud + 0.01) square(feet_mouth, center = true);
+        if (feet_shape == "circle") cylinder(h = feet_proud + 0.01, d = mouth);
+        else linear_extrude(feet_proud + 0.01) square(mouth, center = true);
       }
       if (feet_shape == "circle")
-        cylinder(h = feet_depth_eff, d1 = feet_mouth, d2 = feet_seat);
+        cylinder(h = feet_depth_eff, d1 = mouth, d2 = seat);
       else
-        linear_extrude(feet_depth_eff, scale = feet_seat / feet_mouth)
-          square(feet_mouth, center = true);
+        linear_extrude(feet_depth_eff, scale = seat / mouth)
+          square(mouth, center = true);
     }
-    if (feet_crossbar) xbar_xy(x, y, along_x);
+    if (feet_crossbar) xbar_xy(x, y, along_x, seat);
   }
 }
 module foot_at(k) foot_xy(FEET_POS[k][0], FEET_POS[k][1], xbar_along_x(k));
@@ -887,7 +889,11 @@ sc_deep   = 0.3;               // socket deepening past the tab tip — faces se
    @eink/frames-engine's real gate, force checks included. */
 assert(150 * sc_prong * (joint_ridge + 0.05) / pow(joint_clip_l - sc_slot, 2) <= 1.0,
        "snap-clip strain would crack wood PLA — lengthen joint_clip_l or shrink sc_prong/joint_ridge");
-sc_active = only == "seam_coupon" || only == "seam_coupon_pair";
+function is_module_pass(o) =   // the six module render passes (bodies + feet)
+  o == "module_left"      || o == "module_mid"      || o == "module_right" ||
+  o == "module_left_feet" || o == "module_mid_feet" || o == "module_right_feet";
+mod_active = is_module_pass(only) || only == "module_pair";
+sc_active = only == "seam_coupon" || only == "seam_coupon_pair" || mod_active;
                                // seam geometry in this render? The strain gate
                                // above is knob-only (S-free) and stays loud in
                                // EVERY render, but the asserts below compare
@@ -895,14 +901,51 @@ sc_active = only == "seam_coupon" || only == "seam_coupon_pair";
                                // and s_fh — they genuinely fail at small
                                // scale_factor (clip walls below S≈0.95!) and
                                // must never trip a render that instantiates no
-                               // seam geometry at all. (CP3 extends this
-                               // predicate to the module passes.)
+                               // seam geometry at all.
 assert(!sc_active || joint_neck + 2 * (joint_flare + joint_fit) + 3.2 <= min(sc_f1, outer_d - sc_k0),
        "dovetail socket leaves <1.6mm walls in the border strips — shrink joint_neck/joint_flare or raise scale_factor");
 assert(!sc_active || joint_clip_w + 2 * (joint_fit + joint_ridge + 0.05) + 2.4 <= sc_b1 - sc_b0,
        "clip socket leaves <1.2mm walls in the bar strip — shrink joint_clip_w/joint_ridge or raise scale_factor");
 assert(!sc_active || (sc_seat >= 0.6 && sc_seat + joint_tab + 1 <= s_fh),
        "bottom seat + 45° chamfer leave <1mm of straight dovetail wall — raise scale_factor or shrink sc_seat/joint_tab");
+
+/* ----- module family (CP3): real per-column modules -----
+   mid    = the coupon geometry grown up: rim-chamfered slab (never on the seam
+            faces — the chamfer profile is the seam cross-section, so it runs
+            CONTINUOUSLY across assembled seams like mono's rim), plus its OWN
+            two TPU feet so any module stands at any abacus position.
+   left  /
+   right  = mono's border block CUT AT THE SEAM PLANE (outer_solid intersected
+            with a half-space: rounding, chamfers, the flat seam face and the
+            marker/feet corner positions are all the same solid mono ships),
+            carrying column 0 / cols−1, two corner feet and two ArUco pockets
+            (engraved only in phase 1 — plugs are a follow-up).
+   Widths: 2·mod_we + (cols−2)·sc_w == frame_w + (cols−1)·web·S exactly — the
+   modular assembly reproduces the mono footprint plus one full web per seam. */
+mod_we = s_bw + s_em + s_bd / 2 + clearance + sc_wall;  // end-module width (26.0
+                               // @ defaults): border + field margin + half of
+                               // its column's channel + a full edge web
+/* mid-module feet: the monolith's foot Y-centers are CONCENTRIC with the
+   dovetails (same solid bands), and the socket eats x∈[0, mf_sock] at full
+   height — so the mid foot moves BESIDE the socket on X instead. Width is a
+   DERIVATION, not a constant: capped at the 6.35 (1/4") class the user chose,
+   floored by what actually fits between socket wall and seam face — joint dims
+   are absolute while sc_w scales, so the cap only closes near S = 1. */
+mf_sock  = joint_tab + joint_fit + sc_deep;  // deepest socket cut into x (4.9)
+mf_wall  = 1.6;                              // min wall: socket→pocket and pocket→seam face
+mf_w     = min(feet_w, 6.35,
+               sc_w - mf_sock - 2 * mf_wall - 2 * feet_undercut_eff - 2 * feet_fit_eff);
+mf_mouth = mf_w + 2 * feet_fit_eff;
+mf_seat  = mf_mouth + 2 * feet_undercut_eff;
+mf_x     = (mf_sock + sc_w) / 2;             // centered in the band beside the socket
+MF_Y     = [feet_c, outer_d - feet_c];       // front + back solid strips, same
+                                             // edge inset as the mono corners
+assert(!(mod_active && feet) || mf_w >= 4,
+       "module feet don't fit beside the seam socket — raise scale_factor (or feet_mode=none)");
+assert(!(mod_active && feet) || (mf_x - mf_seat / 2 - mf_sock >= 1.5 && sc_w - mf_x - mf_seat / 2 >= 1.5),
+       "module foot pocket too close to the seam socket or the seam face");
+assert(!(mod_active && feet && feet_crossbar) || feet_c + mf_seat / 2 + xbar_embed + 0.8 <= sc_f1,
+       "module foot crossbar would break into the bead channel — shrink feet_w or raise scale_factor");
 
 /* 2D plan profiles. Both are CONVEX — the top-taper hulls below depend on it. */
 module sc_dove_2d(g = 0)       // dovetail plan: base on x=0, pointing +x
@@ -1006,6 +1049,94 @@ module seam_coupon() {
   }
 }
 
+/* ===== module columns (Gitea #30 CP3) =====
+   The printable per-column modules the studio's modular mode exports. Every
+   piece composes the SAME modules mono ships (outer_solid, channel, bead,
+   marker_pocket, the feet trio, the sc_ joint family), so a module can never
+   drift from the monolith it replaces. */
+module mod_xsec_2d()           // the seam-face cross-section: outer_d × s_fh with
+  if (chamf > 0.01)            // mono's 45° rim chamfers on the front/back edges
+    polygon([[chamf, 0], [outer_d - chamf, 0], [outer_d, chamf],
+             [outer_d, s_fh - chamf], [outer_d - chamf, s_fh],
+             [chamf, s_fh], [0, s_fh - chamf], [0, chamf]]);
+  else square([outer_d, s_fh]);
+module mod_slab(w)             // mid-module blank: the cross-section extruded
+  rotate([90, 0, 90])          // along +x — chamfers run along front/back only,
+    linear_extrude(w)          // both seam faces stay flat and congruent, so the
+      mod_xsec_2d();           // rim chamfer is CONTINUOUS across every seam
+module mod_end_body(left)      // end-module blank: mono outer_solid cut at the
+  intersection() {             // seam plane — rounding, chamfers, and the flat
+    outer_solid();             // seam face all come from the one solid mono ships
+    translate([left ? -1 : frame_w - mod_we, -1, -1])
+      cube([mod_we + 1, outer_d + 2, s_fh + 2]);
+  }
+
+module module_mid() {          // any interior column: sockets left, tabs right
+  color(frame_color) difference() {
+    union() { mod_slab(sc_w); sc_tabs(); }
+    translate([0, s_bw, 0]) {
+      channel(sc_w / 2, s_elo, s_ehi);
+      channel(sc_w / 2, s_hlo, s_hhi);
+    }
+    sc_pockets();
+    if (feet) for (y = MF_Y) feet_pocket_xy(mf_x, y, mf_mouth, mf_seat);
+  }
+  if (feet_crossbar)           // Y-run bars (an X-run would hit both seam faces)
+    color(frame_color) intersection() {
+      mod_slab(sc_w);
+      for (y = MF_Y) xbar_xy(mf_x, y, false, mf_seat);
+    }
+  translate([0, s_bw, 0]) {    // captive beads; place-value color of a generic
+                               // interior column (3MF slotting is per-column)
+    for (j = [0 : earth - 1]) color(bead_color(min(1, cols - 1), false)) bead(sc_w / 2, earthy(j));
+    color(bead_color(min(1, cols - 1), true)) bead(sc_w / 2, s_hy);
+  }
+}
+
+module module_end(left) {      // left: border + column 0, tabs on the right face.
+                               // right: border + column cols−1, sockets at x=0.
+                               // Built in mono frame coords (marker/feet corner
+                               // tables apply verbatim), shifted local at the end.
+  x0 = left ? 0 : frame_w - mod_we;
+  ci = left ? 0 : cols - 1;
+  translate([-x0, 0, 0]) {
+    color(frame_color) difference() {
+      union() {
+        mod_end_body(left);
+        if (left) translate([mod_we - sc_w, 0, 0]) sc_tabs();
+      }
+      translate([s_bw, s_bw, 0]) {
+        channel(colx(ci), s_elo, s_ehi);
+        channel(colx(ci), s_hlo, s_hhi);
+      }
+      if (!left) translate([x0, 0, 0]) sc_pockets();
+      if (show_markers) for (k = left ? [0, 3] : [1, 2]) marker_pocket(k);
+      if (feet) for (k = left ? [0, 3] : [1, 2]) feet_pocket_at(k);
+    }
+    if (feet_crossbar)
+      color(frame_color) intersection() {
+        mod_end_body(left);
+        for (k = left ? [0, 3] : [1, 2]) xbar_at(k);
+      }
+    translate([s_bw, s_bw, 0]) {
+      for (j = [0 : earth - 1]) color(bead_color(ci, false)) bead(colx(ci), earthy(j));
+      color(bead_color(ci, true)) bead(colx(ci), s_hy);
+    }
+  }
+}
+
+module module_feet(kind) {     // the TPU pass per module kind (renders empty
+  if (feet) {                  // when feet are off — the exporter treats an
+    if (kind == "mid")         // empty feet render as an error, same as mono)
+      for (y = MF_Y) color("#1f2937") foot_xy(mf_x, y, false, mf_mouth, mf_seat);
+    else {
+      x0 = kind == "left" ? 0 : frame_w - mod_we;
+      translate([-x0, 0, 0])
+        for (k = kind == "left" ? [0, 3] : [1, 2]) color("#1f2937") foot_at(k);
+    }
+  }
+}
+
 /* ===== assemble ===== (color() is preview/3MF only — ignored by binstl, no geom change) */
 if (only == "marker_black")      for (k = [0 : 3]) color("black") marker_plug(k, true);
 else if (only == "marker_white") for (k = [0 : 3]) color("white") marker_plug(k, false);
@@ -1044,6 +1175,19 @@ else if (only == "frame")        color(frame_color) frame();
    2× the single coupon's, or a tab is fused into its socket. */
 else if (only == "seam_coupon")      seam_coupon();
 else if (only == "seam_coupon_pair") { seam_coupon(); translate([sc_w, 0, 0]) seam_coupon(); }
+/* Module columns (Gitea #30 CP3): the six per-module passes the kit exporter
+   renders — three PLA bodies, three TPU feet sets — plus `module_pair`, the
+   inspection/harness twin of seam_coupon_pair (two seated mids; volume must be
+   exactly 2× one mid or a tab is fused into its socket). Six explicit names,
+   no role define — a `-Dmodule_role` that went missing would silently render
+   its scad default, the exact plug_group failure family these tests exist for. */
+else if (only == "module_left")       module_end(true);
+else if (only == "module_mid")        module_mid();
+else if (only == "module_right")      module_end(false);
+else if (only == "module_left_feet")  module_feet("left");
+else if (only == "module_mid_feet")   module_feet("mid");
+else if (only == "module_right_feet") module_feet("right");
+else if (only == "module_pair")      { module_mid(); translate([sc_w, 0, 0]) module_mid(); }
 else {
   if (show_frame) {
     color(frame_color) {

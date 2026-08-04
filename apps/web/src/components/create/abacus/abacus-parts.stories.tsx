@@ -81,6 +81,42 @@ export const SeamCoupon: Story = part({ pass: { only: 'seam_coupon' } })
  *  proof is that this pass's volume is exactly 2× `SeamCoupon`'s. */
 export const SeamCouponPair: Story = part({ pass: { only: 'seam_coupon_pair' } })
 
+// ── module columns (Gitea #30): the pieces the modular kit prints ────────────
+// Unlike the coupon these are the REAL deliverables: rim chamfers that run
+// continuously across seams, per-module TPU feet (every module carries its own,
+// so any module works at any position), and end modules that are the monolith's
+// own border — outer_solid cut at the seam plane, corner feet and ArUco pockets
+// included.
+
+/** The left end module: monolith border + column 0, dovetail tabs on its seam
+ *  face. Carries the two left corner feet and both left ArUco pockets (engraved
+ *  only in Phase 1 — no plug passes yet). */
+export const ModuleLeft: Story = part({ pass: { only: 'module_left' } })
+
+/** An interior column module: sockets on the left face, tabs on the right, its
+ *  own two TPU feet beside the socket. One geometry serves every interior
+ *  position — only bead colors differ per column, and that's a 3MF-slotting
+ *  concern, not a shape one. */
+export const ModuleMid: Story = part({ pass: { only: 'module_mid' } })
+
+/** The right end module: border + the ones column, sockets on its seam face,
+ *  right corner feet and ArUco pockets. */
+export const ModuleRight: Story = part({ pass: { only: 'module_right' } })
+
+/** Two mid modules seated — the modular twin of `SeamCouponPair`, and the same
+ *  harness contract: volume must be exactly 2× `ModuleMid`'s. */
+export const ModulePair: Story = part({ pass: { only: 'module_pair' } })
+
+/** The mid module's own TPU feet: the smaller module-foot class (≤6.35 mm),
+ *  placed beside the seam socket on X, crossbars rotated to run along Y. */
+export const ModuleMidFeet: Story = part({ pass: { only: 'module_mid_feet' } })
+
+/** The left end module's feet — monolith corner-class feet at positions 0/3. */
+export const ModuleLeftFeet: Story = part({ pass: { only: 'module_left_feet' } })
+
+/** The right end module's feet — corner-class at positions 1/2. */
+export const ModuleRightFeet: Story = part({ pass: { only: 'module_right_feet' } })
+
 // ── export passes: one body per filament in the 3MF ─────────────────────────
 
 /** The TPU feet (Gitea #23), printed in place: the print stands on these, with

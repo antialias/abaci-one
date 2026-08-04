@@ -6,6 +6,7 @@ import {
   type ExportPass,
   exportDefines,
   INSPECT_PARTS,
+  MODULE_PASSES,
   type Params,
 } from '../abacus-model'
 
@@ -107,7 +108,7 @@ describe('the only= vocabulary matches abacus.scad', () => {
   )
 
   it('every TS pass name is dispatched by the scad, and vice versa', () => {
-    const ts = [...Object.keys(EXPORT_ONLY), ...INSPECT_PARTS].sort()
+    const ts = [...Object.keys(EXPORT_ONLY), ...INSPECT_PARTS, ...MODULE_PASSES].sort()
     expect([...new Set(dispatched)].sort()).toEqual(ts)
   })
 
@@ -115,10 +116,13 @@ describe('the only= vocabulary matches abacus.scad', () => {
     expect(dispatched).toHaveLength(new Set(dispatched).size)
   })
 
-  it('export passes and inspection parts are disjoint', () => {
-    // They share one define, so a collision would make a filament body and an
-    // inspection slice indistinguishable at the wire.
-    const overlap = INSPECT_PARTS.filter((p) => p in EXPORT_ONLY)
-    expect(overlap).toEqual([])
+  it('the three pass vocabularies are pairwise disjoint', () => {
+    // All three ride the same `-Donly=` define, so any collision would make two
+    // different kinds of render — a filament body, a bench slice, a module kit
+    // piece — indistinguishable at the wire.
+    expect(INSPECT_PARTS.filter((p) => p in EXPORT_ONLY)).toEqual([])
+    expect(MODULE_PASSES.filter((p) => p in EXPORT_ONLY)).toEqual([])
+    const inspect = new Set<string>(INSPECT_PARTS)
+    expect(MODULE_PASSES.filter((p) => inspect.has(p))).toEqual([])
   })
 })
