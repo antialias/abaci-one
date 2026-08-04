@@ -110,6 +110,27 @@ export const defaultParams = {
   feet_span: 110, // max unsupported bottom run (mm @ scale 1) before mid feet
   feet_proud: 1.6, // printed: stand-off below the bottom face (absolute mm)
   feet_retention: 'crossbar',
+  // modular columns — the AbacusLink prototype (docs/abacus-studio/
+  // modular-columns-spec.md). 'mono' is the shipped one-piece abacus and every
+  // derivation below reduces to its pre-modular form under it.
+  //
+  // 'modular' raises TWO DIMENSION FLOORS and nothing else in this revision: the
+  // seam splits the inter-channel web down its middle (so each module keeps half
+  // of it, and half of 2.5 is thinner than a printable wall), and the end strips
+  // have to hold a latch tongue AND a foot pocket, which don't fit in the mono
+  // border's 13 mm strip. The assembled abacus is still ONE solid — only the
+  // link_coupon / link_column part passes emit modular geometry. See the scad's
+  // note on analyzeShells for why the topology change waits.
+  link_mode: 'mono',
+  link_web: 4.5, // modular floor on `web` — 2.25 mm of wall per module
+  link_border: 7.0, // modular floor on `border_w` — a 14.75 mm strip
+  link_ramp: 8, // cam ramp °, off the tongue's travel; self-locking under ~16.7
+  link_fit: 0.1, // per-face chevron groove clearance
+  link_relief: 0.25, // flat-face standoff — the chevron flanks are the only contact
+  link_bump: 1.1, // barb height = cam travel = the spread the joint can swallow
+  link_slot_w: 1.4, // spring room past the tongue; must exceed link_bump
+  link_foot_w: 6.35, // 1/4" bumper — the largest that clears the latch slot
+  link_foot_d: 1.2,
   // toggles / quality
   show_frame: true,
   show_beads: true,
@@ -251,18 +272,28 @@ export type Derived = {
   frameW: number
   outerD: number
 }
+/** The modular dimension floors, mirroring the scad's `web_eff`/`border_w_eff`.
+ *  `max` not assignment: a design that already asked for a fatter web or a wider
+ *  brim keeps it — the floor raises, never lowers. Exported because the studio
+ *  rail quotes the before/after size, and computing that a second time in the UI
+ *  is how the readout and the geometry drift apart. */
+export const isModular = (p: Params): boolean => p.link_mode === 'modular'
+export const webEff = (p: Params): number => (isModular(p) ? Math.max(p.web, p.link_web) : p.web)
+export const borderEff = (p: Params): number =>
+  isModular(p) ? Math.max(p.border_w, p.link_border) : p.border_w
+
 export const derived = (p: Params): Derived => {
   const S = p.scale_factor
   const cl = p.clearance
   const sBd = p.bead_dia * S
   const sBl = p.bead_len * S
-  const sBw = p.border_w * S
+  const sBw = borderEff(p) * S
   const sFh = p.frame_h * S
   const sCr = p.corner_r * S
   const chamf = Math.min(p.top_chamfer, sFh * 0.4)
   const mkI = Math.max(0, chamf, sCr <= 0 ? 0 : sCr - (sCr - chamf) / Math.SQRT2 - p.marker_mm / 9)
   const sShelf = Math.max(p.shelf * S, mkI + p.marker_mm - sBw)
-  const sCp = sBd + 2 * cl + p.web * S
+  const sCp = sBd + 2 * cl + webEff(p) * S
   const sEm = sShelf + cl + sBd / 2
   const sEp = sBl + p.print_gap
   const sElo = sShelf + cl + sBl / 2
@@ -331,6 +362,21 @@ export const DEFINE_KEYS: (keyof Params)[] = [
   'feet_span',
   'feet_proud',
   'feet_retention',
+  // The scad owns the modular floors and the joint's envelope; the joint's own
+  // proportions (tooth depth, tongue length, barb setback) live in
+  // abacus-link.scad as library constants and are deliberately NOT defines —
+  // they are the interface, and an interface a caller can vary per render is not
+  // one anybody can print a matching column against.
+  'link_mode',
+  'link_web',
+  'link_border',
+  'link_ramp',
+  'link_fit',
+  'link_relief',
+  'link_bump',
+  'link_slot_w',
+  'link_foot_w',
+  'link_foot_d',
   'show_frame',
   'show_beads',
   'show_markers',
@@ -357,6 +403,37 @@ export const definesFrom = (p: Params): string[] => [
   // with nothing to catch it (see textSlots).
   ...textSlots(p).map((toks, i) => `-D${TEXT_SLOT_DEFINES[i]}=${JSON.stringify(toks)}`),
 ]
+
+/** Defines that can only ever change a PART PASS, never the assembled abacus.
+ *  They still ride every render — the part passes need them, and a define the
+ *  worker never sees is one the scad silently defaults — but they are excluded
+ *  from the preview's dedup key below.
+ *
+ *  Without this, dragging the joint's cam-ramp slider re-solves the whole abacus
+ *  on every step, for a model the knob provably cannot touch. The joint's
+ *  ENVELOPE knobs (`link_mode`, `link_web`, `link_border`) are deliberately NOT
+ *  in this list — those move the assembled abacus's own width and depth. */
+export const PART_ONLY_DEFINE_KEYS: readonly (keyof Params)[] = [
+  'link_ramp',
+  'link_fit',
+  'link_relief',
+  'link_bump',
+  'link_slot_w',
+  'link_foot_w',
+  'link_foot_d',
+]
+
+/** The dedup key the preview pump compares renders on. Same rule the color and
+ *  filament knobs already follow (JS-only, never reach the scad, never re-solve):
+ *  a knob that cannot change THIS render shouldn't force it. Lives here rather
+ *  than in the hook so the "what actually moves the assembled geometry"
+ *  judgement sits next to the params it is about. */
+export const previewDedupKey = (p: Params): string => {
+  const skip = new Set<string>(PART_ONLY_DEFINE_KEYS.map((k) => `-D${k}`))
+  return definesFrom(p)
+    .filter((d) => !skip.has(d.slice(0, d.indexOf('='))))
+    .join('')
+}
 
 /** One export render request: the whole abacus (no pass) or a single `only=`
  *  part pass. The marker passes render JUST the four corner plugs, and
@@ -388,6 +465,17 @@ export const INSPECT_PARTS = [
   'bead_exposed',
   'channel',
   'frame',
+  // The AbacusLink prototype slices. Inspection parts, but print-READY ones:
+  // each emits two pieces in print pose, because what they test is the seam
+  // between them. `link_coupon` is the joint alone (fast, fails fast on the cam
+  // latch); `link_column` is two real column modules with their captive beads,
+  // which is what answers whether halving the web disturbed capture.
+  //
+  // Both force the modular dimension floors on regardless of `link_mode` — a
+  // coupon cut to the mono pitch would pass its own test and tell you nothing
+  // about the abacus you'd actually print.
+  'link_coupon',
+  'link_column',
 ] as const
 export type InspectPart = (typeof INSPECT_PARTS)[number]
 
@@ -677,9 +765,9 @@ export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAna
 
   // border offset: the bead field sits at (border_w, border_w) inside the outer rect
   const d = derived(p)
-  const s_em = p.border_w * p.scale_factor + d.sEm
+  const s_em = borderEff(p) * p.scale_factor + d.sEm
   const s_cp = d.sCp
-  const s_hy = p.border_w * p.scale_factor + d.sHy
+  const s_hy = borderEff(p) * p.scale_factor + d.sHy
   const s_ep = d.sEp
   let frameSi = -1
   let frameSpan = 2 * s_cp // a shell must beat >1 column pitch to be the frame
@@ -1224,7 +1312,7 @@ export function feetEffective(p: Params): FeetEffective {
  *  it open. Only the first branch answers to the brim. */
 export const borderStrip = (p: Params): number => {
   const d = derived(p)
-  return Math.max((p.border_w + p.shelf) * p.scale_factor, d.mkI + p.marker_mm)
+  return Math.max((borderEff(p) + p.shelf) * p.scale_factor, d.mkI + p.marker_mm)
 }
 
 export type FeetFit = {

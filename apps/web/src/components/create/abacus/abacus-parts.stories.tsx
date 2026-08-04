@@ -96,3 +96,37 @@ export const TextPlugs: Story = part({
 /** No `only=` at all: the full assembly the studio previews, for scale. Low $fn —
  *  this is the one render here that's genuinely expensive. */
 export const WholeAbacus: Story = part({ fn: 24 })
+
+// ── the AbacusLink prototype (docs/abacus-studio/modular-columns-spec.md) ────
+// Two slices that are inspection parts and PRINT-READY plates at once: each
+// emits two pieces in print pose, because in both cases the thing under test is
+// the seam between them. Their Download STL is the same file the studio's
+// "Modular columns (prototype)" panel hands you.
+//
+// These are also the FIRST time this geometry goes through an evaluator at all —
+// there is no headless OpenSCAD in this repo, so until one of these stories
+// renders, the joint has never been solved by a machine. Look before printing:
+// the chevron teeth should mesh, the latch tongue should stand clear of its
+// slot, and the release bore should miss the shoulder it is meant to reach past.
+//
+// Both force the modular dimension floors on regardless of `link_mode`, so what
+// you see is cut to the pitch a modular abacus would actually have.
+
+/** The joint alone, on two plain blocks of one column pitch. Fails fast — a
+ *  quarter of the column pair's print time — on the only question that has to be
+ *  answered first: does the cam actually cam, hold, and release? */
+export const LinkCoupon: Story = part({ pass: { only: 'link_coupon' } })
+
+/** …and at the far end of the sweep. Shallower cams harder and holds more,
+ *  steeper swallows more of whatever the printer got wrong; §9 of the spec puts
+ *  8°/12°/16° on one plate. Every rung is a legal geometry, so the sweep is a
+ *  define change and nothing else. */
+export const LinkCouponSteepRamp: Story = part({
+  pass: { only: 'link_coupon' },
+  params: { link_ramp: 16 } satisfies Partial<Params>,
+})
+
+/** Two REAL column modules, each with its own captive beads. This is the one
+ *  that answers whether halving the web disturbed capture — which you cannot see
+ *  without the beads, and cannot see on the coupon at all. */
+export const LinkColumnPair: Story = part({ pass: { only: 'link_column' }, fn: 32 })

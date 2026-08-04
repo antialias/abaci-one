@@ -752,6 +752,10 @@ export function AbacusStudioViewer() {
         const textPlugs = textStls.map((stl, g) => ({ group: g, stl: stl as ArrayBuffer }))
         return { stl, markerBlack, markerWhite, feet, textPlugs, params: p }
       },
+      // Same params snapshot rule as the other two — the slice has to be cut
+      // from the design that is on screen right now, not from whatever the rail
+      // happened to hold when its button was clicked.
+      exportPass: (pass) => scadRef.current.exportStl(paramsRef.current, pass),
     })
     return () => registerExporter(null)
   }, [registerExporter])

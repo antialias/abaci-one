@@ -22,13 +22,29 @@
 // OpenSCAD (that was the dead feature's fatal flaw); this is client WASM only.
 
 import { useEffect, useRef } from 'react'
-import { anyTokens, definesFrom, exportDefines, type Params, type RenderPass } from './abacus-model'
+import {
+  anyTokens,
+  definesFrom,
+  exportDefines,
+  type Params,
+  previewDedupKey,
+  type RenderPass,
+} from './abacus-model'
 
 const WORKER_URL = '/openscad/scad-worker.js'
-const SCAD_URL = '/scad/abacus.scad'
+// The entry, then its library. `abacus.scad` does `include <abacus-link.scad>`
+// for the modular-column joint, and `include` resolves against the entry's
+// directory — so both have to be in MEMFS, at these exact paths, or a modular
+// render dies with a file-not-found from inside the WASM engine. The public URLs
+// double as the absolute MEMFS paths (same trick the fonts use).
+const SCAD_URLS = ['/scad/abacus.scad', '/scad/abacus-link.scad'] as const
+const SCAD_ENTRY = '/abacus.scad'
 const FONT_URLS = ['/fonts/DejaVuSans-Bold.ttf', '/fonts/NotoEmoji-Regular.ttf'] as const
 
-const mainKeyOf = (p: Params): string => `${definesFrom(p).join('')}${p.fn}`
+// Part-pass-only defines are excluded (see previewDedupKey) — they ride every
+// render but cannot change THIS one, so keying on them would re-solve the whole
+// abacus every time somebody nudged a joint knob.
+const mainKeyOf = (p: Params): string => `${previewDedupKey(p)}${p.fn}`
 
 export type MainResult = { stl: ArrayBuffer; ms: number; id: number }
 export type StatusUpdate = { text: string; error?: boolean }
@@ -65,6 +81,30 @@ type Pump = {
   reqId: number // positive, pump-owned; export one-shots use negative ids
   pending: { id: number; key: string } | null
 }
+type ScadState = {
+  /** MEMFS path → source, for every .scad the entry needs (entry + libraries) */
+  scads: Record<string, string>
+  fonts: Record<string, Uint8Array>
+  loaded: boolean
+  worker: Worker | null
+  plugWorker: Worker | null
+  main: Pump
+  plug: Pump
+  nextExportId: number
+  pumpMain?: () => void
+  pumpPlug?: () => void
+}
+
+/** The MEMFS image every render is handed: every .scad source plus the fonts.
+ *  Module-scope and shared by all four post sites (two pumps, two export paths)
+ *  because it used to be inlined twice — and the day a second .scad appeared,
+ *  the copy inside `exportStl` would have silently kept shipping only the entry,
+ *  so previews would render a modular design and exports would fail on it. */
+const renderFiles = (st: ScadState): Record<string, string | Uint8Array> => ({
+  ...st.scads,
+  ...st.fonts,
+})
+
 const newPump = (): Pump => ({
   latest: null,
   latestKey: '',
@@ -79,19 +119,8 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
   const cbRef = useRef(args)
   cbRef.current = args
 
-  const stateRef = useRef<{
-    scad: string
-    fonts: Record<string, Uint8Array>
-    loaded: boolean
-    worker: Worker | null
-    plugWorker: Worker | null
-    main: Pump
-    plug: Pump
-    nextExportId: number
-    pumpMain?: () => void
-    pumpPlug?: () => void
-  }>({
-    scad: '',
+  const stateRef = useRef<ScadState>({
+    scads: {},
     fonts: {},
     loaded: false,
     worker: null,
@@ -107,7 +136,6 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
   useEffect(() => {
     const st = stateRef.current
     let disposed = false
-    const renderFiles = () => ({ '/abacus.scad': st.scad, ...st.fonts })
 
     // ---- main geometry pump --------------------------------------------------
     function pumpMain() {
@@ -119,8 +147,8 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
       cbRef.current.onStatus?.({ text: `rendering #${id}…` })
       st.worker?.postMessage({
         id,
-        entry: '/abacus.scad',
-        files: renderFiles(),
+        entry: SCAD_ENTRY,
+        files: renderFiles(st),
         defines: definesFrom(m.latest),
         fn: m.latest.fn,
       })
@@ -135,8 +163,8 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
       pl.pending = { id, key: pl.latestKey }
       st.plugWorker?.postMessage({
         id,
-        entry: '/abacus.scad',
-        files: renderFiles(),
+        entry: SCAD_ENTRY,
+        files: renderFiles(st),
         // No -Dplug_group here on purpose: the preview wants ONE mesh carrying
         // every token (it tints per-triangle in JS), which is exactly the scad's
         // plug_group = −1 default. Only the export splits the soup per color
@@ -184,17 +212,21 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
       pumpPlug()
     }
 
-    // ---- one-time load of the scad source + fonts ----------------------------
+    // ---- one-time load of the scad sources + fonts ---------------------------
     ;(async () => {
       cbRef.current.onStatus?.({ text: 'loading abacus.scad + fonts…' })
       try {
-        const [scad, ...fontBufs] = await Promise.all([
-          fetch(SCAD_URL).then((r) => r.text()),
-          ...FONT_URLS.map((u) => fetch(u).then((r) => r.arrayBuffer())),
+        const [scadTexts, fontBufs] = await Promise.all([
+          Promise.all(SCAD_URLS.map((u) => fetch(u).then((r) => r.text()))),
+          Promise.all(FONT_URLS.map((u) => fetch(u).then((r) => r.arrayBuffer()))),
         ])
         if (disposed) return
-        st.scad = scad
-        // the public URLs (/fonts/…) double as the absolute MEMFS paths
+        // the public URLs (/scad/…, /fonts/…) double as the absolute MEMFS paths
+        // — except the .scad basenames, which have to sit at the FS ROOT so the
+        // entry's `include <abacus-link.scad>` resolves beside it.
+        SCAD_URLS.forEach((u, i) => {
+          st.scads[`/${u.split('/').pop()}`] = scadTexts[i]
+        })
         FONT_URLS.forEach((u, i) => {
           st.fonts[u] = new Uint8Array(fontBufs[i])
         })
@@ -265,8 +297,8 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
       // never settles — callers that outlive the viewer must race a timeout.
       worker.postMessage({
         id,
-        entry: '/abacus.scad',
-        files: { '/abacus.scad': st.scad, ...st.fonts },
+        entry: SCAD_ENTRY,
+        files: renderFiles(st),
         defines: exportDefines(params, pass),
         fn,
       })
