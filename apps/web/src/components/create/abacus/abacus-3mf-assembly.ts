@@ -105,6 +105,29 @@ export interface Assemble3mfOpts {
    *  between WipeTower and abacus" (exit 155). That is what prod hit on 2026-07-29.
    *  See SUPPORT_SKIRT. `support` implies this. */
   readonly supportsAtSlice?: boolean
+  /** The bodies ALREADY sit where they print on THIS bed — the packed module-kit
+   *  plate (Gitea #32), whose x/y came out of a packer that ran against this bed's
+   *  keep-outs and a purge-tower rect reserved BEFORE packing.
+   *
+   *  Two things change, and both are the same point: on a packed plate the layout
+   *  is a decision, not a pose.
+   *   1. No bed-centering. Recentering preserves the arrangement but slides it off
+   *      the coordinates the packer cleared, which can walk a module into the
+   *      filament-cutter zone it was packed around.
+   *   2. The tower pin is taken, not derived. `placeWipeTower` reasons about the
+   *      model's bounding BOX, and a plate's box swallows the hole reserved inside
+   *      it — so re-deriving would either waste the reservation or fail outright on
+   *      a full plate. The reserve is what makes the tower fit; honour it.
+   *
+   *  Also relaxes the >= 2 bodies guard: a plate is a multi-object layout even when
+   *  every object rides one filament, and the `meshesToThreeMf` path would re-origin
+   *  it into the bed corner. Z is NOT affected: `tz` still drops the plate to the
+   *  bed exactly as it drops a mono abacus, which is what keeps the support-transition
+   *  modifier on the frame's z=0 plane rather than under the feet. */
+  readonly placedOnBed?: {
+    /** Orca's `wipe_tower_x/y`, from the reservation the packer left room for. */
+    readonly towerPinMm: { readonly x: number; readonly y: number }
+  }
 }
 
 /** The printed-feet frame starts at source Z=0, above feet that dip below zero.
@@ -122,7 +145,11 @@ export const BAMBU_256_BED: BedSize = {
   exclude: [{ xMm: 0, yMm: 0, wMm: 18, dMm: 28 }],
 }
 
-const TOWER_GAP = 6
+/** Clear space kept between the tower and the model. Exported because the packed
+ *  kit plate (abacus-kit-plate.ts) reserves its tower rect BEFORE packing rather
+ *  than placing it beside a finished model — same clearance law, applied at the
+ *  other end of the pipeline, so the number must not be restated there. */
+export const TOWER_GAP = 6
 
 // Extra reserve once supports are on: the first layer stops being the model's own
 // footprint. Support material grows outward from the overhangs it holds, so extrusion
@@ -147,7 +174,9 @@ const TOWER_GAP = 6
 // disprove it: the log says `before arrange, need_arrange=0` — arrange never runs on a
 // 3MF project — and the model printed at its declared min corner (declared 90.25,77.75
 // vs printed 90.46,75.96), in its declared orientation. Distance is the only lever.
-const SUPPORT_SKIRT = 8
+//
+// Exported alongside TOWER_GAP for the packed kit plate's pre-pack reserve.
+export const SUPPORT_SKIRT = 8
 // How far a cornered tower keeps off the bed edge. The reserve above covers the
 // tower's own extrusion, but a tower pushed flush into the corner still trips the
 // multi-extruder printable-area check (exit 154, "gcode in unprintable area") —
@@ -433,7 +462,7 @@ export function assembleAbacus3mf(
   if (bodies.length === 0) {
     throw new Error('assembleAbacus3mf needs at least one filament body')
   }
-  if (bodies.length < 2 && !opts.support) {
+  if (bodies.length < 2 && !opts.support && !opts.placedOnBed) {
     throw new Error(
       'assembleAbacus3mf needs >= 2 filament bodies (single color rides meshesToThreeMf)'
     )
@@ -456,11 +485,14 @@ export function assembleAbacus3mf(
     }
   }
 
-  // Center the footprint on the bed and drop it to z=0.
+  // Center the footprint on the bed and drop it to z=0 — unless the bodies were
+  // PLACED on this bed already (see Assemble3mfOpts.placedOnBed), in which case
+  // their x/y are the layout and only the z-drop applies.
   const bedCx = bed.wMm / 2
   const bedCy = bed.dMm / 2
-  const tx = bedCx - (minX + maxX) / 2
-  const ty = bedCy - (minY + maxY) / 2
+  const placed = opts.placedOnBed
+  const tx = placed ? 0 : bedCx - (minX + maxX) / 2
+  const ty = placed ? 0 : bedCy - (minY + maxY) / 2
   const tz = -minZ
 
   const objBox: Box = {
@@ -469,7 +501,9 @@ export function assembleAbacus3mf(
     x1: bedCx + (maxX - minX) / 2,
     y1: bedCy + (maxY - minY) / 2,
   }
-  const tower = placeWipeTower(bed, objBox, opts)
+  const tower = placed
+    ? { xMm: placed.towerPinMm.x, yMm: placed.towerPinMm.y }
+    : placeWipeTower(bed, objBox, opts)
 
   // ---- 3D/3dmodel.model ----
   const childIds = bodies.map((_, i) => i + 2)

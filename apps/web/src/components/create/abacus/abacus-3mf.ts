@@ -305,6 +305,11 @@ export function emitThreeMfBodies(args: {
   supportsAtSlice?: boolean
   bed: BedSize
   wipeTower: WipeTowerProfileGeometry
+  /** The soups are already laid out on this bed (the packed module-kit plate,
+   *  Gitea #32) — see `Assemble3mfOpts.placedOnBed`. Forces the assembly path:
+   *  a plate is a placed layout even when it lands on one filament, and the
+   *  single-body path would re-origin it into the bed corner. */
+  placedOnBed?: { towerPinMm: { x: number; y: number } }
 }): AbacusThreeMf {
   const {
     mesh,
@@ -317,6 +322,7 @@ export function emitThreeMfBodies(args: {
     supportsAtSlice,
     bed,
     wipeTower,
+    placedOnBed,
   } = args
 
   // Count triangles per slot, then bucket the position soup (9 floats/tri).
@@ -386,11 +392,12 @@ export function emitThreeMfBodies(args: {
   // tower just 6 mm from a supported model before exit 155 (2026-07-29); a later A/B
   // slices that same 6 mm clean, so read the extra room as margin, not a proven cure.
   // Single filament needs neither: no second extruder, no tower, nothing to collide with.
-  if (assemblyBodies.length >= 2 || feetPrinted) {
+  if (assemblyBodies.length >= 2 || feetPrinted || placedOnBed) {
     const assembled = assembleAbacus3mf(assemblyBodies, bed, {
       support: feetPrinted,
       supportsAtSlice,
       wipeTower,
+      placedOnBed,
     })
     return {
       bytes: assembled.bytes,
