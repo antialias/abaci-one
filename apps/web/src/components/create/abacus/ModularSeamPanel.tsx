@@ -17,6 +17,12 @@
 // Verdicts come from `seamFit` — the TS mirror of every scad assert the seam
 // geometry can trip — so a bad design is reported HERE with the knob that
 // fixes it, instead of aborting inside a render the user already paid for.
+//
+// NOT FLAG-GATED. The panel is always mounted and the checkbox inside it IS the
+// configuration option: mono-vs-modular is a per-design choice the user makes,
+// not a rollout stage. It spent a short while behind `abacus.modular_columns`,
+// which hid the feature from everyone including the person who asked for it;
+// that flag is gone (migration 0144 drops the row and its overrides).
 
 import { useState } from 'react'
 import { Disclosure } from '@/components/studio/Disclosure'
@@ -25,12 +31,6 @@ import { useAbacusStudio } from './AbacusStudioContext'
 import { derived, isModular, type Params, seamFit } from './abacus-model'
 import { buildModuleKit, moduleKitPlan } from './abacus-module-kit'
 import { downloadBlob } from './download-blob'
-
-/** Default-off, admin-managed at /admin/feature-flags. The toggle underneath
- *  it moves real geometry (the seam widens every column pitch by one web), so
- *  the feature stays invisible until somebody asks for it — an unset flag
- *  reads as disabled. */
-export const MODULAR_COLUMNS_FLAG = 'abacus.modular_columns'
 
 const mm = (v: number) => v.toFixed(1)
 

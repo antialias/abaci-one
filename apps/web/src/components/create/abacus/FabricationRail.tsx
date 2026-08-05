@@ -16,14 +16,13 @@
 
 import { type CSSProperties, useMemo, useState } from 'react'
 import { StudioSelect } from '@/components/studio/StudioSelect'
-import { useFeatureFlag } from '@/hooks/useFeatureFlag'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { buildAbacusThreeMf } from './abacus-3mf'
 import { isModular } from './abacus-model'
 import { PRINTER_PROFILES } from './abacus-solver'
 import { downloadBlob } from './download-blob'
 import { FilamentPlanPanel } from './FilamentPlanPanel'
-import { MODULAR_COLUMNS_FLAG, ModularSeamPanel } from './ModularSeamPanel'
+import { ModularSeamPanel } from './ModularSeamPanel'
 import { PrintPanel } from './PrintPanel'
 
 const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
@@ -80,7 +79,6 @@ export function FabricationRail() {
   // it switches to the kit (Gitea #32), packing every module onto one bed and
   // submitting that plate, and refuses to the kit-zip download only when the
   // modules genuinely don't fit one plate.
-  const modularFlag = useFeatureFlag(MODULAR_COLUMNS_FLAG)
   const modular = isModular(params)
   const canExportMono = canExport && !modular
 
@@ -319,10 +317,11 @@ export function FabricationRail() {
         </div>
       )}
 
-      {/* modular columns (Gitea #30), flag-gated: seam toggle, fit verdicts,
-          coupon + module-kit downloads. Sits below the whole-abacus exports it
-          replaces in modular mode. */}
-      {modularFlag.enabled ? <ModularSeamPanel /> : null}
+      {/* modular columns (Gitea #30): seam toggle, fit verdicts, coupon +
+          module-kit downloads. Sits below the whole-abacus exports it replaces
+          in modular mode. Always mounted — the toggle inside it is the config
+          option, and the disclosure keeps it collapsed until asked for. */}
+      <ModularSeamPanel />
 
       {/* which paired print service this design prints to. Only shown once the
           user has more than one — with a single connection there's nothing to
