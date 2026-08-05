@@ -26,6 +26,7 @@ import {
   moduleBasis,
   packKitPlate,
   placeModuleBodies,
+  planKitPlate,
 } from '../abacus-kit-plate'
 import { defaultParams, derived, type FilamentMap, type Params } from '../abacus-model'
 import { type ModuleExportParts, moduleSoups } from '../abacus-module-kit'
@@ -759,5 +760,39 @@ describe('buildKitPlateThreeMf (the whole kit as one plate)', () => {
 
   it('refuses an overfull bed rather than shipping a partial kit', () => {
     expect(() => plateOf({ bed: { wMm: 150, dMm: 150 } })).toThrow(KitPlateFitError)
+  })
+})
+
+describe('planKitPlate (what the bed preview draws)', () => {
+  const pp = p({ color_scheme: 'heaven-earth' })
+  const args = { parts: kitParts(pp), filamentMap: fmHeavenEarth }
+
+  it('is the same arrangement the submit ships', () => {
+    // The whole reason the preview runs the real planner. If these two ever
+    // came apart, the studio would draw one plate and print another — and the
+    // divergence would be invisible until someone compared a photo of the bed
+    // against the screen.
+    const previewed = planKitPlate(args)
+    const shipped = buildKitPlateThreeMf(args)
+    expect(previewed.layout.placements).toEqual(shipped.placements)
+    expect(previewed.layout.tower).toEqual(shipped.tower)
+    expect(previewed.layout.bed).toEqual(shipped.bed)
+  })
+
+  it('reports the filament count that sized the tower', () => {
+    expect(planKitPlate(args).filaments).toBe(3)
+    expect(planKitPlate({ ...args, extraFilaments: 1 }).filaments).toBe(4)
+  })
+
+  it('refuses exactly where the submit refuses', () => {
+    // A preview that quietly drew a partial kit while the submit refused would
+    // be worse than no preview: it would promise a print that can't happen.
+    expect(() => planKitPlate({ ...args, bed: { wMm: 150, dMm: 150 } })).toThrow(KitPlateFitError)
+  })
+
+  it('hands back the gated soups, so the emit pays for one gate pass not two', () => {
+    const plan = planKitPlate(args)
+    expect(plan.instances).toHaveLength(13)
+    expect(plan.soupsFor(plan.instances[0])).toBe(plan.soupsFor(plan.instances[0]))
   })
 })

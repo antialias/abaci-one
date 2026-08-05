@@ -284,6 +284,11 @@ export const abacusPrintKeys = {
       connectionId ?? 'sole',
     ] as const,
   settings: () => [...abacusPrintKeys.all, 'settings'] as const,
+  // The packed kit plate behind the bed preview (Gitea #32). Local work, not a
+  // fetch — it lives here because it caches like one: the key IS the layout's
+  // inputs (design + bed + tower + supports), so a hit is exact by construction
+  // and an unchanged design never pays for the module export again.
+  kitPlate: (signature: string) => [...abacusPrintKeys.all, 'kit-plate', signature] as const,
 }
 
 // Attachment query keys (for practice photos and worksheet parsing)

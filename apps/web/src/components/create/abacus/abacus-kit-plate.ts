@@ -690,25 +690,30 @@ export interface KitPlate extends KitPlateLayout {
   readonly wipeTower: AbacusThreeMf['wipeTower']
 }
 
-/**
- * Build the whole kit as ONE plate: expand the plan into instances, gate and
- * classify each module exactly as its standalone 3MF would, pack the footprints
- * around a reserved purge tower, apply each placement rigidly to every body of
- * its module, and emit the lot through the shared bucket/emit tail.
- *
- * Classification happens BEFORE placement, and that ordering is load-bearing:
- * `analyzeModuleShells` reads bead centers at the module's known local x and
- * hard-errors on anything else, so a rotated or translated module would fail its
- * own gate. Placement is the last thing that touches geometry.
- *
- * @throws {KitPlateFitError} when the kit doesn't fit one plate — the caller
- * falls back to the kit zip.
- */
-export function buildKitPlateThreeMf(args: {
+/** Everything decided about a kit plate BEFORE any triangle moves — the shared
+ *  head of {@link planKitPlate} and {@link buildKitPlateThreeMf}. */
+export interface KitPlatePlan {
+  /** Where every module and the tower land. What a bed preview draws. */
+  readonly layout: KitPlateLayout
+  readonly instances: readonly KitPlateInstance[]
+  readonly bases: Record<ModuleKind, ModuleBasis>
+  /** This kit's gated soups, memoized per (kind, column). */
+  readonly soupsFor: (inst: KitPlateInstance) => ModuleSoups
+  /** Some module prints its own feet, so this plate slices with supports on
+   *  whatever the ticket style says — it widens the gaps and the tower ring. */
+  readonly feetPrinted: boolean
+  /** Filaments this plate resolves to, `extraFilaments` included. Picks the
+   *  tower's envelope row. */
+  readonly filaments: number
+}
+
+/** The inputs that decide a plate's ARRANGEMENT. `buildKitPlateThreeMf` takes
+ *  these plus the emit-only ones (`slotLabels`), so a preview and the submit it
+ *  previews are the same call with the same answer. */
+export interface KitPlatePlanArgs {
   /** The snapshot-once module renders — the same bundle the kit zip builds from. */
   parts: ModuleExportParts
   filamentMap: FilamentMap
-  slotLabels?: readonly string[]
   supportsAtSlice?: boolean
   bed?: BedSize
   wipeTower?: WipeTowerProfileGeometry
@@ -716,11 +721,27 @@ export function buildKitPlateThreeMf(args: {
   /** Filaments the ticket will add beyond the plate's own bodies — the
    *  support-interface spool. A download adds none. */
   extraFilaments?: number
-}): KitPlate {
+}
+
+/**
+ * Gate every module, measure its basis, and pack the plate — everything up to
+ * but not including the emit.
+ *
+ * Split out of {@link buildKitPlateThreeMf} so the bed preview and the submit
+ * can't disagree about where things land. The preview is only honest if it is
+ * the SAME arrangement that ships, including the refusals: a preview computed
+ * from a cheaper model of the geometry would eventually draw a plate that fits
+ * while the submit refuses, or worse, draw one that fits while a different one
+ * prints. So this returns the real layout off the real renders, and the caller
+ * that wants bytes pays only the emit on top.
+ *
+ * @throws {KitPlateFitError} when the kit doesn't fit one plate — which a
+ * preview renders as the refusal it is, rather than hiding until submit.
+ */
+export function planKitPlate(args: KitPlatePlanArgs): KitPlatePlan {
   const {
     parts,
     filamentMap,
-    slotLabels,
     supportsAtSlice,
     bed = BAMBU_256_BED,
     wipeTower = DEFAULT_WIPE_TOWER_PROFILE,
@@ -791,6 +812,7 @@ export function buildKitPlateThreeMf(args: {
     for (const soup of soups.partSoups) plateSlots.add(soup.slot)
   }
 
+  const filaments = plateSlots.size + extraFilaments
   const layout = packKitPlate({
     instances,
     bases,
@@ -798,8 +820,36 @@ export function buildKitPlateThreeMf(args: {
     gapMm,
     wipeTower,
     supportsAtSlice: supportsAtSlice || feetPrinted,
-    filaments: plateSlots.size + extraFilaments,
+    filaments,
   })
+  return { layout, instances, bases, soupsFor, feetPrinted, filaments }
+}
+
+/**
+ * Build the whole kit as ONE plate: plan it ({@link planKitPlate}), then apply
+ * each placement rigidly to every body of its module and emit the lot through
+ * the shared bucket/emit tail.
+ *
+ * Classification happens BEFORE placement, and that ordering is load-bearing:
+ * `analyzeModuleShells` reads bead centers at the module's known local x and
+ * hard-errors on anything else, so a rotated or translated module would fail its
+ * own gate. Placement is the last thing that touches geometry.
+ *
+ * @throws {KitPlateFitError} when the kit doesn't fit one plate — the caller
+ * falls back to the kit zip.
+ */
+export function buildKitPlateThreeMf(
+  args: KitPlatePlanArgs & { slotLabels?: readonly string[] }
+): KitPlate {
+  const {
+    filamentMap,
+    slotLabels,
+    supportsAtSlice,
+    bed = BAMBU_256_BED,
+    wipeTower = DEFAULT_WIPE_TOWER_PROFILE,
+    extraFilaments = 0,
+  } = args
+  const { layout, instances, bases, soupsFor, feetPrinted } = planKitPlate(args)
   const placementOf = new Map(layout.placements.map((pl) => [pl.id, pl]))
 
   // Each instance contributes its classified body soup (placed, its shells
