@@ -48,7 +48,13 @@ import {
   type FabricationTarget,
 } from './abacus-fabrication'
 import { selectSourceIdentity } from './abacus-identity-source'
-import { type DisplayConfigInput, type Params, paramsFromDisplayConfig } from './abacus-model'
+import {
+  type DisplayConfigInput,
+  type Params,
+  paramsFromDisplayConfig,
+  type RenderPass,
+} from './abacus-model'
+import type { ModuleExportParts } from './abacus-module-kit'
 import { materialize, planToFilamentMap } from './abacus-plan'
 import { DEFAULT_PROFILE_ID, profileById, solve } from './abacus-solver'
 
@@ -59,10 +65,15 @@ const PRINT_CONNECTION_STORAGE_KEY = 'abacus-studio-print-connection'
 // The viewer's worker-bound export surface, registered into the store on mount.
 // `exportStl` renders just the whole-abacus STL (the plain-STL download);
 // `exportParts` adds the ArUco marker part passes for the 3MF build, all from
-// one params snapshot.
+// one params snapshot. `exportModuleParts` is the modular kit's bundle (Gitea
+// #30) under the same snapshot-once contract; `exportPass` is the generic
+// single-pass escape hatch (seam coupon download, bench parts) — it reads the
+// live params at call time, so multi-render bundles must NOT be built from it.
 export type AbacusExporter = {
   exportStl: () => Promise<ArrayBuffer>
   exportParts: () => Promise<AbacusExportParts>
+  exportModuleParts: () => Promise<ModuleExportParts>
+  exportPass: (pass: RenderPass) => Promise<ArrayBuffer>
 }
 
 // The identity slice of the current params, or null when a custom scheme/palette
@@ -345,6 +356,20 @@ function useStudioController(playerId: string | null, designId: string | null) {
         : Promise.reject(new Error('3D exporter not ready')),
     []
   )
+  const requestExportModuleParts = useCallback(
+    (): Promise<ModuleExportParts> =>
+      exporterRef.current
+        ? exporterRef.current.exportModuleParts()
+        : Promise.reject(new Error('3D exporter not ready')),
+    []
+  )
+  const requestExportPass = useCallback(
+    (pass: RenderPass): Promise<ArrayBuffer> =>
+      exporterRef.current
+        ? exporterRef.current.exportPass(pass)
+        : Promise.reject(new Error('3D exporter not ready')),
+    []
+  )
 
   // The 3D model previews the REAL print (filament colors) by default; hovering a
   // tile's true-color fleck in the reconcile strip momentarily flips the whole
@@ -441,6 +466,8 @@ function useStudioController(playerId: string | null, designId: string | null) {
     registerExporter,
     requestExportStl,
     requestExportParts,
+    requestExportModuleParts,
+    requestExportPass,
     registerRevealIntrinsic,
     setRevealIntrinsic,
     registerHighlightRole,

@@ -679,11 +679,14 @@ export const MARKER_BITS = [
 export type ShellInfo = { isFrame: boolean; i: number; isHeaven: boolean }
 export type ShellAnalysis = { triShell: Int32Array; shellInfo: ShellInfo[] }
 
-// union-find the STL's triangles into connected shells (frame + free beads), then
-// map each bead shell's centroid back to its (column, heaven/earth) cell with the
-// same layout the .scad uses. Frame = the one shell far wider than a column pitch.
-// `positions` is the flat triangle-soup position array (9 floats per triangle).
-export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAnalysis {
+type ShellBox = { xmin: number; xmax: number; ymin: number; ymax: number }
+
+// The weld-and-box core both shell classifiers share: union-find vertices onto a
+// 0.01mm grid into connected shells, tag every triangle with its shell index,
+// and give each shell its XY bounding box. Classification stays with each
+// caller — the whole-abacus heuristic (analyzeShells) and the per-module export
+// gate (analyzeModuleShells) read the same topology very differently.
+function weldShellBoxes(positions: ArrayLike<number>): { ts: Int32Array; boxes: ShellBox[] } {
   const pos = positions
   const nTri = (pos.length / 9) | 0
   const Q = 100 // weld verts to a 0.01mm grid
@@ -723,9 +726,8 @@ export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAna
     uni(tvi[t * 3 + 1], tvi[t * 3 + 2])
   }
 
-  type Box = { xmin: number; xmax: number; ymin: number; ymax: number }
   const rootIdx = new Map<number, number>()
-  const boxes: Box[] = []
+  const boxes: ShellBox[] = []
   const ts = new Int32Array(nTri)
   for (let t = 0; t < nTri; t++) {
     const r = find(tvi[t * 3])
@@ -747,6 +749,15 @@ export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAna
       if (y > b.ymax) b.ymax = y
     }
   }
+  return { ts, boxes }
+}
+
+// union-find the STL's triangles into connected shells (frame + free beads), then
+// map each bead shell's centroid back to its (column, heaven/earth) cell with the
+// same layout the .scad uses. Frame = the one shell far wider than a column pitch.
+// `positions` is the flat triangle-soup position array (9 floats per triangle).
+export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAnalysis {
+  const { ts, boxes } = weldShellBoxes(positions)
 
   // border offset: the bead field sits at (border_w, border_w) inside the outer rect
   const d = derived(p)
@@ -771,6 +782,79 @@ export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAna
     const i = Math.max(0, Math.min(p.cols - 1, Math.round((cx - s_em) / s_cp)))
     return { isFrame: false, i, isHeaven: Math.abs(cy - s_hy) < s_ep * 0.5 }
   })
+  return { triShell: ts, shellInfo }
+}
+
+/** Shell classifier for a PER-MODULE render (Gitea #30) — the export-time gate
+ *  every module 3MF in the modular kit is built through.
+ *
+ *  Unlike {@link analyzeShells} (a render-time classifier that must always
+ *  return something drawable), this path knows the module's exact expected
+ *  topology — one frame body spanning the full outer depth plus exactly one
+ *  column of free beads (1 heaven + `earth`) — and HARD-ERRORS on anything
+ *  else. A mis-welded seam face, a stranded solid, or a missing bead in a kit
+ *  export must stop the download, not silently ship a broken module.
+ *
+ *  Module renders are origin-local (every module_* pass renders at x=0), so
+ *  the bead column sits at a KNOWN local x: the left end keeps the mono
+ *  column-0 center (it is the mono frame's left slice, unshifted), while mid
+ *  and right modules both put their column at scW/2 — the same translate
+ *  identity the assembled CP5 preview pins (global column i at
+ *  border + sEm + i·scW). `column` stamps the returned bead shells with the
+ *  GLOBAL column this module instance will occupy, so {@link shellSlotIndex}
+ *  inks them with that column's bead roles unchanged. */
+export function analyzeModuleShells(
+  positions: ArrayLike<number>,
+  p: Params,
+  kind: 'left' | 'mid' | 'right',
+  column: number
+): ShellAnalysis {
+  const { ts, boxes } = weldShellBoxes(positions)
+  const d = derived(p)
+  const border = p.border_w * p.scale_factor
+  const expectBeads = p.earth + 1
+  if (boxes.length !== expectBeads + 1) {
+    throw new Error(
+      `the module_${kind} render has ${boxes.length} shells — expected ${
+        expectBeads + 1
+      } (1 frame + ${expectBeads} beads)`
+    )
+  }
+  // The frame is the one shell spanning the full outer depth; a bead spans
+  // about one bead length. Verified, not assumed — a truncated or split frame
+  // body must not quietly become "the widest bead".
+  let frameSi = 0
+  for (let si = 1; si < boxes.length; si++) {
+    if (boxes[si].ymax - boxes[si].ymin > boxes[frameSi].ymax - boxes[frameSi].ymin) frameSi = si
+  }
+  const frameSpan = boxes[frameSi].ymax - boxes[frameSi].ymin
+  if (Math.abs(frameSpan - d.outerD) > 0.5) {
+    throw new Error(
+      `the module_${kind} frame shell spans ${frameSpan.toFixed(
+        2
+      )}mm of depth — expected the full ${d.outerD.toFixed(2)}mm`
+    )
+  }
+  const cx0 = kind === 'left' ? border + d.sEm : d.scW / 2
+  const sHy = border + d.sHy
+  let heavens = 0
+  const shellInfo = boxes.map((b, si): ShellInfo => {
+    if (si === frameSi) return { isFrame: true, i: 0, isHeaven: false }
+    const cx = (b.xmin + b.xmax) / 2
+    if (Math.abs(cx - cx0) > d.sCp / 4) {
+      throw new Error(
+        `a module_${kind} bead shell centers at x=${cx.toFixed(
+          2
+        )}mm — expected the module's one column at x=${cx0.toFixed(2)}mm`
+      )
+    }
+    const isHeaven = Math.abs((b.ymin + b.ymax) / 2 - sHy) < d.sEp * 0.5
+    if (isHeaven) heavens++
+    return { isFrame: false, i: column, isHeaven }
+  })
+  if (heavens !== 1) {
+    throw new Error(`the module_${kind} render has ${heavens} heaven beads — expected exactly 1`)
+  }
   return { triShell: ts, shellInfo }
 }
 

@@ -46,7 +46,7 @@
  * filament, the same class of silent bug the marker pass fixed.
  */
 import { type BedSize, type ColorBody, meshesToThreeMf } from '@eink/frames-engine/print-bundle'
-import { parseStl, writeBinaryStl } from '@eink/frames-engine/stl'
+import { parseStl, type StlMesh, writeBinaryStl } from '@eink/frames-engine/stl'
 import {
   type AssemblyBody,
   assembleAbacus3mf,
@@ -268,6 +268,56 @@ export function buildAbacusThreeMf(args: {
     assertGroupsDiffer(inked)
     for (const g of inked) partSoups.push({ slot: g.slot, positions: g.positions })
   }
+
+  return emitThreeMfBodies({
+    mesh,
+    triShell,
+    slotOfShell,
+    partSoups,
+    filamentMap,
+    slotLabels,
+    feetPrinted,
+    supportsAtSlice,
+    bed,
+    wipeTower,
+  })
+}
+
+/**
+ * The shared emit tail of the whole-abacus and per-module 3MF builders: bucket
+ * the classified main soup plus the part soups per filament slot, then pick the
+ * container. Factored, not forked (buildModuleThreeMf in abacus-module-kit.ts
+ * is the second caller), so a container-law fix — like the exit-154/155 lessons
+ * in the comments below — can never apply to one builder and miss the other.
+ * The builders keep their own classification and hard-error contracts; only the
+ * mechanical bucket/emit stage is shared.
+ */
+export function emitThreeMfBodies(args: {
+  mesh: StlMesh
+  triShell: Int32Array
+  slotOfShell: readonly number[]
+  partSoups: readonly { slot: number; positions: Float32Array }[]
+  filamentMap: FilamentMap
+  slotLabels?: readonly string[]
+  /** Printed feet force the assembly path even single-bodied AND bake the
+   *  support keys into project_settings.config. */
+  feetPrinted: boolean
+  supportsAtSlice?: boolean
+  bed: BedSize
+  wipeTower: WipeTowerProfileGeometry
+}): AbacusThreeMf {
+  const {
+    mesh,
+    triShell,
+    slotOfShell,
+    partSoups,
+    filamentMap,
+    slotLabels,
+    feetPrinted,
+    supportsAtSlice,
+    bed,
+    wipeTower,
+  } = args
 
   // Count triangles per slot, then bucket the position soup (9 floats/tri).
   const triCount = new Map<number, number>()

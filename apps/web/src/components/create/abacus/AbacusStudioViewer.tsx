@@ -752,6 +752,29 @@ export function AbacusStudioViewer() {
         const textPlugs = textStls.map((stl, g) => ({ group: g, stl: stl as ArrayBuffer }))
         return { stl, markerBlack, markerWhite, feet, textPlugs, params: p }
       },
+      // The modular kit's bundle (Gitea #30): three module bodies + their feet
+      // passes, under the same snapshot-once contract as exportParts — a knob
+      // drag mid-export can never mix module geometries from different designs.
+      // Feet gate matches exportParts' feet pass (and the scad's module_*_feet
+      // asserts fire per pass, so an unprintable-feet design fails loudly here,
+      // not silently at the slicer).
+      exportModuleParts: async () => {
+        const p = paramsRef.current
+        const withFeet = p.feet_mode === 'printed' && p.show_frame
+        const [left, mid, right, leftFeet, midFeet, rightFeet] = await Promise.all([
+          scadRef.current.exportStl(p, { only: 'module_left' }),
+          scadRef.current.exportStl(p, { only: 'module_mid' }),
+          scadRef.current.exportStl(p, { only: 'module_right' }),
+          withFeet ? scadRef.current.exportStl(p, { only: 'module_left_feet' }) : null,
+          withFeet ? scadRef.current.exportStl(p, { only: 'module_mid_feet' }) : null,
+          withFeet ? scadRef.current.exportStl(p, { only: 'module_right_feet' }) : null,
+        ])
+        return { left, mid, right, leftFeet, midFeet, rightFeet, params: p }
+      },
+      // Generic single-pass escape hatch (seam coupon download, bench parts).
+      // Reads the live params at call time — single-render downloads only;
+      // anything multi-render belongs in a snapshotting bundle above.
+      exportPass: (pass) => scadRef.current.exportStl(paramsRef.current, pass),
     })
     return () => registerExporter(null)
   }, [registerExporter])
