@@ -272,7 +272,7 @@ export function buildModuleKit(args: {
 }
 
 /** The kit's printed instructions — counts, assembly, the joint_fit ritual,
- *  the TPU note, and the phase-1 marker limitation. Plain text on purpose:
+ *  the TPU note, and the phase-1 marker/frame-text limitations. Plain text on purpose:
  *  it gets read next to a slicer, not in a browser. */
 function kitReadme(p: Params, modules: readonly ModuleKitFile[]): string {
   const d = derived(p)
@@ -329,5 +329,12 @@ End modules carry the engraved ArUco corner pockets, but this phase-1 kit
 does NOT include the printed marker inlays — camera reading of a modular
 abacus lands in a later phase. A monolithic (non-modular) export is the way
 to get camera-readable markers today.
+
+Frame text
+----------
+Modules print WITHOUT the frame text tokens (the complement facts along the
+rails). Per-module text would make every mid column a unique print and
+defeat this kit's shared-file dedupe, so it lands in a later phase — a
+monolithic export is the way to get frame text today.
 `
 }

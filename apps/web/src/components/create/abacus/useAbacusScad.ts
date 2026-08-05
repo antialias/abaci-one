@@ -256,6 +256,11 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
       st.plug.latest = null
       st.plug.latestKey = ''
       st.plug.drawnKey = ''
+      // Orphan any in-flight plug render too: onmessage delivers whatever
+      // matches `pending`, so without this a mono plug pass completing AFTER
+      // the modular flip repaints the stale mono-positioned overlay right over
+      // the clear — the drifting frame text the first manual pass caught.
+      st.plug.pending = null
       cbRef.current.onPlug(null)
     }
   }
