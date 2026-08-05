@@ -417,10 +417,14 @@ export const previewDedupKey = (p: Params): string => {
  *  shell and is unsplittable. `feet` (Gitea #23) renders the TPU foot solids.
  *
  *  `text_plugs` carries a color GROUP because the inlay can span up to 5 inks
- *  (see textGroups); each group is one render, one body, one extruder. */
+ *  (see textGroups); each group is one render, one body, one extruder. The
+ *  `module_left_text` / `module_right_text` passes are the same inlays cut to
+ *  ONE end module's side slots and re-based module-local, so a group lands
+ *  flush in the pocket that module carved — they seed bodies of the per-module
+ *  3MFs, which is what makes them ExportPass and not ModulePass. */
 export type ExportPass =
   | { only: 'marker_black' | 'marker_white' | 'feet' }
-  | { only: 'text_plugs'; group: number }
+  | { only: 'text_plugs' | 'module_left_text' | 'module_right_text'; group: number }
 
 /** INSPECTION-only `only=` slices — one piece of the model rendered alone so it
  *  can be orbited, measured and test-printed (the Storybook parts bench). These
@@ -476,7 +480,7 @@ export type RenderPass = ExportPass | { only: InspectPart } | { only: ModulePass
 export function exportDefines(p: Params, pass?: RenderPass): string[] {
   if (!pass) return definesFrom(p)
   const defs = [...definesFrom(p), `-Donly="${pass.only}"`]
-  if (pass.only === 'text_plugs') defs.push(`-Dplug_group=${pass.group}`)
+  if ('group' in pass) defs.push(`-Dplug_group=${pass.group}`)
   return defs
 }
 

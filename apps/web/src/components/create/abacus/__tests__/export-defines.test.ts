@@ -36,11 +36,13 @@ describe('exportDefines', () => {
     }
   })
 
-  it('the text pass carries its color group — the whole point of the split', () => {
-    for (let g = 0; g < 5; g++) {
-      const defs = exportDefines(defaultParams, { only: 'text_plugs', group: g })
-      expect(only(defs)).toEqual(['-Donly="text_plugs"'])
-      expect(plugGroup(defs)).toEqual([`-Dplug_group=${g}`])
+  it('every text pass carries its color group — the whole point of the split', () => {
+    for (const name of ['text_plugs', 'module_left_text', 'module_right_text'] as const) {
+      for (let g = 0; g < 5; g++) {
+        const defs = exportDefines(defaultParams, { only: name, group: g })
+        expect(only(defs)).toEqual([`-Donly="${name}"`])
+        expect(plugGroup(defs)).toEqual([`-Dplug_group=${g}`])
+      }
     }
   })
 
@@ -91,6 +93,8 @@ const EXPORT_ONLY: Record<ExportPass['only'], true> = {
   marker_black: true,
   marker_white: true,
   text_plugs: true,
+  module_left_text: true,
+  module_right_text: true,
   feet: true,
 }
 const SCAD = join(process.cwd(), 'public/scad/abacus.scad')

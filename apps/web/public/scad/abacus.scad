@@ -182,14 +182,18 @@ inlay_plugs  = false;  // true → also model the white/black inlay solids (3MF 
                        // path). false → pockets only: the bench STL shows markers as
                        // engravings (flush plugs would WELD into the frame shell and
                        // vanish — color() is inert on binstl; see SPEC).
-only         = "";     // part passes: "" | "marker_black" | "marker_white" | "text_plugs" | "feet"
+only         = "";     // part passes: "" | "marker_black" | "marker_white" | "text_plugs"
+                       // | "module_left_text" | "module_right_text" | "feet"
                        // "feet" renders the printed foot solids (pocket fill + stand-off,
                        // crossbar voided) — emitted UNCONDITIONALLY; the TS caller gates.
-                       // Plus the INSPECTION slices — "bead" | "bead_capture" | "bead_cap"
-                       // | "bead_exposed" | "channel" | "frame" | "seam_coupon" |
-                       // "seam_coupon_pair" — which are not filament bodies, just one
-                       // piece rendered alone for the Storybook bench.
-                       // Both sets are dispatched at the bottom of this file; the full
+                       // The module_*_text passes are the end modules' side-slot inlays,
+                       // module-local, for the kit 3MFs (plug_group applies to all three
+                       // text passes). Plus the INSPECTION slices — "bead" | "bead_capture"
+                       // | "bead_cap" | "bead_exposed" | "channel" | "frame" | "seam_coupon"
+                       // | "seam_coupon_pair" | "module_pair" — not filament bodies, just
+                       // one piece rendered alone for the Storybook bench — and the six
+                       // MODULE passes ("module_{left,mid,right}[_feet]") the kit renders.
+                       // All sets are dispatched at the bottom of this file; the full
                        // vocabulary is pinned against the TS side by export-defines.test.ts.
 plug_group   = -1;     // "text_plugs" pass filter: −1 = every token (one soup, what the
                        // on-screen preview wants); 0..4 = only the tokens whose tok_group
@@ -721,29 +725,36 @@ module wall_tok_at(r, k) {   // wall transform for token k; children in local fr
     rotate([90, 0, r[1]]) children();
 }
 
-module text_pockets() {      // inset mode: carved from the frame
-  for (r = rails()) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
+/* rs/ws select WHICH rails()/walls() entries to emit (index lists; defaults =
+   all eight slots, i.e. the mono behavior, byte-identically). The end modules
+   pass their own side only ([2]=left, [3]=right): a module must never carve a
+   token laid out on the full mono frame_w — the top/bottom rails and the
+   front/back walls straddle every seam, so a member of those slots inside a
+   module render would be a half-glyph fragment. Selection at the call site
+   makes that unrepresentable; the seam-crossing slots stay mono-only. */
+module text_pockets(rs = [0, 1, 2, 3], ws = [0, 1, 2, 3]) { // inset: carved from the frame
+  for (si = rs) let (r = rails()[si]) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
     translate([0, 0, s_fh - inlay_d]) linear_extrude(inlay_d + s_fh) rail_tok_2d(r, k);
-  for (r = walls()) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
+  for (si = ws) let (r = walls()[si]) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
     wall_tok_at(r, k) translate([0, 0, -inlay_d])
       linear_extrude(inlay_d + 1) tok2d(r[0], k, wall_sz(r));
 }
-module text_plugs() {        // inset mode: flush colored inlays (3MF path)
-  for (r = rails()) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1]) if (tok_wanted(k))
+module text_plugs(rs = [0, 1, 2, 3], ws = [0, 1, 2, 3]) { // inset: flush colored inlays (3MF path)
+  for (si = rs) let (r = rails()[si]) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1]) if (tok_wanted(k))
     color(tok_color(k)) translate([0, 0, s_fh - inlay_d])
       linear_extrude(inlay_d) rail_tok_2d(r, k);
-  for (r = walls()) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1]) if (tok_wanted(k))
+  for (si = ws) let (r = walls()[si]) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1]) if (tok_wanted(k))
     color(tok_color(k)) wall_tok_at(r, k) translate([0, 0, -inlay_d])
       linear_extrude(inlay_d) tok2d(r[0], k, wall_sz(r));
 }
-module text_emboss() {       // emboss mode: raised + beveled, welds to the frame
-  for (r = rails()) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
+module text_emboss(rs = [0, 1, 2, 3], ws = [0, 1, 2, 3]) { // emboss: raised + beveled, welds to the frame
+  for (si = rs) let (r = rails()[si]) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
     translate([0, 0, s_fh - 0.1]) {
       linear_extrude(0.1 + emboss_h - bevel) rail_tok_2d(r, k);
       translate([0, 0, 0.1 + emboss_h - bevel]) linear_extrude(bevel)
         offset(delta = -bevel) rail_tok_2d(r, k);
     }
-  for (r = walls()) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
+  for (si = ws) let (r = walls()[si]) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
     wall_tok_at(r, k) translate([0, 0, -0.1]) {
       linear_extrude(0.1 + emboss_h - bevel) tok2d(r[0], k, wall_sz(r));
       translate([0, 0, 0.1 + emboss_h - bevel]) linear_extrude(bevel)
@@ -1117,8 +1128,14 @@ module module_end(left) {      // left: border + column 0, tabs on the right fac
       }
       if (!left) translate([x0, 0, 0]) sc_pockets();
       if (show_markers) for (k = left ? [0, 3] : [1, 2]) marker_pocket(k);
+      // This side's rail + end wall ride the module (both sit ≥14 mm inboard of
+      // the seam plane); the seam-crossing slots are unrepresentable here — the
+      // selection is hard-coded, not policy the caller could get wrong.
+      if (text_mode == "inset") text_pockets(rs = left ? [2] : [3], ws = left ? [2] : [3]);
       if (feet) for (k = left ? [0, 3] : [1, 2]) feet_pocket_at(k);
     }
+    if (text_mode == "emboss")
+      color(frame_color) text_emboss(rs = left ? [2] : [3], ws = left ? [2] : [3]);
     if (feet_crossbar)
       color(frame_color) intersection() {
         mod_end_body(left);
@@ -1146,7 +1163,25 @@ module module_feet(kind) {     // the TPU pass per module kind (renders empty
 /* ===== assemble ===== (color() is preview/3MF only — ignored by binstl, no geom change) */
 if (only == "marker_black")      for (k = [0 : 3]) color("black") marker_plug(k, true);
 else if (only == "marker_white") for (k = [0 : 3]) color("white") marker_plug(k, false);
-else if (only == "text_plugs")   text_plugs();
+/* text_plugs is seam-aware: in modular mode only the SIDE slots exist (the
+   crossing slots are laid out on the mono frame_w no module ships), and the
+   right side shifts to its assembled seat — left slots hug x=0 so the mono
+   width cancels for them. Feeds the on-screen overlay; the modular 3MFs use
+   the module-local *_text passes below instead. */
+else if (only == "text_plugs") {
+  if (seam_mode == "modular") {
+    text_plugs(rs = [2], ws = [2]);
+    translate([2 * mod_we + (cols - 2) * sc_w - frame_w, 0, 0]) text_plugs(rs = [3], ws = [3]);
+  }
+  else text_plugs();
+}
+/* Per-end text-plug passes for the module 3MFs: the same side-slot inlays,
+   re-based to the module's local frame exactly as module_end() re-bases its
+   body — so a plug lands flush in the pocket the module carved. plug_group
+   filters these like plain text_plugs (the export splits per ink color). */
+else if (only == "module_left_text")  text_plugs(rs = [2], ws = [2]);
+else if (only == "module_right_text")
+  translate([-(frame_w - mod_we), 0, 0]) text_plugs(rs = [3], ws = [3]);
 else if (only == "feet")         for (k = [0 : len(FEET_POS) - 1]) color("#1f2937") foot_at(k);
 /* ---- inspection slices (the Storybook parts bench) ------------------------
    NOT filament bodies — the four passes above each become one body in the 3MF,
@@ -1199,11 +1234,14 @@ else if (only == "module_pair")      { module_mid(); translate([sc_w, 0, 0]) mod
    width 2·mod_we + (cols−2)·sc_w (the TS derived() identity). Everything here
    IS the module_* parts the kit exports, so preview and kit cannot drift; the
    seams Nef-weld into one solid, which is what the viewer's shell classifier
-   expects. No text and no marker plugs on purpose: the phase-1 modules carry
-   engraved pockets only, and a preview that showed mono's overlays (laid out on
-   the narrower mono frame_w) would be showing geometry no module ships. The
-   mono tree below is untouched — mono renders stay byte-identical, which the
-   fingerprint harness pins after every scad change. */
+   expects. No marker plugs on purpose: the phase-1 end modules carry engraved
+   ArUco pockets only. Frame text: the SIDE slots (text_left/right rails,
+   edge_left/right walls) ride the end modules — module_end carves/embosses
+   them itself, and the seam-aware text_plugs pass overlays the inset colors —
+   while the crossing slots (top/bottom rails, front/back walls) are laid out
+   on the mono frame_w no module ships and stay mono-only. The mono tree below
+   is untouched — mono renders stay byte-identical, which the fingerprint
+   harness pins after every scad change. */
 else if (seam_mode == "modular") {
   module_end(true);
   for (i = [1 : cols - 2]) translate([mod_we + (i - 1) * sc_w, 0, 0]) module_mid();
