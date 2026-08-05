@@ -459,6 +459,14 @@ describe('packKitPlate (tower first, then the modules around it)', () => {
     // Most of that was skirt — a loop `skirt_loops = 0` means this printer never draws,
     // and which would ring the plate rather than run between two modules if it did.
     // At the honest 10.9 the thirteenth module fits beside a six-filament tower.
+    //
+    // THIS IS ALSO THE GUARD ON THE TOWER-CORNER SEARCH. It is the only case in
+    // the suite where the tower's corner decides whether the kit ships: pinning
+    // the tower to the single most corner-hugging spot (i.e. replacing
+    // packKitPlate's candidate loop with `placeTowerReserve`) packs these 13
+    // modules 239.3 mm wide on a 256 bed, and the keep-out slide then needs
+    // 18 mm of slack where 16.7 is left — a `keep-out` refusal, right here.
+    // Verified by doing exactly that, on @eink/plate-packing 1.0.0.
     const plate = packKitPlate({ instances, bases, supportsAtSlice: true })
     expect(plate.placements).toHaveLength(instances.length)
   })

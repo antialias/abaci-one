@@ -38,24 +38,26 @@
  * all raise {@link KitPlateFitError} naming what didn't fit and which knob moves
  * it. Never silently drop a module: a kit missing a column is not a kit.
  *
- * IMPORT NOTE. `packPlates`, `meshBounds` and the tower reserve come from
- * `@eink/frames-engine` today. They move to `@eink/plate-packing` (eink PR #569)
- * once it publishes — a pure extraction with identical signatures, so that
- * switch is an import-line edit.
+ * IMPORT NOTE. The packer and the tower reserve come from `@eink/plate-packing`
+ * (eink PR #569 lifted them out of `@eink/frames-engine`). `meshBounds`
+ * deliberately stays behind: it reads triangles, and the point of the
+ * extraction is that the packing package is geometry over numbers — no STL, no
+ * 3MF, no DOM. `BedSize`/`BedRect` are declared identically in both packages
+ * and structurally interchangeable, which is why the four other abacus files
+ * that only name the TYPE can keep importing it beside the function they feed
+ * it to. The swap was NOT a no-op — see `packKitPlate` on tower candidates.
  */
+import { meshBounds } from '@eink/frames-engine/print-bundle'
 import {
   type BedRect,
   type BedSize,
-  meshBounds,
   type PackItem,
-  packPlates,
-} from '@eink/frames-engine/print-bundle'
-import {
   type PlacedTower,
-  placeTowerReserve,
+  packPlates,
   type TowerReserve,
   towerMargin,
-} from '@eink/frames-engine/wipe-tower'
+  towerPlacementCandidates,
+} from '@eink/plate-packing'
 import { type AbacusThreeMf, emitThreeMfBodies, type SpoolBodySummary } from './abacus-3mf'
 import {
   BAMBU_256_BED,
@@ -538,9 +540,29 @@ function bedFreeRects(bed: BedSize, margin: number): BedRect[] {
  * turn a one-filament plate into a real two-filament slice. Bed area is the
  * cheaper thing to spend.
  *
+ * WHICH CORNER THE TOWER TAKES IS PART OF THE SEARCH, NOT AN INPUT TO IT. The
+ * tower is placed by hugging a corner of the bed's free space, and for a full
+ * plate the corner it picks decides whether the kit fits at all: the reserve is
+ * a ~98 × 91 mm hole, and 13 modules pack differently around a hole in the back
+ * left than one in the front right. That is not a preference, it is the
+ * difference between a plate and a refusal — and worse, between a plate that can
+ * be slid clear of the printer's keep-out and one that cannot (see
+ * `clearOfKeepOuts`; the slide needs slack in a bed dimension, and the losing
+ * arrangement leaves 16.7 mm where it needs 18).
+ *
+ * So every viable spot is tried, best corner-hugger first, and the first that
+ * yields a complete single-plate layout WITH a clear slide wins. Unconstrained
+ * plates therefore cost exactly one pack, as before — the loop only spins for
+ * kits that are actually tight. `towerPlacementCandidates` returns the list for
+ * precisely this reason; taking `[0]` (which is what `placeTowerReserve` is)
+ * made the flagship 13-column printed-feet kit's fit depend on how the upstream
+ * packer happened to break a scoring tie, and a tie-break moving in
+ * `@eink/plate-packing` 1.0.0 is what surfaced it.
+ *
  * @throws {KitPlateFitError} when the kit needs more than one plate, when a
- * module exceeds the bed alone, or when no rectangle is left for the tower.
- * Phase A ships one plate or nothing.
+ * module exceeds the bed alone, when no rectangle is left for the tower, or when
+ * no tower spot leaves a layout that clears the keep-outs. Phase A ships one
+ * plate or nothing.
  */
 export function packKitPlate(args: {
   instances: readonly KitPlateInstance[]
@@ -574,8 +596,8 @@ export function packKitPlate(args: {
   const gapMm = args.gapMm ?? moduleGapMm(supportsAtSlice)
 
   const reserve = plateTowerReserve(wipeTower, supportsAtSlice, filaments)
-  const tower = placeTowerReserve(bed, reserve, bedFreeRects(bed, towerMargin(bed)))
-  if (!tower) {
+  const towerSpots = towerPlacementCandidates(bed, reserve, bedFreeRects(bed, towerMargin(bed)))
+  if (towerSpots.length === 0) {
     throw new KitPlateFitError(
       'no-tower-room',
       [],
@@ -587,6 +609,36 @@ export function packKitPlate(args: {
       'Select a printer with a bigger bed, or print the kit module by module from the zip.'
     )
   }
+
+  // Report the FIRST spot's refusal when none works. It is the corner the tower
+  // would have taken on its own, so the diagnosis a user reads is the one that
+  // describes the plate they asked for, not whichever of a dozen fallbacks
+  // happened to fail last.
+  let firstRefusal: KitPlateFitError | null = null
+  for (const tower of towerSpots) {
+    try {
+      return layoutAroundTower({ instances, bases, bed, gapMm, tower })
+    } catch (err) {
+      if (!(err instanceof KitPlateFitError)) throw err
+      firstRefusal ??= err
+    }
+  }
+  // Unreachable-by-construction guard: the loop either returns or records a
+  // refusal, and towerSpots is non-empty above.
+  throw firstRefusal ?? new Error('packKitPlate: no tower spot tried')
+}
+
+/** One tower spot, fully evaluated: pack the modules around it and slide the
+ *  result clear of the printer's keep-outs, or refuse. Split out of {@link
+ *  packKitPlate} so the spot search reads as a search. */
+function layoutAroundTower(args: {
+  instances: readonly KitPlateInstance[]
+  bases: Record<ModuleKind, ModuleBasis>
+  bed: BedSize
+  gapMm: number
+  tower: PlacedTower
+}): KitPlateLayout {
+  const { instances, bases, bed, gapMm, tower } = args
 
   const items: PackItem[] = instances.map((inst) => ({
     id: inst.id,
