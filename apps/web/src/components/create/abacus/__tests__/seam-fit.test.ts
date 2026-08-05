@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parseDesignSnapshot } from '@/lib/abacus/design-snapshot'
 import {
+  analyzeShells,
   DEFINE_KEYS,
   defaultParams,
   definesFrom,
@@ -310,5 +311,58 @@ describe('design snapshots across the CP4 vocabulary change', () => {
     )
     expect(snap?.params.seam_mode).toBe('mono')
     expect(snap?.params.joint_fit).toBe(0.1)
+  })
+})
+
+// ---- the assembled modular preview and the shell classifier (CP5) --------------
+// The modular assembly seats modules at ZERO gap, so OpenSCAD's union welds the
+// chain into one connected mesh — and the viewer's recolor pass leans on exactly
+// that: analyzeShells must see ONE frame shell (the widest), not one per module.
+// The soup below models a two-module seam the way the 3MF fixture models the
+// frame: rectangles that SHARE their seam-edge vertices, which is what a real
+// dissolved seam looks like to the 0.01 mm weld grid.
+
+const rect = (x0: number, x1: number, y0 = 95, y1 = 105): number[] => [
+  ...[x0, y0, 0, x1, y0, 0, x1, y1, 0],
+  ...[x0, y0, 0, x1, y1, 0, x0, y1, 0],
+]
+const beadTri = (x: number, y: number): number[] => [x - 1, y - 1, 0, x + 1, y - 1, 0, x, y + 1, 0]
+
+describe('analyzeShells on a welded modular chain', () => {
+  const mp = p({ seam_mode: 'modular' })
+  const d = derived(mp)
+  const sEm = mp.border_w * mp.scale_factor + d.sEm // bead-0 center x
+  const sHy = mp.border_w * mp.scale_factor + d.sHy // heaven row y
+
+  it('zero-gap modules weld transitively into ONE frame shell; beads land on the modular grid', () => {
+    // left end + two mids, each sharing its seam-edge vertices with the next —
+    // welded span 57 beats the 2-pitch (31) frame threshold
+    const soup = new Float32Array([
+      ...rect(0, d.modWe),
+      ...rect(d.modWe, d.modWe + d.scW),
+      ...rect(d.modWe + d.scW, d.modWe + 2 * d.scW),
+      ...beadTri(sEm, sHy), // column 0, heaven row
+      ...beadTri(sEm + 2 * d.sCp, sHy - 3 * d.sEp), // column 2, earth region
+    ])
+    const { shellInfo } = analyzeShells(soup, mp)
+    expect(shellInfo).toHaveLength(3)
+    expect(shellInfo.filter((s) => s.isFrame)).toHaveLength(1)
+    const beads = shellInfo.filter((s) => !s.isFrame)
+    expect(beads.map((b) => [b.i, b.isHeaven])).toEqual([
+      [0, true],
+      [2, false],
+    ])
+  })
+
+  it('negative control: a real gap splits the chain — the zero-gap seat is load-bearing', () => {
+    const soup = new Float32Array([
+      ...rect(0, d.modWe),
+      ...rect(d.modWe, d.modWe + d.scW), // welded pair: span 41.5, still the frame
+      ...rect(d.modWe + d.scW + 0.05, d.modWe + 2 * d.scW), // 0.05 mm gap > the weld grid
+      ...beadTri(sEm, sHy),
+    ])
+    const { shellInfo } = analyzeShells(soup, mp)
+    expect(shellInfo).toHaveLength(3) // welded pair + the stranded module + one bead
+    expect(shellInfo.filter((s) => s.isFrame)).toHaveLength(1) // widest wins, the strand does not
   })
 })

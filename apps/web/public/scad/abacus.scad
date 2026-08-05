@@ -897,7 +897,8 @@ assert(150 * sc_prong * (joint_ridge + 0.05) / pow(joint_clip_l - sc_slot, 2) <=
 function is_module_pass(o) =   // the six module render passes (bodies + feet)
   o == "module_left"      || o == "module_mid"      || o == "module_right" ||
   o == "module_left_feet" || o == "module_mid_feet" || o == "module_right_feet";
-mod_active = is_module_pass(only) || only == "module_pair";
+mod_active = is_module_pass(only) || only == "module_pair"
+          || (only == "" && seam_mode == "modular");   // the assembled modular preview (CP5)
 sc_active = only == "seam_coupon" || only == "seam_coupon_pair" || mod_active;
                                // seam geometry in this render? The strain gate
                                // above is knob-only (S-free) and stays loud in
@@ -1193,6 +1194,21 @@ else if (only == "module_left_feet")  module_feet("left");
 else if (only == "module_mid_feet")   module_feet("mid");
 else if (only == "module_right_feet") module_feet("right");
 else if (only == "module_pair")      { module_mid(); translate([sc_w, 0, 0]) module_mid(); }
+/* The assembled modular preview (CP5): the same left + mids + right the kit
+   prints, seated at zero gap on the sc_w pitch — one full web per seam, total
+   width 2·mod_we + (cols−2)·sc_w (the TS derived() identity). Everything here
+   IS the module_* parts the kit exports, so preview and kit cannot drift; the
+   seams Nef-weld into one solid, which is what the viewer's shell classifier
+   expects. No text and no marker plugs on purpose: the phase-1 modules carry
+   engraved pockets only, and a preview that showed mono's overlays (laid out on
+   the narrower mono frame_w) would be showing geometry no module ships. The
+   mono tree below is untouched — mono renders stay byte-identical, which the
+   fingerprint harness pins after every scad change. */
+else if (seam_mode == "modular") {
+  module_end(true);
+  for (i = [1 : cols - 2]) translate([mod_we + (i - 1) * sc_w, 0, 0]) module_mid();
+  translate([mod_we + (cols - 2) * sc_w, 0, 0]) module_end(false);
+}
 else {
   if (show_frame) {
     color(frame_color) {

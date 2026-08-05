@@ -34,6 +34,17 @@ Exits non-zero on failure, so it can gate a pipeline. Sensitivity is proven:
 at `joint_fit = −0.05` (deliberate interference) the pair check detects a
 ~17 mm³ deficit; at the shipped fit the rel diff is ~1e-7.
 
+**Additivity at large coordinates is quantization-limited.** OpenSCAD's ASCII
+STL prints 6 significant digits, so x≈200 mm vertices carry ~0.001 mm of
+quantization vs ~1e-5 mm near the origin. Measured 2026-08-04: the identical
+`module_mid` renders 10868.450 mm³ at the origin but 10868.217 mm³ translated
+to x=181 — a 0.233 mm³ shift from translation alone. A full 13-column modular
+assembly (222.5 mm wide) therefore misses parts-sum additivity by ~1.6 mm³
+(rel ~1e-5) even with perfectly disjoint seams. To prove seam cleanliness,
+check pairs/small assemblies rendered near the origin (each seam type is
+additive at ~1e-7; a cols=3 assembly at ~2e-7) — do not chase the whole-row
+deficit, and do not loosen the 1e-6 threshold to make it "pass".
+
 ## Render recipes (OpenSCAD 2021.01 quirks)
 
 - STL: `openscad -Donly='"seam_coupon"' -o out.stl public/scad/abacus.scad`
