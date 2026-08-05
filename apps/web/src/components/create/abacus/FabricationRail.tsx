@@ -16,11 +16,14 @@
 
 import { type CSSProperties, useState } from 'react'
 import { StudioSelect } from '@/components/studio/StudioSelect'
+import { useFeatureFlag } from '@/hooks/useFeatureFlag'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { buildAbacusThreeMf } from './abacus-3mf'
+import { isModular } from './abacus-model'
 import { PRINTER_PROFILES } from './abacus-solver'
 import { downloadBlob } from './download-blob'
 import { FilamentPlanPanel } from './FilamentPlanPanel'
+import { MODULAR_COLUMNS_FLAG, ModularSeamPanel } from './ModularSeamPanel'
 import { PrintPanel } from './PrintPanel'
 
 const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
@@ -69,6 +72,14 @@ export function FabricationRail() {
   } = useAbacusStudio()
 
   const canExport = exporterReady && !exportBlocked
+
+  // Modular columns (Gitea #30): the whole-abacus exports are a footgun in
+  // modular mode — they'd print a fused-seam monolith with dead sockets — so
+  // they lock with a pointer at the kit, and the print-service panel yields to
+  // a note (module tickets are deferred; the kit download is the export).
+  const modularFlag = useFeatureFlag(MODULAR_COLUMNS_FLAG)
+  const modular = isModular(params)
+  const canExportMono = canExport && !modular
 
   // A failed export render (e.g. a marker part pass) now REJECTS instead of
   // hanging — surfaced inline under the button. Silently swallowing it would
@@ -237,41 +248,48 @@ export function FabricationRail() {
         type="button"
         data-action="export-3mf"
         onClick={onExport3mf}
-        disabled={!canExport}
+        disabled={!canExportMono}
         title={
-          exportBlocked
-            ? `Fix the errors above to print on ${profile.label}`
-            : exporterReady
-              ? 'Download a print-ready multi-material 3MF'
-              : 'Preparing the 3D exporter…'
+          modular
+            ? 'Modular columns print as a per-module kit — use the Modular columns panel below'
+            : exportBlocked
+              ? `Fix the errors above to print on ${profile.label}`
+              : exporterReady
+                ? 'Download a print-ready multi-material 3MF'
+                : 'Preparing the 3D exporter…'
         }
         style={{
           padding: '11px 12px',
           borderRadius: 8,
           border: 'none',
-          background: canExport ? CYAN_GRADIENT : 'rgba(75,85,99,0.55)',
-          color: canExport ? '#fff' : 'rgba(209,213,219,0.7)',
+          background: canExportMono ? CYAN_GRADIENT : 'rgba(75,85,99,0.55)',
+          color: canExportMono ? '#fff' : 'rgba(209,213,219,0.7)',
           fontSize: 13,
           fontWeight: 700,
-          cursor: canExport ? 'pointer' : 'not-allowed',
-          boxShadow: canExport ? '0 4px 14px rgba(6,182,212,0.35)' : 'none',
+          cursor: canExportMono ? 'pointer' : 'not-allowed',
+          boxShadow: canExportMono ? '0 4px 14px rgba(6,182,212,0.35)' : 'none',
         }}
       >
-        ⬇ Download 3MF to print
+        {modular ? '⬇ 3MF is one piece — kit below' : '⬇ Download 3MF to print'}
       </button>
       <button
         type="button"
         data-action="export-stl"
         onClick={onExportPlainStl}
-        disabled={!canExport}
+        disabled={!canExportMono}
+        title={
+          modular
+            ? 'Modular columns print as a per-module kit — use the Modular columns panel below'
+            : undefined
+        }
         style={{
           alignSelf: 'center',
           padding: '2px 4px',
           border: 'none',
           background: 'transparent',
-          color: canExport ? 'rgba(148,163,184,0.9)' : 'rgba(148,163,184,0.5)',
+          color: canExportMono ? 'rgba(148,163,184,0.9)' : 'rgba(148,163,184,0.5)',
           fontSize: 11,
-          cursor: canExport ? 'pointer' : 'not-allowed',
+          cursor: canExportMono ? 'pointer' : 'not-allowed',
           textDecoration: 'underline',
         }}
       >
@@ -294,6 +312,11 @@ export function FabricationRail() {
         </div>
       )}
 
+      {/* modular columns (Gitea #30), flag-gated: seam toggle, fit verdicts,
+          coupon + module-kit downloads. Sits below the whole-abacus exports it
+          replaces in modular mode. */}
+      {modularFlag.enabled ? <ModularSeamPanel /> : null}
+
       {/* which paired print service this design prints to. Only shown once the
           user has more than one — with a single connection there's nothing to
           choose and the proxy resolves it implicitly. Switching re-reads the
@@ -309,30 +332,51 @@ export function FabricationRail() {
         />
       )}
 
-      {/* print-service panel (Gitea #9) — embedded (normal flow) in the rail */}
-      <PrintPanel
-        embedded
-        visible={true}
-        params={params}
-        filamentMap={filamentMap}
-        catalog={catalog}
-        overrides={overrides}
-        profileId={profileId}
-        printerId={thhFilaments.printerId}
-        printerMultiMaterial={thhFilaments.printerMultiMaterial}
-        printerBed={thhFilaments.printerBed}
-        wipeTower={thhFilaments.wipeTower}
-        amsPresent={thhFilaments.amsPresent}
-        externalUnprintable={thhFilaments.externalUnprintable}
-        rosterEmpty={thhFilaments.rosterEmpty}
-        isLoading={thhFilaments.isLoading}
-        isFetching={thhFilaments.isFetching}
-        connectionId={selectedConnectionId}
-        unavailable={thhFilaments.unavailable}
-        exportBlocked={exportBlocked}
-        requestExportParts={requestExportParts}
-        playerId={playerId}
-      />
+      {/* print-service panel (Gitea #9) — embedded (normal flow) in the rail.
+          In modular mode it yields to a note: a service ticket sends the
+          one-piece abacus, and per-module tickets are deferred (phase 1 —
+          the kit download is the modular export). */}
+      {modular ? (
+        <div
+          data-element="abacus-studio-print-modular-note"
+          style={{
+            padding: '8px 10px',
+            borderRadius: 8,
+            background: 'rgba(30,41,59,0.6)',
+            border: '1px solid rgba(148,163,184,0.25)',
+            color: 'rgba(148,163,184,0.9)',
+            fontSize: 11,
+            lineHeight: 1.5,
+          }}
+        >
+          Print-service tickets for module kits aren&apos;t wired yet — download the kit above and
+          slice it yourself.
+        </div>
+      ) : (
+        <PrintPanel
+          embedded
+          visible={true}
+          params={params}
+          filamentMap={filamentMap}
+          catalog={catalog}
+          overrides={overrides}
+          profileId={profileId}
+          printerId={thhFilaments.printerId}
+          printerMultiMaterial={thhFilaments.printerMultiMaterial}
+          printerBed={thhFilaments.printerBed}
+          wipeTower={thhFilaments.wipeTower}
+          amsPresent={thhFilaments.amsPresent}
+          externalUnprintable={thhFilaments.externalUnprintable}
+          rosterEmpty={thhFilaments.rosterEmpty}
+          isLoading={thhFilaments.isLoading}
+          isFetching={thhFilaments.isFetching}
+          connectionId={selectedConnectionId}
+          unavailable={thhFilaments.unavailable}
+          exportBlocked={exportBlocked}
+          requestExportParts={requestExportParts}
+          playerId={playerId}
+        />
+      )}
     </div>
   )
 }

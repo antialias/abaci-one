@@ -26,6 +26,7 @@ import {
   anyTokens,
   definesFrom,
   exportDefines,
+  isModular,
   type Params,
   previewDedupKey,
   type RenderPass,
@@ -243,7 +244,11 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
     st.main.latest = params
     st.main.latestKey = key
     st.pumpMain?.()
-    if (params.text_mode === 'inset' && anyTokens(params)) {
+    // No plug pass in modular mode: the plug preview is positioned by the MONO
+    // token centers, which drift once every seam widens the pitch — a wrong
+    // overlay is worse than none, and skipping saves the whole WASM pass. The
+    // else branch's onPlug(null) also clears a stale mesh on the mode flip.
+    if (params.text_mode === 'inset' && anyTokens(params) && !isModular(params)) {
       st.plug.latest = params
       st.plug.latestKey = key
       st.pumpPlug?.()

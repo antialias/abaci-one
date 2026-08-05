@@ -30,6 +30,7 @@ import {
   feetEffective,
   feetPositions,
   frameW,
+  isModular,
   MARKER_BITS,
   markersFollowFrameGhost,
   outerD,
@@ -379,8 +380,12 @@ export function AbacusStudioViewer() {
         mat.dispose()
       }
       markerGroup.clear()
-      markerGroup.visible = p.show_markers
-      if (!p.show_markers) return
+      // No marker decals in modular mode: phase 1 ships engraved pockets on the
+      // end modules, not printed markers — decals would advertise fiducials the
+      // kit doesn't deliver (and their corner math is the mono frame's anyway).
+      const on = p.show_markers && !isModular(p)
+      markerGroup.visible = on
+      if (!on) return
       const S = p.scale_factor
       const ch = Math.min(p.top_chamfer, p.frame_h * S * 0.4)
       const r = p.corner_r * S
@@ -449,7 +454,10 @@ export function AbacusStudioViewer() {
     function updateFeet() {
       const p = paramsRef.current
       disposeFeet()
-      const on = p.feet_mode === 'printed' && p.show_frame
+      // Modular modules carry their own feet at module-local positions
+      // (moduleFeetPositions) — the MONO feetPositions this preview mirrors
+      // drift as every seam widens the pitch, so the studs gate off.
+      const on = p.feet_mode === 'printed' && p.show_frame && !isModular(p)
       feetGroup.visible = on
       if (!on) return
       const fx = feetEffective(p)
