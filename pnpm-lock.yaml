@@ -412,6 +412,9 @@ importers:
       '@eink/frames-engine':
         specifier: 1.1159.1
         version: 1.1159.1
+      '@eink/plate-packing':
+        specifier: 1.0.0
+        version: 1.0.0
       '@next/bundle-analyzer':
         specifier: ^16.1.1
         version: 16.1.1
@@ -1564,6 +1567,9 @@ packages:
 
   '@eink/frames-engine@1.1159.1':
     resolution: {integrity: sha512-FKqNiQKsbDOy807s27cvUR9rvEPist/bSflWZLN1VaLQQAM2ovofWDXYYq0nb740DXSm5s40ijoTmW+dnxqexA==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40eink%2Fframes-engine/-/1.1159.1/frames-engine-1.1159.1.tgz}
+
+  '@eink/plate-packing@1.0.0':
+    resolution: {integrity: sha512-6leh4Tnp04RIqCLqhYMTbRoQsPJBT7P1RNI8+85Nsk0RaWUfqZUpLe6SznnpEGedUtLr6CUz0gvmDVfRKgGwag==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40eink%2Fplate-packing/-/1.0.0/plate-packing-1.0.0.tgz}
 
   '@eink/print-dialog@1.1153.1':
     resolution: {integrity: sha512-3WJ6QwSv1qRBz9wnyOM24TsJAQUTcp08CFYvZWrBtJLXPJrK1oOv9IDbJ75DLRYkiH1K/7yeGdAYMvphLkff6w==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40eink%2Fprint-dialog/-/1.1153.1/print-dialog-1.1153.1.tgz}
@@ -14698,6 +14704,8 @@ snapshots:
     dependencies:
       fflate: 0.8.3
       qrcode: 1.5.4
+
+  '@eink/plate-packing@1.0.0': {}
 
   '@eink/print-dialog@1.1153.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
