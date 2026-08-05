@@ -68,6 +68,8 @@ const modularParts = (): ModuleExportParts => ({
   leftFeet: null,
   midFeet: null,
   rightFeet: null,
+  leftText: [],
+  rightText: [],
   params: { ...defaultParams, seam_mode: 'modular' },
 })
 

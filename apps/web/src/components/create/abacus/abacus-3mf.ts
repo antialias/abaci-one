@@ -427,8 +427,14 @@ export function emitThreeMfBodies(args: {
  * Compared by triangle count plus the first triangle's 9 floats: enough to
  * separate real groups (which differ in the very first glyph's x) without
  * walking megabytes of vertices.
+ *
+ * Exported for the per-module kit build (abacus-module-kit.ts), whose
+ * module_left_text/module_right_text passes ride the same plug_group define
+ * and therefore the same failure mode — factored, not forked.
  */
-function assertGroupsDiffer(inked: readonly { group: number; positions: Float32Array }[]): void {
+export function assertGroupsDiffer(
+  inked: readonly { group: number; positions: Float32Array }[]
+): void {
   for (let i = 0; i < inked.length; i++) {
     for (let j = i + 1; j < inked.length; j++) {
       const a = inked[i].positions

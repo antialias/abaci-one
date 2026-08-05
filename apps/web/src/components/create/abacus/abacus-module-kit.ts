@@ -12,10 +12,13 @@
  * count (`module-mid-10s-x3.3mf`).
  *
  * `buildModuleThreeMf` is deliberately PARALLEL to `buildAbacusThreeMf`, not a
- * generalization of it: the whole-abacus builder's marker/text hard-errors are
- * whole-abacus law (modules carry no marker plugs or inlay text in phase 1 —
- * end modules ship engraved ArUco pockets only, and the perimeter writing is
- * laid out on the mono frame width). What IS shared is the mechanical
+ * generalization of it: the whole-abacus builder's marker hard-errors are
+ * whole-abacus law (modules carry no marker plugs in phase 1 — end modules
+ * ship engraved ArUco pockets only). Inset frame text DOES ride the end
+ * modules: the side rails and end walls sit wholly inside them, so each end
+ * carries its own side's inlay bodies (`module_left_text`/`module_right_text`
+ * passes, partitioned by `sideTextGroups`) under a per-side mirror of the mono
+ * builder's empty-pocket error family. What IS shared is the mechanical
  * bucket/emit tail (`emitThreeMfBodies`) and the classifier-to-slot mapping
  * (`shellSlotIndex`), so container law and role→filament law each live in one
  * place. Classification goes through `analyzeModuleShells`, the hard-error
@@ -30,7 +33,13 @@
 import type { BedSize } from '@eink/frames-engine/print-bundle'
 import { parseStl } from '@eink/frames-engine/stl'
 import { strToU8, zipSync } from 'fflate'
-import { type AbacusThreeMf, emitThreeMfBodies, type SpoolBodySummary } from './abacus-3mf'
+import {
+  type AbacusThreeMf,
+  assertGroupsDiffer,
+  emitThreeMfBodies,
+  type SpoolBodySummary,
+  type TextPlugRender,
+} from './abacus-3mf'
 import {
   BAMBU_256_BED,
   DEFAULT_WIPE_TOWER_PROFILE,
@@ -38,6 +47,7 @@ import {
 } from './abacus-3mf-assembly'
 import {
   analyzeModuleShells,
+  anyTokens,
   beadRoleIndex,
   beadRoleNames,
   derived,
@@ -45,6 +55,7 @@ import {
   isModular,
   type Params,
   shellSlotIndex,
+  sideTextGroups,
 } from './abacus-model'
 
 export type ModuleKind = 'left' | 'mid' | 'right'
@@ -60,6 +71,13 @@ export interface ModuleExportParts {
   leftFeet: ArrayBuffer | null
   midFeet: ArrayBuffer | null
   rightFeet: ArrayBuffer | null
+  /** `only="module_left_text"` / `module_right_text` part passes, one per inlay
+   *  color group PRESENT ON THAT SIDE (sideTextGroups — the two ends partition
+   *  the plate's groups, so `group` indexes FilamentMap.textRoles exactly like
+   *  the mono passes). Empty iff nothing inset prints on that end module:
+   *  emboss mode, no frame, or no tokens on that side's rail + wall. */
+  leftText: TextPlugRender[]
+  rightText: TextPlugRender[]
   /** The exact snapshot all renders used — pass THIS to the kit build. */
   params: Params
 }
@@ -130,6 +148,10 @@ export function buildModuleThreeMf(args: {
   /** The module_{kind}_feet render — required (and non-empty) when
    *  `params.feet_mode === 'printed'`; ignored otherwise. */
   feet?: ArrayBuffer | null
+  /** The module_{kind}_text renders — end modules only, one per color group
+   *  that side carries (must cover `sideTextGroups(params, kind)` exactly when
+   *  inset text is on); mid modules may never receive any. */
+  text?: TextPlugRender[] | null
   kind: ModuleKind
   /** Global column whose bead roles color this module's beads. */
   column: number
@@ -143,6 +165,7 @@ export function buildModuleThreeMf(args: {
   const {
     body,
     feet,
+    text,
     kind,
     column,
     params,
@@ -182,6 +205,59 @@ export function buildModuleThreeMf(args: {
       )
     }
     partSoups.push({ slot: filamentMap.feet, positions: feetSoup.positions })
+  }
+
+  // Inset side text (the CP-A end-module pockets): one render per color group
+  // present on THIS side, each into its plan slot. The error family mirrors the
+  // mono build's (abacus-3mf.ts), scoped per side — the module body carries the
+  // carved pockets, so shipping without the plugs is the empty-pocket bug the
+  // mono family exists to refuse. Mid modules never carry text (that's what
+  // keeps the mid-variant dedupe intact), so renders on one are a hard error.
+  const textEligible = params.text_mode === 'inset' && params.show_frame && kind !== 'mid'
+  const textRenders = text ?? []
+  if (!textEligible && textRenders.length > 0) {
+    throw new Error(
+      `module_${kind} was handed ${textRenders.length} inset-text render(s) it cannot carry`
+    )
+  }
+  if (textEligible) {
+    const expected = sideTextGroups(params, kind as 'left' | 'right')
+    if (expected.length > 0 || textRenders.length > 0) {
+      const textRoles = filamentMap.textRoles
+      if (!textRoles || textRoles.length === 0) {
+        throw new Error(
+          `the ${kind} end module has inset text but the filament map has no text slots`
+        )
+      }
+      const inked: { group: number; slot: number; positions: Float32Array }[] = []
+      let textTriangles = 0
+      for (const plug of textRenders) {
+        const slot = textRoles[plug.group]
+        if (slot === undefined) {
+          throw new Error(
+            `inset-text render for color group ${plug.group} has no slot in the filament map`
+          )
+        }
+        const soup = parseStl(plug.stl)
+        textTriangles += soup.triangleCount
+        // per-group emptiness tolerated, same as mono: these are user glyphs
+        if (soup.triangleCount === 0) continue
+        inked.push({ group: plug.group, slot, positions: soup.positions })
+      }
+      if (textTriangles === 0) {
+        throw new Error(
+          `the ${kind} end module has inset text but no text render carried geometry — refusing to ship empty pockets`
+        )
+      }
+      const rendered = new Set(textRenders.map((t) => t.group))
+      if (rendered.size !== expected.length || expected.some((g) => !rendered.has(g))) {
+        throw new Error(
+          `the ${kind} end module needs inset-text groups [${expected.join(', ')}] but [${[...rendered].sort((a, b) => a - b).join(', ')}] were rendered — the design changed mid-export`
+        )
+      }
+      assertGroupsDiffer(inked)
+      for (const g of inked) partSoups.push({ slot: g.slot, positions: g.positions })
+    }
   }
 
   return emitThreeMfBodies({
@@ -247,6 +323,11 @@ export function buildModuleKit(args: {
     mid: parts.midFeet,
     right: parts.rightFeet,
   }
+  const textOf: Record<ModuleKind, TextPlugRender[]> = {
+    left: parts.leftText,
+    mid: [], // mid modules never carry text — the mid-variant dedupe depends on it
+    right: parts.rightText,
+  }
 
   const entries = moduleKitPlan(p, filamentMap)
   const zipInput: Record<string, Uint8Array | [Uint8Array, { level: 0 }]> = {}
@@ -255,6 +336,7 @@ export function buildModuleKit(args: {
     const built = buildModuleThreeMf({
       body: bodyOf[e.kind],
       feet: feetOf[e.kind],
+      text: textOf[e.kind],
       kind: e.kind,
       column: e.column,
       params: p,
@@ -272,8 +354,9 @@ export function buildModuleKit(args: {
 }
 
 /** The kit's printed instructions — counts, assembly, the joint_fit ritual,
- *  the TPU note, and the phase-1 marker/frame-text limitations. Plain text on purpose:
- *  it gets read next to a slicer, not in a browser. */
+ *  the TPU note, the phase-1 marker limitation, and where frame text does and
+ *  doesn't print. Plain text on purpose: it gets read next to a slicer, not in
+ *  a browser. */
 function kitReadme(p: Params, modules: readonly ModuleKitFile[]): string {
   const d = derived(p)
   const printList = modules.map((m) => `  ${m.file.padEnd(34)} print x ${m.count}`).join('\n')
@@ -332,9 +415,31 @@ to get camera-readable markers today.
 
 Frame text
 ----------
-Modules print WITHOUT the frame text tokens (the complement facts along the
-rails). Per-module text would make every mid column a unique print and
-defeat this kit's shared-file dedupe, so it lands in a later phase — a
-monolithic export is the way to get frame text today.
+${frameTextNote(p)}
 `
+}
+
+/** The README's frame-text paragraph — truthful per design: side rails and end
+ *  walls print on the end modules (inset = inlay bodies, emboss = raised
+ *  lettering in the frame filament); the other four slots cross every column
+ *  seam and print only on a one-piece abacus. */
+function frameTextNote(p: Params): string {
+  const crossing = `Writing on the top/bottom rails or the front/back walls crosses every
+column seam, so it prints only on a one-piece abacus — the studio
+relocates the complement-fact aids to the side rails automatically.`
+  if (!anyTokens(p)) {
+    return `This design has no writing on the side rails or end walls, so the
+modules carry no frame text. Those are the only spots that CAN carry
+text on a modular kit (they sit wholly on the two end modules).
+${crossing}`
+  }
+  const how =
+    p.text_mode === 'inset'
+      ? `as color inlays riding their own filament slots in module-left.3mf
+and module-right.3mf`
+      : `as raised lettering in the frame filament`
+  return `The side rails and end walls print on the two end modules, ${how}.
+Mid modules carry no text, which is what keeps the mid-variant dedupe
+(one shared file per bead-color signature) intact.
+${crossing}`
 }

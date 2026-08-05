@@ -37,6 +37,7 @@ import {
   type ShellInfo,
   shellHex,
   shellRoleKey,
+  sideTextGroups,
   textGroupCount,
   tokenCenters,
   tokGroup,
@@ -761,23 +762,44 @@ export function AbacusStudioViewer() {
         return { stl, markerBlack, markerWhite, feet, textPlugs, params: p }
       },
       // The modular kit's bundle (Gitea #30): three module bodies + their feet
-      // passes, under the same snapshot-once contract as exportParts — a knob
-      // drag mid-export can never mix module geometries from different designs.
+      // passes + per-side inset-text passes, under the same snapshot-once
+      // contract as exportParts — a knob drag mid-export can never mix module
+      // geometries from different designs.
       // Feet gate matches exportParts' feet pass (and the scad's module_*_feet
       // asserts fire per pass, so an unprintable-feet design fails loudly here,
       // not silently at the slicer).
+      // Text passes fan out per SIDE: the end modules partition the plate's
+      // ink groups (sideTextGroups), so each side renders only the groups its
+      // own rail + wall carry — same -Dplug_group vocabulary as the mono pass.
       exportModuleParts: async () => {
         const p = paramsRef.current
         const withFeet = p.feet_mode === 'printed' && p.show_frame
-        const [left, mid, right, leftFeet, midFeet, rightFeet] = await Promise.all([
+        const withText = p.text_mode === 'inset' && p.show_frame
+        const leftGroups = withText ? sideTextGroups(p, 'left') : []
+        const rightGroups = withText ? sideTextGroups(p, 'right') : []
+        const [left, mid, right, leftFeet, midFeet, rightFeet, ...textStls] = await Promise.all([
           scadRef.current.exportStl(p, { only: 'module_left' }),
           scadRef.current.exportStl(p, { only: 'module_mid' }),
           scadRef.current.exportStl(p, { only: 'module_right' }),
           withFeet ? scadRef.current.exportStl(p, { only: 'module_left_feet' }) : null,
           withFeet ? scadRef.current.exportStl(p, { only: 'module_mid_feet' }) : null,
           withFeet ? scadRef.current.exportStl(p, { only: 'module_right_feet' }) : null,
+          ...leftGroups.map((g) =>
+            scadRef.current.exportStl(p, { only: 'module_left_text', group: g })
+          ),
+          ...rightGroups.map((g) =>
+            scadRef.current.exportStl(p, { only: 'module_right_text', group: g })
+          ),
         ])
-        return { left, mid, right, leftFeet, midFeet, rightFeet, params: p }
+        const leftText = leftGroups.map((g, i) => ({
+          group: g,
+          stl: textStls[i] as ArrayBuffer,
+        }))
+        const rightText = rightGroups.map((g, i) => ({
+          group: g,
+          stl: textStls[leftGroups.length + i] as ArrayBuffer,
+        }))
+        return { left, mid, right, leftFeet, midFeet, rightFeet, leftText, rightText, params: p }
       },
       // Generic single-pass escape hatch (seam coupon download, bench parts).
       // Reads the live params at call time — single-render downloads only;

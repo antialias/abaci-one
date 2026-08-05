@@ -106,6 +106,11 @@ const feetStl = (n = 3): ArrayBuffer => {
 
 const emptyStl = (): ArrayBuffer => toBuffer(writeBinaryStl(new Float32Array(0)))
 
+/** A synthetic side-text render: one triangle at a distinct x per group, so
+ *  assertGroupsDiffer sees real (differing) geometry. */
+const textStlAt = (x: number): ArrayBuffer =>
+  toBuffer(writeBinaryStl(new Float32Array(beadTri(x, -20))))
+
 describe('analyzeModuleShells (the per-module export gate)', () => {
   it('classifies a mid module: one frame + one column of beads stamped with the global column', () => {
     const pp = p()
@@ -250,6 +255,116 @@ describe('buildModuleThreeMf', () => {
   })
 })
 
+describe('buildModuleThreeMf — inset side text (the CP-A end-module pockets)', () => {
+  // aids off; two tokens on the left rail → left carries groups [0, 1], right
+  // carries nothing. Text roles on slots 1 and 2, clear of the left module's
+  // bead slot (column 0 is pv 12 → role 2 → slot 3 under fmPlace).
+  const pp = p({ text_mode: 'inset', aid_10: 'off', aid_5: 'off', left_text: 'A B' })
+  const fm: FilamentMap = { ...fmPlace, textRoles: [1, 2] }
+  const twoRenders = () => [
+    { group: 0, stl: textStlAt(30) },
+    { group: 1, stl: textStlAt(60) },
+  ]
+
+  it('merges each color group into its plan slot on the end module', () => {
+    const { bodies } = buildModuleThreeMf({
+      body: moduleStl(pp, 'left'),
+      text: twoRenders(),
+      kind: 'left',
+      column: 0,
+      params: pp,
+      filamentMap: fm,
+    })
+    expect(bodies.find((b) => b.slot === 1)).toMatchObject({ triangleCount: 1 })
+    expect(bodies.find((b) => b.slot === 2)).toMatchObject({ triangleCount: 1 })
+  })
+
+  it('a side with no tokens ships no text bodies — an empty partition, not an error', () => {
+    const { bodies } = buildModuleThreeMf({
+      body: moduleStl(pp, 'right'),
+      text: [],
+      kind: 'right',
+      column: pp.cols - 1,
+      params: pp,
+      filamentMap: fm,
+    })
+    // frame + the right column's beads (pv 0 → role 0 → slot 1), nothing else
+    expect(bodies.map((b) => b.slot)).toEqual([0, 1])
+  })
+
+  it('refuses the same silent failures the mono build refuses, scoped per side', () => {
+    const base = { body: moduleStl(pp, 'left'), kind: 'left' as const, column: 0, params: pp }
+    // plan/map mismatch: inset text but no text slots minted
+    expect(() => buildModuleThreeMf({ ...base, filamentMap: fmPlace, text: twoRenders() })).toThrow(
+      /no text slots/
+    )
+    // a render for a group the map never minted
+    expect(() =>
+      buildModuleThreeMf({
+        ...base,
+        filamentMap: { ...fmPlace, textRoles: [1] },
+        text: [
+          { group: 0, stl: textStlAt(1) },
+          { group: 5, stl: textStlAt(2) },
+        ],
+      })
+    ).toThrow(/no slot in the filament map/)
+    // every render empty = the empty-pocket bug itself
+    expect(() =>
+      buildModuleThreeMf({
+        ...base,
+        filamentMap: fm,
+        text: [
+          { group: 0, stl: emptyStl() },
+          { group: 1, stl: emptyStl() },
+        ],
+      })
+    ).toThrow(/refusing to ship empty pockets/)
+    // half-rendered: the side needs groups [0, 1] but only 0 arrived
+    expect(() =>
+      buildModuleThreeMf({ ...base, filamentMap: fm, text: [{ group: 0, stl: textStlAt(1) }] })
+    ).toThrow(/design changed mid-export/)
+    // identical soups across groups = the plug_group define never landed
+    expect(() =>
+      buildModuleThreeMf({
+        ...base,
+        filamentMap: fm,
+        text: [
+          { group: 0, stl: textStlAt(5) },
+          { group: 1, stl: textStlAt(5) },
+        ],
+      })
+    ).toThrow(/plug_group filter did not apply/)
+  })
+
+  it('mid modules may never carry text — that is what keeps the variant dedupe intact', () => {
+    expect(() =>
+      buildModuleThreeMf({
+        body: moduleStl(pp, 'mid'),
+        text: [{ group: 0, stl: textStlAt(1) }],
+        kind: 'mid',
+        column: 1,
+        params: pp,
+        filamentMap: fm,
+      })
+    ).toThrow(/cannot carry/)
+  })
+
+  it('emboss designs take no text renders (the lettering is welded into the body)', () => {
+    const pe = p({ left_text: 'A' }) // fixture default text_mode: 'emboss'
+    expect(() =>
+      buildModuleThreeMf({
+        body: moduleStl(pe, 'left'),
+        text: [{ group: 0, stl: textStlAt(1) }],
+        kind: 'left',
+        column: 0,
+        params: pe,
+        filamentMap: fmPlace,
+      })
+    ).toThrow(/cannot carry/)
+  })
+})
+
 describe('moduleKitPlan (bead-slot dedupe)', () => {
   it('13-col place-value: 5 mid variants summing to 11, first-seen left→right', () => {
     const entries = moduleKitPlan(p(), fmPlace)
@@ -321,6 +436,8 @@ describe('buildModuleKit', () => {
     leftFeet: feet ? feetStl() : null,
     midFeet: feet ? feetStl() : null,
     rightFeet: feet ? feetStl() : null,
+    leftText: [],
+    rightText: [],
     params: pp,
   })
 
@@ -355,6 +472,49 @@ describe('buildModuleKit', () => {
     for (const m of kit.modules) {
       expect(m.bodies.some((b) => b.slot === 2)).toBe(true)
     }
+  })
+
+  it('inset side text flows into the END members only, and the README says so', () => {
+    const pp = p({
+      text_mode: 'inset',
+      color_scheme: 'heaven-earth',
+      aid_10: 'off',
+      aid_5: 'off',
+      edge_left: 'L',
+      edge_right: 'R',
+    })
+    const fm: FilamentMap = { ...fmHeavenEarth, textRoles: [2] }
+    const parts: ModuleExportParts = {
+      ...kitParts(pp),
+      leftText: [{ group: 0, stl: textStlAt(30) }],
+      rightText: [{ group: 0, stl: textStlAt(60) }],
+    }
+    const kit = buildModuleKit({ parts, filamentMap: fm })
+    const byFile = Object.fromEntries(kit.modules.map((m) => [m.file, m]))
+    expect(byFile['module-left.3mf'].bodies.some((b) => b.slot === 2)).toBe(true)
+    expect(byFile['module-right.3mf'].bodies.some((b) => b.slot === 2)).toBe(true)
+    expect(byFile['module-mid-x11.3mf'].bodies.some((b) => b.slot === 2)).toBe(false)
+    const readme = strFromU8(unzipSync(kit.bytes)['README.txt'])
+    expect(readme).toContain('side rails and end walls print on the two end modules')
+    expect(readme).toContain('color inlays')
+    expect(readme).toContain('crosses every')
+  })
+
+  it("the README's frame-text section is truthful for emboss and for no-text designs", () => {
+    // emboss with side text (the fixture default has the aids on the side rails)
+    const emboss = buildModuleKit({
+      parts: kitParts(p({ color_scheme: 'heaven-earth' })),
+      filamentMap: fmHeavenEarth,
+    })
+    expect(strFromU8(unzipSync(emboss.bytes)['README.txt'])).toContain('raised lettering')
+    // nothing printable at all
+    const none = buildModuleKit({
+      parts: kitParts(p({ color_scheme: 'heaven-earth', aid_10: 'off', aid_5: 'off' })),
+      filamentMap: fmHeavenEarth,
+    })
+    expect(strFromU8(unzipSync(none.bytes)['README.txt'])).toContain(
+      'no writing on the side rails or end walls'
+    )
   })
 
   it('refuses to build a kit from a mono design', () => {
