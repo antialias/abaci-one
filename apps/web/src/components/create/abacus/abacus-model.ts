@@ -1062,6 +1062,7 @@ export type AidReason =
   | 'asked' // you named this rail
   | 'preferred' // 'auto' got its first choice (i.e. today's layout)
   | 'moved' // 'auto' rotated it onto a side rail for room
+  | 'modular' // relocated to a side rail: the crossing rails don't print on modular columns
   | 'nowhere' // every rail is holding your words
 export type AidPlacement = {
   aid: Aid
@@ -1097,6 +1098,9 @@ export type AidPlacement = {
  * legibility win for the sake of tidiness.
  */
 function autoAxis(p: Params, aids: readonly Aid[]): Axis {
+  // Modular columns print only the side rails (see MODULAR_TEXT_SLOT_INDICES),
+  // so the vertical axis is the only one whose homes exist on the plate.
+  if (isModular(p)) return 'vertical'
   if (aids.length === 0) return 'horizontal'
   const mm = (axis: Axis, a: Aid): number => estimateRailGlyphMm(p, a.home[axis], a.tokens)
   if (aids.every((a) => mm('horizontal', a) >= ROTATE_BELOW_MM)) return 'horizontal'
@@ -1128,6 +1132,10 @@ function autoAxis(p: Params, aids: readonly Aid[]): Axis {
  */
 export function placeAids(p: Params, withAuto = true): AidPlacement[] {
   const taken = new Set<TextSlot>(TEXT_SLOTS.filter((s) => tokenize(slotWords(p, s)).length > 0))
+  // Modular columns print the side rails only; a slot that can't print is no
+  // home for an aid, whether 'auto' walked there or the user pinned it — the
+  // pin is honoured again the moment the design flips back to mono.
+  const prints = (s: TextSlot): boolean => !isModular(p) || s === 'left' || s === 'right'
   const axis = autoAxis(
     p,
     AIDS.filter((a) => String(p[a.key]) === 'auto')
@@ -1157,16 +1165,25 @@ export function placeAids(p: Params, withAuto = true): AidPlacement[] {
       return { aid, slot: null, intent, autoSlot, mm: null, fits: true, reason: 'off' as AidReason }
     }
     const named = (TEXT_SLOTS as readonly string[]).includes(intent) ? (intent as TextSlot) : null
-    if (named && !taken.has(named)) return land(aid, named, intent, 'asked', wouldAuto(aid))
-    const free = aidPrefer(aid, axis).filter((s) => !taken.has(s))
+    if (named && !taken.has(named) && prints(named)) {
+      return land(aid, named, intent, 'asked', wouldAuto(aid))
+    }
+    const free = aidPrefer(aid, axis).filter((s) => !taken.has(s) && prints(s))
     const slot = free.find((s) => railFits(p, s, aid.tokens)) ?? free[0] ?? null
     if (!slot) {
       const autoSlot = intent === 'auto' ? null : wouldAuto(aid)
       return { aid, slot: null, intent, autoSlot, mm: null, fits: false, reason: 'nowhere' }
     }
     // 'preferred' means today's layout — its horizontal home — not merely "first
-    // choice", which now depends on the axis.
-    const reason: AidReason = slot === aid.home.horizontal ? 'preferred' : 'moved'
+    // choice", which now depends on the axis. A landing forced off a rail that
+    // doesn't print (modular columns) outranks 'moved': the caption must name
+    // the real mover, and it isn't glyph room.
+    const reason: AidReason =
+      (named && !prints(named)) || !prints(aid.home.horizontal)
+        ? 'modular'
+        : slot === aid.home.horizontal
+          ? 'preferred'
+          : 'moved'
     return land(aid, slot, intent, reason, intent === 'auto' ? slot : wouldAuto(aid))
   })
 }
@@ -1181,12 +1198,24 @@ export function placeAids(p: Params, withAuto = true): AidPlacement[] {
 export function aidNote(p: Params, place: AidPlacement): string | null {
   const { aid, slot, reason, fits, autoSlot } = place
   if (reason === 'off') return null
-  if (!slot) return `Nowhere to put ${aid.label} — all four rails are holding your words.`
+  if (!slot)
+    return isModular(p)
+      ? `Nowhere to put ${aid.label} — both side rails are holding your words.`
+      : `Nowhere to put ${aid.label} — all four rails are holding your words.`
   const n = aid.tokens.length
   const where = `${aid.label} is on the ${SLOT_LABEL[slot]}`
   const reads = SLOT_READS[slot]
   const tail = reads ? ` It ${reads}.` : ''
   const small = fits ? '' : ` ${n} facts will print small there.`
+  if (reason === 'modular') {
+    // Name the rail that ACTUALLY lost the aid — the user's pin if there was
+    // one, its everyday home otherwise — and the real mover: crossing rails
+    // don't print on snap-together columns.
+    const lost = (TEXT_SLOTS as readonly string[]).includes(place.intent)
+      ? (place.intent as TextSlot)
+      : aid.home.horizontal
+    return `${where}: the ${SLOT_LABEL[lost]} doesn't print on snap-together columns.${tail}${small}`
+  }
   if (reason === 'moved') {
     return `${where}: ${n} facts print too small along the ${SLOT_LABEL[aid.home.horizontal]} at ${p.cols} columns.${tail}${small}`
   }
@@ -1209,13 +1238,19 @@ export function aidNote(p: Params, place: AidPlacement): string | null {
 // definesFrom, tokenCenters, anyTokens, and the color-group math below all read
 // this, so the slot ORDER and the per-slot token index `k` mean the same thing
 // everywhere — on the plate, in the plan, and in the preview's tint.
+/** The token-slot indices (TEXT_SLOT_DEFINES order) that survive modular mode:
+ *  the side rails and end walls sit wholly inside the end modules (14 mm clear
+ *  of the seam plane), so the modules carve them; the other four slots are laid
+ *  out across the full frame width and would straddle every seam. */
+export const MODULAR_TEXT_SLOT_INDICES: readonly number[] = [2, 3, 6, 7]
+
 export function textSlots(p: Params): [string, number][][] {
   const placed = placeAids(p)
   const rail = (slot: TextSlot): [string, number][] => {
     const aid = placed.find((x) => x.slot === slot)?.aid
     return aid ? aid.tokens.map((t) => [t, 0] as [string, number]) : tokenize(slotWords(p, slot))
   }
-  return [
+  const all = [
     rail('top'),
     rail('bottom'),
     rail('left'),
@@ -1225,6 +1260,12 @@ export function textSlots(p: Params): [string, number][][] {
     tokenize(p.edge_left),
     tokenize(p.edge_right),
   ]
+  // Modular mode empties the seam-crossing slots HERE, at the single source —
+  // defines, group counts, plan text roles, plug passes and tint centers all
+  // follow without their own gates. Non-destructive: the words stay in params,
+  // so flipping back to mono restores them untouched.
+  if (!isModular(p)) return all
+  return all.map((toks, i) => (MODULAR_TEXT_SLOT_INDICES.includes(i) ? toks : []))
 }
 
 // mirror of the scad rails()/walls() layout: token k of a slot sits at
@@ -1319,6 +1360,21 @@ export function textGroupNeighbors(p: Params): Set<number>[] {
     }
   }
   return nb
+}
+
+/** Which color groups actually ink ONE end module's side slots (left = side
+ *  rail 2 + end wall 6, right = 3 + 7), ascending. The per-module 3MF build
+ *  needs this instead of textGroupCount because the two sides split the token
+ *  population: a group whose tokens all sit on the other side legitimately
+ *  ships no body in THIS module's 3MF — that's a partition, not a dropped
+ *  render. The indices are exactly MODULAR_TEXT_SLOT_INDICES split by side;
+ *  callers are modular-only (the kit build refuses mono designs upstream). */
+export function sideTextGroups(p: Params, side: 'left' | 'right'): number[] {
+  const idx = side === 'left' ? [2, 6] : [3, 7]
+  const slots = textSlots(p)
+  const present = new Set<number>()
+  for (const i of idx) slots[i].forEach((_, k) => present.add(tokGroup(p, k)))
+  return [...present].sort((a, b) => a - b)
 }
 
 // ---- feet layout mirror (Gitea #23) -----------------------------------------

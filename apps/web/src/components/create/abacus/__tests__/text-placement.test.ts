@@ -324,6 +324,71 @@ describe('placeAids', () => {
   })
 })
 
+describe('modular columns (Gitea #30) — the crossing rails are no home', () => {
+  // On snap-together columns only the side rails print (top/bottom rails and
+  // front/back walls span every seam), so placement must treat the horizontal
+  // rails as nonexistent: 'auto' never lands there, and a pin on one relocates
+  // with a caption that names the real mover.
+  const modular = (cols: number, over: Partial<Params> = {}): Params => ({
+    ...defaultParams,
+    cols,
+    seam_mode: 'modular',
+    ...over,
+  })
+
+  it("'auto' puts both aids on the side rails at EVERY column count, and says why", () => {
+    for (let cols = 3; cols <= 21; cols++) {
+      const p = modular(cols)
+      expect(where(p, 'aid_10'), `${cols} columns`).toBe('left')
+      expect(where(p, 'aid_5'), `${cols} columns`).toBe('right')
+      expect(reasonOf(p, 'aid_10'), `${cols} columns`).toBe('modular')
+    }
+    // the caption blames the seams, not glyph room — and still discloses the
+    // rotated reading direction, which is a real cost of the side rail
+    const p = modular(13)
+    const note = aidNote(p, placeAids(p)[0]) ?? ''
+    expect(note).toContain('left side')
+    expect(note).toContain("top rail doesn't print on snap-together columns")
+    expect(note).toContain('bottom→top')
+  })
+
+  it("a pin on a crossing rail relocates, and the caption names YOUR pin — not the aid's everyday home", () => {
+    // aid_5's everyday home is the bottom; pinning it to the TOP must produce a
+    // caption about the top rail, or the sentence explains the wrong loss.
+    const p = modular(13, { aid_5: 'top' })
+    const fives = placeAids(p).find((x) => x.aid.key === 'aid_5')!
+    expect(fives.slot).toBe('right')
+    expect(fives.reason).toBe('modular')
+    const note = aidNote(p, fives) ?? ''
+    expect(note).toContain("top rail doesn't print on snap-together columns")
+    expect(note).not.toContain('bottom rail')
+  })
+
+  it('a side-rail pin is still honoured verbatim; the other aid takes the remaining side', () => {
+    const p = modular(13, { aid_10: 'right' })
+    const tens = placeAids(p).find((x) => x.aid.key === 'aid_10')!
+    expect(tens.slot).toBe('right')
+    expect(tens.reason).toBe('asked')
+    expect(where(p, 'aid_5')).toBe('left')
+  })
+
+  it("an off aid's automatic answer is a side rail — the select can't offer a rail that won't print", () => {
+    expect(placeAids(modular(13, { aid_5: 'off' }))[1].autoSlot).toBe('right')
+  })
+
+  it('words on both side rails leave the aids nowhere — never a seam-crossing fallback', () => {
+    // In mono, the aid squeezes onto the emptiest rail rather than dropping.
+    // Here the only fallbacks would cross seams, so dropping is correct — and
+    // the caption counts TWO rails, not the mono four.
+    const p = modular(13, { left_text: 'ADA', right_text: 'LOVELACE' })
+    for (const aid of AIDS) expect(where(p, aid.key)).toBeNull()
+    expect(lengths(p)).toEqual([0, 0, 1, 1, 0, 0, 0, 0])
+    const note = aidNote(p, placeAids(p)[0]) ?? ''
+    expect(note).toContain('Nowhere')
+    expect(note).toContain('both side rails')
+  })
+})
+
 describe('what placement does to the plate', () => {
   it('keeps the ink-group count when an aid relocates', () => {
     // textGroupCount is min(5, longest rail), which follows the aid wherever it

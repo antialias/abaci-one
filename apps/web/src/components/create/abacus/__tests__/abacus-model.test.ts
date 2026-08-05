@@ -12,8 +12,10 @@ import {
   derived,
   feetEffective,
   feetPositions,
+  MODULAR_TEXT_SLOT_INDICES,
   type Params,
   paramsFromDisplayConfig,
+  sideTextGroups,
   TEXT_RAINBOW_GROUPS,
   textGroupCount,
   textGroupNeighbors,
@@ -464,5 +466,101 @@ describe('inset text color groups — hand-computed mirror of the scad tok_color
     expect(anyTokens(blank)).toBe(false)
     // per-rail index: both rails restart at k=0
     expect(tokenCenters(defaultParams).map((c) => c.k)).toEqual([0, 1, 2, 3, 4, 0, 1, 2, 3])
+  })
+})
+
+describe('modular columns (Gitea #30) — text prints on the end modules only', () => {
+  // Side rails and end walls sit wholly inside the end modules (14 mm clear of
+  // the seam plane), so they keep printing; the other four slots are laid out
+  // across every seam and are gated out at textSlots — the single source every
+  // consumer below reads.
+  const modular = (over: Partial<Params> = {}): Params => ({
+    ...defaultParams,
+    seam_mode: 'modular',
+    ...over,
+  })
+
+  it('the surviving indices are exactly the side rails + end walls of the slot order', () => {
+    // textSlots order: rails top/bottom/left/right, then walls front/back/left/right.
+    expect(MODULAR_TEXT_SLOT_INDICES).toEqual([2, 3, 6, 7])
+  })
+
+  it('the default design keeps all nine facts — the aids relocate to the sides', () => {
+    const slots = textSlots(modular())
+    expect(slots.map((t) => t.length)).toEqual([0, 0, 5, 4, 0, 0, 0, 0])
+    expect(anyTokens(modular())).toBe(true)
+    // and the ink partition is unchanged: five groups, same as mono
+    expect(textGroupCount(modular())).toBe(TEXT_RAINBOW_GROUPS)
+  })
+
+  it('gates crossing-slot words out NON-destructively — mono gets them back untouched', () => {
+    const p = modular({
+      aid_10: 'off',
+      aid_5: 'off',
+      top_text: 'a b',
+      edge_front: 'x',
+      edge_left: 'L',
+    })
+    expect(textSlots(p).map((t) => t.length)).toEqual([0, 0, 0, 0, 0, 0, 1, 0])
+    const back: Params = { ...p, seam_mode: 'mono' }
+    expect(textSlots(back)[0]).toEqual([
+      ['a', 0],
+      ['b', 0],
+    ])
+    expect(textSlots(back)[4]).toEqual([['x', 0]])
+  })
+
+  it('anyTokens follows the gate: crossing-only words mean NOTHING prints', () => {
+    // this is what lets the plug pump skip the render instead of special-casing
+    const p = modular({ aid_10: 'off', aid_5: 'off', top_text: 'a', edge_back: 'b' })
+    expect(anyTokens(p)).toBe(false)
+    expect(tokenCenters(p)).toEqual([])
+    expect(textGroupCount(p)).toBe(0)
+  })
+
+  it('emits empty -D vectors for the crossing slots, full ones for the sides', () => {
+    const defines = definesFrom(modular())
+    expect(defines).toContain('-Dtext_top=[]')
+    expect(defines).toContain('-Dtext_bottom=[]')
+    expect(defines).toContain('-Dtext_left=[["1+9",0],["2+8",0],["3+7",0],["4+6",0],["5+5",0]]')
+    expect(defines).toContain('-Dtext_right=[["1+4",0],["2+3",0],["3+2",0],["4+1",0]]')
+  })
+
+  it('tokenCenters put the right rail on the WIDER modular frame — the slotGeom identity', () => {
+    // The scad authors right-side slots at frame_w − x; the modules re-base and
+    // reassemble so the token lands at (assembled width) − x. TS slotGeom reads
+    // the modular-aware frameW, so the two agree with no new math — pinned here.
+    const cols = 4 // mono already rotates both aids to the sides at 4 columns
+    const mono: Params = { ...defaultParams, cols }
+    const mod: Params = { ...mono, seam_mode: 'modular' }
+    expect(textSlots(mod).map((t) => t.length)).toEqual(textSlots(mono).map((t) => t.length))
+    const [cMono, cMod] = [tokenCenters(mono), tokenCenters(mod)]
+    // left rail is column- and seam-independent: identical x
+    expect(cMod[0].x).toBeCloseTo(cMono[0].x, 10)
+    // right rail shifts outward by exactly the frame widening (one web per seam)
+    const dx = derived(mod).frameW - derived(mono).frameW
+    expect(dx).toBeGreaterThan(0)
+    expect(cMod[5].x - cMono[5].x).toBeCloseTo(dx, 10)
+  })
+
+  describe('sideTextGroups — which ink groups each end module must carry', () => {
+    it('partitions the plate groups by module: rail k restarts per side', () => {
+      const p = modular()
+      expect(sideTextGroups(p, 'left')).toEqual([0, 1, 2, 3, 4]) // friends-of-10, 5 tokens
+      expect(sideTextGroups(p, 'right')).toEqual([0, 1, 2, 3]) // friends-of-5, 4 tokens
+    })
+
+    it('a side with no tokens is an empty partition, not an error', () => {
+      const p = modular({ aid_10: 'off', aid_5: 'off', edge_left: 'L' })
+      expect(sideTextGroups(p, 'left')).toEqual([0]) // the wall token, k=0
+      expect(sideTextGroups(p, 'right')).toEqual([])
+    })
+
+    it('single fill collapses both sides to group 0 — one ink everywhere', () => {
+      const p = modular({ text_fill: 'single' })
+      expect(sideTextGroups(p, 'left')).toEqual([0])
+      expect(sideTextGroups(p, 'right')).toEqual([0])
+      expect(textGroupCount(p)).toBe(1)
+    })
   })
 })
