@@ -19,6 +19,7 @@ import { StudioSelect } from '@/components/studio/StudioSelect'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { buildAbacusThreeMf } from './abacus-3mf'
 import { PRINTER_PROFILES } from './abacus-solver'
+import { downloadBlob } from './download-blob'
 import { FilamentPlanPanel } from './FilamentPlanPanel'
 import { PrintPanel } from './PrintPanel'
 
@@ -34,14 +35,6 @@ const FIX_BTN: CSSProperties = {
   fontSize: 11,
   fontWeight: 600,
   cursor: 'pointer',
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(a.href)
 }
 
 export function FabricationRail() {

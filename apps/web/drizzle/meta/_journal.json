@@ -1002,6 +1002,13 @@
       "when": 1785378696737,
       "tag": "0142_abacus_design_names",
       "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "6",
+      "when": 1785890637475,
+      "tag": "0143_seed-abacus-modular-columns-flag",
+      "breakpoints": true
     }
   ]
 }
