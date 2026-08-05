@@ -50,9 +50,11 @@ import {
   anyTokens,
   beadRoleIndex,
   beadRoleNames,
+  bumperLabel,
   derived,
   type FilamentMap,
   isModular,
+  matchBumper,
   type Params,
   shellSlotIndex,
   sideTextGroups,
@@ -394,17 +396,9 @@ than firm hand force, tighter (-) until seam wiggle dies. Then regenerate
 the kit at the fit the coupon settles on — the kit filename records the fit
 these modules were generated at.
 
-TPU feet
---------
-${
-  p.feet_mode === 'printed'
-    ? `Feet bodies ride each module's 3MF on their own filament slot and are
-meant for a flexible filament (TPU). If no TPU spool is loaded, the studio's
-plan falls back to the frame filament — rigid feet still print and stand,
-they just don't grip like TPU.`
-    : `This design does not use printed feet (feet_mode "${p.feet_mode}"), so
-the kit's modules carry no feet bodies.`
-}
+Feet
+----
+${feetNote(p)}
 
 Markers (camera features)
 -------------------------
@@ -417,6 +411,32 @@ Frame text
 ----------
 ${frameTextNote(p)}
 `
+}
+
+/** The README's feet paragraph — one story per feet_mode. Printed studs ride
+ *  every module as TPU bodies; adhesive pockets are carved on every module
+ *  (corners on the two ends, beside the seam socket on every column module)
+ *  and the bumpers are bought hardware, so the note names what to buy and
+ *  where it can go. */
+function feetNote(p: Params): string {
+  if (p.feet_mode === 'printed') {
+    return `Feet bodies ride each module's 3MF on their own filament slot and are
+meant for a flexible filament (TPU). If no TPU spool is loaded, the studio's
+plan falls back to the frame filament — rigid feet still print and stand,
+they just don't grip like TPU.`
+  }
+  if (p.feet_mode === 'adhesive') {
+    const b = matchBumper(p)
+    const hw = b ? `${bumperLabel(b)} bumpers` : `${p.feet_w.toFixed(1)} mm stick-on bumpers`
+    const span = Math.round(p.feet_span * p.scale_factor ** (4 / 3))
+    return `Every module carries empty pockets for ${hw} — the end modules at
+their corners, every column module beside its seam socket — so feet can go
+under any columns you choose. Populate the four corner pockets at least,
+and on a long row add a pair roughly every ${span} mm so the middle
+cannot flex.`
+  }
+  return `This design has no feet (feet_mode "none") — the modules stand flat
+on their bottom faces.`
 }
 
 /** The README's frame-text paragraph — truthful per design: side rails and end

@@ -944,14 +944,20 @@ mod_we = s_bw + s_em + s_bd / 2 + clearance + sc_wall;  // end-module width (26.
                                // its column's channel + a full edge web
 /* mid-module feet: the monolith's foot Y-centers are CONCENTRIC with the
    dovetails (same solid bands), and the socket eats x∈[0, mf_sock] at full
-   height — so the mid foot moves BESIDE the socket on X instead. Width is a
-   DERIVATION, not a constant: capped at the 6.35 (1/4") class the user chose,
-   floored by what actually fits between socket wall and seam face — joint dims
-   are absolute while sc_w scales, so the cap only closes near S = 1. */
+   height — so the mid foot moves BESIDE the socket on X, in the band mf_band
+   left between socket wall and seam face (joint dims are absolute while sc_w
+   scales, so the band only opens with scale). The width rule splits by
+   fabrication story:
+   - printed: a DERIVATION — capped at the 6.35 (1/4") stud class the user
+     chose, floored by the band. Pocket and TPU stud print together, so any
+     width that fits is self-consistent.
+   - adhesive: the TRUE bumper width, or an abort. The bumper is bought
+     hardware — a pocket narrower than the bumper seats nothing — so a bumper
+     wider than the band is refused outright instead of silently shrunk. */
 mf_sock  = joint_tab + joint_fit + sc_deep;  // deepest socket cut into x (4.9)
 mf_wall  = 1.6;                              // min wall: socket→pocket and pocket→seam face
-mf_w     = min(feet_w, 6.35,
-               sc_w - mf_sock - 2 * mf_wall - 2 * feet_undercut_eff - 2 * feet_fit_eff);
+mf_band  = sc_w - mf_sock - 2 * mf_wall - 2 * feet_undercut_eff - 2 * feet_fit_eff;
+mf_w     = feet_printed ? min(feet_w, 6.35, mf_band) : feet_w;
 mf_mouth = mf_w + 2 * feet_fit_eff;
 mf_seat  = mf_mouth + 2 * feet_undercut_eff;
 mf_x     = (mf_sock + sc_w) / 2;             // centered in the band beside the socket
@@ -959,6 +965,8 @@ MF_Y     = [feet_c, outer_d - feet_c];       // front + back solid strips, same
                                              // edge inset as the mono corners
 assert(!(mod_active && feet) || mf_w >= 4,
        "module feet don't fit beside the seam socket — raise scale_factor (or feet_mode=none)");
+assert(!(mod_active && feet && !feet_printed) || feet_w <= mf_band,
+       "stick-on bumper doesn't fit beside the seam socket — pick a narrower bumper or raise scale_factor");
 assert(!(mod_active && feet) || (mf_x - mf_seat / 2 - mf_sock >= 1.5 && sc_w - mf_x - mf_seat / 2 >= 1.5),
        "module foot pocket too close to the seam socket or the seam face");
 assert(!(mod_active && feet && feet_crossbar) || feet_c + mf_seat / 2 + xbar_embed + 0.8 <= sc_f1,

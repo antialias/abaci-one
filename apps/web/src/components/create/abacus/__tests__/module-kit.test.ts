@@ -517,6 +517,34 @@ describe('buildModuleKit', () => {
     )
   })
 
+  it("the README's feet section is truthful per feet_mode", () => {
+    // adhesive with a catalog bumper: every module carries pockets, named in
+    // the inches the hardware is sold in, with the populate-any-columns story
+    const adhesive = buildModuleKit({
+      parts: kitParts(
+        p({
+          color_scheme: 'heaven-earth',
+          feet_shape: 'circle',
+          feet_w: 6.35,
+          feet_depth: 25.4 / 32,
+        })
+      ),
+      filamentMap: fmHeavenEarth,
+    })
+    const readme = strFromU8(unzipSync(adhesive.bytes)['README.txt'])
+    expect(readme).toContain('Every module carries empty pockets')
+    expect(readme).toContain('1/4" × 1/16" dome bumpers')
+    expect(readme).toContain('under any columns you choose')
+    // none: flat on the bottom faces, no pocket claim
+    const none = buildModuleKit({
+      parts: kitParts(p({ color_scheme: 'heaven-earth', feet_mode: 'none' })),
+      filamentMap: fmHeavenEarth,
+    })
+    const noneReadme = strFromU8(unzipSync(none.bytes)['README.txt'])
+    expect(noneReadme).toContain('stand flat')
+    expect(noneReadme).not.toContain('bumpers')
+  })
+
   it('refuses to build a kit from a mono design', () => {
     const pp = { ...p(), seam_mode: 'mono' as const }
     expect(() => buildModuleKit({ parts: kitParts(pp), filamentMap: fmHeavenEarth })).toThrow(

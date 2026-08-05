@@ -39,8 +39,10 @@ import {
   feetEffective,
   feetFit,
   isModular,
+  type ModuleFeetLayout,
   matchBrim,
   matchBumper,
+  moduleFeetLayout,
   placeAids,
   SLOT_LABEL,
   type TextSlot,
@@ -94,6 +96,12 @@ const unfitSuffix = (fit: FeetFit): string => {
   ].filter(Boolean)
   return levers.length ? ` — needs ${levers.join(' or ')}` : ' — too big for this frame'
 }
+/** The modular twin of unfitSuffix: the bumper seats in the border strip but
+ *  not in the band beside a column module's seam socket. Size is the only
+ *  lever (the band scales, the socket doesn't) — the brim widens nothing
+ *  here, so it is never offered. */
+const seamSuffix = (mf: ModuleFeetLayout): string =>
+  mf.minScale ? ` — needs size ×${mf.minScale.toFixed(2)}` : ' — too wide beside the seam sockets'
 
 export interface DesignInspectorRailProps {
   /** ?player= value (pre-fallback), for the picker + notice */
@@ -507,11 +515,22 @@ export function DesignInspectorRail({
                   ? []
                   : [{ value: CUSTOM_BUMPER, label: `custom — ${params.feet_w.toFixed(2)} mm` }]),
                 ...BUMPER_PRESETS.map((b) => {
-                  const fit = feetFit({ ...params, ...bumperParams(b) })
+                  const q = { ...params, ...bumperParams(b) }
+                  const fit = feetFit(q)
+                  // Snap-together columns add a second gate: every column
+                  // module's pocket lives beside its seam socket, and a bought
+                  // bumper seats in a pocket of its own size or not at all
+                  // (mirror of the scad's stick-on assert). Strip failures
+                  // outrank it — no band matters on a bumper the border strip
+                  // already can't hold.
+                  const seam = isModular(params) ? moduleFeetLayout(q) : null
+                  const ok = fit.fits && (seam?.bumperFits ?? true)
                   return {
                     value: b.id,
-                    label: fit.fits ? bumperLabel(b) : `${bumperLabel(b)}${unfitSuffix(fit)}`,
-                    disabled: !fit.fits,
+                    label: ok
+                      ? bumperLabel(b)
+                      : `${bumperLabel(b)}${fit.fits ? seamSuffix(seam as ModuleFeetLayout) : unfitSuffix(fit)}`,
+                    disabled: !ok,
                   }
                 }),
               ]}

@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { parseDesignSnapshot } from '@/lib/abacus/design-snapshot'
 import {
   analyzeShells,
+  BUMPER_PRESETS,
+  bumperParams,
   DEFINE_KEYS,
   defaultParams,
   definesFrom,
@@ -29,6 +31,12 @@ import {
 // mirror breaks a pinned constant here.
 
 const p = (over: Partial<Params> = {}): Params => ({ ...defaultParams, ...over })
+
+// The two bumpers the adhesive tests lean on: the 1/4" × 1/16" dome is the
+// largest catalog bumper that seats beside the seam socket at stock size, and
+// the 3/8" × 1/8" dome is the smallest that does not.
+const quarterBumper = BUMPER_PRESETS.find((b) => b.id === 'd-250-062')!
+const threeEighthsBumper = BUMPER_PRESETS.find((b) => b.id === 'd-375-125')!
 
 // ---- SEAM constants: pinned against the scad source --------------------------
 // Same drift guard seam-flexure-dfm.test.ts runs on the flexure knobs: SEAM is
@@ -166,11 +174,41 @@ describe('moduleFeetLayout', () => {
   })
 
   it('adhesive mode recovers the raw fit/undercut knobs from feetEffective', () => {
-    const mf = moduleFeetLayout(p({ feet_mode: 'adhesive' }))
-    // fitEff = 0.15, undercutEff = 0 → band = 15.5 − 4.9 − 3.2 − 0.3 = 7.1
+    // fitEff = 0.15, undercutEff = 0 → band = 15.5 − 4.9 − 3.2 − 0.3 = 7.1;
+    // the 1/4" bumper (6.35) seats in it
+    const mf = moduleFeetLayout(p({ feet_mode: 'adhesive', ...bumperParams(quarterBumper) }))
     expect(mf.w).toBe(6.35)
     expect(mf.mouth).toBeCloseTo(6.35 + 0.3, 12)
     expect(mf.seat).toBeCloseTo(mf.mouth, 12) // no flare asked for, none upgraded
+  })
+
+  it('adhesive carves the TRUE bumper width — the 6.35 stud cap is a printed-mode rule', () => {
+    // 1/4" × 1/16" dome: fits the band, and the pocket class is IDENTICAL to
+    // the mono corner pocket — every module offers the same seat
+    const quarter = p({ feet_mode: 'adhesive', ...bumperParams(quarterBumper) })
+    const mf = moduleFeetLayout(quarter)
+    expect(mf.bumperFits).toBe(true)
+    expect(mf.minScale).toBeNull()
+    expect(mf.mouth).toBeCloseTo(feetEffective(quarter).mouth, 12)
+    // 3/8" × 1/8" dome: 9.525 into a 7.1 band — kept at TRUE width and refused,
+    // never silently shrunk to a pocket no bought bumper can seat in
+    const threeEighths = p({ feet_mode: 'adhesive', ...bumperParams(threeEighthsBumper) })
+    const wide = moduleFeetLayout(threeEighths)
+    expect(wide.w).toBeCloseTo(9.525, 12)
+    expect(wide.bumperFits).toBe(false)
+    // the band scales while the socket doesn't: band(S) = 15S − 7.9 at these
+    // knobs, so 9.525 first fits at S = 17.425/15 ≈ 1.162
+    expect(wide.minScale).toBeCloseTo(17.425 / 15, 5)
+    expect(
+      moduleFeetLayout({ ...threeEighths, scale_factor: wide.minScale as number }).bumperFits
+    ).toBe(true)
+  })
+
+  it('printed mode keeps the stud cap: the same 3/8" foot prints capped, not refused', () => {
+    const mf = moduleFeetLayout(p({ ...bumperParams(threeEighthsBumper), feet_mode: 'printed' }))
+    expect(mf.w).toBe(6.35)
+    expect(mf.bumperFits).toBe(true)
+    expect(mf.minScale).toBeNull()
   })
 })
 
@@ -223,9 +261,20 @@ describe('seamFit', () => {
       'clip_walls',
       'seat',
       'module_feet',
+      'feet_bumper',
       'feet_socket',
       'feet_crossbar',
     ])
+  })
+
+  it('a too-wide stick-on bumper trips feet_bumper (and the socket-wall row) with the feet_w knob', () => {
+    const wide = p({ feet_mode: 'adhesive', ...bumperParams(threeEighthsBumper) })
+    expect(failing(wide)).toEqual(['feet_bumper', 'feet_socket'])
+    const row = seamFit(wide).verdicts.find((v) => v.code === 'feet_bumper')
+    expect(row?.knob).toBe('feet_w')
+    expect(row?.message).toContain('9.5 mm into a 7.1 mm band')
+    // the bumper that fits passes every row — every module carries a usable seat
+    expect(seamFit(p({ feet_mode: 'adhesive', ...bumperParams(quarterBumper) })).ok).toBe(true)
   })
 
   it('S = 0.6: bar strip, seat and module feet all fail — but the marker-held borders hold', () => {

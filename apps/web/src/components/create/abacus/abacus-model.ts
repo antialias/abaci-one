@@ -1688,11 +1688,13 @@ const seamBands = (p: Params) => {
   }
 }
 
-/** The mid-module TPU foot, derived exactly as the scad derives mf_*: capped at
- *  the 6.35 mm (1/4") class, floored by what actually fits between the seam
- *  socket's deepest cut and the seam face — joint dims are absolute while the
- *  module width scales, so the cap only binds near S = 1 and the BAND becomes
- *  the binding constraint as the design shrinks. */
+/** The mid-module foot, derived exactly as the scad derives mf_*. Printed:
+ *  capped at the 6.35 mm (1/4") stud class, floored by what actually fits
+ *  between the seam socket's deepest cut and the seam face — joint dims are
+ *  absolute while the module width scales, so the cap only binds near S = 1.
+ *  Adhesive: the TRUE bumper width — bought hardware seats in a pocket of its
+ *  own size or not at all, so `bumperFits` (the scad's stick-on assert) is the
+ *  verdict instead of a silent cap. */
 export type ModuleFeetLayout = {
   /** the derived foot width (side/diameter at the bottom face) */
   w: number
@@ -1702,33 +1704,60 @@ export type ModuleFeetLayout = {
   x: number
   /** deepest seam-socket cut into module X (tab + fit + deepening) */
   sock: number
+  /** the free width beside the socket a mid-module pocket can occupy */
+  band: number
   /** w ≥ 4 — the scad's hard floor for a foot worth printing */
   fits: boolean
   /** both clearance walls ≥ 1.5: socket→pocket and pocket→seam face */
   walls: boolean
-  /** true when the band (not the 6.35 class, not feet_w) decided `w` */
+  /** printed only: the band (not the 6.35 class, not feet_w) decided `w` */
   capped: boolean
+  /** adhesive only: the bought bumper truly fits the band. Printed feet derive
+   *  their own width, so this is vacuously true there. */
+  bumperFits: boolean
+  /** smallest scale_factor that seats the bumper beside the socket (the band
+   *  scales, the socket doesn't) — bisected like FeetFit.minScale; null when
+   *  it already fits, or when even ×4 can't hold it */
+  minScale: number | null
 }
 export function moduleFeetLayout(p: Params): ModuleFeetLayout {
   const d = derived(p)
   const f = feetEffective(p)
   const fitEff = f.mouth / 2 - p.feet_w / 2 // recover fit_eff without re-branching
   const undercutEff = (f.seat - f.mouth) / 2
+  const printed = p.feet_mode === 'printed'
   const sock = SEAM.jointTab + p.joint_fit + SEAM.scDeep
-  const band = d.scW - sock - 2 * SEAM.mfWall - 2 * undercutEff - 2 * fitEff
-  const w = Math.min(p.feet_w, 6.35, band)
+  const bandAt = (s: number) =>
+    derived({ ...p, scale_factor: s }).scW - sock - 2 * SEAM.mfWall - 2 * undercutEff - 2 * fitEff
+  const band = bandAt(p.scale_factor)
+  const w = printed ? Math.min(p.feet_w, 6.35, band) : p.feet_w
   const mouth = w + 2 * fitEff
   const seat = mouth + 2 * undercutEff
   const x = (sock + d.scW) / 2
+  const bumperFits = printed || p.feet_w <= band
+  let minScale: number | null = null
+  if (!bumperFits && p.feet_w <= bandAt(4)) {
+    let lo = p.scale_factor
+    let hi = 4
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2
+      if (p.feet_w <= bandAt(mid)) hi = mid
+      else lo = mid
+    }
+    minScale = hi
+  }
   return {
     w,
     mouth,
     seat,
     x,
     sock,
+    band,
     fits: w >= 4,
     walls: x - seat / 2 - sock >= 1.5 && d.scW - x - seat / 2 >= 1.5,
-    capped: band < Math.min(p.feet_w, 6.35),
+    capped: printed && band < Math.min(p.feet_w, 6.35),
+    bumperFits,
+    minScale,
   }
 }
 
@@ -1767,6 +1796,7 @@ export type SeamVerdict = {
     | 'clip_walls'
     | 'seat'
     | 'module_feet'
+    | 'feet_bumper'
     | 'feet_socket'
     | 'feet_crossbar'
   ok: boolean
@@ -1830,6 +1860,12 @@ export function seamFit(p: Params): SeamFit {
       ok: !feetOn || mf.fits,
       message: 'module feet don’t fit beside the seam socket',
       knob: 'scale_factor',
+    },
+    {
+      code: 'feet_bumper',
+      ok: !feetOn || mf.bumperFits,
+      message: `stick-on bumper doesn’t fit beside the seam socket (${p.feet_w.toFixed(1)} mm into a ${Math.max(0, mf.band).toFixed(1)} mm band)`,
+      knob: 'feet_w',
     },
     {
       code: 'feet_socket',
