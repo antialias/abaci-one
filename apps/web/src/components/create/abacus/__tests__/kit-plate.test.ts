@@ -156,6 +156,24 @@ const rectOf = (pl: KitPlatePlacement): Rect => ({
 const overlaps = (a: Rect, b: Rect): boolean =>
   a.x0 < b.x1 - 1e-6 && a.x1 > b.x0 + 1e-6 && a.y0 < b.y1 - 1e-6 && a.y1 > b.y0 + 1e-6
 
+/** The smallest edge-to-edge separation between any two modules on the plate —
+ *  the distance the slicer's extrusions actually have to live within. Two
+ *  disjoint rects are apart on at least one axis; the larger of the two axis
+ *  separations is their true clearance. */
+const closestApproach = (layout: { placements: readonly KitPlatePlacement[] }): number => {
+  let closest = Number.POSITIVE_INFINITY
+  const rects = layout.placements.map(rectOf)
+  for (let i = 0; i < rects.length; i++) {
+    for (let j = i + 1; j < rects.length; j++) {
+      const a = rects[i]
+      const b = rects[j]
+      const apart = Math.max(Math.max(b.x0 - a.x1, a.x0 - b.x1), Math.max(b.y0 - a.y1, a.y0 - b.y1))
+      if (apart < closest) closest = apart
+    }
+  }
+  return closest
+}
+
 describe('kitPlateInstances (counts → placeable modules)', () => {
   it('expands a 13-column place-value kit into 13 modules with unique ids and labels', () => {
     const instances = kitPlateInstances(p(), fmPlace)
@@ -399,10 +417,53 @@ describe('packKitPlate (tower first, then the modules around it)', () => {
   })
 
   it('reserves a wider ring when the plate will slice with supports', () => {
-    const plain = packKitPlate({ instances, bases })
-    const supported = packKitPlate({ instances, bases, supportsAtSlice: true })
+    // On a bed big enough that neither pack refuses — this is about the RING,
+    // and a supports-on 13-module kit genuinely doesn't fit a 256 (below).
+    const roomy: BedSize = { wMm: 400, dMm: 400 }
+    const plain = packKitPlate({ instances, bases, bed: roomy })
+    const supported = packKitPlate({ instances, bases, bed: roomy, supportsAtSlice: true })
     expect(supported.tower.wMm).toBeGreaterThan(plain.tower.wMm)
     expect(supported.tower.dMm).toBeGreaterThan(plain.tower.dMm)
+  })
+
+  // The exit-192 regression. Orca refused a real plate whose declared boxes were
+  // disjoint: supports grow past every outline, and 4 mm between modules wasn't
+  // two brims wide, let alone two support skirts. The gap has to move with
+  // `supportsAtSlice` exactly as the tower ring does.
+  it('spaces modules further apart when the plate will slice with supports', () => {
+    const roomy: BedSize = { wMm: 400, dMm: 400 }
+    const plain = packKitPlate({ instances, bases, bed: roomy })
+    const supported = packKitPlate({ instances, bases, bed: roomy, supportsAtSlice: true })
+    // Closest approach, not overall span: the packer is free to answer a wider
+    // gap by using more rows, so the envelope can shrink while every neighbour
+    // moves further apart. Separation is the property that keeps extrusions off
+    // each other; the envelope is just how the packer chose to spend the bed.
+    expect(closestApproach(supported)).toBeGreaterThan(closestApproach(plain))
+    expect(closestApproach(supported)).toBeGreaterThanOrEqual(16 - 1e-6)
+  })
+
+  it('holds two brims between neighbours even with supports off', () => {
+    // 4 mm — the shared bundler's default, and what this used to ship — cannot
+    // hold two 5 mm brims.
+    expect(
+      closestApproach(packKitPlate({ instances, bases, bed: { wMm: 400, dMm: 400 } }))
+    ).toBeGreaterThanOrEqual(10 - 1e-6)
+  })
+
+  it('refuses a printed-feet 13-column kit on a 256 bed rather than one the slicer rejects', () => {
+    // Honest physics, and the whole point of the refusal: 13 modules at
+    // supports-on spacing plus the widened tower reserve do not fit a 256 plate.
+    // Better to name it and keep the zip than to ship a plate that slices to
+    // "Object conflicts were detected".
+    let caught: KitPlateFitError | null = null
+    try {
+      packKitPlate({ instances, bases, supportsAtSlice: true })
+    } catch (err) {
+      caught = err as KitPlateFitError
+    }
+    expect(caught).toBeInstanceOf(KitPlateFitError)
+    expect(caught?.reason).toBe('overflow')
+    expect(caught?.remediation).toMatch(/fewer columns|scale the design down|bigger bed/)
   })
 
   it('refuses an overfull plate by name rather than dropping a module', () => {
@@ -520,7 +581,14 @@ describe('buildKitPlateThreeMf (the whole kit as one plate)', () => {
   it('flows printed feet onto the plate on their own slot, and drops the plate on them', () => {
     const feetParams = p({ color_scheme: 'heaven-earth', feet_mode: 'printed' })
     const fm: FilamentMap = { ...fmHeavenEarth, feet: 2 }
-    const plate = buildKitPlateThreeMf({ parts: kitParts(feetParams, true), filamentMap: fm })
+    // Printed feet mean supports, and supports mean wider gaps — 13 of these
+    // don't fit a 256 (see the refusal test above). This is about where the feet
+    // FLOW, so give it a bed that holds all 13 and keep the count assertion real.
+    const plate = buildKitPlateThreeMf({
+      parts: kitParts(feetParams, true),
+      filamentMap: fm,
+      bed: { wMm: 400, dMm: 400 },
+    })
     // 3 foot triangles per module × 13 modules
     expect(plate.bodies.find((b) => b.slot === 2)).toMatchObject({ triangleCount: 39 })
     // The studs still sit 2mm below the frame plane in the mesh — the CONTAINER

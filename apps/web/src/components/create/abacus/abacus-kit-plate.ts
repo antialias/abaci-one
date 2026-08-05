@@ -75,9 +75,32 @@ import {
 
 const EPS = 1e-6
 
-/** Gap left between neighbouring modules on the plate. Matches the shared
- *  bundler's own default — enough for each module's brim without spending bed. */
-const KIT_PLATE_GAP_MM = 4
+/**
+ * How far ONE module's first layer reaches past its declared outline.
+ *
+ * A brim is the floor: Orca's `brim_width` is 5 mm with auto_brim, and it rings
+ * the whole part. With supports on, `SUPPORT_SKIRT` (8 mm — the measured worst
+ * case with headroom, see abacus-3mf-assembly) dominates it outright.
+ *
+ * This is the SAME law the tower ring keeps, applied at the other end of the
+ * pipeline. Getting it wrong here is exit 192, "Object conflicts were detected":
+ * the plate's declared boxes are disjoint, Orca slices it, and the extrusions
+ * collide. The one-piece abacus can't reach this state — it is a single object,
+ * so there is nothing on the bed for it to conflict with but the tower.
+ */
+const MODULE_BRIM = 5
+
+/**
+ * Gap between neighbouring modules — BOTH grow, so it's twice one module's
+ * reach, never once.
+ *
+ * The 4 mm this used to be is the shared bundler's default, and it is wrong for
+ * a kit in both states: 4 mm doesn't even hold two 5 mm brims, let alone two
+ * support skirts. It survived review because the plan's rectangles are disjoint
+ * at 4 mm — the packer, the overlap tests and the bed preview all agree the
+ * plate is clean. Only the slicer sees the extrusion.
+ */
+const moduleGapMm = (supports: boolean): number => 2 * (supports ? SUPPORT_SKIRT : MODULE_BRIM)
 
 // ---- refusals ---------------------------------------------------------------
 
@@ -438,20 +461,24 @@ export function packKitPlate(args: {
   /** THH's reported geometry for the selected printer; download-only callers get
    *  the fallback plate. */
   bed?: BedSize
+  /** Override the derived inter-module gap. Leave unset — the default follows
+   *  `supportsAtSlice`, and that coupling is the whole point (see moduleGapMm). */
   gapMm?: number
   wipeTower?: WipeTowerProfileGeometry
   /** Supports will be on when this plate is sliced (printed feet, or the
-   *  operator's ticket style) — widens the tower's clearance ring. */
+   *  operator's ticket style). Widens BOTH the tower's clearance ring and the
+   *  gap between modules — supports grow past every outline on the plate, not
+   *  just the one the tower happens to sit next to. */
   supportsAtSlice?: boolean
 }): KitPlateLayout {
   const {
     instances,
     bases,
     bed = BAMBU_256_BED,
-    gapMm = KIT_PLATE_GAP_MM,
     wipeTower = DEFAULT_WIPE_TOWER_PROFILE,
     supportsAtSlice = false,
   } = args
+  const gapMm = args.gapMm ?? moduleGapMm(supportsAtSlice)
 
   const reserve = plateTowerReserve(wipeTower, supportsAtSlice)
   const tower = placeTowerReserve(bed, reserve, bedFreeRects(bed, towerMargin(bed)))
