@@ -39,7 +39,14 @@ export interface ThhWipeTowerCapability {
   orcaVersion?: string
   maxFilaments: number
   pinReference?: string
+  /** The count-unaware bound — the max-filament row. Always safe to pack against. */
   envelopeMm: ThhWipeTowerEnvelope
+  /** The same promise per filament count, keyed by the count as a JSON string
+   *  (`"2"`…). The tower is far shallower at low counts — THH's measured table runs
+   *  70×21 at two filaments to 70×63 at six — so a plate that knows its count
+   *  reserves much less bed. Absent on a pre-#433 service; consumers fall back to
+   *  `envelopeMm` then. */
+  envelopeByFilamentsMm?: Readonly<Record<string, ThhWipeTowerEnvelope>>
   process: {
     prime_tower_width: number
     prime_tower_brim_width: number

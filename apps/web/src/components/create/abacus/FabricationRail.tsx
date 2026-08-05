@@ -14,7 +14,7 @@
 // the store's live filamentMap/catalog. `exporterReady` gates the buttons while
 // the viewer chunk is still loading.
 
-import { type CSSProperties, useState } from 'react'
+import { type CSSProperties, useMemo, useState } from 'react'
 import { StudioSelect } from '@/components/studio/StudioSelect'
 import { useFeatureFlag } from '@/hooks/useFeatureFlag'
 import { useAbacusStudio } from './AbacusStudioContext'
@@ -64,6 +64,7 @@ export function FabricationRail() {
     clearanceFix,
     requestExportStl,
     requestExportParts,
+    requestExportModuleParts,
     exporterReady,
     setRevealIntrinsic,
     setHighlightRole,
@@ -75,11 +76,17 @@ export function FabricationRail() {
 
   // Modular columns (Gitea #30): the whole-abacus exports are a footgun in
   // modular mode — they'd print a fused-seam monolith with dead sockets — so
-  // they lock with a pointer at the kit, and the print-service panel yields to
-  // a note (module tickets are deferred; the kit download is the export).
+  // they lock with a pointer at the kit. The print-service panel does NOT lock:
+  // it switches to the kit (Gitea #32), packing every module onto one bed and
+  // submitting that plate, and refuses to the kit-zip download only when the
+  // modules genuinely don't fit one plate.
   const modularFlag = useFeatureFlag(MODULAR_COLUMNS_FLAG)
   const modular = isModular(params)
   const canExportMono = canExport && !modular
+
+  // Rebuilt only when the requestor identity changes, so the panel's submit
+  // mutation isn't handed a fresh object every render.
+  const kitPrint = useMemo(() => ({ requestExportModuleParts }), [requestExportModuleParts])
 
   // A failed export render (e.g. a marker part pass) now REJECTS instead of
   // hanging — surfaced inline under the button. Silently swallowing it would
@@ -333,50 +340,35 @@ export function FabricationRail() {
       )}
 
       {/* print-service panel (Gitea #9) — embedded (normal flow) in the rail.
-          In modular mode it yields to a note: a service ticket sends the
-          one-piece abacus, and per-module tickets are deferred (phase 1 —
-          the kit download is the modular export). */}
-      {modular ? (
-        <div
-          data-element="abacus-studio-print-modular-note"
-          style={{
-            padding: '8px 10px',
-            borderRadius: 8,
-            background: 'rgba(30,41,59,0.6)',
-            border: '1px solid rgba(148,163,184,0.25)',
-            color: 'rgba(148,163,184,0.9)',
-            fontSize: 11,
-            lineHeight: 1.5,
-          }}
-        >
-          Print-service tickets for module kits aren&apos;t wired yet — download the kit above and
-          slice it yourself.
-        </div>
-      ) : (
-        <PrintPanel
-          embedded
-          visible={true}
-          params={params}
-          filamentMap={filamentMap}
-          catalog={catalog}
-          overrides={overrides}
-          profileId={profileId}
-          printerId={thhFilaments.printerId}
-          printerMultiMaterial={thhFilaments.printerMultiMaterial}
-          printerBed={thhFilaments.printerBed}
-          wipeTower={thhFilaments.wipeTower}
-          amsPresent={thhFilaments.amsPresent}
-          externalUnprintable={thhFilaments.externalUnprintable}
-          rosterEmpty={thhFilaments.rosterEmpty}
-          isLoading={thhFilaments.isLoading}
-          isFetching={thhFilaments.isFetching}
-          connectionId={selectedConnectionId}
-          unavailable={thhFilaments.unavailable}
-          exportBlocked={exportBlocked}
-          requestExportParts={requestExportParts}
-          playerId={playerId}
-        />
-      )}
+          One panel, two shapes of print: in modular mode `kit` switches the
+          submit onto the packed module plate (Gitea #32) instead of the
+          one-piece abacus, which in modular mode would be the same footgun the
+          whole-abacus download buttons are. Everything else — settings, jobs,
+          filament roster — is the same abacus and is shared verbatim. */}
+      <PrintPanel
+        embedded
+        visible={true}
+        params={params}
+        filamentMap={filamentMap}
+        catalog={catalog}
+        overrides={overrides}
+        profileId={profileId}
+        printerId={thhFilaments.printerId}
+        printerMultiMaterial={thhFilaments.printerMultiMaterial}
+        printerBed={thhFilaments.printerBed}
+        wipeTower={thhFilaments.wipeTower}
+        amsPresent={thhFilaments.amsPresent}
+        externalUnprintable={thhFilaments.externalUnprintable}
+        rosterEmpty={thhFilaments.rosterEmpty}
+        isLoading={thhFilaments.isLoading}
+        isFetching={thhFilaments.isFetching}
+        connectionId={selectedConnectionId}
+        unavailable={thhFilaments.unavailable}
+        exportBlocked={exportBlocked}
+        requestExportParts={requestExportParts}
+        playerId={playerId}
+        kit={modular ? kitPrint : undefined}
+      />
     </div>
   )
 }

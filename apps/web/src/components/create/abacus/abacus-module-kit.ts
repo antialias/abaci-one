@@ -31,7 +31,7 @@
  * is the same silent-bug family as a markerless mono plate.
  */
 import type { BedSize } from '@eink/frames-engine/print-bundle'
-import { parseStl } from '@eink/frames-engine/stl'
+import { parseStl, type StlMesh } from '@eink/frames-engine/stl'
 import { strToU8, zipSync } from 'fflate'
 import {
   type AbacusThreeMf,
@@ -138,13 +138,40 @@ export function moduleKitPlan(p: Params, fm: FilamentMap): ModuleKitEntry[] {
 }
 
 /**
- * Build one per-module multi-material 3MF. Same downstream law as the
- * whole-abacus build: shells map to slots via `shellSlotIndex` (the bead
- * shells stamped with `column` so they ink with that column's roles), feet
- * merge unclassified into the plan's feet slot, and the container choice +
- * support keys ride `emitThreeMfBodies`.
+ * One module's export-gated geometry, in the module's OWN render frame and
+ * before any container decision: the classified body soup (per-triangle shell,
+ * per-shell filament slot) plus the part-pass soups already assigned to their
+ * slots.
+ *
+ * Two consumers: `buildModuleThreeMf` emits it as that module's own 3MF, and
+ * the single-plate kit build (abacus-kit-plate.ts) places a rigidly-transformed
+ * copy per instance and emits a whole plate as one. Factored rather than forked
+ * so every module on a packed plate passes the exact same hard-error gate its
+ * standalone 3MF would — a plate must never be the loophole that ships a
+ * footless module or an empty text pocket.
  */
-export function buildModuleThreeMf(args: {
+export interface ModuleSoups {
+  /** The module_{kind} body render, parsed. */
+  mesh: StlMesh
+  /** Per-triangle shell index into `slotOfShell` (from `analyzeModuleShells`). */
+  triShell: Int32Array
+  /** Filament slot per shell. */
+  slotOfShell: number[]
+  /** Feet + inset-text soups, each already assigned its plan slot. */
+  partSoups: { slot: number; positions: Float32Array }[]
+  /** Printed feet rode this module — forces the assembly path + support keys. */
+  feetPrinted: boolean
+}
+
+/**
+ * Classify one module and run every hard-error gate the kit ships under: shells
+ * map to slots via `shellSlotIndex` (bead shells stamped with `column` so they
+ * ink with that column's roles), feet merge unclassified into the plan's feet
+ * slot, inset side text merges per color group into its own slot. The result is
+ * still in the module's render frame — placement, container choice and support
+ * keys are the caller's.
+ */
+export function moduleSoups(args: {
   /** The module_{kind} body render. */
   body: ArrayBuffer
   /** The module_{kind}_feet render — required (and non-empty) when
@@ -159,24 +186,8 @@ export function buildModuleThreeMf(args: {
   column: number
   params: Params
   filamentMap: FilamentMap
-  slotLabels?: readonly string[]
-  supportsAtSlice?: boolean
-  bed?: BedSize
-  wipeTower?: WipeTowerProfileGeometry
-}): AbacusThreeMf {
-  const {
-    body,
-    feet,
-    text,
-    kind,
-    column,
-    params,
-    filamentMap,
-    slotLabels,
-    supportsAtSlice,
-    bed = BAMBU_256_BED,
-    wipeTower = DEFAULT_WIPE_TOWER_PROFILE,
-  } = args
+}): ModuleSoups {
+  const { body, feet, text, kind, column, params, filamentMap } = args
 
   const mesh = parseStl(body)
   if (mesh.triangleCount === 0) {
@@ -262,14 +273,39 @@ export function buildModuleThreeMf(args: {
     }
   }
 
-  return emitThreeMfBodies({
-    mesh,
-    triShell,
-    slotOfShell,
-    partSoups,
+  return { mesh, triShell, slotOfShell, partSoups, feetPrinted }
+}
+
+/**
+ * Build one per-module multi-material 3MF: the gated soups above, emitted
+ * through the shared container tail. Same downstream law as the whole-abacus
+ * build — the container choice and support keys ride `emitThreeMfBodies`.
+ */
+export function buildModuleThreeMf(args: {
+  body: ArrayBuffer
+  feet?: ArrayBuffer | null
+  text?: TextPlugRender[] | null
+  kind: ModuleKind
+  column: number
+  params: Params
+  filamentMap: FilamentMap
+  slotLabels?: readonly string[]
+  supportsAtSlice?: boolean
+  bed?: BedSize
+  wipeTower?: WipeTowerProfileGeometry
+}): AbacusThreeMf {
+  const {
     filamentMap,
     slotLabels,
-    feetPrinted,
+    supportsAtSlice,
+    bed = BAMBU_256_BED,
+    wipeTower = DEFAULT_WIPE_TOWER_PROFILE,
+  } = args
+
+  return emitThreeMfBodies({
+    ...moduleSoups(args),
+    filamentMap,
+    slotLabels,
     supportsAtSlice,
     bed,
     wipeTower,

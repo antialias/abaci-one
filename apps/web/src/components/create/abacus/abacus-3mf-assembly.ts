@@ -57,14 +57,21 @@ export interface Assembled3mf {
   readonly wipeTower: { readonly xMm: number; readonly yMm: number }
 }
 
+export interface WipeTowerEnvelopeMm {
+  readonly minX: number
+  readonly minY: number
+  readonly maxX: number
+  readonly maxY: number
+}
+
 export interface WipeTowerProfileGeometry {
   readonly profile: string
-  readonly envelopeMm: {
-    readonly minX: number
-    readonly minY: number
-    readonly maxX: number
-    readonly maxY: number
-  }
+  /** The count-unaware bound — the max-filament row. */
+  readonly envelopeMm: WipeTowerEnvelopeMm
+  /** The bound per filament count, keyed by the count as a string. See
+   *  {@link envelopeForFilaments}: reserving the bound on a two-filament plate
+   *  throws away bed depth the tower will never occupy. */
+  readonly envelopeByFilamentsMm?: Readonly<Record<string, WipeTowerEnvelopeMm>>
   readonly process: {
     readonly prime_tower_width: number
     readonly prime_tower_brim_width: number
@@ -74,15 +81,60 @@ export interface WipeTowerProfileGeometry {
 
 /** Download/back-compat twin of THH's v1 bounded profile. The print path replaces this
  * with the selected printer's advertised copy, so a deploy can update geometry without
- * an Abaci release. */
+ * an Abaci release.
+ *
+ * The rows mirror THH's measured table (things-haunt-house#433): width is
+ * count-independent, depth grows ~10.5 mm per filament. The bound was 56 here until
+ * #34 — the pre-#433 number, which THH's own source records as escaped by the
+ * six-filament fine-layer tower it claimed to hold. */
 export const DEFAULT_WIPE_TOWER_PROFILE: WipeTowerProfileGeometry = {
   profile: 'orca-rectangle-60-v1',
-  envelopeMm: { minX: -4, minY: -4, maxX: 66, maxY: 56 },
+  envelopeMm: { minX: -4, minY: -4, maxX: 66, maxY: 59 },
+  envelopeByFilamentsMm: {
+    '2': { minX: -4, minY: -4, maxX: 66, maxY: 17 },
+    '3': { minX: -4, minY: -4, maxX: 66, maxY: 27.5 },
+    '4': { minX: -4, minY: -4, maxX: 66, maxY: 38 },
+    '5': { minX: -4, minY: -4, maxX: 66, maxY: 48.5 },
+    '6': { minX: -4, minY: -4, maxX: 66, maxY: 59 },
+  },
   process: {
     prime_tower_width: 60,
     prime_tower_brim_width: 3,
     wipe_tower_wall_type: 'rectangle',
   },
+}
+
+/**
+ * The envelope to reserve for a plate that loads `filaments` filaments.
+ *
+ * The service measures the tower per filament count and publishes the table
+ * alongside the count-unaware bound. Two filaments purge into a 70×21 band; six
+ * need 70×63. Reserving the bound for everything costs 42 mm of bed depth that
+ * nothing will ever print on — on a 256 bed that is the difference between a
+ * 13-column kit fitting one plate and being refused.
+ *
+ * The floor of 2 is deliberate and is the same reason the reserve is unconditional
+ * at all: a one-filament plate grows a tower the moment ticket routing attaches a
+ * support-interface spool, and the plate is packed before that routing resolves. At
+ * row-2 cost that hedge is nearly free.
+ *
+ * Falls back to the bound whenever the table is absent (a pre-#433 service), has no
+ * row for this count (more filaments than the profile is bounded for), or the row is
+ * malformed — a bad optional field must never shrink a reservation.
+ */
+export function envelopeForFilaments(
+  profile: WipeTowerProfileGeometry,
+  filaments?: number
+): WipeTowerEnvelopeMm {
+  const table = profile.envelopeByFilamentsMm
+  if (!table || filaments === undefined || !Number.isFinite(filaments)) return profile.envelopeMm
+  const row = table[String(Math.max(2, Math.floor(filaments)))]
+  const usable =
+    !!row &&
+    [row.minX, row.minY, row.maxX, row.maxY].every(Number.isFinite) &&
+    row.maxX > row.minX &&
+    row.maxY > row.minY
+  return usable ? row : profile.envelopeMm
 }
 
 export interface Assemble3mfOpts {
@@ -105,6 +157,34 @@ export interface Assemble3mfOpts {
    *  between WipeTower and abacus" (exit 155). That is what prod hit on 2026-07-29.
    *  See SUPPORT_SKIRT. `support` implies this. */
   readonly supportsAtSlice?: boolean
+  /** The bodies ALREADY sit where they print on THIS bed — the packed module-kit
+   *  plate (Gitea #32), whose x/y came out of a packer that ran against this bed's
+   *  keep-outs and a purge-tower rect reserved BEFORE packing.
+   *
+   *  Two things change, and both are the same point: on a packed plate the layout
+   *  is a decision, not a pose.
+   *   1. No bed-centering. Recentering preserves the arrangement but slides it off
+   *      the coordinates the packer cleared, which can walk a module into the
+   *      filament-cutter zone it was packed around.
+   *   2. The tower pin is taken, not derived. `placeWipeTower` reasons about the
+   *      model's bounding BOX, and a plate's box swallows the hole reserved inside
+   *      it — so re-deriving would either waste the reservation or fail outright on
+   *      a full plate. The reserve is what makes the tower fit; honour it.
+   *
+   *  Also relaxes the >= 2 bodies guard: a plate is a multi-object layout even when
+   *  every object rides one filament, and the `meshesToThreeMf` path would re-origin
+   *  it into the bed corner. Z is NOT affected: `tz` still drops the plate to the
+   *  bed exactly as it drops a mono abacus, which is what keeps the support-transition
+   *  modifier on the frame's z=0 plane rather than under the feet. */
+  readonly placedOnBed?: {
+    /** Orca's `wipe_tower_x/y`, from the reservation the packer left room for. */
+    readonly towerPinMm: { readonly x: number; readonly y: number }
+  }
+  /** How many filaments this plate will load once the ticket resolves — the
+   *  emitted bodies plus anything routing adds (a support-interface spool). Picks
+   *  the profile's envelope row; see {@link envelopeForFilaments}. Omitted, the
+   *  count-unaware bound is reserved, which is safe and wasteful. */
+  readonly filaments?: number
 }
 
 /** The printed-feet frame starts at source Z=0, above feet that dip below zero.
@@ -122,7 +202,11 @@ export const BAMBU_256_BED: BedSize = {
   exclude: [{ xMm: 0, yMm: 0, wMm: 18, dMm: 28 }],
 }
 
-const TOWER_GAP = 6
+/** Clear space kept between the tower and the model. Exported because the packed
+ *  kit plate (abacus-kit-plate.ts) reserves its tower rect BEFORE packing rather
+ *  than placing it beside a finished model — same clearance law, applied at the
+ *  other end of the pipeline, so the number must not be restated there. */
+export const TOWER_GAP = 6
 
 // Extra reserve once supports are on: the first layer stops being the model's own
 // footprint. Support material grows outward from the overhangs it holds, so extrusion
@@ -147,7 +231,9 @@ const TOWER_GAP = 6
 // disprove it: the log says `before arrange, need_arrange=0` — arrange never runs on a
 // 3MF project — and the model printed at its declared min corner (declared 90.25,77.75
 // vs printed 90.46,75.96), in its declared orientation. Distance is the only lever.
-const SUPPORT_SKIRT = 8
+//
+// Exported alongside TOWER_GAP for the packed kit plate's pre-pack reserve.
+export const SUPPORT_SKIRT = 8
 // How far a cornered tower keeps off the bed edge. The reserve above covers the
 // tower's own extrusion, but a tower pushed flush into the corner still trips the
 // multi-extruder printable-area check (exit 154, "gcode in unprintable area") —
@@ -332,7 +418,7 @@ function placeWipeTower(
   const cx = (obj.x0 + obj.x1) / 2
   const cy = (obj.y0 + obj.y1) / 2
   const profile = opts.wipeTower ?? DEFAULT_WIPE_TOWER_PROFILE
-  const envelope = profile.envelopeMm
+  const envelope = envelopeForFilaments(profile, opts.filaments)
   const pinMidX = (envelope.minX + envelope.maxX) / 2
   const pinMidY = (envelope.minY + envelope.maxY) / 2
 
@@ -433,7 +519,7 @@ export function assembleAbacus3mf(
   if (bodies.length === 0) {
     throw new Error('assembleAbacus3mf needs at least one filament body')
   }
-  if (bodies.length < 2 && !opts.support) {
+  if (bodies.length < 2 && !opts.support && !opts.placedOnBed) {
     throw new Error(
       'assembleAbacus3mf needs >= 2 filament bodies (single color rides meshesToThreeMf)'
     )
@@ -456,11 +542,14 @@ export function assembleAbacus3mf(
     }
   }
 
-  // Center the footprint on the bed and drop it to z=0.
+  // Center the footprint on the bed and drop it to z=0 — unless the bodies were
+  // PLACED on this bed already (see Assemble3mfOpts.placedOnBed), in which case
+  // their x/y are the layout and only the z-drop applies.
   const bedCx = bed.wMm / 2
   const bedCy = bed.dMm / 2
-  const tx = bedCx - (minX + maxX) / 2
-  const ty = bedCy - (minY + maxY) / 2
+  const placed = opts.placedOnBed
+  const tx = placed ? 0 : bedCx - (minX + maxX) / 2
+  const ty = placed ? 0 : bedCy - (minY + maxY) / 2
   const tz = -minZ
 
   const objBox: Box = {
@@ -469,7 +558,9 @@ export function assembleAbacus3mf(
     x1: bedCx + (maxX - minX) / 2,
     y1: bedCy + (maxY - minY) / 2,
   }
-  const tower = placeWipeTower(bed, objBox, opts)
+  const tower = placed
+    ? { xMm: placed.towerPinMm.x, yMm: placed.towerPinMm.y }
+    : placeWipeTower(bed, objBox, opts)
 
   // ---- 3D/3dmodel.model ----
   const childIds = bodies.map((_, i) => i + 2)
