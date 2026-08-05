@@ -110,6 +110,17 @@ export const defaultParams = {
   feet_span: 110, // max unsupported bottom run (mm @ scale 1) before mid feet
   feet_proud: 1.6, // printed: stand-off below the bottom face (absolute mm)
   feet_retention: 'crossbar',
+  // modular columns (Gitea #30). seam_mode is a real geometry knob, not a UI
+  // toggle: 'modular' widens the column pitch by one full web per seam (each
+  // module keeps a bead-capturing full-thickness edge wall) and swaps the
+  // deliverable from one solid frame to a per-column module kit. It persists
+  // in design snapshots so a reprint of one lost module comes from the same
+  // topology the original kit did. joint_fit is the seam's one tuning knob —
+  // per-side clearance on every mating face; the printed-coupon ritual walks
+  // it toward 0/negative until seam wiggle dies. Old snapshots predate both
+  // keys and parse to these defaults (mono, stock fit) — zero migration.
+  seam_mode: 'mono',
+  joint_fit: 0.1,
   // toggles / quality
   show_frame: true,
   show_beads: true,
@@ -250,6 +261,13 @@ export type Derived = {
   chamf: number
   frameW: number
   outerD: number
+  /** Mid-module width (the seam coupon's sc_w): bead + clearances + a full
+   *  edge web per side. Meaningful in modular mode; computed always. */
+  scW: number
+  /** End-module width (scad mod_we): border + field margin + half its column's
+   *  channel + one full edge web. 2·modWe + (cols−2)·scW === frameW exactly in
+   *  modular mode — the identity the width tests pin. */
+  modWe: number
 }
 export const derived = (p: Params): Derived => {
   const S = p.scale_factor
@@ -262,7 +280,12 @@ export const derived = (p: Params): Derived => {
   const chamf = Math.min(p.top_chamfer, sFh * 0.4)
   const mkI = Math.max(0, chamf, sCr <= 0 ? 0 : sCr - (sCr - chamf) / Math.SQRT2 - p.marker_mm / 9)
   const sShelf = Math.max(p.shelf * S, mkI + p.marker_mm - sBw)
-  const sCp = sBd + 2 * cl + p.web * S
+  // Modular pitch carries one FULL web per module edge (a half-web edge wall
+  // couldn't capture beads), so each seam costs +web·S vs mono — the honest
+  // price of modularity, paid here so every consumer (assembled width, the
+  // shell classifier's bead-column matching, the panel's size delta) reads the
+  // same number. scad mirror: sc_wall / the module composition, not s_cp.
+  const sCp = sBd + 2 * cl + (p.seam_mode === 'modular' ? 2 : 1) * p.web * S
   const sEm = sShelf + cl + sBd / 2
   const sEp = sBl + p.print_gap
   const sElo = sShelf + cl + sBl / 2
@@ -288,6 +311,8 @@ export const derived = (p: Params): Derived => {
     chamf,
     frameW: fieldW + 2 * sBw,
     outerD: sFd + 2 * sBw,
+    scW: sBd + 2 * cl + 2 * p.web * S,
+    modWe: sBw + sEm + sBd / 2 + cl + p.web * S,
   }
 }
 // OUTER dims: bead field (from cols) + the flush border band on each side.
@@ -331,6 +356,8 @@ export const DEFINE_KEYS: (keyof Params)[] = [
   'feet_span',
   'feet_proud',
   'feet_retention',
+  'seam_mode',
+  'joint_fit',
   'show_frame',
   'show_beads',
   'show_markers',
@@ -357,6 +384,31 @@ export const definesFrom = (p: Params): string[] => [
   // with nothing to catch it (see textSlots).
   ...textSlots(p).map((toks, i) => `-D${TEXT_SLOT_DEFINES[i]}=${JSON.stringify(toks)}`),
 ]
+
+/** Defines that can only ever change a PART PASS, never the assembled abacus.
+ *  They still ride every render — the part passes need them, and a define the
+ *  worker never sees is one the scad silently defaults — but they are excluded
+ *  from the preview's dedup key below.
+ *
+ *  Without this, dragging the seam's joint_fit slider would re-solve the whole
+ *  abacus on every step, for a model the knob provably cannot touch: fit only
+ *  grows the coupon/module SOCKETS, and in the assembled preview those voids
+ *  are interior — the exterior the camera sees is identical at any fit.
+ *  `seam_mode` is deliberately NOT here: it moves the assembled abacus's own
+ *  pitch and width, so it must stay in the key. */
+export const PART_ONLY_DEFINE_KEYS: readonly (keyof Params)[] = ['joint_fit']
+
+/** The dedup key the preview pump compares renders on. Same rule the color and
+ *  filament knobs already follow (JS-only, never reach the scad, never re-solve):
+ *  a knob that cannot change THIS render shouldn't force it. Lives here rather
+ *  than in the hook so the "what actually moves the assembled geometry"
+ *  judgement sits next to the params it is about. */
+export const previewDedupKey = (p: Params): string => {
+  const skip = new Set<string>(PART_ONLY_DEFINE_KEYS.map((k) => `-D${k}`))
+  return definesFrom(p)
+    .filter((d) => !skip.has(d.slice(0, d.indexOf('='))))
+    .join('\u0001') // unambiguous separator — adjacent defines must not concatenate
+}
 
 /** One export render request: the whole abacus (no pass) or a single `only=`
  *  part pass. The marker passes render JUST the four corner plugs, and
@@ -1447,4 +1499,206 @@ export function feetPositions(p: Params): [number, number][] {
   for (let m = 1; m <= ny; m++)
     for (const e of [0, 1]) pos.push([e === 0 ? c : W - c, c + (runY * m) / (ny + 1)])
   return pos
+}
+
+// ---- modular columns (Gitea #30) --------------------------------------------
+
+export const isModular = (p: Params): boolean => p.seam_mode === 'modular'
+
+/** The seam joint's fixed design constants — TS mirrors of the scad's knobs.
+ *  These are NOT Params (they're the joint's identity, settled by the coupon
+ *  ritual once, not per-design levers); the one per-design knob is joint_fit.
+ *  seam-fit.test.ts regex-parses abacus.scad and pins every value here, the
+ *  same drift guard seam-flexure-dfm.test.ts runs on the flexure knobs. */
+export const SEAM = {
+  jointTab: 4.5, // dovetail protrusion depth (X past the module face)
+  jointNeck: 6, // dovetail neck width at the face
+  jointFlare: 1, // per-side head widening — the pull-apart grab
+  jointClipW: 4, // snap clip overall width (lives in the bar strip)
+  jointClipL: 9.5, // clip protrusion depth; prong flex length = this − scSlot
+  jointRidge: 0.2, // click ridge proud height
+  scSlot: 1.5, // prong root web
+  scProng: 1.2, // prong thickness (2 lines of the 0.6 wood-PLA nozzle)
+  scSeat: 1.2, // positive bottom seat under every dovetail (CP1)
+  scDeep: 0.3, // socket deepening past the tab tip — faces seat first
+  mfWall: 1.6, // min wall: seam socket→foot pocket and pocket→seam face
+  xbarEmbed: 2, // crossbar end reach past the seat into frame material
+} as const
+
+/** The seam-relevant band edges and module widths, all in scad names — one
+ *  derivation shared by seamFit, moduleFeetLayout and the CP5+ preview math so
+ *  a verdict can never disagree with the geometry it's a verdict about. */
+const seamBands = (p: Params) => {
+  const d = derived(p)
+  const S = p.scale_factor
+  const sBw = p.border_w * S
+  const sBl = p.bead_len * S
+  const cl = p.clearance
+  return {
+    d,
+    sFh: p.frame_h * S,
+    scF1: sBw + d.sElo - sBl / 2 - cl, // front band [0, scF1]
+    scB0: sBw + d.sEhi + sBl / 2 + cl, // bar band [scB0, scB1]
+    scB1: sBw + d.sHlo - sBl / 2 - cl,
+    scK0: sBw + d.sHhi + sBl / 2 + cl, // back band [scK0, outerD]
+  }
+}
+
+/** The mid-module TPU foot, derived exactly as the scad derives mf_*: capped at
+ *  the 6.35 mm (1/4") class, floored by what actually fits between the seam
+ *  socket's deepest cut and the seam face — joint dims are absolute while the
+ *  module width scales, so the cap only binds near S = 1 and the BAND becomes
+ *  the binding constraint as the design shrinks. */
+export type ModuleFeetLayout = {
+  /** the derived foot width (side/diameter at the bottom face) */
+  w: number
+  mouth: number
+  seat: number
+  /** pocket center X in module-local coords — centered in the band beside the socket */
+  x: number
+  /** deepest seam-socket cut into module X (tab + fit + deepening) */
+  sock: number
+  /** w ≥ 4 — the scad's hard floor for a foot worth printing */
+  fits: boolean
+  /** both clearance walls ≥ 1.5: socket→pocket and pocket→seam face */
+  walls: boolean
+  /** true when the band (not the 6.35 class, not feet_w) decided `w` */
+  capped: boolean
+}
+export function moduleFeetLayout(p: Params): ModuleFeetLayout {
+  const d = derived(p)
+  const f = feetEffective(p)
+  const fitEff = f.mouth / 2 - p.feet_w / 2 // recover fit_eff without re-branching
+  const undercutEff = (f.seat - f.mouth) / 2
+  const sock = SEAM.jointTab + p.joint_fit + SEAM.scDeep
+  const band = d.scW - sock - 2 * SEAM.mfWall - 2 * undercutEff - 2 * fitEff
+  const w = Math.min(p.feet_w, 6.35, band)
+  const mouth = w + 2 * fitEff
+  const seat = mouth + 2 * undercutEff
+  const x = (sock + d.scW) / 2
+  return {
+    w,
+    mouth,
+    seat,
+    x,
+    sock,
+    fits: w >= 4,
+    walls: x - seat / 2 - sock >= 1.5 && d.scW - x - seat / 2 >= 1.5,
+    capped: band < Math.min(p.feet_w, 6.35),
+  }
+}
+
+/** Module-local foot centers for the viewer's stud preview, per module kind.
+ *  Mid feet sit beside the seam socket at the MONO corner inset (scad MF_Y —
+ *  same edge setback as every other foot); end modules keep the monolith's own
+ *  corner feet, whose local X collapses to `modWe − c` for the right module
+ *  (the mono frame width cancels out of frame_w − c − x0). */
+export function moduleFeetPositions(p: Params, kind: 'left' | 'mid' | 'right'): [number, number][] {
+  const d = derived(p)
+  const { c } = feetEffective(p)
+  const D = d.outerD
+  if (kind === 'mid') {
+    const { x } = moduleFeetLayout(p)
+    return [
+      [x, c],
+      [x, D - c],
+    ]
+  }
+  const x = kind === 'left' ? c : d.modWe - c
+  return [
+    [x, c],
+    [x, D - c],
+  ]
+}
+
+/** One row of the seam-fit table: a TS mirror of one scad assert. `ok:false`
+ *  means the corresponding module/coupon render would ABORT on that assert —
+ *  which is why the panel blocks the kit and coupon downloads on any failure
+ *  instead of letting the worker discover it mid-export. `knob` names the lever
+ *  that fixes it, the same job FeetFit.minBorderW does for the mono feet. */
+export type SeamVerdict = {
+  code:
+    | 'strain'
+    | 'dove_walls'
+    | 'clip_walls'
+    | 'seat'
+    | 'module_feet'
+    | 'feet_socket'
+    | 'feet_crossbar'
+  ok: boolean
+  message: string
+  knob: 'scale_factor' | 'joint_fit' | 'feet_w' | 'feet_mode' | 'none'
+}
+export type SeamFit = {
+  /** every verdict passed — seam geometry renders without an assert abort */
+  ok: boolean
+  verdicts: SeamVerdict[]
+  /** wood-PLA peak outer-fibre strain at worst intended engagement, in % —
+   *  the number the flexure gate compares against wood PLA's ~1.5% break
+   *  strain with 1.5× safety (so the gate line is 1.0). Knob-only: it cannot
+   *  change from the studio, but the panel shows it as provenance. */
+  strainPct: number
+}
+
+/** Mirror of every scad assert the seam geometry can trip, in scad order.
+ *  Like feetFit this computes unconditionally — the feet rows pass trivially
+ *  when feet are off, exactly as the scad's `!(mod_active && feet) || …`
+ *  predicates do — and callers gate on seam_mode for WHEN to show it. */
+export function seamFit(p: Params): SeamFit {
+  const b = seamBands(p)
+  const mf = moduleFeetLayout(p)
+  const feetOn = p.feet_mode !== 'none'
+  const crossbar = feetEffective(p).crossbar
+  const strainPct =
+    (150 * SEAM.scProng * (SEAM.jointRidge + 0.05)) / (SEAM.jointClipL - SEAM.scSlot) ** 2
+  const verdicts: SeamVerdict[] = [
+    {
+      code: 'strain',
+      ok: strainPct <= 1.0,
+      message:
+        strainPct <= 1.0
+          ? `snap-clip strain ${strainPct.toFixed(2)}% — safe for wood PLA (gate 1.0%)`
+          : `snap-clip strain ${strainPct.toFixed(2)}% would crack wood PLA`,
+      knob: 'none',
+    },
+    {
+      code: 'dove_walls',
+      ok:
+        SEAM.jointNeck + 2 * (SEAM.jointFlare + p.joint_fit) + 3.2 <=
+        Math.min(b.scF1, b.d.outerD - b.scK0),
+      message: 'dovetail socket leaves <1.6 mm walls in the border strips',
+      knob: 'scale_factor',
+    },
+    {
+      code: 'clip_walls',
+      ok: SEAM.jointClipW + 2 * (p.joint_fit + SEAM.jointRidge + 0.05) + 2.4 <= b.scB1 - b.scB0,
+      message: 'clip socket leaves <1.2 mm walls in the bar strip',
+      knob: 'scale_factor',
+    },
+    {
+      code: 'seat',
+      ok: SEAM.scSeat >= 0.6 && SEAM.scSeat + SEAM.jointTab + 1 <= b.sFh,
+      message: 'bottom seat + 45° chamfer leave <1 mm of straight dovetail wall',
+      knob: 'scale_factor',
+    },
+    {
+      code: 'module_feet',
+      ok: !feetOn || mf.fits,
+      message: 'module feet don’t fit beside the seam socket',
+      knob: 'scale_factor',
+    },
+    {
+      code: 'feet_socket',
+      ok: !feetOn || mf.walls,
+      message: 'module foot pocket too close to the seam socket or the seam face',
+      knob: 'feet_w',
+    },
+    {
+      code: 'feet_crossbar',
+      ok: !feetOn || !crossbar || feetEffective(p).c + mf.seat / 2 + SEAM.xbarEmbed + 0.8 <= b.scF1,
+      message: 'module foot crossbar would break into the bead channel',
+      knob: 'feet_w',
+    },
+  ]
+  return { ok: verdicts.every((v) => v.ok), verdicts, strainPct }
 }

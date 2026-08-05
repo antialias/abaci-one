@@ -22,13 +22,23 @@
 // OpenSCAD (that was the dead feature's fatal flaw); this is client WASM only.
 
 import { useEffect, useRef } from 'react'
-import { anyTokens, definesFrom, exportDefines, type Params, type RenderPass } from './abacus-model'
+import {
+  anyTokens,
+  definesFrom,
+  exportDefines,
+  type Params,
+  previewDedupKey,
+  type RenderPass,
+} from './abacus-model'
 
 const WORKER_URL = '/openscad/scad-worker.js'
 const SCAD_URL = '/scad/abacus.scad'
 const FONT_URLS = ['/fonts/DejaVuSans-Bold.ttf', '/fonts/NotoEmoji-Regular.ttf'] as const
 
-const mainKeyOf = (p: Params): string => `${definesFrom(p).join('')}${p.fn}`
+// Keyed on previewDedupKey, not the full define list: part-pass-only defines
+// (joint_fit) ride every render but provably cannot change the assembled
+// preview, so dragging them must not force a re-solve.
+const mainKeyOf = (p: Params): string => `${previewDedupKey(p)}\u0002${p.fn}`
 
 export type MainResult = { stl: ArrayBuffer; ms: number; id: number }
 export type StatusUpdate = { text: string; error?: boolean }

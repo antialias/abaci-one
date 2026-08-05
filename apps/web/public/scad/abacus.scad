@@ -123,6 +123,11 @@ feet_retention = "crossbar"; // printed: crossbar (linked loop) | dovetail (flar
    layer plane (the strong orientation).
    Joint dims are ABSOLUTE (a fit contract between prints, like clearance —
    two modules at different scale_factor must still mate at the seam). */
+seam_mode     = "mono"; // "mono" = one solid frame (every render today);
+                       // "modular" = the final assembly instantiates per-column
+                       // modules instead (CP5). Until that lands this knob is
+                       // deliberately INERT — the TS model already sends it so
+                       // the define vocabulary can't drift from the scad's.
 joint_fit     = 0.1;   // per-side clearance on every seam mating face. 0.1 =
                        // first-print default; walk toward 0 (or negative)
                        // until backlash dies. Also deepens the click: ridge
