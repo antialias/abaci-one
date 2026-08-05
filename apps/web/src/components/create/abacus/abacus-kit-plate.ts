@@ -77,31 +77,37 @@ import {
 const EPS = 1e-6
 
 /**
- * How far ONE module's first layer reaches past its declared outline.
+ * How far ONE module's first layer reaches past its declared outline, per side.
  *
- * A brim is the floor: Orca's `brim_width` is 5 mm with auto_brim, and it rings
- * the whole part. With supports on, `SUPPORT_SKIRT` (8 mm — the measured worst
- * case with headroom, see abacus-3mf-assembly) dominates it outright.
+ * Both numbers are THH's published `clearance.outlineGrowthMm` (things-haunt-house
+ * #434), folded out of the very presets it slices us with rather than measured
+ * here:
+ *   - no supports: `brim_object_gap` 0.1 + `brim_width` 5 = 5.1
+ *   - supports:    + `support_object_xy_distance` 0.35 + `support_expansion` 0 = 5.45
  *
- * This is the SAME law the tower ring keeps, applied at the other end of the
- * pipeline. Getting it wrong here is exit 192, "Object conflicts were detected":
- * the plate's declared boxes are disjoint, Orca slices it, and the extrusions
- * collide. The one-piece abacus can't reach this state — it is a single object,
- * so there is nothing on the bed for it to conflict with but the tower.
+ * Restated as constants only because the live block rides on an unmerged service
+ * change; read them off the printer row once it lands, and delete these.
+ *
+ * NOT included, deliberately: the skirt. `skirt_loops` is 0 on every intent — no
+ * skirt is drawn at all — and a skirt would ring the plate's convex hull anyway,
+ * never the space between two modules. `SUPPORT_SKIRT` (8 mm) is still right for
+ * the tower ring, which is a different measurement of a different thing; using it
+ * here spent ~5 mm of bed per gap on a loop this printer never prints.
  */
-const MODULE_BRIM = 5
+const MODULE_GROWTH_MM = 5.1
+const MODULE_GROWTH_SUPPORTED_MM = 5.45
 
 /**
  * Gap between neighbouring modules — BOTH grow, so it's twice one module's
  * reach, never once.
  *
- * The 4 mm this used to be is the shared bundler's default, and it is wrong for
- * a kit in both states: 4 mm doesn't even hold two 5 mm brims, let alone two
- * support skirts. It survived review because the plan's rectangles are disjoint
- * at 4 mm — the packer, the overlap tests and the bed preview all agree the
- * plate is clean. Only the slicer sees the extrusion.
+ * The 4 mm this started as is the shared bundler's default, and it is wrong for a
+ * kit in both states: it doesn't hold two brims. What it is NOT is the cause of
+ * the exit 192 this file used to blame it for — see `clearOfKeepOuts`. Two modules
+ * whose brims overlap slice without complaint; they just print fused.
  */
-const moduleGapMm = (supports: boolean): number => 2 * (supports ? SUPPORT_SKIRT : MODULE_BRIM)
+const moduleGapMm = (supports: boolean): number =>
+  2 * (supports ? MODULE_GROWTH_SUPPORTED_MM : MODULE_GROWTH_MM)
 
 // ---- refusals ---------------------------------------------------------------
 
@@ -114,6 +120,8 @@ export type KitPlateRefusal =
   | 'too-big'
   /** No clear rectangle left for the purge tower. */
   | 'no-tower-room'
+  /** The plate can't be slid off the printer's keep-out zone (see `clearOfKeepOuts`). */
+  | 'keep-out'
 
 /**
  * A kit that cannot be laid out on one plate. `modules` names the labels that
@@ -413,6 +421,81 @@ function plateTowerReserve(
   }
 }
 
+/**
+ * Slide the whole layout until it clears the printer's keep-out zones — the real
+ * cause of exit 192, "Object conflicts were detected".
+ *
+ * Orca's `layered_print_cleareance_valid` (libslic3r/Print.cpp) has exactly three
+ * hard refusals, and all three are keep-out intersections: a model volume's
+ * CONVEX HULL against `bed_exclude_area`, the same against the clumping-detection
+ * area, and the prime tower's rect against `bed_exclude_area`. Everything else it
+ * finds — parts overlapping each other, the tower overlapping a part — it records
+ * as a warning and slices anyway. No amount of inter-module spacing has ever been
+ * able to cause a 192, and the gap this file widened to chase one never could.
+ *
+ * The hull is the whole trap. `emitThreeMfBodies` merges every module riding a
+ * filament slot into ONE volume, so a body's hull is the hull of modules scattered
+ * across the plate — and the hull of an L-shaped arrangement covers the notch the
+ * packer carefully carved out. The 13-module plate that took a 192 on 2026-08-05
+ * (staged as `29037c8a….raw.3mf`) had ZERO vertices inside the X1C's 18 × 28 mm
+ * cutter corner and was refused anyway, because two bodies spanned from one side
+ * of that corner to the other. Nudging the identical plate 28.5 mm in +y sliced it
+ * clean.
+ *
+ * So the invariant a packed plate has to keep is not about its parts, it is about
+ * its BOUNDING BOX: no keep-out may touch it. Sliding the layout bodily preserves
+ * every internal clearance exactly — the tower moves with the modules — which is
+ * why this runs after packing rather than shrinking the region packed into. A pure
+ * inset would spend a 256-wide strip of bed to avoid an 18 × 28 corner.
+ */
+function clearOfKeepOuts(
+  bed: BedSize,
+  rects: readonly BedRect[]
+): { dxMm: number; dyMm: number } | null {
+  if (rects.length === 0) return { dxMm: 0, dyMm: 0 }
+  const box = {
+    x0: Math.min(...rects.map((r) => r.xMm)),
+    y0: Math.min(...rects.map((r) => r.yMm)),
+    x1: Math.max(...rects.map((r) => r.xMm + r.wMm)),
+    y1: Math.max(...rects.map((r) => r.yMm + r.dMm)),
+  }
+  const excludes = (bed.exclude ?? []).map((e) => ({
+    x0: e.xMm,
+    y0: e.yMm,
+    x1: e.xMm + e.wMm,
+    y1: e.yMm + e.dMm,
+  }))
+  const clears = (dx: number, dy: number): boolean => {
+    const b = { x0: box.x0 + dx, y0: box.y0 + dy, x1: box.x1 + dx, y1: box.y1 + dy }
+    if (b.x0 < -EPS || b.y0 < -EPS || b.x1 > bed.wMm + EPS || b.y1 > bed.dMm + EPS) return false
+    return !excludes.some(
+      (e) => b.x0 < e.x1 - EPS && b.x1 > e.x0 + EPS && b.y0 < e.y1 - EPS && b.y1 > e.y0 + EPS
+    )
+  }
+
+  // Staying put is always the first candidate; the rest are the minimal single-axis
+  // pushes that clear one zone. With several zones a push can land on another, so
+  // every candidate is re-checked against all of them and the shortest survivor wins.
+  const candidates: { dx: number; dy: number }[] = [{ dx: 0, dy: 0 }]
+  for (const e of excludes) {
+    candidates.push(
+      { dx: e.x1 - box.x0, dy: 0 },
+      { dx: e.x0 - box.x1, dy: 0 },
+      { dx: 0, dy: e.y1 - box.y0 },
+      { dx: 0, dy: e.y0 - box.y1 }
+    )
+  }
+  let best: { dxMm: number; dyMm: number } | null = null
+  for (const c of candidates) {
+    if (!clears(c.dx, c.dy)) continue
+    const move = Math.hypot(c.dx, c.dy)
+    if (best === null || move < Math.hypot(best.dxMm, best.dyMm) - EPS) {
+      best = { dxMm: c.dx, dyMm: c.dy }
+    }
+  }
+  return best
+}
+
 /** Maximal free rectangles of `f` once `ex` is carved out (the two overlap-free
  *  cases return `f` untouched). */
 function splitRect(f: BedRect, ex: BedRect): BedRect[] {
@@ -540,7 +623,7 @@ export function packKitPlate(args: {
     )
   }
 
-  const placements = instances.map((inst): KitPlatePlacement => {
+  const packedPlacements = instances.map((inst): KitPlatePlacement => {
     const pl = byId.get(inst.id)
     if (!pl) {
       // packPlates returns one placement per item id; a hole means the ids the
@@ -558,7 +641,42 @@ export function packKitPlate(args: {
     }
   })
 
-  return { placements, tower, bed }
+  // The plate's BOX has to clear the printer's keep-outs, not just its parts —
+  // Orca hulls each volume, and our volumes span the plate. See clearOfKeepOuts.
+  const shift = clearOfKeepOuts(bed, [
+    ...packedPlacements.map((pl) => ({ xMm: pl.xMm, yMm: pl.yMm, wMm: pl.wMm, dMm: pl.hMm })),
+    { xMm: tower.xMm, yMm: tower.yMm, wMm: tower.wMm, dMm: tower.dMm },
+  ])
+  if (!shift) {
+    throw new KitPlateFitError(
+      'keep-out',
+      [],
+      `this kit fills the ${bedLabel(
+        bed
+      )} so completely that it can't be slid clear of the printer's keep-out zone — the slicer would refuse it as an object conflict.`,
+      'Print fewer columns, scale the design down, or select a printer with a bigger bed. The kit zip still prints module by module.'
+    )
+  }
+  const placements =
+    shift.dxMm === 0 && shift.dyMm === 0
+      ? packedPlacements
+      : packedPlacements.map((pl) => ({
+          ...pl,
+          xMm: pl.xMm + shift.dxMm,
+          yMm: pl.yMm + shift.dyMm,
+        }))
+  const placedTower =
+    shift.dxMm === 0 && shift.dyMm === 0
+      ? tower
+      : {
+          ...tower,
+          xMm: tower.xMm + shift.dxMm,
+          yMm: tower.yMm + shift.dyMm,
+          pinXMm: tower.pinXMm + shift.dxMm,
+          pinYMm: tower.pinYMm + shift.dyMm,
+        }
+
+  return { placements, tower: placedTower, bed }
 }
 
 // ---- the plate --------------------------------------------------------------

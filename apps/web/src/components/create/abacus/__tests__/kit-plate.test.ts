@@ -426,10 +426,11 @@ describe('packKitPlate (tower first, then the modules around it)', () => {
     expect(supported.tower.dMm).toBeGreaterThan(plain.tower.dMm)
   })
 
-  // The exit-192 regression. Orca refused a real plate whose declared boxes were
-  // disjoint: supports grow past every outline, and 4 mm between modules wasn't
-  // two brims wide, let alone two support skirts. The gap has to move with
-  // `supportsAtSlice` exactly as the tower ring does.
+  // Two modules whose first layers meet print fused. That is a defect the slicer
+  // never reports — it is NOT the exit 192 this pair of tests used to claim, which
+  // is a keep-out check and can't see inter-module spacing at all (see the keep-out
+  // tests below). The gap still has to move with `supportsAtSlice`, because supports
+  // start outboard of the outline they hold.
   it('spaces modules further apart when the plate will slice with supports', () => {
     const roomy: BedSize = { wMm: 400, dMm: 400 }
     const plain = packKitPlate({ instances, bases, bed: roomy })
@@ -439,38 +440,32 @@ describe('packKitPlate (tower first, then the modules around it)', () => {
     // moves further apart. Separation is the property that keeps extrusions off
     // each other; the envelope is just how the packer chose to spend the bed.
     expect(closestApproach(supported)).toBeGreaterThan(closestApproach(plain))
-    expect(closestApproach(supported)).toBeGreaterThanOrEqual(16 - 1e-6)
+    // 2 × (brim_object_gap 0.1 + brim_width 5 + support_object_xy_distance 0.35)
+    expect(closestApproach(supported)).toBeGreaterThanOrEqual(10.9 - 1e-6)
   })
 
   it('holds two brims between neighbours even with supports off', () => {
     // 4 mm — the shared bundler's default, and what this used to ship — cannot
-    // hold two 5 mm brims.
+    // hold two brims. 10.2 is two of THH's published 5.1 mm growths; the 10 this
+    // asserted before quietly dropped `brim_object_gap`.
     expect(
       closestApproach(packKitPlate({ instances, bases, bed: { wMm: 400, dMm: 400 } }))
-    ).toBeGreaterThanOrEqual(10 - 1e-6)
+    ).toBeGreaterThanOrEqual(10.2 - 1e-6)
   })
 
-  it('refuses a printed-feet 13-column kit when it must reserve the worst-case tower', () => {
-    // No filament count given, so the reserve falls back to the profile's
-    // count-unaware bound — and 13 modules at supports-on spacing plus a
-    // six-filament tower genuinely do not fit a 256 plate. Naming that and keeping
-    // the zip beats shipping a plate that slices to "Object conflicts were detected".
-    let caught: KitPlateFitError | null = null
-    try {
-      packKitPlate({ instances, bases, supportsAtSlice: true })
-    } catch (err) {
-      caught = err as KitPlateFitError
-    }
-    expect(caught).toBeInstanceOf(KitPlateFitError)
-    expect(caught?.reason).toBe('overflow')
-    expect(caught?.remediation).toMatch(/fewer columns|scale the design down|bigger bed/)
+  it('fits a printed-feet 13-column kit on a 256 even at the worst-case tower', () => {
+    // This asserted a REFUSAL while the supports-on gap was 2 × SUPPORT_SKIRT = 16 mm.
+    // Most of that was skirt — a loop `skirt_loops = 0` means this printer never draws,
+    // and which would ring the plate rather than run between two modules if it did.
+    // At the honest 10.9 the thirteenth module fits beside a six-filament tower.
+    const plate = packKitPlate({ instances, bases, supportsAtSlice: true })
+    expect(plate.placements).toHaveLength(instances.length)
   })
 
-  it('fits that same kit once it reserves the tower its filament count needs', () => {
-    // The refusal above is not physics — it is the worst case. A wood-PLA kit with
-    // printed TPU feet and a routed support interface is a THREE-filament plate, and
-    // the service publishes a 70×31.5 envelope for that instead of 70×63. The 42 mm
-    // of depth handed back is exactly what the thirteenth module needs.
+  it('reserves a shallower tower once it knows the filament count', () => {
+    // A wood-PLA kit with printed TPU feet and a routed support interface is a THREE-
+    // filament plate, and the service publishes a 70×31.5 envelope for that instead of
+    // 70×63 — bed the plate gets to keep.
     const fitted = packKitPlate({ instances, bases, supportsAtSlice: true, filaments: 3 })
     expect(fitted.placements).toHaveLength(instances.length)
     const rects = fitted.placements.map(rectOf)
@@ -478,7 +473,7 @@ describe('packKitPlate (tower first, then the modules around it)', () => {
       for (let j = i + 1; j < rects.length; j++) expect(overlaps(rects[i], rects[j])).toBe(false)
     }
     // and the separation law still holds at the tighter reserve
-    expect(closestApproach(fitted)).toBeGreaterThanOrEqual(16 - 1e-6)
+    expect(closestApproach(fitted)).toBeGreaterThanOrEqual(10.9 - 1e-6)
     // the win is depth: same tower width, shallower reserve
     const roomy: BedSize = { wMm: 400, dMm: 400 }
     const worst = packKitPlate({
@@ -490,6 +485,100 @@ describe('packKitPlate (tower first, then the modules around it)', () => {
     })
     expect(fitted.tower.wMm).toBeCloseTo(worst.tower.wMm, 6)
     expect(fitted.tower.dMm).toBeLessThan(worst.tower.dMm)
+  })
+
+  // ---- the real exit-192 law -------------------------------------------------
+  //
+  // Orca refuses a plate when a model volume's CONVEX HULL touches the printer's
+  // keep-out zone. Our volumes are per-filament-slot, so one body spans every module
+  // that rides that slot — and the hull of an L-shaped arrangement covers the notch
+  // the packer carved. The plate that took a 192 on 2026-08-05 had zero geometry in
+  // the X1C's cutter corner; nudging it 28.5 mm in +y sliced the identical bytes.
+  // Hence: the plate's BOX must clear the keep-out, not just its parts.
+  describe('keeping the plate clear of the printer keep-out', () => {
+    const boxOf = (layout: ReturnType<typeof packKitPlate>): Rect => {
+      const rects: Rect[] = [
+        ...layout.placements.map(rectOf),
+        {
+          x0: layout.tower.xMm,
+          y0: layout.tower.yMm,
+          x1: layout.tower.xMm + layout.tower.wMm,
+          y1: layout.tower.yMm + layout.tower.dMm,
+        },
+      ]
+      return {
+        x0: Math.min(...rects.map((r) => r.x0)),
+        y0: Math.min(...rects.map((r) => r.y0)),
+        x1: Math.max(...rects.map((r) => r.x1)),
+        y1: Math.max(...rects.map((r) => r.y1)),
+      }
+    }
+
+    it('leaves no keep-out inside the whole plate box, on the real X1C bed', () => {
+      const layout = packKitPlate({ instances, bases, supportsAtSlice: true, filaments: 3 })
+      const box = boxOf(layout)
+      // Non-vacuous: the packer seeds from the bed origin, so this plate comes out of
+      // packPlates touching (0, 0) — the staged 3MF that took the 192 had exactly that
+      // box. What this asserts is that it does not STAY there.
+      expect(box.y0).toBeGreaterThanOrEqual(28 - 1e-6)
+      for (const e of layout.bed.exclude ?? []) {
+        expect(overlaps(box, { x0: e.xMm, y0: e.yMm, x1: e.xMm + e.wMm, y1: e.yMm + e.dMm })).toBe(
+          false
+        )
+      }
+    })
+
+    it('slides the plate off a keep-out instead of merely packing around it', () => {
+      // A bed whose cutter corner is deliberately big enough that the packer's own
+      // carve leaves an L: parts avoid the zone, the box does not.
+      const notched: BedSize = {
+        wMm: 400,
+        dMm: 400,
+        exclude: [{ xMm: 0, yMm: 0, wMm: 60, dMm: 40 }],
+      }
+      const layout = packKitPlate({ instances, bases, bed: notched })
+      const zone: Rect = { x0: 0, y0: 0, x1: 60, y1: 40 }
+      // every part clears it (the packer's job) AND so does the box (this fix's job)
+      for (const pl of layout.placements) expect(overlaps(rectOf(pl), zone)).toBe(false)
+      expect(overlaps(boxOf(layout), zone)).toBe(false)
+    })
+
+    it('carries the tower with the plate so every internal clearance survives', () => {
+      const notched: BedSize = {
+        wMm: 400,
+        dMm: 400,
+        exclude: [{ xMm: 0, yMm: 0, wMm: 60, dMm: 40 }],
+      }
+      const plain = packKitPlate({ instances, bases, bed: { wMm: 400, dMm: 400 } })
+      const slid = packKitPlate({ instances, bases, bed: notched })
+      // A rigid slide: the module-to-module and module-to-tower distances are the
+      // same numbers they were before, which is the whole reason for moving the
+      // layout bodily rather than re-packing into a smaller region.
+      expect(closestApproach(slid)).toBeCloseTo(closestApproach(plain), 6)
+      const gapToTower = (l: ReturnType<typeof packKitPlate>): number =>
+        Math.min(
+          ...l.placements.map((pl) => {
+            const r = rectOf(pl)
+            return Math.max(
+              l.tower.xMm - r.x1,
+              r.x0 - (l.tower.xMm + l.tower.wMm),
+              l.tower.yMm - r.y1,
+              r.y0 - (l.tower.yMm + l.tower.dMm)
+            )
+          })
+        )
+      expect(gapToTower(slid)).toBeCloseTo(gapToTower(plain), 6)
+      // and the pin stays inside its own reservation after the slide
+      expect(slid.tower.pinXMm).toBeGreaterThan(slid.tower.xMm)
+      expect(slid.tower.pinYMm).toBeGreaterThan(slid.tower.yMm)
+    })
+
+    // The 'keep-out' refusal itself has no test, and that is the honest state of it:
+    // the packer seeds its free space from the same zones, so a bed it can pack at all
+    // leaves somewhere to slide toward. It stays as a guard for the case where those
+    // two ever disagree — a THH zone shape the seed rounds differently, or the pending
+    // swap onto @eink/plate-packing — because the alternative to refusing is emitting
+    // a plate the slicer rejects after the user has waited for the render.
   })
 
   it('refuses an overfull plate by name rather than dropping a module', () => {
