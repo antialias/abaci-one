@@ -62,6 +62,12 @@ export interface AbacusTicketArgs {
 export interface AbacusWipeTowerRequest {
   profile: string
   pinMm: { x: number; y: number }
+  /** The filament count whose envelope row the plate reserved bed area for. THH
+   *  compares it against the resolved plan and rejects a disagreement synchronously
+   *  (`wipe_tower_filament_mismatch`) — a wrong-sized hole caught in the API call
+   *  instead of minutes later as a slice-time conflict. Omitted, the service takes
+   *  the pre-#433 legacy leg and checks nothing. */
+  packedForFilaments?: number
 }
 
 export interface AbacusPrintTicket extends PrintTicketV2 {

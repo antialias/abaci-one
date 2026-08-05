@@ -60,6 +60,7 @@ import { type AbacusThreeMf, emitThreeMfBodies, type SpoolBodySummary } from './
 import {
   BAMBU_256_BED,
   DEFAULT_WIPE_TOWER_PROFILE,
+  envelopeForFilaments,
   SUPPORT_SKIRT,
   TOWER_GAP,
   type WipeTowerProfileGeometry,
@@ -378,7 +379,9 @@ export function kitPlateSignature(layout: KitPlateLayout): string {
 }
 
 /**
- * The tower footprint to keep clear, from the printer's own bounded profile.
+ * The tower footprint to keep clear, from the printer's own bounded profile —
+ * sized to the envelope row for the filament count this plate will actually load,
+ * not the profile's worst case (see `envelopeForFilaments`).
  *
  * Mirrors `towerReserveFromCapability`'s envelope → rect translation (it can't be
  * called directly: the service capability carries `version`/`maxFilaments` that
@@ -393,10 +396,11 @@ export function kitPlateSignature(layout: KitPlateLayout): string {
  */
 function plateTowerReserve(
   profile: WipeTowerProfileGeometry,
-  supports: boolean
+  supports: boolean,
+  filaments?: number
 ): Extract<TowerReserve, { kind: 'reserve' }> {
   const clear = TOWER_GAP + (supports ? SUPPORT_SKIRT : 0)
-  const e = profile.envelopeMm
+  const e = envelopeForFilaments(profile, filaments)
   return {
     kind: 'reserve',
     profile: profile.profile,
@@ -470,6 +474,11 @@ export function packKitPlate(args: {
    *  gap between modules — supports grow past every outline on the plate, not
    *  just the one the tower happens to sit next to. */
   supportsAtSlice?: boolean
+  /** How many filaments this plate will load once the ticket resolves. Picks the
+   *  tower's envelope row — a three-filament kit purges into a far shallower band
+   *  than the profile's six-filament bound, and on a full bed that is the
+   *  difference between one plate and a refusal. */
+  filaments?: number
 }): KitPlateLayout {
   const {
     instances,
@@ -477,10 +486,11 @@ export function packKitPlate(args: {
     bed = BAMBU_256_BED,
     wipeTower = DEFAULT_WIPE_TOWER_PROFILE,
     supportsAtSlice = false,
+    filaments,
   } = args
   const gapMm = args.gapMm ?? moduleGapMm(supportsAtSlice)
 
-  const reserve = plateTowerReserve(wipeTower, supportsAtSlice)
+  const reserve = plateTowerReserve(wipeTower, supportsAtSlice, filaments)
   const tower = placeTowerReserve(bed, reserve, bedFreeRects(bed, towerMargin(bed)))
   if (!tower) {
     throw new KitPlateFitError(
@@ -585,6 +595,9 @@ export function buildKitPlateThreeMf(args: {
   bed?: BedSize
   wipeTower?: WipeTowerProfileGeometry
   gapMm?: number
+  /** Filaments the ticket will add beyond the plate's own bodies — the
+   *  support-interface spool. A download adds none. */
+  extraFilaments?: number
 }): KitPlate {
   const {
     parts,
@@ -594,6 +607,7 @@ export function buildKitPlateThreeMf(args: {
     bed = BAMBU_256_BED,
     wipeTower = DEFAULT_WIPE_TOWER_PROFILE,
     gapMm,
+    extraFilaments = 0,
   } = args
   const p = parts.params
   if (!isModular(p)) {
@@ -645,6 +659,20 @@ export function buildKitPlateThreeMf(args: {
   }
 
   const feetPrinted = instances.some((inst) => soupsFor(inst).feetPrinted)
+
+  // The tower's reservation has to be sized BEFORE the pack, so the filament count
+  // has to be known before the bodies are emitted. It is: a body is emitted per slot
+  // that carries geometry, and the slots are fixed once every instance is gated —
+  // placement moves triangles, it never changes which filament they print on. The
+  // emit tail recomputes the same set from the same soups, so the reserved hole and
+  // the count reported to the service are the same number by construction.
+  const plateSlots = new Set<number>()
+  for (const inst of instances) {
+    const soups = soupsFor(inst)
+    for (const slot of soups.slotOfShell) plateSlots.add(slot)
+    for (const soup of soups.partSoups) plateSlots.add(soup.slot)
+  }
+
   const layout = packKitPlate({
     instances,
     bases,
@@ -652,6 +680,7 @@ export function buildKitPlateThreeMf(args: {
     gapMm,
     wipeTower,
     supportsAtSlice: supportsAtSlice || feetPrinted,
+    filaments: plateSlots.size + extraFilaments,
   })
   const placementOf = new Map(layout.placements.map((pl) => [pl.id, pl]))
 
@@ -710,6 +739,7 @@ export function buildKitPlateThreeMf(args: {
     // packer kept clear — so the container must not re-center them, and must pin
     // the tower where the reservation is rather than beside the plate's box.
     placedOnBed: { towerPinMm: { x: layout.tower.pinXMm, y: layout.tower.pinYMm } },
+    extraFilaments,
   })
 
   return { ...layout, bytes: built.bytes, bodies: built.bodies, wipeTower: built.wipeTower }

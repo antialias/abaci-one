@@ -57,14 +57,21 @@ export interface Assembled3mf {
   readonly wipeTower: { readonly xMm: number; readonly yMm: number }
 }
 
+export interface WipeTowerEnvelopeMm {
+  readonly minX: number
+  readonly minY: number
+  readonly maxX: number
+  readonly maxY: number
+}
+
 export interface WipeTowerProfileGeometry {
   readonly profile: string
-  readonly envelopeMm: {
-    readonly minX: number
-    readonly minY: number
-    readonly maxX: number
-    readonly maxY: number
-  }
+  /** The count-unaware bound — the max-filament row. */
+  readonly envelopeMm: WipeTowerEnvelopeMm
+  /** The bound per filament count, keyed by the count as a string. See
+   *  {@link envelopeForFilaments}: reserving the bound on a two-filament plate
+   *  throws away bed depth the tower will never occupy. */
+  readonly envelopeByFilamentsMm?: Readonly<Record<string, WipeTowerEnvelopeMm>>
   readonly process: {
     readonly prime_tower_width: number
     readonly prime_tower_brim_width: number
@@ -74,15 +81,60 @@ export interface WipeTowerProfileGeometry {
 
 /** Download/back-compat twin of THH's v1 bounded profile. The print path replaces this
  * with the selected printer's advertised copy, so a deploy can update geometry without
- * an Abaci release. */
+ * an Abaci release.
+ *
+ * The rows mirror THH's measured table (things-haunt-house#433): width is
+ * count-independent, depth grows ~10.5 mm per filament. The bound was 56 here until
+ * #34 — the pre-#433 number, which THH's own source records as escaped by the
+ * six-filament fine-layer tower it claimed to hold. */
 export const DEFAULT_WIPE_TOWER_PROFILE: WipeTowerProfileGeometry = {
   profile: 'orca-rectangle-60-v1',
-  envelopeMm: { minX: -4, minY: -4, maxX: 66, maxY: 56 },
+  envelopeMm: { minX: -4, minY: -4, maxX: 66, maxY: 59 },
+  envelopeByFilamentsMm: {
+    '2': { minX: -4, minY: -4, maxX: 66, maxY: 17 },
+    '3': { minX: -4, minY: -4, maxX: 66, maxY: 27.5 },
+    '4': { minX: -4, minY: -4, maxX: 66, maxY: 38 },
+    '5': { minX: -4, minY: -4, maxX: 66, maxY: 48.5 },
+    '6': { minX: -4, minY: -4, maxX: 66, maxY: 59 },
+  },
   process: {
     prime_tower_width: 60,
     prime_tower_brim_width: 3,
     wipe_tower_wall_type: 'rectangle',
   },
+}
+
+/**
+ * The envelope to reserve for a plate that loads `filaments` filaments.
+ *
+ * The service measures the tower per filament count and publishes the table
+ * alongside the count-unaware bound. Two filaments purge into a 70×21 band; six
+ * need 70×63. Reserving the bound for everything costs 42 mm of bed depth that
+ * nothing will ever print on — on a 256 bed that is the difference between a
+ * 13-column kit fitting one plate and being refused.
+ *
+ * The floor of 2 is deliberate and is the same reason the reserve is unconditional
+ * at all: a one-filament plate grows a tower the moment ticket routing attaches a
+ * support-interface spool, and the plate is packed before that routing resolves. At
+ * row-2 cost that hedge is nearly free.
+ *
+ * Falls back to the bound whenever the table is absent (a pre-#433 service), has no
+ * row for this count (more filaments than the profile is bounded for), or the row is
+ * malformed — a bad optional field must never shrink a reservation.
+ */
+export function envelopeForFilaments(
+  profile: WipeTowerProfileGeometry,
+  filaments?: number
+): WipeTowerEnvelopeMm {
+  const table = profile.envelopeByFilamentsMm
+  if (!table || filaments === undefined || !Number.isFinite(filaments)) return profile.envelopeMm
+  const row = table[String(Math.max(2, Math.floor(filaments)))]
+  const usable =
+    !!row &&
+    [row.minX, row.minY, row.maxX, row.maxY].every(Number.isFinite) &&
+    row.maxX > row.minX &&
+    row.maxY > row.minY
+  return usable ? row : profile.envelopeMm
 }
 
 export interface Assemble3mfOpts {
@@ -128,6 +180,11 @@ export interface Assemble3mfOpts {
     /** Orca's `wipe_tower_x/y`, from the reservation the packer left room for. */
     readonly towerPinMm: { readonly x: number; readonly y: number }
   }
+  /** How many filaments this plate will load once the ticket resolves — the
+   *  emitted bodies plus anything routing adds (a support-interface spool). Picks
+   *  the profile's envelope row; see {@link envelopeForFilaments}. Omitted, the
+   *  count-unaware bound is reserved, which is safe and wasteful. */
+  readonly filaments?: number
 }
 
 /** The printed-feet frame starts at source Z=0, above feet that dip below zero.
@@ -361,7 +418,7 @@ function placeWipeTower(
   const cx = (obj.x0 + obj.x1) / 2
   const cy = (obj.y0 + obj.y1) / 2
   const profile = opts.wipeTower ?? DEFAULT_WIPE_TOWER_PROFILE
-  const envelope = profile.envelopeMm
+  const envelope = envelopeForFilaments(profile, opts.filaments)
   const pinMidX = (envelope.minX + envelope.maxX) / 2
   const pinMidY = (envelope.minY + envelope.maxY) / 2
 

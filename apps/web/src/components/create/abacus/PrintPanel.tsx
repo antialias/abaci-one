@@ -458,6 +458,14 @@ export function PrintPanel(props: PrintPanelProps) {
       // abacus. Both hand back the same {bytes, bodies, wipeTower}, so the
       // ticket, idempotency, upload and job plumbing below are shared verbatim —
       // a kit's filament slots ARE the mono print's slots, same abacus.
+      //
+      // `extraFilaments` is what the ticket adds that no body carries — the routed
+      // support-interface spool. It has to reach the model builder because the tower's
+      // reservation is sized from the plate's filament COUNT (the service publishes a
+      // shallower envelope for fewer filaments), and that reservation is decided before
+      // the ticket exists. The panel withholds design slots from the pickable interface
+      // roster, so a pick is always a filament the bodies don't already carry.
+      const extraFilaments = supportPick ? 1 : 0
       const model = kit
         ? buildKitPlateThreeMf({
             parts: await raceRender(kit.requestExportModuleParts()),
@@ -466,6 +474,7 @@ export function PrintPanel(props: PrintPanelProps) {
             supportsAtSlice: supportsWanted,
             bed,
             wipeTower: wipeTower ?? undefined,
+            extraFilaments,
           })
         : buildAbacusThreeMf({
             ...(await raceRender(requestExportParts())),
@@ -474,6 +483,7 @@ export function PrintPanel(props: PrintPanelProps) {
             supportsAtSlice: supportsWanted,
             bed,
             wipeTower: wipeTower ?? undefined,
+            extraFilaments,
           })
       const designId = await snapshot
 
@@ -539,12 +549,26 @@ export function PrintPanel(props: PrintPanelProps) {
       // FINAL routed filament list (including an added support-interface spool) is inside
       // the profile's tested bound. Older/over-capacity jobs still carry the embedded pin
       // and follow THH's non-blocking legacy leg.
+      //
+      // `packedForFilaments` is the count the reservation was SIZED for, and the service
+      // rejects it outright if it disagrees with the plan it resolves. It can only ever
+      // over-count here (the ticket drops an interface entry that coincides with a model
+      // slot — unreachable through the panel, but a real branch in the builder), which
+      // means an over-reserved hole: harmless to the slice, fatal to the cross-check. So
+      // on a disagreement, drop the field rather than the whole contract — the pin still
+      // rides, and THH takes its legacy leg instead of 400ing a plate that would print.
       const ticket =
         wipeTower &&
         model.wipeTower &&
         baseTicket.filaments.length > 1 &&
         baseTicket.filaments.length <= wipeTower.maxFilaments
-          ? { ...baseTicket, wipeTower: model.wipeTower }
+          ? {
+              ...baseTicket,
+              wipeTower:
+                model.wipeTower.packedForFilaments === baseTicket.filaments.length
+                  ? model.wipeTower
+                  : { profile: model.wipeTower.profile, pinMm: model.wipeTower.pinMm },
+            }
           : baseTicket
 
       const form = new FormData()

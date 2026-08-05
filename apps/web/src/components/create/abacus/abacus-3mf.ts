@@ -113,6 +113,10 @@ export interface AbacusThreeMf {
   wipeTower: {
     profile: string
     pinMm: { x: number; y: number }
+    /** The filament count whose envelope row sized this reservation. Echoed to the
+     *  service, which cross-checks it against the resolved plan and rejects a
+     *  disagreement up front rather than letting a wrong-sized hole reach the slicer. */
+    packedForFilaments: number
   } | null
 }
 
@@ -189,6 +193,9 @@ export function buildAbacusThreeMf(args: {
   bed?: BedSize
   /** Selected printer's bounded profile; download-only callers use the bundled twin. */
   wipeTower?: WipeTowerProfileGeometry
+  /** Filaments the ticket adds beyond the emitted bodies — the support-interface
+   *  spool. A download adds none. */
+  extraFilaments?: number
 }): AbacusThreeMf {
   const {
     stl,
@@ -202,6 +209,7 @@ export function buildAbacusThreeMf(args: {
     supportsAtSlice,
     bed = BAMBU_256_BED,
     wipeTower = DEFAULT_WIPE_TOWER_PROFILE,
+    extraFilaments,
   } = args
 
   const mesh = parseStl(stl)
@@ -312,6 +320,7 @@ export function buildAbacusThreeMf(args: {
     supportsAtSlice,
     bed,
     wipeTower,
+    extraFilaments,
   })
 }
 
@@ -342,6 +351,10 @@ export function emitThreeMfBodies(args: {
    *  a plate is a placed layout even when it lands on one filament, and the
    *  single-body path would re-origin it into the bed corner. */
   placedOnBed?: { towerPinMm: { x: number; y: number } }
+  /** Filaments the resolved ticket will load that no body carries — today the
+   *  support-interface spool, so 0 or 1. Added to the emitted body count to pick
+   *  the tower's envelope row and to report `packedForFilaments`. */
+  extraFilaments?: number
 }): AbacusThreeMf {
   const {
     mesh,
@@ -355,6 +368,7 @@ export function emitThreeMfBodies(args: {
     bed,
     wipeTower,
     placedOnBed,
+    extraFilaments = 0,
   } = args
 
   // Count triangles per slot, then bucket the position soup (9 floats/tri).
@@ -424,12 +438,19 @@ export function emitThreeMfBodies(args: {
   // tower just 6 mm from a supported model before exit 155 (2026-07-29); a later A/B
   // slices that same 6 mm clean, so read the extra room as margin, not a proven cure.
   // Single filament needs neither: no second extruder, no tower, nothing to collide with.
+  // What the plate will actually load: one filament per emitted body, plus whatever
+  // routing adds on top. This is the same arithmetic the ticket does downstream (one
+  // entry per distinct body slot, then the support-interface entry), derived from the
+  // same slot set, so the reservation and the declared count cannot disagree.
+  const plateFilaments = bodies.length + extraFilaments
+
   if (assemblyBodies.length >= 2 || feetPrinted || placedOnBed) {
     const assembled = assembleAbacus3mf(assemblyBodies, bed, {
       support: feetPrinted,
       supportsAtSlice,
       wipeTower,
       placedOnBed,
+      filaments: plateFilaments,
     })
     return {
       bytes: assembled.bytes,
@@ -440,6 +461,7 @@ export function emitThreeMfBodies(args: {
       wipeTower: {
         profile: wipeTower.profile,
         pinMm: { x: assembled.wipeTower.xMm, y: assembled.wipeTower.yMm },
+        packedForFilaments: plateFilaments,
       },
     }
   }

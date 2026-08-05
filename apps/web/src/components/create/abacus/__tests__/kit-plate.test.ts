@@ -450,11 +450,11 @@ describe('packKitPlate (tower first, then the modules around it)', () => {
     ).toBeGreaterThanOrEqual(10 - 1e-6)
   })
 
-  it('refuses a printed-feet 13-column kit on a 256 bed rather than one the slicer rejects', () => {
-    // Honest physics, and the whole point of the refusal: 13 modules at
-    // supports-on spacing plus the widened tower reserve do not fit a 256 plate.
-    // Better to name it and keep the zip than to ship a plate that slices to
-    // "Object conflicts were detected".
+  it('refuses a printed-feet 13-column kit when it must reserve the worst-case tower', () => {
+    // No filament count given, so the reserve falls back to the profile's
+    // count-unaware bound — and 13 modules at supports-on spacing plus a
+    // six-filament tower genuinely do not fit a 256 plate. Naming that and keeping
+    // the zip beats shipping a plate that slices to "Object conflicts were detected".
     let caught: KitPlateFitError | null = null
     try {
       packKitPlate({ instances, bases, supportsAtSlice: true })
@@ -464,6 +464,32 @@ describe('packKitPlate (tower first, then the modules around it)', () => {
     expect(caught).toBeInstanceOf(KitPlateFitError)
     expect(caught?.reason).toBe('overflow')
     expect(caught?.remediation).toMatch(/fewer columns|scale the design down|bigger bed/)
+  })
+
+  it('fits that same kit once it reserves the tower its filament count needs', () => {
+    // The refusal above is not physics — it is the worst case. A wood-PLA kit with
+    // printed TPU feet and a routed support interface is a THREE-filament plate, and
+    // the service publishes a 70×31.5 envelope for that instead of 70×63. The 42 mm
+    // of depth handed back is exactly what the thirteenth module needs.
+    const fitted = packKitPlate({ instances, bases, supportsAtSlice: true, filaments: 3 })
+    expect(fitted.placements).toHaveLength(instances.length)
+    const rects = fitted.placements.map(rectOf)
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) expect(overlaps(rects[i], rects[j])).toBe(false)
+    }
+    // and the separation law still holds at the tighter reserve
+    expect(closestApproach(fitted)).toBeGreaterThanOrEqual(16 - 1e-6)
+    // the win is depth: same tower width, shallower reserve
+    const roomy: BedSize = { wMm: 400, dMm: 400 }
+    const worst = packKitPlate({
+      instances,
+      bases,
+      supportsAtSlice: true,
+      filaments: 6,
+      bed: roomy,
+    })
+    expect(fitted.tower.wMm).toBeCloseTo(worst.tower.wMm, 6)
+    expect(fitted.tower.dMm).toBeLessThan(worst.tower.dMm)
   })
 
   it('refuses an overfull plate by name rather than dropping a module', () => {
@@ -531,6 +557,21 @@ describe('buildKitPlateThreeMf (the whole kit as one plate)', () => {
       { slot: 3, label: 'Filament 4', colorHex: '#2e86ab', triangleCount: 13 },
     ])
     expect([...plate.bytes.slice(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04])
+  })
+
+  it('declares the filament count it reserved for — bodies plus what routing adds', () => {
+    // The number the service cross-checks against its resolved plan. It is the same
+    // arithmetic the ticket does (one entry per distinct body slot, then the
+    // support-interface entry), computed from the same slot set — so a plate can't
+    // reserve for one count and declare another.
+    expect(plateOf().wipeTower?.packedForFilaments).toBe(3)
+    expect(plateOf({ extraFilaments: 1 }).wipeTower?.packedForFilaments).toBe(4)
+  })
+
+  it('spends less bed on the tower once it knows the count', () => {
+    // Same plate, same modules: only the reservation's depth moves, because the
+    // service publishes a shallower envelope for fewer filaments.
+    expect(plateOf().tower.dMm).toBeLessThan(plateOf({ extraFilaments: 3 }).tower.dMm)
   })
 
   it('ships the modules WHERE THEY WERE PACKED — no re-centering, no re-derived tower', () => {
