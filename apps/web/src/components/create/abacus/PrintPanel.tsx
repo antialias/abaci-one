@@ -35,6 +35,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { persistAbacusDesign } from '@/hooks/useAbacusDesignSnapshot'
 import { useAbacusPrintJobs, useCancelPrintJob, useStartPrintJob } from '@/hooks/useAbacusPrintJobs'
 import { useAbacusPrintSettings, useSaveAbacusPrintSettings } from '@/hooks/useAbacusPrintSettings'
+import { useKitPlateLayout } from '@/hooks/useKitPlateLayout'
 import { usePrintJobRing } from '@/hooks/usePrintJobRing'
 import { useUserId } from '@/hooks/useUserId'
 import { createAbacusPrintClient } from '@/lib/abacus/print/browser-transport'
@@ -59,6 +60,7 @@ import {
 } from './abacus-print-panel-state'
 import { buildAbacusAuthoring, buildAbacusTicket } from './abacus-ticket'
 import { JobNotices } from './JobNotices'
+import { KitPlatePreview } from './KitPlatePreview'
 import { ParkedJobCard } from './ParkedJobCard'
 import { PairPrinterPrompt } from './PrintConnectionsManager'
 import { PrintSubmitErrorNotice } from './PrintSubmitErrorNotice'
@@ -649,6 +651,22 @@ export function PrintPanel(props: PrintPanelProps) {
   // never a silent style injection (see feetSupportGate).
   const feetGate = feetSupportGate(params, style)
 
+  // The bed preview (Gitea #32). Runs the SAME plan the submit runs, so what's
+  // drawn is what ships — including the refusals, which is the point: "this kit
+  // needs two beds" belongs on screen while the column count is still in the
+  // user's hand, not after they press print. Mono prints get no preview; there's
+  // one object and the container centres it.
+  const kitPlate = useKitPlateLayout({
+    enabled: visible && serviceReady && !!kit,
+    requestExportModuleParts: kit?.requestExportModuleParts,
+    params,
+    filamentMap,
+    supportsAtSlice: supportsWanted,
+    bed: printerBed,
+    wipeTower,
+    extraFilaments: supportPick ? 1 : 0,
+  })
+
   const submitBlocked =
     exportBlocked ||
     !serviceReady ||
@@ -939,6 +957,22 @@ export function PrintPanel(props: PrintPanelProps) {
               </button>
             </div>
           )}
+          {/* Directly above the commit, because that's the question it answers:
+              this is the bed you're about to print. */}
+          {kit && (
+            <div
+              data-element="kit-plate-preview-slot"
+              style={{ opacity: kitPlate.pending && kitPlate.layout ? 0.55 : 1 }}
+            >
+              <KitPlatePreview
+                layout={kitPlate.layout}
+                refusal={kitPlate.refusal}
+                pending={kitPlate.pending}
+                filaments={kitPlate.filaments ?? undefined}
+              />
+            </div>
+          )}
+
           <button
             type="button"
             data-action="submit-print-job"
