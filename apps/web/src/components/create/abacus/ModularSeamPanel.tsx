@@ -257,9 +257,9 @@ export function ModularSeamPanel() {
 
         <div style={{ fontSize: 10, lineHeight: 1.5, color: 'rgba(148,163,184,0.7)' }}>
           Phase 1: end modules carry engraved marker pockets, not printed markers — the camera loop
-          needs the sticker sheet until marker plugs land. Frame text stays mono-only too: modules
-          print without the complement tokens (per-module text would make every mid unique and
-          defeat the kit&apos;s shared-file dedupe).
+          needs the sticker sheet until marker plugs land. Frame text prints on the side rails and
+          end walls (they ride the two end modules); the top/bottom rails and front/back walls cross
+          every seam, so words there print on the one-piece abacus only.
         </div>
       </div>
     </Disclosure>

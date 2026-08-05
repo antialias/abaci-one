@@ -38,6 +38,7 @@ import {
   type FeetFit,
   feetEffective,
   feetFit,
+  isModular,
   matchBrim,
   matchBumper,
   placeAids,
@@ -73,6 +74,16 @@ const WORD_FIELDS: { key: WordKey; label: string; slot?: TextSlot }[] = [
   { key: 'edge_left', label: 'left wall' },
   { key: 'edge_right', label: 'right wall' },
 ]
+/** The word fields laid out ACROSS the column seams — they don't print on
+ *  snap-together columns (textSlots gates them), so the rail says so instead of
+ *  accepting words that would silently never appear. Mirror of the complement
+ *  set MODULAR_TEXT_SLOT_INDICES in abacus-model. */
+const CROSSING_WORD_KEYS: ReadonlySet<WordKey> = new Set([
+  'top_text',
+  'bottom_text',
+  'edge_front',
+  'edge_back',
+])
 /** A greyed row's own label has to carry both the reason and the lever — a
  *  <select> has nowhere else to put them. When neither lever reaches, say that
  *  outright rather than trailing an empty "needs". */
@@ -408,14 +419,23 @@ export function DesignInspectorRail({
           </span>
           {WORD_FIELDS.map(({ key, label, slot }) => {
             const held = slot ? placements.find((x) => x.slot === slot) : undefined
+            // In modular mode a crossing slot can't also be aid-held (placeAids
+            // filters those homes out), so the two reasons never compete.
+            const crossing = isModular(params) && CROSSING_WORD_KEYS.has(key)
             return (
               <StudioTextInput
                 key={key}
                 label={label}
                 value={params[key]}
                 onChange={(v) => set(key, v)}
-                disabled={held !== undefined}
-                disabledReason={held ? `showing ${held.aid.label}` : undefined}
+                disabled={held !== undefined || crossing}
+                disabledReason={
+                  held
+                    ? `showing ${held.aid.label}`
+                    : crossing
+                      ? 'crosses the column seams — one-piece only'
+                      : undefined
+                }
                 dataElement={`abacus-words-${key}`}
                 dataAction={`set-${key}`}
               />

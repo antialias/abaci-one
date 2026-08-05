@@ -26,7 +26,6 @@ import {
   anyTokens,
   definesFrom,
   exportDefines,
-  isModular,
   type Params,
   previewDedupKey,
   type RenderPass,
@@ -244,11 +243,15 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
     st.main.latest = params
     st.main.latestKey = key
     st.pumpMain?.()
-    // No plug pass in modular mode: the plug preview is positioned by the MONO
-    // token centers, which drift once every seam widens the pitch — a wrong
-    // overlay is worse than none, and skipping saves the whole WASM pass. The
-    // else branch's onPlug(null) also clears a stale mesh on the mode flip.
-    if (params.text_mode === 'inset' && anyTokens(params) && !isModular(params)) {
+    // The plug pass follows anyTokens, which is modular-aware: on snap-together
+    // columns only the side rails/end walls survive textSlots, and the scad's
+    // text_plugs dispatch renders exactly those, at their ASSEMBLED positions —
+    // matching the modular-aware tokenCenters the tint reads, so the overlay
+    // cannot drift the way the old mono-positioned pass did. A modular design
+    // whose words all sit on crossing slots skips the pass entirely, and the
+    // else branch must clear + orphan, or a render still in flight repaints the
+    // gated-out overlay after the flip (the CP8-aftercare race).
+    if (params.text_mode === 'inset' && anyTokens(params)) {
       st.plug.latest = params
       st.plug.latestKey = key
       st.pumpPlug?.()

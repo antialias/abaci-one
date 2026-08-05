@@ -1,14 +1,18 @@
 /**
- * useAbacusScad — the plug pump's modular gate (Gitea #30, CP8 aftercare).
+ * useAbacusScad — the plug pump's modular gate (Gitea #30, CP8 aftercare +
+ * the side-text follow-up).
  *
- * The inset-text plug preview is positioned by MONO token centers, so modular
- * mode must not just skip NEW plug renders — it must also orphan the one in
- * flight. The first manual studio pass caught the miss on screen: flip to
- * modular while the mono plug pass is still solving and the stale result
- * lands AFTER the clear, painting mono-pitch frame text across the modular
- * assembly. These tests drive the hook through fake workers to pin that
- * ordering (and that the gate doesn't overcorrect: mono delivery still works,
- * and flipping back to mono re-renders the plug it just cleared).
+ * The gate is anyTokens, which is modular-aware: side-rail/end-wall tokens
+ * survive on snap-together columns (the scad renders them at ASSEMBLED
+ * positions), while crossing-slot tokens are gated out. So a modular flip on
+ * a crossing-only design must not just skip NEW plug renders — it must also
+ * orphan the one in flight. The first manual studio pass caught the miss on
+ * screen: flip to modular while the mono plug pass is still solving and the
+ * stale result lands AFTER the clear, painting mono-pitch frame text across
+ * the modular assembly. These tests drive the hook through fake workers to
+ * pin that ordering (and that the gate doesn't overcorrect: mono delivery
+ * still works, flipping back to mono re-renders the plug it just cleared,
+ * and side tokens keep the pump posting in modular mode).
  */
 import { renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -45,10 +49,16 @@ class FakeWorker {
   }
 }
 
-// edge_front tokens make anyTokens(p) true without leaning on the rail-slot
-// defaults; inset is what routes them through the plug pass at all.
-const mono: Params = { ...defaultParams, text_mode: 'inset', edge_front: 'HI' }
+// edge_front is a seam-CROSSING slot: its tokens make anyTokens true in mono
+// and false in modular, which is exactly what the orphan tests need. The aids
+// must be OFF for that to hold — left on, they'd relocate to the side rails in
+// modular and legitimately keep the pass alive. edge_left is the
+// counter-fixture: an end-wall slot that survives the modular gate.
+const blank: Params = { ...defaultParams, aid_10: 'off', aid_5: 'off', text_mode: 'inset' }
+const mono: Params = { ...blank, edge_front: 'HI' }
 const modular: Params = { ...mono, seam_mode: 'modular' }
+const sideMono: Params = { ...blank, edge_left: 'HI' }
+const sideModular: Params = { ...sideMono, seam_mode: 'modular' }
 
 const plugWorker = () => FakeWorker.instances[1]
 
@@ -115,5 +125,33 @@ describe('useAbacusScad plug pump', () => {
     // must re-post instead of treating the cleared mesh as already drawn
     result.current.render(mono)
     expect(plugWorker().posted).toHaveLength(2)
+  })
+
+  it('side tokens keep the pump posting in modular mode — end modules print that text', async () => {
+    const { result, onPlug } = await mount()
+    result.current.render(sideModular)
+    expect(plugWorker().posted).toHaveLength(1)
+    expect(plugWorker().posted[0].defines).toContain('-Donly="text_plugs"')
+    expect(plugWorker().posted[0].defines).toContain('-Dseam_mode="modular"')
+
+    const stl = new ArrayBuffer(84)
+    plugWorker().emit({ id: plugWorker().posted[0].id, ok: true, stl })
+    expect(onPlug).toHaveBeenCalledWith(stl)
+  })
+
+  it('the mono→modular flip re-posts under the new key when the tokens survive', async () => {
+    // seam_mode is a real geometry define, so the same words at the same slots
+    // still need a fresh render (the plugs move to their assembled positions)
+    const { result, onPlug } = await mount()
+    result.current.render(sideMono)
+    plugWorker().emit({ id: plugWorker().posted[0].id, ok: true, stl: new ArrayBuffer(84) })
+
+    result.current.render(sideModular)
+    expect(plugWorker().posted).toHaveLength(2)
+    // no clear in between — the pass is still on, only repositioned
+    expect(onPlug).not.toHaveBeenCalledWith(null)
+    const stl = new ArrayBuffer(84)
+    plugWorker().emit({ id: plugWorker().posted[1].id, ok: true, stl })
+    expect(onPlug).toHaveBeenLastCalledWith(stl)
   })
 })

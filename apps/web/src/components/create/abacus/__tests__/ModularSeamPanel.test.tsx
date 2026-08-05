@@ -213,6 +213,17 @@ describe('ModularSeamPanel', () => {
     expect(screen.getByText(/13 modules across 3 files/)).toBeInTheDocument()
   })
 
+  it('the footer tells the side-text truth: sides print, crossing slots are one-piece only', () => {
+    // The stale claim this replaces said frame text was mono-only outright —
+    // since the side rails and end walls ride the end modules, that would
+    // wrongly warn users off text the kit actually prints.
+    studio({ seam_mode: 'modular' })
+    open()
+    const note = screen.getByText(/side rails and end walls/)
+    expect(note.textContent).toContain('one-piece abacus only')
+    expect(note.textContent).not.toContain('mono-only')
+  })
+
   it('locks both downloads while one render is in flight', async () => {
     studio({ seam_mode: 'modular' })
     let finish!: (v: ModuleExportParts) => void
