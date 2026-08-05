@@ -45,9 +45,11 @@ import type {
 } from '@/lib/abacus/print/filament-wire'
 import { api } from '@/lib/queryClient'
 import { abacusPrintKeys } from '@/lib/queryKeys'
-import { type AbacusExportParts, buildAbacusThreeMf } from './abacus-3mf'
+import { type AbacusExportParts, bedSizeFromThh, buildAbacusThreeMf } from './abacus-3mf'
 import { type FilamentCatalog, spoolSupportKind } from './abacus-catalog'
+import { buildKitPlateThreeMf, KitPlateFitError, kitPlateSignature } from './abacus-kit-plate'
 import type { FilamentMap, Params } from './abacus-model'
+import type { ModuleExportParts } from './abacus-module-kit'
 import {
   abacusPrintPanelState,
   designSlotIds,
@@ -129,6 +131,18 @@ export interface PrintPanelProps {
    *  rides the authoring hand-off so the job's edit link reopens the studio on
    *  the same student (things-haunt-house#408). */
   playerId?: string | null
+  /** Present in modular mode (Gitea #30/#32): the design prints as a KIT — every
+   *  column module packed onto one bed — instead of the one-piece abacus, so the
+   *  submit renders the module bundle and packs it. Absent = the mono print.
+   *  Everything downstream (ticket, idempotency, jobs, settings) is shared: a
+   *  kit's filament slots are the same abacus's slots. */
+  kit?: AbacusKitPrint
+}
+
+export interface AbacusKitPrint {
+  /** The modular counterpart to `requestExportParts` — one snapshot, every
+   *  module pass (the same bundle the kit zip download builds from). */
+  requestExportModuleParts: () => Promise<ModuleExportParts>
 }
 
 /** How long the export render may take before the submit gives up. */
@@ -196,6 +210,7 @@ export function PrintPanel(props: PrintPanelProps) {
     exportBlocked,
     requestExportParts,
     playerId = null,
+    kit,
   } = props
 
   // Which body state to render — the pure decision lives in `abacusPrintPanelState`
@@ -405,52 +420,67 @@ export function PrintPanel(props: PrintPanelProps) {
       // restorable intent (params + pins + profile); the AMS projection
       // (filamentMap/slotLabels) rides as provenance only.
       const slotLabels = catalog.spools.map((s) => s.name)
-      const [parts, designId] = await Promise.all([
+      const bed = bedSizeFromThh(printerBed)
+      // Started here, awaited below, so it overlaps the render. It's bounded and
+      // TOTAL — null on any failure — so a dead snapshot API costs the job its
+      // deep edit link, never the print. The envelope is the restorable intent
+      // (params + pins + profile); the AMS projection (filamentMap/slotLabels)
+      // rides as provenance only.
+      const snapshot = persistAbacusDesign(
+        { v: 1, params, overrides, profileId },
+        { filamentMap, slotLabels }
+      )
+      // The race covers the whole bundle (every part pass) — the bundle promise
+      // resolves only after all renders land. The 3MF builds from the bundle's own
+      // params snapshot; the ticket/idempotency below keep using the live `params`
+      // prop (they describe submit intent, and any divergence requires editing the
+      // design inside the render window).
+      const raceRender = <T,>(bundle: Promise<T>): Promise<T> =>
         Promise.race([
-          requestExportParts(),
+          bundle,
           new Promise<never>((_, reject) =>
             setTimeout(
               () => reject(new Error("The 3D render didn't finish — try again")),
               EXPORT_TIMEOUT_MS
             )
           ),
-        ]),
-        persistAbacusDesign({ v: 1, params, overrides, profileId }, { filamentMap, slotLabels }),
-      ])
+        ])
+
       // Supports push the first layer past the model outline, eating into the 6 mm the
       // tower was pinned at — the best available reading of prod's exit 155 on
       // 2026-07-29 (a later A/B slices 6 mm clean, so treat the wider gap as margin,
       // not a proven cure). The style's `enable_support`, not the design's feet
       // setting, is the print's real source of truth, so the gap keys off the style.
-      const model = buildAbacusThreeMf({
-        ...parts,
-        filamentMap,
-        slotLabels,
-        supportsAtSlice: supportsWanted,
-        bed: printerBed
-          ? {
-              wMm: printerBed.sizeMm.x,
-              dMm: printerBed.sizeMm.y,
-              exclude: (printerBed.exclusionsMm ?? []).flatMap((zone) => {
-                if (zone.pointsMm.length === 0) return []
-                const xs = zone.pointsMm.map((point) => point[0])
-                const ys = zone.pointsMm.map((point) => point[1])
-                const x0 = Math.min(...xs)
-                const y0 = Math.min(...ys)
-                return [
-                  {
-                    xMm: x0,
-                    yMm: y0,
-                    wMm: Math.max(...xs) - x0,
-                    dMm: Math.max(...ys) - y0,
-                  },
-                ]
-              }),
-            }
-          : undefined,
-        wipeTower: wipeTower ?? undefined,
-      })
+      //
+      // Two shapes of print, one tail: a KIT packs every column module onto a
+      // single bed around the reserved tower (Gitea #32) and throws
+      // KitPlateFitError when they won't fit; the mono path emits the one-piece
+      // abacus. Both hand back the same {bytes, bodies, wipeTower}, so the
+      // ticket, idempotency, upload and job plumbing below are shared verbatim —
+      // a kit's filament slots ARE the mono print's slots, same abacus.
+      const model = kit
+        ? buildKitPlateThreeMf({
+            parts: await raceRender(kit.requestExportModuleParts()),
+            filamentMap,
+            slotLabels,
+            supportsAtSlice: supportsWanted,
+            bed,
+            wipeTower: wipeTower ?? undefined,
+          })
+        : buildAbacusThreeMf({
+            ...(await raceRender(requestExportParts())),
+            filamentMap,
+            slotLabels,
+            supportsAtSlice: supportsWanted,
+            bed,
+            wipeTower: wipeTower ?? undefined,
+          })
+      const designId = await snapshot
 
+      // A packed kit plate carries its arrangement into the key: everything else
+      // in the signature DERIVES the layout, so a packer change is the one way
+      // two submits differ with no user-visible input moving. See kitPlateSignature.
+      const kitLayout = 'placements' in model ? kitPlateSignature(model) : undefined
       // Reuse the key only for an identical resubmit; any edit rotates it.
       const idem = resolveIdempotencyKey(
         idemRef.current,
@@ -463,27 +493,36 @@ export function PrintPanel(props: PrintPanelProps) {
           supportInterfaceSlotId: supportPick,
           printerBed,
           wipeTower,
+          kitLayout,
         }),
         () => crypto.randomUUID()
       )
       idemRef.current = idem
+      // A kit is named for what lands on the bed — the operator reading the job
+      // list sees N loose modules to assemble, not one finished abacus.
+      const label = kit ? `${params.cols}-column abacus kit` : `${params.cols}-column abacus`
       const baseTicket = buildAbacusTicket({
-        name: `Abacus — ${params.cols} columns`,
+        name: kit ? `Abacus kit — ${params.cols} columns` : `Abacus — ${params.cols} columns`,
         // With a persisted snapshot the artifact IS the design row (abaci#22);
-        // a failed persist degrades to the pre-#22 shallow provenance.
+        // a failed persist degrades to the pre-#22 shallow provenance. The kit
+        // suffix keeps the two OUTPUTS of one design row distinguishable — the
+        // same design prints as a one-piece abacus or as a module kit, and a
+        // job pointing at "the design" alone couldn't say which shipped.
         source: designId
           ? {
-              artifactId: `design-${designId}`,
+              artifactId: kit ? `design-${designId}-kit` : `design-${designId}`,
               artifactUrl: `${window.location.origin}${studioHref('/create/abacus', {
                 playerId: null,
                 designId,
               })}`,
-              label: `${params.cols}-column abacus`,
+              label,
             }
           : {
-              artifactId: `abacus-${params.cols}col-x${params.scale_factor}`,
+              artifactId: kit
+                ? `abacus-kit-${params.cols}col-x${params.scale_factor}`
+                : `abacus-${params.cols}col-x${params.scale_factor}`,
               artifactUrl: `${window.location.origin}/create/abacus`,
-              label: `${params.cols}-column abacus`,
+              label,
             },
         bodies: model.bodies,
         catalog,
@@ -511,9 +550,11 @@ export function PrintPanel(props: PrintPanelProps) {
       const form = new FormData()
       form.set(
         'model',
-        new File([model.bytes as BlobPart], abacusModelFileName(params.cols, idem.sig), {
-          type: 'model/3mf',
-        })
+        new File(
+          [model.bytes as BlobPart],
+          abacusModelFileName(params.cols, idem.sig, kit ? 'kit' : 'abacus'),
+          { type: 'model/3mf' }
+        )
       )
       form.set('job', JSON.stringify(ticket))
       const cq = connectionId ? `?connectionId=${encodeURIComponent(connectionId)}` : ''
@@ -531,7 +572,24 @@ export function PrintPanel(props: PrintPanelProps) {
     },
   })
 
-  const submitFailure = submit.error instanceof PrintServiceError ? submit.error.failure : null
+  // Two kinds of "no": the service refused the ticket, or WE refused to build a
+  // plate that can't be printed (Gitea #32 — the kit needs more than one bed).
+  // The second never leaves the browser, but it's the same shape of news to the
+  // user, so it renders through the same notice instead of a parallel one. The
+  // `kit_` code prefix keeps them apart in the DOM and in any support screenshot.
+  const submitFailure: SubmitFailure | null =
+    submit.error instanceof PrintServiceError
+      ? submit.error.failure
+      : submit.error instanceof KitPlateFitError
+        ? {
+            code: `kit_${submit.error.reason.replace(/-/g, '_')}`,
+            headline: submit.error.headline,
+            remediation: submit.error.remediation,
+            blockingJobId: null,
+            invalidTicket: null,
+            missing: [],
+          }
+        : null
   const invalidDetail = submitFailure?.invalidTicket ?? undefined
   const applied = useMemo(() => extractApplied(submit.data), [submit.data])
 
@@ -882,7 +940,11 @@ export function PrintPanel(props: PrintPanelProps) {
               cursor: submitBlocked ? 'not-allowed' : 'pointer',
             }}
           >
-            {submit.isPending ? 'Rendering & submitting…' : '🖨 Print this abacus'}
+            {submit.isPending
+              ? 'Rendering & submitting…'
+              : kit
+                ? '🖨 Print this kit'
+                : '🖨 Print this abacus'}
           </button>
 
           {submit.isSuccess && (

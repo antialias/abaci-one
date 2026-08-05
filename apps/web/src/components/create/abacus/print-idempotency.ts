@@ -45,6 +45,13 @@ export interface AbacusPrintSignatureInputs {
    *  can change the emitted 3MF without a user edit, so it must rotate the key too. */
   readonly printerBed?: ThhBedGeometry
   readonly wipeTower?: ThhWipeTowerCapability | null
+  /** The module kit's packed arrangement (Gitea #32) — `kitPlateSignature(layout)`,
+   *  or absent on a one-piece print. The inputs above DERIVE the layout today, so
+   *  this is belt-and-braces; it earns its place the moment the packer itself
+   *  changes (a heuristic tweak, or the swap to `@eink/plate-packing`), because
+   *  then the same design packs onto a different plate with none of the fields
+   *  above moving — and reusing the key there would replay the old arrangement. */
+  readonly kitLayout?: string
 }
 
 /** The content signature: identical inputs → identical string, any change → a
@@ -60,6 +67,7 @@ export function abacusPrintSignature(inputs: AbacusPrintSignatureInputs): string
     supportInterfaceSlotId: inputs.supportInterfaceSlotId,
     printerBed: inputs.printerBed,
     wipeTower: inputs.wipeTower,
+    kitLayout: inputs.kitLayout,
   })
 }
 
@@ -82,9 +90,19 @@ export function abacusPrintSignature(inputs: AbacusPrintSignatureInputs): string
  * The `h` prefix on the hash is load-bearing: THH's copy-counter rule strips a
  * trailing `-<digits>`, and an all-digit hex hash (~2.3% of them) would be eaten
  * right back off, silently restoring the collision we are fixing.
+ *
+ * `kind: 'kit'` names a packed module plate (Gitea #32). The hash already parts
+ * the two — a kit's params carry a modular `seam_mode` — so this is for the
+ * human reading the job list, who otherwise can't tell a one-piece 13-column
+ * abacus from the 13 modules that assemble into one.
  */
-export function abacusModelFileName(cols: number, sig: string): string {
-  return `abacus-${cols}col-h${fnv1a32Hex(sig)}.3mf`
+export function abacusModelFileName(
+  cols: number,
+  sig: string,
+  kind: 'abacus' | 'kit' = 'abacus'
+): string {
+  const stem = kind === 'kit' ? 'abacus-kit' : 'abacus'
+  return `${stem}-${cols}col-h${fnv1a32Hex(sig)}.3mf`
 }
 
 /**

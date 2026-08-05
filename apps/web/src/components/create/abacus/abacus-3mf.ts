@@ -47,6 +47,7 @@
  */
 import { type BedSize, type ColorBody, meshesToThreeMf } from '@eink/frames-engine/print-bundle'
 import { parseStl, type StlMesh, writeBinaryStl } from '@eink/frames-engine/stl'
+import type { ThhBedGeometry } from '@/lib/abacus/print/filament-wire'
 import {
   type AssemblyBody,
   assembleAbacus3mf,
@@ -113,6 +114,37 @@ export interface AbacusThreeMf {
     profile: string
     pinMm: { x: number; y: number }
   } | null
+}
+
+/**
+ * Project THH's reported machine geometry onto the `BedSize` the emitter and
+ * the packer both take. Shared by the one-piece submit and the module-kit
+ * plate (Gitea #32) so the two can't drift into disagreeing about the plate
+ * they're laying parts on.
+ *
+ * Exclusion POLYGONS collapse to their axis-aligned bounding rect: everything
+ * downstream reserves rectangles, and over-reserving a keep-out only costs
+ * area, while under-reserving it puts a part where the printer can't print.
+ * A zero-point zone is dropped rather than becoming a degenerate rect at the
+ * origin — `Math.min()` of nothing is `Infinity`, which would poison the bed.
+ *
+ * Returns `undefined` for an absent bed, which every caller reads as "use the
+ * bundled fallback plate" — a download-only path has no printer to ask.
+ */
+export function bedSizeFromThh(bed: ThhBedGeometry | undefined): BedSize | undefined {
+  if (!bed) return undefined
+  return {
+    wMm: bed.sizeMm.x,
+    dMm: bed.sizeMm.y,
+    exclude: (bed.exclusionsMm ?? []).flatMap((zone) => {
+      if (zone.pointsMm.length === 0) return []
+      const xs = zone.pointsMm.map((point) => point[0])
+      const ys = zone.pointsMm.map((point) => point[1])
+      const x0 = Math.min(...xs)
+      const y0 = Math.min(...ys)
+      return [{ xMm: x0, yMm: y0, wMm: Math.max(...xs) - x0, dMm: Math.max(...ys) - y0 }]
+    }),
+  }
 }
 
 /**

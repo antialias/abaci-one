@@ -102,12 +102,26 @@ export type KitPlateRefusal =
 export class KitPlateFitError extends Error {
   readonly reason: KitPlateRefusal
   readonly modules: readonly string[]
+  /** What happened, on its own — the UI headline. */
+  readonly headline: string
+  /** The knob to turn, on its own. Every refusal has one, so this is never null:
+   *  a plate we won't ship must always leave the user somewhere to go. */
+  readonly remediation: string
 
-  constructor(reason: KitPlateRefusal, modules: readonly string[], message: string) {
-    super(message)
+  constructor(
+    reason: KitPlateRefusal,
+    modules: readonly string[],
+    headline: string,
+    remediation: string
+  ) {
+    // `message` stays the whole story so a log line or a bare `.message` reader
+    // loses nothing; the split above is for a UI that renders the two apart.
+    super(`${headline} ${remediation}`)
     this.name = 'KitPlateFitError'
     this.reason = reason
     this.modules = modules
+    this.headline = headline
+    this.remediation = remediation
   }
 }
 
@@ -314,6 +328,33 @@ export interface KitPlateLayout {
 }
 
 /**
+ * A compact string identity for a packed arrangement — same plate in, same
+ * string out; move any module and it changes.
+ *
+ * Feeds the submit's idempotency signature (see `print-idempotency`), where it
+ * covers the one way two submits can differ that none of the user's own inputs
+ * would show: the PACKER changing its mind. Every field the panel already
+ * hashes (params, bed, tower profile) derives this layout today, so a packer
+ * heuristic tweak — or the pending swap onto `@eink/plate-packing` — is exactly
+ * the case where the design looks unchanged and the plate isn't. Reusing the
+ * key there would make THH replay the previously-arranged job and quietly
+ * discard the new arrangement.
+ *
+ * Coordinates are rounded to a micron before hashing: they come out of
+ * floating-point packing arithmetic, and a 1e-12 wobble is not a new plate.
+ */
+export function kitPlateSignature(layout: KitPlateLayout): string {
+  const µm = (mm: number): number => Math.round(mm * 1000)
+  const parts = layout.placements
+    .map((pl) => `${pl.id}@${µm(pl.xMm)},${µm(pl.yMm)}${pl.rotated ? 'r' : ''}`)
+    .sort()
+    .join('|')
+  return `${µm(layout.bed.wMm)}x${µm(layout.bed.dMm)};t${µm(layout.tower.xMm)},${µm(
+    layout.tower.yMm
+  )};${parts}`
+}
+
+/**
  * The tower footprint to keep clear, from the printer's own bounded profile.
  *
  * Mirrors `towerReserveFromCapability`'s envelope → rect translation (it can't be
@@ -422,7 +463,8 @@ export function packKitPlate(args: {
         reserve.dMm
       )} mm rectangle for the purge tower on this ${bedLabel(
         bed
-      )} — refusing to ship a multi-filament plate the slicer would reject. Select a printer with a bigger bed, or print the kit module by module from the zip.`
+      )} — refusing to ship a multi-filament plate the slicer would reject.`,
+      'Select a printer with a bigger bed, or print the kit module by module from the zip.'
     )
   }
 
@@ -445,7 +487,8 @@ export function packKitPlate(args: {
       names,
       `${names.join(', ')} ${
         names.length === 1 ? 'is' : 'are'
-      } too big for this ${bedLabel(bed)} even alone — refusing to ship a plate the printer can't print. Scale the design down, or select a printer with a bigger bed.`
+      } too big for this ${bedLabel(bed)} even alone — refusing to ship a plate the printer can't print.`,
+      'Scale the design down, or select a printer with a bigger bed.'
     )
   }
   if (packed.plateCount > 1) {
@@ -455,9 +498,8 @@ export function packKitPlate(args: {
       spilled,
       `this kit needs ${packed.plateCount} build plates — ${spilled.join(
         ', '
-      )} won't fit beside the rest on this ${bedLabel(
-        bed
-      )}. Refusing to ship a plate with modules missing: print fewer columns, scale the design down, or select a printer with a bigger bed. The kit zip still prints module by module.`
+      )} won't fit beside the rest on this ${bedLabel(bed)}.`,
+      'Refusing to ship a plate with modules missing: print fewer columns, scale the design down, or select a printer with a bigger bed. The kit zip still prints module by module.'
     )
   }
 
