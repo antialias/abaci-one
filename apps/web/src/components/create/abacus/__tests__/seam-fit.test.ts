@@ -99,20 +99,36 @@ describe('SEAM constants mirror the scad', () => {
       ['datumRelief', 'slide_datum_relief'],
       ['seatClear', 'slide_seat_clear'],
       ['mouthFlare', 'slide_mouth_flare'],
+      ['deepDepth', 'slide_deep_depth'],
+      ['deepFloor', 'slide_deep_floor'],
+      ['mouthLength', 'slide_mouth_l'],
     ]
     for (const [ts, scad] of pins) expect(SLIDING_DOVETAIL[ts]).toBe(knob(scad))
     const g = slidingDovetailDerived(0.1)
-    // graduated key family: neck ± step, heads = neck + 2·depth·tan14° (+0.498656)
+    // graduated rail family: neck ± step, heads = neck + 2·depth·tan14° (+0.498656)
     expect(g.necks.s).toBeCloseTo(2.2, 12)
     expect(g.necks.m).toBe(2.8)
     expect(g.necks.l).toBeCloseTo(3.4, 12)
     expect(g.head).toBeCloseTo(3.298656, 5)
     expect(g.headL).toBeCloseTo(3.898656, 5)
-    // deepest female cut = depth + fit + floor relief = 1.25 at coupon fit 0.10
+    // deepest SHALLOW female cut = depth + fit + floor relief = 1.25 at fit 0.10
     expect(g.deepestCut).toBeCloseTo(1.25, 12)
-    // widest female Z opening = flared rear mouth: 4.6 + 2·1.35·tan14° = 5.273186
-    expect(g.mouthOpening).toBeCloseTo(5.273186, 5)
-    // any key passing a one-step-up section clears ≥ step/2 + fit·tan14° per side
+    // deep anchor pocket cut = deep depth + fit + floor relief = 3.75
+    expect(g.deepPocketCut).toBeCloseTo(3.75, 12)
+    // widest SHALLOW female Z opening = the large segment's relieved runway:
+    // 3.4 + 2·1.35·tan14° = 4.073186 (the deep mouth's Z-flare is lip-budget
+    // capped in the scad, so the runway is the honest z_lips driver)
+    expect(g.runwayOpening).toBeCloseTo(4.073186, 5)
+    // the large rail head passes its own relieved runway with room to spare
+    expect(g.runwayOpening).toBeGreaterThan(g.headL)
+    // deep anchor hook = 3.5·tan14° — exactly 1.75× the shallow TOTAL hook
+    // (2·depth·tan14°), the "one flank is the only hook" trade made explicit
+    expect(g.anchorHook).toBeCloseTo(0.872648, 5)
+    expect(g.anchorHook / (2 * SLIDING_DOVETAIL.maleDepth * Math.tan(g.angleRad))).toBeCloseTo(
+      1.75,
+      12
+    )
+    // any rail section passing a one-step-up station clears ≥ step/2 + fit·tan14° per side
     expect(g.passClearance).toBeCloseTo(0.324933, 5)
     // retention physics: 0.05/1.5 seat taper = 1.909° ≪ atan(µ 0.25) = 14.036°
     expect(g.seatTaperDeg).toBeCloseTo(1.90915, 4)
@@ -356,8 +372,9 @@ describe('seamFit', () => {
     const vertical = moduleFeetLayout(p())
     const sliding = moduleFeetLayout(p({ joint_type: 'sliding_dovetail' }))
     expect(vertical.sock).toBeCloseTo(4.9, 12)
-    // sliding sock clears the DEEPEST female cut: groove depth + floor relief
-    expect(sliding.sock).toBeCloseTo(1.25, 12)
+    // sliding sock clears the DEEP ANCHOR pocket (bottom-open through the
+    // underside along its rear span): deep depth + fit + floor relief
+    expect(sliding.sock).toBeCloseTo(3.75, 12)
     expect(seamFit(p()).verdicts.map((v) => v.code)).toEqual([
       'strain',
       'dove_walls',
@@ -379,6 +396,8 @@ describe('seamFit', () => {
       'backing_wall',
       'z_lips',
       'datum_lead',
+      'deep_backing',
+      'deep_lip',
       'retention',
       'module_feet',
       'feet_bumper',
@@ -391,14 +410,20 @@ describe('seamFit', () => {
     expect(retention?.message).toContain('self-holding')
   })
 
-  it('sliding rejects non-coupon fit and insufficient backing wall', () => {
+  it('sliding rejects non-coupon fit, thin backing and a squeezed anchor ceiling', () => {
     expect(failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.13 }))).toContain('sliding_fit')
     expect(
       failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.1, scale_factor: 0.8 }))
     ).toContain('backing_wall')
-    // S=0.85: lips (6.8 − 5.273)/2 = 0.76 < 1.2 — the flared mouth is the widest cut
+    // S=0.85: the deep anchor's TIGHT ceiling is the first Z casualty —
+    // 6.8 − (3.4 + 1.7 + 3.89·tan14°) = 0.73 < 1.2 — while the shallow runway
+    // lips still clear ((6.8 − 4.073)/2 = 1.36)
+    const at85 = failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.1, scale_factor: 0.85 }))
+    expect(at85).toContain('deep_lip')
+    expect(at85).not.toContain('z_lips')
+    // S=0.8: now the runway lips go too ((6.4 − 4.073)/2 = 1.16 < 1.2)
     expect(
-      failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.1, scale_factor: 0.85 }))
+      failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.1, scale_factor: 0.8 }))
     ).toContain('z_lips')
   })
 })

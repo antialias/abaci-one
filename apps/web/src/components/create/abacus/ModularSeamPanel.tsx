@@ -158,7 +158,7 @@ export function ModularSeamPanel() {
           value={params.joint_type}
           options={[
             { value: 'vertical_snap', label: 'Vertical dovetails + snap clip' },
-            { value: 'sliding_dovetail', label: 'Front-to-back sliding dovetail' },
+            { value: 'sliding_dovetail', label: 'Rear-entry sliding dovetail rail' },
           ]}
           onChange={(v) => {
             const joint = v as JointType
@@ -179,7 +179,7 @@ export function ModularSeamPanel() {
           style={{ fontSize: 11, lineHeight: 1.5, color: 'rgba(226,232,240,0.75)' }}
         >
           {sliding
-            ? 'Three graduated dovetail keys slide in through the rear entry mouth — loose the whole way, engaging only over the last centimeter. Push firmly until the module stops against the blind front seat; the tapered seat is self-holding. Remove with a firm rearward tug.'
+            ? 'One continuous graduated dovetail rail slides in through the rear entry mouth — loose the whole way, engaging only over the last centimeter. Its rear end is a deep anchor that reaches 3.5 mm into the neighbor and hooks the pull-apart direction; the table registers both bottoms flush. Push firmly until the module stops against the blind front seat; the tapered seat is self-holding. Remove with a firm rearward tug.'
             : 'Vertical dovetails carry the seam while the crossbar clip clicks at full depth. Modules press straight down and any middle module can lift straight out.'}
         </div>
 

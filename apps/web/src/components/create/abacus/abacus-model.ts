@@ -1685,25 +1685,30 @@ export const SEAM = {
   xbarEmbed: 2, // crossbar end reach past the seat into frame material
 } as const
 
-/** Fixed engineering identity for the rear-entry GRADUATED SEGMENTED sliding
- * topology, mirrored as top-level SCAD constants (not Studio knobs). Three
- * short male keys of graduated Z-size (largest at the rear entry mouth,
- * smallest at the blind front stop) ride one continuous female groove whose
- * only tight sections are each key's own seated berth — every key clears every
- * section it passes by ≥ step/2 per side until the final keyLength of travel.
- * Retention is the seat itself: the berth-front pinch is a ~1.9°
+/** Fixed engineering identity for the rear-entry GRADUATED CONTINUOUS sliding
+ * topology, mirrored as top-level SCAD constants (not Studio knobs). ONE male
+ * rail runs the full seam in three Z-sizes (largest at the rear entry mouth,
+ * smallest at the blind front stop) and rides one continuous female groove
+ * whose only tight sections are the three seated berths — every rail section
+ * clears every female station it passes by ≥ step/2 per side until the final
+ * keyLength of travel. The rear segment is the DEEP ANCHOR: deepDepth into the
+ * neighbor, top flank the only hook (~1.75× the shallow hook, ~3.5× the flank
+ * bearing area), a 45° skirt running to the BED below it and a bottom-open
+ * female pocket — the seated anchor block fills the opening flush with both
+ * bottoms. Retention is the seat itself: the berth-front pinch is a ~1.9°
  * travel-direction taper, far inside PLA's atan(µ)≈14° self-holding limit, so
  * the joint seats with a firm push and releases with a firm rearward tug.
  * No flexures — nothing to crack, and the insertion sweep is provably
- * collision-free at every offset. */
+ * collision-free at every offset (female depth is monotone non-decreasing
+ * toward the mouth, and the rail only ever sits rearward of its seat). */
 export const SLIDING_DOVETAIL = {
   angleDeg: 14,
-  maleDepth: 1,
-  neck: 2.8, // MID key Z neck; key sizes are neck ± step
-  step: 0.6, // Z graduation between adjacent key sizes
+  maleDepth: 1, // shallow rail X depth — capped by the channel webs
+  neck: 2.8, // MID segment Z neck; sizes are neck ± step
+  step: 0.6, // Z graduation between adjacent rail sizes
   minBackingWall: 1.2,
   minLip: 1.2,
-  keyLength: 8, // engaged length of each key
+  keyLength: 8, // engaged (tight-berth) length per rail size
   funnel: 3, // relieved→tight approach funnel at each berth mouth
   pinch: 0.05, // final-seat X squeeze across the berth's front …
   pinchLength: 1.5, // … this much travel — the self-holding retention wedge
@@ -1711,6 +1716,13 @@ export const SLIDING_DOVETAIL = {
   datumRelief: 0.2, // non-datum berth fronts stand off — ONE Y stop
   seatClear: 0.02, // CAD gap at the front stop (print swell closes it)
   mouthFlare: 0.6, // rear-mouth Z flare beyond the pass-through size
+  deepDepth: 3.5, // rear anchor X depth — bounded by the top lip over the
+  // anchor pocket ceiling, NOT by the channel webs: the anchor never leaves
+  // the solid back strip
+  deepFloor: 0.5, // thinnest printable female floor; below it the anchor
+  // pocket opens through the bottom face (both sides take the open branch at
+  // default frame_h = 8)
+  mouthLength: 2.5, // deep rear mouth flare length
   selfHoldMu: 0.25, // conservative PLA-on-PLA static friction lower bound
 } as const
 
@@ -1720,13 +1732,20 @@ export const slidingDovetailDerived = (jointFit: number) => {
   const angleRad = (c.angleDeg * Math.PI) / 180
   const tan = Math.tan(angleRad)
   const grooveDepth = c.maleDepth + jointFit // berth floor
-  const deepestCut = grooveDepth + c.floorRelief // runway/mouth floor
+  const deepestCut = grooveDepth + c.floorRelief // shallow runway/berth floor
+  // The deep anchor pocket's X cut — what the module feet must stand clear of
+  // (the scad's mf_sock on this topology).
+  const deepPocketCut = c.deepDepth + jointFit + c.floorRelief
   const headOf = (neck: number) => neck + 2 * c.maleDepth * tan
-  // Widest female Z opening anywhere: the flared rear mouth at its floor.
-  const mouthOpening =
-    c.neck + 2 * c.step + c.mouthFlare + 2 * (c.maleDepth + 2 * jointFit + c.floorRelief) * tan
+  // Widest SHALLOW female Z opening: the large segment's relieved runway
+  // (the deep mouth's Z-flare is derived from the remaining lip budget in the
+  // scad, so it can never open wider than the lip gate allows).
+  const runwayOpening = c.neck + c.step + 2 * (c.maleDepth + 2 * jointFit + c.floorRelief) * tan
+  // The deep anchor's Z hook — its top flank's rise over deepDepth, the only
+  // pull-apart engagement (~1.75× the shallow hook, ~3.5× the bearing area).
+  const anchorHook = c.deepDepth * tan
   const runningClearance = jointFit * Math.sin(angleRad) // flank-normal, in-berth
-  // A key passing any section sized one graduation step up (per side).
+  // A rail section passing any female station sized one graduation step up (per side).
   const passClearance = c.step / 2 + jointFit * tan
   const seatTaperDeg = (Math.atan(c.pinch / c.pinchLength) * 180) / Math.PI
   const selfHoldLimitDeg = (Math.atan(c.selfHoldMu) * 180) / Math.PI
@@ -1734,10 +1753,12 @@ export const slidingDovetailDerived = (jointFit: number) => {
     angleRad,
     grooveDepth,
     deepestCut,
+    deepPocketCut,
     necks: { s: c.neck - c.step, m: c.neck, l: c.neck + c.step },
     head: headOf(c.neck),
     headL: headOf(c.neck + c.step),
-    mouthOpening,
+    runwayOpening,
+    anchorHook,
     runningClearance,
     passClearance,
     seatTaperDeg,
@@ -1804,7 +1825,7 @@ export function moduleFeetLayout(p: Params): ModuleFeetLayout {
   const printed = p.feet_mode === 'printed'
   const sock =
     p.joint_type === 'sliding_dovetail'
-      ? slidingDovetailDerived(p.joint_fit).deepestCut
+      ? slidingDovetailDerived(p.joint_fit).deepPocketCut
       : SEAM.jointTab + p.joint_fit + SEAM.scDeep
   const bandAt = (s: number) =>
     derived({ ...p, scale_factor: s }).scW - sock - 2 * SEAM.mfWall - 2 * undercutEff - 2 * fitEff
@@ -1882,6 +1903,8 @@ export type SeamVerdict = {
     | 'backing_wall'
     | 'z_lips'
     | 'datum_lead'
+    | 'deep_backing'
+    | 'deep_lip'
     | 'retention'
   ok: boolean
   message: string
@@ -1972,19 +1995,33 @@ function slidingSeamFit(p: Params): SeamFit {
   const mf = moduleFeetLayout(p)
   const g = slidingDovetailDerived(p.joint_fit)
   const c = SLIDING_DOVETAIL
+  const tanA = Math.tan(g.angleRad)
   const feetOn = p.feet_mode !== 'none'
   const crossbar = feetEffective(p).crossbar
   const legalFit = SLIDING_FIT_VALUES.some((fit) => Math.abs(fit - p.joint_fit) < 1e-9)
   const backingWall = p.web * p.scale_factor - g.deepestCut
-  const lip = (b.sFh - g.mouthOpening) / 2
-  // Mirror of the scad berth-layout assert: front berth + funnel clear the
-  // mid berth, and mid berth + funnel clear the rear berth, with 1 mm slack.
-  const { chamf, outerD } = b.d
+  const lip = (b.sFh - g.runwayOpening) / 2
+  // The scad's Y stations, in the same names (slide_k0_s … slide_mouth0):
+  // rail front datum, A→B graduation, shallow→deep taper start, deep mouth.
+  const { chamf, outerD, scW } = b.d
+  const k0S = chamf + 1 + c.seatClear
+  const k0M = outerD / 2 - c.keyLength / 2
+  const taper0 = b.scK0 + 0.3
+  const mouth0 = outerD - c.mouthLength
+  // Mirror of the scad berth-layout assert: S berth + funnel clear the mid
+  // berth, mid berth + funnel clear the taper start, and taper + funnel +
+  // pinch clear the deep mouth, each with slack.
   const layoutOk =
-    chamf + 1 + c.keyLength + c.seatClear + 0.3 + c.funnel + 1 <=
-      outerD / 2 - c.keyLength / 2 - c.datumRelief &&
-    outerD / 2 + c.keyLength / 2 + 0.3 + c.funnel + 1 <=
-      outerD - chamf - 0.1 - c.keyLength - c.datumRelief
+    k0S + c.keyLength + 0.3 + c.funnel + 1 <= k0M - c.datumRelief &&
+    k0M + c.keyLength + 0.3 + c.funnel + 1 <= taper0 &&
+    taper0 + c.funnel + c.pinchLength + 2 <= mouth0
+  // Deep-anchor gates at the WORST legal fit, exactly as the scad hardcodes
+  // 0.12 — the anchor must clear at any coupon-calibrated compensation.
+  const worstFit = Math.max(...SLIDING_FIT_VALUES)
+  const deepBacking = scW - (c.deepDepth + worstFit + c.floorRelief)
+  const deepLip =
+    b.sFh -
+    (b.sFh / 2 + (c.neck + c.step) / 2 + (c.deepDepth + 2 * worstFit + c.floorRelief) * tanA)
   const verdicts: SeamVerdict[] = [
     {
       code: 'sliding_fit',
@@ -2003,13 +2040,25 @@ function slidingSeamFit(p: Params): SeamFit {
     {
       code: 'z_lips',
       ok: lip >= c.minLip,
-      message: `entry mouth leaves ${lip.toFixed(2)} mm top/bottom lips`,
+      message: `large-segment runway leaves ${lip.toFixed(2)} mm top/bottom lips`,
       knob: 'scale_factor',
     },
     {
       code: 'datum_lead',
       ok: layoutOk,
-      message: 'graduated berths and funnels don’t fit along the module',
+      message: 'graduated berths, funnels and the deep anchor don’t fit along the module',
+      knob: 'scale_factor',
+    },
+    {
+      code: 'deep_backing',
+      ok: deepBacking >= 2,
+      message: `deep anchor pocket leaves ${deepBacking.toFixed(2)} mm before the module’s own rail (minimum 2 mm)`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'deep_lip',
+      ok: deepLip >= c.minLip,
+      message: `deep anchor pocket ceiling leaves ${deepLip.toFixed(2)} mm top lip`,
       knob: 'scale_factor',
     },
     {

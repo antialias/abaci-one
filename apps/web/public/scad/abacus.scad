@@ -146,24 +146,34 @@ joint_clip_l  = 9.5;   // clip protrusion depth. Prong flex length L = this −
 joint_ridge   = 0.2;   // click ridge proud height (0 = no click, friction only)
 
 /* Fixed sliding-dovetail identity, mirrored in the TypeScript DFM model.
-   GRADUATED SEGMENTED sliding dovetail: three short male keys of graduated
-   Z-size (largest at the rear entry mouth, smallest at the blind front stop)
-   ride one continuous female groove whose only tight sections are each key's
-   own seated berth. Every key clears every section it passes by ≥ slide_step/2
-   per side until the final key-length of travel — the tapered-batten
-   principle: loose the whole way in, home in the last centimeter. Retention is
-   the seat itself: the berth's front slide_pinch over slide_pinch_l is a
-   ~1.9° travel-direction taper, far under PLA's atan(µ≈0.25)≈14° self-holding
-   limit — it seats with a firm push and releases with a firm rearward tug.
-   No flexures: nothing to crack, and the insertion sweep is provably
-   collision-free at every offset. */
+   GRADUATED CONTINUOUS sliding dovetail: ONE male rail runs the full seam in
+   three Z-sizes (largest at the rear entry mouth, smallest at the blind front
+   stop) and rides one continuous female groove whose only tight sections are
+   the three seated berths. Because every span between berths is sized exactly
+   like the section ahead of it, the classic segmented-key layout collapses
+   into three uniform rail segments — a discretized tapered sliding dovetail.
+   Every section clears every female station it passes by ≥ slide_step/2 per
+   side until the final berth-length of travel: loose the whole way in, home
+   in the last centimeter. The rear segment is the DEEP ANCHOR: slide_deep_depth
+   into the neighbor, top flank the only hook (~1.75× the shallow hook, ~3.5×
+   the flank bearing area), a 45° skirt running to the BED below it and a
+   bottom-open female pocket — the seated anchor block fills the opening flush
+   with both bottoms. Deep is possible only there because the anchor's whole
+   travel stays inside the solid back strip; everywhere else the 2.5 mm channel
+   webs cap the rail at slide_depth. Retention is the seat itself: each berth's front
+   slide_pinch over slide_pinch_l is a ~1.9° travel-direction taper, far under
+   PLA's atan(µ≈0.25)≈14° self-holding limit — it seats with a firm push and
+   releases with a firm rearward tug. No flexures: nothing to crack, and the
+   insertion sweep is provably collision-free at every offset (female depth is
+   monotone non-decreasing toward the mouth, and the rail only ever sits
+   rearward of its seat, so depth clearance can only grow with offset). */
 slide_angle        = 14;    // flank from +X rail-depth axis
-slide_depth        = 1.0;   // male X depth (all keys)
-slide_neck         = 2.8;   // MID key Z neck; sizes are slide_neck ± slide_step
-slide_step         = 0.6;   // Z graduation between adjacent key sizes
+slide_depth        = 1.0;   // male X depth (shallow rail — capped by channel webs)
+slide_neck         = 2.8;   // MID segment Z neck; sizes are slide_neck ± slide_step
+slide_step         = 0.6;   // Z graduation between adjacent rail sizes
 slide_min_backing  = 1.2;
 slide_min_lip      = 1.2;
-slide_key_l        = 8;     // engaged length of each key
+slide_key_l        = 8;     // engaged (tight-berth) length per rail size
 slide_funnel       = 3;     // relieved→tight approach funnel at each berth mouth
 slide_pinch        = 0.05;  // final-seat X squeeze across the berth's front …
 slide_pinch_l      = 1.5;   // … this much travel (atan(.05/1.5)≈1.9°, self-holding)
@@ -171,6 +181,17 @@ slide_relief       = 0.15;  // runway floor relief past groove depth (loose trav
 slide_datum_relief = 0.2;   // non-datum berth fronts stand off — ONE Y stop
 slide_seat_clear   = 0.02;  // CAD gap at the front stop (print swell closes it)
 slide_mouth_flare  = 0.6;   // rear-mouth Z flare beyond the pass-through size
+slide_deep_depth   = 3.5;   // rear anchor X depth — bounded by the top lip over
+                            // the anchor pocket ceiling (s_fh − slide_min_lip),
+                            // NOT by the channel webs: the anchor never leaves
+                            // the solid back strip
+slide_deep_floor   = 0.5;   // thinnest printable female floor; where the closed
+                            // floor would be thinner the anchor pocket opens
+                            // through the bottom face and the male skirt runs to
+                            // the bed (at default s_fh=8 both sides take the
+                            // OPEN branch; the seated male block fills the
+                            // opening flush with both bottoms)
+slide_mouth_l      = 2.5;   // deep rear mouth flare length
 slide_head          = slide_neck + 2 * slide_depth * tan(slide_angle);
 slide_groove_depth  = slide_depth + joint_fit;                 // berth floor
 slide_running_clear = joint_fit * sin(slide_angle);            // flank-normal
@@ -942,6 +963,25 @@ sc_seat   = 1.2;               // positive bottom seat: dovetail posts stop this
 sc_deep   = 0.3;               // socket deepening past the tab tip — faces seat
                                // before any tip bottoms out (also the extra ramp
                                // run that keeps the socket floor at exactly 45°)
+
+/* Sliding-rail Y stations, derived here (before the assert cluster) so the
+   layout asserts can speak in the same names the geometry uses. The rail is
+   one continuous male: nose→A (small) → B (mid) → hard step → deep anchor
+   (large), flush to the rear face so the anchor + ramp both fit inside the
+   13 mm solid back strip. */
+slide_center_z = s_fh / 2;     // groove Z-centered in the (scaled) slab
+slide_k0_s   = chamf + 1 + slide_seat_clear;   // rail front = blind-stop datum
+slide_k0_m   = outer_d / 2 - slide_key_l / 2;  // A→B graduation (mid berth front)
+slide_taper0 = sc_k0 + 0.3;                    // female shallow→deep taper start —
+                                               // everything deeper than the webs
+                                               // allows stays in the solid strip
+slide_anchor0 = slide_taper0 + slide_funnel + slide_datum_relief;
+                               // deep anchor front — a HARD male step: any
+                               // Y-blend of a male underside would be a <45°
+                               // unprintable overhang, a vertical step face
+                               // prints clean, and the rail is fully
+                               // runway-guided long before the anchor enters
+slide_mouth0  = outer_d - slide_mouth_l;            // deep mouth flare start
 /* wood-PLA flexure gate — the eink dfm-checks screen (#367 "PLA flexures don't
    flex"), applied here at authoring time: peak outer-fibre strain ε% =
    150·t·Y/L² at the worst INTENDED engagement (ridge fully proud + 0.05 of
@@ -979,16 +1019,29 @@ assert(!sc_active || joint_type != "sliding_dovetail" ||
        sc_wall - (slide_groove_depth + slide_relief) >= slide_min_backing,
        "sliding groove leaves <1.2mm backing wall — raise scale_factor");
 assert(!sc_active || joint_type != "sliding_dovetail" ||
-       (s_fh - (slide_neck + 2 * slide_step + slide_mouth_flare
+       (s_fh - (slide_neck + slide_step
                 + 2 * (slide_depth + 2 * joint_fit + slide_relief) * tan(slide_angle))) / 2
          >= slide_min_lip,
-       "sliding dovetail mouth leaves insufficient top/bottom lips — raise scale_factor");
+       "sliding runway leaves insufficient top/bottom lips — raise scale_factor");
 assert(!sc_active || joint_type != "sliding_dovetail" ||
-       (chamf + 1 + slide_key_l + slide_seat_clear + 0.3 + slide_funnel + 1
-          <= outer_d / 2 - slide_key_l / 2 - slide_datum_relief
-        && outer_d / 2 + slide_key_l / 2 + 0.3 + slide_funnel + 1
-          <= outer_d - chamf - 0.1 - slide_key_l - slide_datum_relief),
-       "graduated berths + funnels don't fit along the module — raise scale_factor");
+       (slide_k0_s + slide_key_l + 0.3 + slide_funnel + 1
+          <= slide_k0_m - slide_datum_relief
+        && slide_k0_m + slide_key_l + 0.3 + slide_funnel + 1 <= slide_taper0
+        && slide_taper0 + slide_funnel + slide_pinch_l + 2 <= slide_mouth0),
+       "graduated rail berths + deep anchor don't fit along the module — raise scale_factor");
+/* Deep-anchor gates: the anchor never undercuts the receiving module's own
+   rail root, and the pocket's TIGHT ceiling leaves a real top lip (the mouth's
+   Z-flare is derived from whatever lip budget remains, so it can't overdraw).
+   The floor needs no gate — where a closed floor would print too thin, both
+   profiles branch to the bottom-open form instead. */
+assert(!sc_active || joint_type != "sliding_dovetail" ||
+       sc_w - (slide_deep_depth + 0.12 + slide_relief) >= 2,
+       "deep anchor pocket cuts too close to the module's own rail — raise scale_factor");
+assert(!sc_active || joint_type != "sliding_dovetail" ||
+       s_fh - (slide_center_z + (slide_neck + slide_step) / 2
+               + (slide_deep_depth + 2 * 0.12 + slide_relief) * tan(slide_angle))
+         >= slide_min_lip,
+       "deep anchor pocket ceiling leaves insufficient top lip — raise scale_factor");
 
 /* ----- module family (CP3): real per-column modules -----
    mid    = the coupon geometry grown up: rim-chamfered slab (never on the seam
@@ -1018,9 +1071,14 @@ mod_we = s_bw + s_em + s_bd / 2 + clearance + sc_wall;  // end-module width (26.
    - adhesive: the TRUE bumper width, or an abort. The bumper is bought
      hardware — a pocket narrower than the bumper seats nothing — so a bumper
      wider than the band is refused outright instead of silently shrunk. */
-mf_sock  = joint_type == "sliding_dovetail" ? slide_groove_depth + slide_relief
+mf_sock  = joint_type == "sliding_dovetail" ? slide_deep_depth + joint_fit + slide_relief
                                               : joint_tab + joint_fit + sc_deep;
                                              // topology's deepest female cut into x
+                                             // (sliding: the rear anchor pocket —
+                                             // it shares the back strip with the
+                                             // rear foot, so BOTH feet stand off
+                                             // the deep cut, keeping the pair
+                                             // symmetric)
 mf_wall  = 1.6;                              // min wall: socket→pocket and pocket→seam face
 mf_band  = sc_w - mf_sock - 2 * mf_wall - 2 * feet_undercut_eff - 2 * feet_fit_eff;
 mf_w     = feet_printed ? min(feet_w, 6.35, mf_band) : feet_w;
@@ -1109,24 +1167,21 @@ module sc_clip_pocket() {
         sc_ridge_xz(joint_clip_l + joint_fit + 0.31, 0.05);
 }
 
-/* Sliding topology — graduated segmented (see the constants block).
+/* Sliding topology — graduated continuous rail (see the constants block; Y
+   stations are derived up by the assert cluster).
    Insertion is from the REAR mouth: the joining module starts offset +Y and
-   slides −Y until key S contacts the blind front stop, the ONE Y datum.
-   Kinematics, provable: key i sweeps female y ∈ [its berth, outer_d]; every
-   section on that path is either its own berth's funnel or sized for a LARGER
-   key, so clearance is ≥ slide_step/2 per side everywhere until the final
-   slide_key_l of travel. Compensation is explicit and X-semantic: the female
-   trapezoid keeps the 14° flanks, grows the neck by 2·fit·tan(angle) and the
-   floor by fit, giving exactly fit·sin(angle) flank-normal running clearance
-   (the old profile shifted the flank line without growing the neck — female
-   SMALLER than male by fit·tan(angle), the 4.9 mm³ overlap this replaces). */
-slide_center_z = s_fh / 2;     // groove Z-centered in the (scaled) slab
-slide_k0_s = chamf + 1 + slide_seat_clear;          // smallest key: front berth
-slide_k0_m = outer_d / 2 - slide_key_l / 2;         // mid key: mid-depth berth
-slide_k1_l = outer_d - chamf - 0.1;                 // largest key: rear berth
-SLIDE_KEYS = [[slide_neck - slide_step, slide_k0_s, slide_k0_s + slide_key_l],
-              [slide_neck,              slide_k0_m, slide_k0_m + slide_key_l],
-              [slide_neck + slide_step, slide_k1_l - slide_key_l, slide_k1_l]];
+   slides −Y until the rail nose contacts the blind front stop, the ONE Y
+   datum. Kinematics, provable: a rail section seated at y sweeps female
+   y ∈ [its seat, outer_d] — only rearward of itself — so (a) each berth's
+   tight zone is entered only in the final berth-length of travel even though
+   the sections are now metres of continuous rail, and (b) every station a
+   section passes is sized for the next size up, keeping ≥ slide_step/2 per
+   side. The deep anchor's travel [slide_anchor0, outer_d] never leaves the
+   solid back strip, and the female depth profile is monotone non-decreasing
+   toward the mouth, so depth clearance only grows with insertion offset.
+   Compensation is explicit and X-semantic: the female trapezoid keeps the 14°
+   flanks, grows the neck by 2·fit·tan(angle) and the floor by fit, giving
+   exactly fit·sin(angle) flank-normal running clearance. */
 
 function slide_profile(neck, depth = slide_depth) =
   [[0, slide_center_z - neck / 2],
@@ -1141,22 +1196,52 @@ function slide_groove_profile(neck, fit, xr = 0) =
    [d, slide_center_z - neck / 2 - (d + fit) * t],
    [d, slide_center_z + neck / 2 + (d + fit) * t],
    [-0.01, slide_center_z + neck / 2 + (fit - 0.01) * t]];
+/* Deep anchor male: the top 14° flank is the only hook; below, a 45° skirt
+   drops from the root toward the bed so the underside prints support-free
+   (bottom-down orientation — X/Z surfaces are the only overhang risk). Where
+   the skirt reaches the bed before the tip (default s_fh), the profile runs
+   flat ON the bed to full depth — a solid block, trivially printable. */
+function slide_deep_profile(neck) =
+  let(rb = slide_center_z - neck / 2, rt = slide_center_z + neck / 2,
+      ht = rt + slide_deep_depth * tan(slide_angle),
+      tb = rb - slide_deep_depth)
+  tb >= 0
+    ? [[0, rb], [slide_deep_depth, tb], [slide_deep_depth, ht], [0, rt]]
+    : [[0, rb], [rb, 0], [slide_deep_depth, 0], [slide_deep_depth, ht], [0, rt]];
+/* Deep anchor female: top flank grown like the shallow groove. Below, either
+   a fit-dropped skirt over a printable ≥slide_deep_floor floor (large scales)
+   or — default s_fh — the pocket opens THROUGH the bottom face: the seated
+   male block fills the opening flush with both bottoms, Z-registration stays
+   with the front/mid berths' two-flank profiles. zflare raises only the
+   ceiling (a symmetric flare would pierce the bottom face). */
+function slide_deep_groove_profile(neck, fit, xr = 0, zflare = 0) =
+  let(t = tan(slide_angle), d = slide_deep_depth + fit + xr,
+      rb = slide_center_z - neck / 2, rt = slide_center_z + neck / 2 + zflare,
+      fb = rb - slide_deep_depth - 2 * fit)
+  fb >= slide_deep_floor
+    ? [[-0.01, rb + 0.01 - fit],
+       [slide_deep_depth + fit, fb], [d, fb],
+       [d, rt + (d + fit) * t],
+       [-0.01, rt + (fit - 0.01) * t]]
+    : [[-0.01, -0.01], [d, -0.01],
+       [d, rt + (d + fit) * t],
+       [-0.01, rt + (fit - 0.01) * t]];
 
 module slide_xz(pts, y0, y1)
   translate([0, (y0 + y1) / 2, 0]) prism_xz(pts, 0, y1 - y0);
-module slide_key(neck, y0, y1) { // one male key; −Y nose chamfered for the funnels
-  hull() {
-    slide_xz(slide_profile(neck - 1.2, 0.3), y0, y0 + 0.01);
-    slide_xz(slide_profile(neck), y0 + 0.8, y0 + 0.81);
-  }
-  slide_xz(slide_profile(neck), y0 + 0.8, y1);
-}
 module slide_zone(neck, y0, y1, fit) { // tight berth; graduated seat pinch at the
   hull() {                             // front: fit−pinch → fit over pinch_l, a
     slide_xz(slide_groove_profile(neck, fit - slide_pinch), y0, y0 + 0.01);   // self-
     slide_xz(slide_groove_profile(neck, fit), y0 + slide_pinch_l, y0 + slide_pinch_l + 0.01);
   }                                    // holding ~1.9° wedge that is the retention
   slide_xz(slide_groove_profile(neck, fit), y0 + slide_pinch_l, y1);
+}
+module slide_deep_zone(neck, y0, y1, fit) { // deep berth, same pinch-wedge seat
+  hull() {
+    slide_xz(slide_deep_groove_profile(neck, fit - slide_pinch), y0, y0 + 0.01);
+    slide_xz(slide_deep_groove_profile(neck, fit), y0 + slide_pinch_l, y0 + slide_pinch_l + 0.01);
+  }
+  slide_xz(slide_deep_groove_profile(neck, fit), y0 + slide_pinch_l, y1);
 }
 module slide_funnel(neck_tight, neck_run, y0, fit) // berth mouth → relieved runway
   hull() {
@@ -1166,27 +1251,55 @@ module slide_funnel(neck_tight, neck_run, y0, fit) // berth mouth → relieved r
   }
 
 module slide_tabs()              // on RIGHT face after caller translates to seam
-  translate([sc_w, 0, 0]) for (k = SLIDE_KEYS) slide_key(k[0], k[1], k[2]);
+  translate([sc_w, 0, 0]) {
+    n_s = slide_neck - slide_step; n_m = slide_neck; n_l = slide_neck + slide_step;
+    hull() {  // front nose: sliver → full small profile, eases the blind-stop
+      slide_xz(slide_profile(n_s - 1.2, 0.3), slide_k0_s, slide_k0_s + 0.01);
+      slide_xz(slide_profile(n_s), slide_k0_s + 0.8, slide_k0_s + 0.81);
+    }
+    slide_xz(slide_profile(n_s), slide_k0_s + 0.8, slide_k0_m + 0.01);
+    hull() {  // A→B graduation shoulder, eased like a nose for mid-berth entry
+      slide_xz(slide_profile(n_s), slide_k0_m, slide_k0_m + 0.01);
+      slide_xz(slide_profile(n_m), slide_k0_m + 0.8, slide_k0_m + 0.81);
+    }
+    slide_xz(slide_profile(n_m), slide_k0_m + 0.8, slide_anchor0 + 0.01);
+    // B→anchor is a HARD step (vertical −Y wall — see slide_anchor0). The B
+    // profile is strictly inside the anchor profile, so the union is clean.
+    slide_xz(slide_deep_profile(n_l), slide_anchor0, outer_d);  // flush rear
+  }
 module slide_pockets(fit = joint_fit) { // into LEFT face; front berth wall = Y datum
   n_s = slide_neck - slide_step; n_m = slide_neck; n_l = slide_neck + slide_step;
-  z0_s = slide_k0_s - slide_seat_clear;
-  z1_s = slide_k0_s + slide_key_l + 0.3;
-  z0_m = slide_k0_m - slide_datum_relief;   // non-datum fronts stand off 0.2 —
-  z1_m = slide_k0_m + slide_key_l + 0.3;    // only key S ever touches a Y stop
-  z0_l = slide_k1_l - slide_key_l - slide_datum_relief;
-  z1_l = slide_k1_l + 0.3;
-  slide_zone(n_s, z0_s, z1_s, fit);
-  slide_funnel(n_s, n_m, z1_s, fit);        // runway sizes: one graduation step
+  y0_s = slide_k0_s - slide_seat_clear;
+  y1_s = slide_k0_s + slide_key_l + 0.3;
+  y0_m = slide_k0_m - slide_datum_relief;   // non-datum fronts stand off 0.2 —
+  y1_m = slide_k0_m + slide_key_l + 0.3;    // only the rail nose touches a Y stop
+  slide_zone(n_s, y0_s, y1_s, fit);
+  slide_funnel(n_s, n_m, y1_s, fit);        // runway sizes: one graduation step
   slide_xz(slide_groove_profile(n_m, fit, slide_relief),   // above the largest
-           z1_s + slide_funnel - 0.01, z0_m + 0.01);       // key that sweeps it
-  slide_zone(n_m, z0_m, z1_m, fit);
-  slide_funnel(n_m, n_l, z1_m, fit);
+           y1_s + slide_funnel - 0.01, y0_m + 0.01);       // section that sweeps it
+  slide_zone(n_m, y0_m, y1_m, fit);
+  slide_funnel(n_m, n_l, y1_m, fit);
   slide_xz(slide_groove_profile(n_l, fit, slide_relief),
-           z1_m + slide_funnel - 0.01, z0_l + 0.01);
-  slide_zone(n_l, z0_l, z1_l, fit);
-  hull() {  // rear entry mouth: Z-flared, breaks through the rear rim chamfer
-    slide_xz(slide_groove_profile(n_l, fit), z1_l - 0.01, z1_l);
-    slide_xz(slide_groove_profile(n_l + slide_step + slide_mouth_flare, fit, slide_relief),
+           y1_m + slide_funnel - 0.01, slide_taper0 + 0.01);
+  hull() {  // shallow→deep taper: doubles as B's funnel out of the deep void
+            // into the runway. A sloped void ceiling prints fine — it bridges
+            // the pocket width layer by layer, unlike a male underside.
+    slide_xz(slide_groove_profile(n_l, fit, slide_relief), slide_taper0, slide_taper0 + 0.01);
+    slide_xz(slide_deep_groove_profile(n_l, fit, slide_relief),
+             slide_taper0 + slide_funnel - 0.01, slide_taper0 + slide_funnel);
+  }
+  slide_deep_zone(n_l, slide_taper0 + slide_funnel, slide_mouth0, fit);
+  // deep rear mouth: the ceiling takes whatever Z-flare the top lip budget
+  // allows (0.14 at defaults — bottom-registration on the table does the real
+  // aligning), capped at the shallow mouth's step+flare; breaks the rear rim
+  // chamfer exactly like the shallow mouth did.
+  zf = min(slide_step + slide_mouth_flare,
+           max(0, s_fh - slide_min_lip
+                  - (slide_center_z + n_l / 2
+                     + (slide_deep_depth + 2 * fit + slide_relief) * tan(slide_angle))));
+  hull() {
+    slide_xz(slide_deep_groove_profile(n_l, fit), slide_mouth0 - 0.01, slide_mouth0);
+    slide_xz(slide_deep_groove_profile(n_l, fit, slide_relief, zf),
              outer_d, outer_d + 0.01);
   }
 }

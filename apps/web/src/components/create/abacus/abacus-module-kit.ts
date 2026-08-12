@@ -411,14 +411,19 @@ ${frameTextNote(p)}
 
 function assemblyNote(p: Params): string {
   if (p.joint_type === 'sliding_dovetail') {
-    return `Build the row from left to right. Each seam carries three graduated dovetail
-keys that enter through the REAR face: align the new module behind its
-neighbor, drop the keys into the rear entry mouth, and slide it forward. The
-keys run loose for almost the whole travel and only engage over roughly the
-last centimeter, so there is no full-length scraping. Push firmly until the
-module stops against the blind front seat and the seam shoulders close — the
-tapered seat is self-holding, like a lightly set Morse taper. There is no
-clip and nothing to click.
+    return `Build the row from left to right. Each seam carries ONE continuous
+graduated dovetail rail that enters through the REAR face: align the new
+module behind its neighbor, drop the rail into the rear entry mouth, and
+slide it forward on the table. The rail runs loose for almost the whole
+travel and only engages over roughly the last centimeter, so there is no
+full-length scraping. Its rear end is a deep anchor block that reaches
+3.5 mm into the neighbor and hooks the pull-apart direction; the anchor
+pocket opens through the bottom face and the seated block fills that
+opening flush, so keep both modules flat on the table while sliding —
+the table is the height datum. Push firmly until the module stops against
+the blind front seat and the seam shoulders close — the tapered seat is
+self-holding, like a lightly set Morse taper. There is no clip and nothing
+to click.
 
 To remove a module, grip it and give it a firm rearward tug to break the
 taper, then slide it out the back. A middle module cannot lift straight out;
