@@ -148,6 +148,7 @@
   "devDependencies": {
     "@auth/core": "0.40.0",
     "@eink/frames-engine": "1.1159.1",
+    "@eink/plate-packing": "1.0.0",
     "@next/bundle-analyzer": "^16.1.1",
     "@pandacss/dev": "^1.8.1",
     "@playwright/test": "^1.55.1",

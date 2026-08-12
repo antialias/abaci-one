@@ -194,6 +194,28 @@ describe('buildAbacusTicket', () => {
       ])
     })
 
+    it('counts filaments the way the plate reserved bed for them (#34)', () => {
+      // The tower's reservation is sized from `bodies + extraFilaments` BEFORE this
+      // ticket exists, and the count is echoed as `packedForFilaments` for the
+      // service to cross-check. This is the same arithmetic on the far side of that
+      // pipe: bodies, plus one when an interface spool is routed.
+      const count = (supportInterfaceSlotId: string | null): number =>
+        buildAbacusTicket({
+          ...base,
+          catalog: supportCatalog,
+          bodies: supportBodies,
+          supportInterfaceSlotId,
+        }).filaments.length
+      expect(count(null)).toBe(supportBodies.length)
+      expect(count('0.3')).toBe(supportBodies.length + 1)
+      // The one case where the panel's +1 over-counts: a pick that coincides with a
+      // model slot is not appended. Unreachable through the UI (the panel withholds
+      // design slots from the pickable roster) but real here — and it can only ever
+      // OVER-reserve, so the plate still slices; the panel drops the declared count
+      // rather than send one the service would reject.
+      expect(count('0.2')).toBe(supportBodies.length)
+    })
+
     it('null and absent both mean "interface prints in the model material" — no role entry', () => {
       const withNull = buildAbacusTicket({
         ...base,

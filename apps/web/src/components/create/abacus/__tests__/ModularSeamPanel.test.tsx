@@ -13,7 +13,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { useAbacusStudio } from '../AbacusStudioContext'
 import { defaultParams, type FilamentMap, type Params } from '../abacus-model'
 import { buildModuleKit, type ModuleExportParts, type ModuleKit } from '../abacus-module-kit'
-import { MODULAR_COLUMNS_FLAG, ModularSeamPanel, modularSizeDelta } from '../ModularSeamPanel'
+import { ModularSeamPanel, modularSizeDelta } from '../ModularSeamPanel'
 
 vi.mock('../AbacusStudioContext', () => ({
   useAbacusStudio: vi.fn(),
@@ -112,10 +112,6 @@ afterEach(() => {
 })
 
 describe('ModularSeamPanel', () => {
-  it('pins the flag key the CP8 mount point reads', () => {
-    expect(MODULAR_COLUMNS_FLAG).toBe('abacus.modular_columns')
-  })
-
   it('modularSizeDelta: seams widen the row and never the depth', () => {
     const d = modularSizeDelta(defaultParams)
     expect(d.modular[0]).toBeGreaterThan(d.mono[0])

@@ -15,9 +15,11 @@ import {
   assembleAbacus3mf,
   BAMBU_256_BED,
   DEFAULT_WIPE_TOWER_PROFILE,
+  envelopeForFilaments,
   SUPPORT_TRANSITION_HEIGHT_MM,
   SUPPORT_TRANSITION_NAME,
   SUPPORT_TRANSITION_SPEED_MM_S,
+  type WipeTowerProfileGeometry,
 } from '../abacus-3mf-assembly'
 
 /** One triangle spanning [x0,x1]×[y0,y1] at z=0..2 (9 floats). */
@@ -230,7 +232,12 @@ describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
     ]
     const { wipeTower } = assembleAbacus3mf(cols3, BAMBU_256_BED, { support: true })
     expect(wipeTower.xMm).toBeCloseTo(177.25, 3)
-    expect(wipeTower.yMm).toBeCloseTo(102, 3)
+    // Centered on the model in y. Derived from the advertised envelope rather than
+    // restated as a number: the reservation's DEPTH is the service's to change (#34
+    // corrected the bound from the stale 56 to 59, and a per-filament row makes it
+    // shallower still), and a depth change is not a placement regression.
+    const e = DEFAULT_WIPE_TOWER_PROFILE.envelopeMm
+    expect(wipeTower.yMm + (e.minY + e.maxY) / 2).toBeCloseTo(128, 3)
   })
 
   it('leaves the no-support placement beside the model, not cornered', () => {
@@ -242,7 +249,7 @@ describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
     const { wipeTower } = assembleAbacus3mf(abacus, BAMBU_256_BED)
     // front gap, centered on the model in x — TOWER_GAP below the footprint
     expect(wipeTower.xMm).toBeCloseTo(97, 3)
-    expect(wipeTower.yMm).toBeCloseTo(77.75 - 6 - 56, 3)
+    expect(wipeTower.yMm).toBeCloseTo(77.75 - 6 - DEFAULT_WIPE_TOWER_PROFILE.envelopeMm.maxY, 3)
   })
 })
 
@@ -274,9 +281,10 @@ describe('assembleAbacus3mf — supportsAtSlice (supports from the ticket style)
   it('clears the support-grown footprint, with the full gap on top of the skirt', () => {
     const t = tower(assembleAbacus3mf(cols3, BAMBU_256_BED, { supportsAtSlice: true }).wipeTower)
     expect(hits(t, skirted)).toBe(false)
-    // beside the model on the roomy side, gap measured from the GROWN edge
+    // beside the model on the roomy side, gap measured from the GROWN edge, and
+    // centered on the model in the cross axis (see the note on envelope depth above)
     expect(t.x0).toBeCloseTo(167.25 + 6, 3)
-    expect(t.y0).toBeCloseTo(98, 3)
+    expect((t.y0 + t.y1) / 2).toBeCloseTo(128, 3)
     expect(t.x1).toBeLessThanOrEqual(256)
     expect(t.y1).toBeLessThanOrEqual(256)
   })
@@ -303,7 +311,76 @@ describe('assembleAbacus3mf — supportsAtSlice (supports from the ticket style)
     // fails to declare that supports will be on.
     const t = tower(assembleAbacus3mf(cols3, BAMBU_256_BED).wipeTower)
     expect(t.x0).toBeCloseTo(165.25, 3)
-    expect(t.y0).toBeCloseTo(98, 3)
+    expect((t.y0 + t.y1) / 2).toBeCloseTo(128, 3)
     expect(hits(t, skirted)).toBe(true) // inside the support growth → the trigger
+  })
+})
+
+// The service measures the tower per filament count and publishes both the table and
+// the count-unaware bound (things-haunt-house#433). Reserving the bound for every
+// plate throws away bed depth nothing will print on — 42 mm of it on a two-filament
+// plate, which is the difference between a full kit fitting one bed and being refused.
+describe('envelopeForFilaments (reserve the row, not the worst case)', () => {
+  const depth = (e: { minY: number; maxY: number }): number => e.maxY - e.minY
+
+  it('takes the row for the count it is given', () => {
+    expect(depth(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 2))).toBeCloseTo(21, 6)
+    expect(depth(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 3))).toBeCloseTo(31.5, 6)
+    expect(depth(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 6))).toBeCloseTo(63, 6)
+  })
+
+  it('is monotonic, and its top row IS the count-unaware bound', () => {
+    // Two promises the table has to keep: more filaments never reserves less, and a
+    // consumer that ignores the table entirely is still safe.
+    const depths = [2, 3, 4, 5, 6].map((n) =>
+      depth(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, n))
+    )
+    for (let i = 1; i < depths.length; i++) expect(depths[i]).toBeGreaterThanOrEqual(depths[i - 1])
+    expect(depths.at(-1)).toBeCloseTo(depth(DEFAULT_WIPE_TOWER_PROFILE.envelopeMm), 6)
+  })
+
+  it('floors at the two-filament row', () => {
+    // A one-filament plate grows a tower the moment routing attaches a support
+    // interface, and the plate is packed before that resolves. Row 2 is the hedge —
+    // and at 21 mm deep it is nearly free, which is what makes reserving
+    // unconditionally defensible in the first place.
+    for (const n of [0, 1, 2]) {
+      expect(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, n)).toEqual(
+        envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 2)
+      )
+    }
+  })
+
+  it('falls back to the bound rather than shrink on anything unusable', () => {
+    const bound = DEFAULT_WIPE_TOWER_PROFILE.envelopeMm
+    const noTable: WipeTowerProfileGeometry = {
+      profile: DEFAULT_WIPE_TOWER_PROFILE.profile,
+      envelopeMm: bound,
+      process: DEFAULT_WIPE_TOWER_PROFILE.process,
+    }
+    // no count asked for; no table published; over the profile's capacity; and a
+    // malformed row — a bad optional field must never under-reserve.
+    expect(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE)).toEqual(bound)
+    expect(envelopeForFilaments(noTable, 2)).toEqual(bound)
+    expect(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 99)).toEqual(bound)
+    expect(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, Number.NaN)).toEqual(bound)
+    const broken: WipeTowerProfileGeometry = {
+      ...DEFAULT_WIPE_TOWER_PROFILE,
+      envelopeByFilamentsMm: { '2': { minX: 0, minY: 0, maxX: 0, maxY: Number.NaN } },
+    }
+    expect(envelopeForFilaments(broken, 2)).toEqual(bound)
+  })
+
+  it('reserves the shallower row on the plate itself, not just in the arithmetic', () => {
+    const cols3: AssemblyBody[] = [
+      { positions: tri(0, 0, 62.5, 100.5), colorHex: '#c9a26e', label: 'Frame', extruder: 1 },
+      { positions: tri(10, 10, 40, 50), colorHex: '#2e86ab', label: 'Beads', extruder: 2 },
+    ]
+    // Same model, same side, same gap — the pin moves only because the reservation
+    // centered on the model is shallower.
+    const two = assembleAbacus3mf(cols3, BAMBU_256_BED, { filaments: 2 }).wipeTower
+    const six = assembleAbacus3mf(cols3, BAMBU_256_BED, { filaments: 6 }).wipeTower
+    expect(two.xMm).toBeCloseTo(six.xMm, 6)
+    expect(two.yMm).toBeGreaterThan(six.yMm)
   })
 })
