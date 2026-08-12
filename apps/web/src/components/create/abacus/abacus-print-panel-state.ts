@@ -15,7 +15,7 @@
 // leaves a row in the roster (so `rosterEmpty` is false) yet something IS physically
 // loaded; checking emptiness first would falsely say "nothing loaded".
 
-import type { TicketStyle } from '@eink/print-dialog'
+import type { CapabilityDocument, CapabilityKeyEntry, TicketStyle } from '@eink/print-dialog'
 import type { PrintUnavailableReason } from '@/lib/abacus/print/filament-wire'
 import type { FilamentCatalog } from './abacus-catalog'
 import type { FilamentMap, Params } from './abacus-model'
@@ -140,6 +140,65 @@ function processTruthy(style: TicketStyle | null, key: string): boolean {
  */
 export function supportsEnabled(style: TicketStyle | null): boolean {
   return processTruthy(style, 'enable_support')
+}
+
+/**
+ * The first-line adhesion recipe for the actual bed-contact layer. THH's three
+ * current quality presets resolve to 50 mm/s and 500 mm/s²; this deliberately
+ * slows only the initial layer while leaving model brim as an independent,
+ * last-resort setting. Like the printed-feet support recipe below, these values
+ * must ride the visible ticket style because THH's loaded preset overrides 3MF
+ * project settings.
+ */
+export const SLOW_FIRST_LAYER_PROCESS = {
+  initial_layer_speed: 12,
+  initial_layer_acceleration: 300,
+} as const
+
+export type SlowFirstLayerKey = keyof typeof SLOW_FIRST_LAYER_PROCESS
+
+const SLOW_FIRST_LAYER_KEYS = Object.keys(SLOW_FIRST_LAYER_PROCESS) as SlowFirstLayerKey[]
+
+function acceptsSlowFirstLayerValue(entry: CapabilityKeyEntry | undefined, value: number): boolean {
+  if (
+    entry?.class !== 'process' ||
+    entry.tier !== 'open' ||
+    entry.audience !== 'consumer' ||
+    (entry.type !== 'coFloat' && entry.type !== 'coInt')
+  ) {
+    return false
+  }
+  return (
+    (entry.min === undefined || value >= entry.min) &&
+    (entry.max === undefined || value <= entry.max)
+  )
+}
+
+/** The quick recipe is shown only when THH can accept the whole job-level pair. */
+export function supportsSlowFirstLayer(
+  capabilities: Pick<CapabilityDocument, 'keys'> | null | undefined
+): boolean {
+  return SLOW_FIRST_LAYER_KEYS.every((key) =>
+    acceptsSlowFirstLayerValue(capabilities?.keys[key], SLOW_FIRST_LAYER_PROCESS[key])
+  )
+}
+
+/** Active means these exact sparse overrides are present, not merely inherited. */
+export function slowFirstLayerEnabled(style: TicketStyle | null): boolean {
+  return SLOW_FIRST_LAYER_KEYS.every(
+    (key) => style?.process?.[key] === SLOW_FIRST_LAYER_PROCESS[key]
+  )
+}
+
+/** Apply or selectively reset the recipe without disturbing any other print choice. */
+export function withSlowFirstLayer(style: TicketStyle, enabled: boolean): TicketStyle {
+  const process = { ...style.process }
+  if (enabled) {
+    Object.assign(process, SLOW_FIRST_LAYER_PROCESS)
+  } else {
+    for (const key of SLOW_FIRST_LAYER_KEYS) delete process[key]
+  }
+  return { ...style, process }
 }
 
 /**
