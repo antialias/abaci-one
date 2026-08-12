@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { CREATE_TOOLS } from '@/lib/create-tools/createToolList'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://abaci.one'
@@ -42,5 +43,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }))
 
-  return [...routes, ...games, ...guides]
+  // Create tools, straight off the registry so a new tool is listed the day it
+  // ships. Tier drives priority the same way games sit below the top routes.
+  const createTools = CREATE_TOOLS.map((tool) => ({
+    url: `${baseUrl}${tool.href}`,
+    lastModified: new Date(),
+    changeFrequency: 'monthly' as const,
+    priority: tool.tier === 'primary' ? 0.8 : 0.6,
+  }))
+
+  return [...routes, ...games, ...guides, ...createTools]
 }

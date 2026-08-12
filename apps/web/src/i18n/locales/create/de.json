@@ -1,8 +1,31 @@
 {
   "create": {
+    "crossLinks": {
+      "heading": "Weitere Kreativ-Tools",
+      "subheading": "Was du hier sonst noch erstellen kannst"
+    },
     "hub": {
-      "pageTitle": "Erstellen Sie Ihre Lernwerkzeuge",
-      "pageSubtitle": "Entwerfen Sie individuelle Lernkarten oder 3D-druckbare Abakus-Modelle, um Ihr Lernerlebnis zu verbessern",
+      "pageTitle": "Etwas zum Üben herstellen",
+      "pageSubtitle": "Entwerfen Sie einen echten Abakus, drucken Sie Arbeitsblätter und Lernkarten oder füllen Sie einen Kalender mit Perlen — jedes Werkzeug hier erzeugt etwas Greifbares.",
+      "flagshipEyebrow": "Hier starten",
+      "moreHeading": "Weitere Druckvorlagen",
+      "moreSubheading": "Weitere Dinge, die sich zu drucken lohnen",
+      "visionAbacus": {
+        "title": "Ihr Abakus",
+        "description": "Verwandeln Sie den Abakus vom Bildschirm in einen echten — drucken Sie ihn in 3D mit eingebauten Markern, oder kleben Sie Marker auf einen vorhandenen, damit die Kamera ihn auslesen kann.",
+        "feature1": "3D-druckbar, Marker integriert",
+        "feature2": "Oder Aufklebe-Marker für jeden Abakus",
+        "feature3": "Live mit Ihrer Kamera auslesen",
+        "button": "Ihren Abakus öffnen"
+      },
+      "worksheets": {
+        "title": "Arbeitsblatt-Creator",
+        "description": "Erstellen Sie individuelle Additions-Arbeitsblätter mit einstellbarem Schwierigkeitsgrad und Übertragsübungen.",
+        "feature1": "Einstellbare Schwierigkeitsprogression",
+        "feature2": "Kontrolle über Übertragsübungen",
+        "feature3": "Druckfertige PDF-Generierung",
+        "button": "Arbeitsblätter erstellen"
+      },
       "flashcards": {
         "title": "Lernkarten-Creator",
         "description": "Entwerfen Sie individuelle Lernkarten mit Abakus-Visualisierungen. Perfekt zum Lernen und Lehren von Zahlenerkennung und Arithmetik.",
@@ -11,14 +34,6 @@
         "feature3": "Druckfertige PDF-Generierung",
         "button": "Lernkarten erstellen"
       },
-      "abacus": {
-        "title": "3D-Abakus-Creator",
-        "description": "Passen Sie 3D-druckbare Abakus-Modelle an und laden Sie sie herunter. Wählen Sie Größe, Spalten und Farben für das perfekte Lernwerkzeug.",
-        "feature1": "Einstellbare Größe und Spalten",
-        "feature2": "3MF-Farbanpassung",
-        "feature3": "Live-3D-Vorschau",
-        "button": "3D-Modell erstellen"
-      },
       "calendar": {
         "title": "Abakus-Kalender",
         "description": "Erstellen Sie druckbare Kalender, bei denen jedes Datum als Abakus angezeigt wird. Perfekt zum Lehren der Zahlendarstellung.",
@@ -26,46 +41,14 @@
         "feature2": "Mehrere Papiergrößen",
         "feature3": "Verwendet Ihren Abakus-Stil",
         "button": "Kalender erstellen"
-      }
-    },
-    "abacus": {
-      "navTitle": "3D-Abakus-Ersteller",
-      "pageTitle": "Passen Sie Ihren 3D-druckbaren Abakus an",
-      "pageSubtitle": "Passen Sie die Parameter unten an, um Ihren Abakus anzupassen, und generieren und laden Sie dann die Datei für den 3D-Druck herunter.",
-      "customizationTitle": "Anpassungsparameter",
-      "columns": {
-        "label": "Anzahl der Spalten: {{count}}",
-        "help": "Gesamtanzahl der Spalten im Abakus (1-13)"
       },
-      "scaleFactor": {
-        "label": "Skalierungsfaktor: {{factor}}x",
-        "help": "Gesamtgrößenmultiplikator (behält Seitenverhältnis bei, größere Werte = größere Dateigröße)"
-      },
-      "widthMm": {
-        "label": "Breite in mm (optional)",
-        "placeholder": "Leer lassen, um Skalierungsfaktor zu verwenden",
-        "help": "Geben Sie die genaue Breite in Millimetern an (überschreibt Skalierungsfaktor)"
-      },
-      "format": {
-        "label": "Ausgabeformat"
-      },
-      "colors": {
-        "title": "3MF-Farbanpassung",
-        "frame": "Rahmenfarbe",
-        "heavenBead": "Himmelsperlenfarbe",
-        "earthBead": "Erdperlenfarbe",
-        "decoration": "Dekorationsfarbe"
-      },
-      "generate": {
-        "button": "Datei generieren",
-        "generating": "Wird generiert..."
-      },
-      "download": "{{format}} herunterladen",
-      "preview": {
-        "title": "Vorschau",
-        "liveDescription": "Live-Vorschau: Die Vorschau wird automatisch aktualisiert, wenn Sie Parameter anpassen (mit 1 Sekunde Verzögerung). Dies zeigt das genaue gespiegelte Buchfalz-Design, das generiert wird.",
-        "note": "Hinweis: Die Vorschaugenerierung erfordert OpenSCAD. Wenn Sie einen Fehler sehen, funktioniert die Vorschaufunktion nur in der Produktion (Docker). Die Download-Funktionalität funktioniert weiterhin, wenn sie bereitgestellt wird.",
-        "instructions": "Verwenden Sie Ihre Maus, um das 3D-Modell zu drehen und zu zoomen."
+      "musicFlashcards": {
+        "title": "Musik-Lernkarten",
+        "description": "Druckbare Karten zum Notenlesen im Violin- und Bassschlüssel, inklusive Voreinstellung für die erste Violinlage.",
+        "feature1": "Violin- und Bassschlüssel",
+        "feature2": "Voreinstellung erste Violinlage",
+        "feature3": "Mehrere Layout-Optionen",
+        "button": "Musikkarten erstellen"
       }
     },
     "flashcards": {

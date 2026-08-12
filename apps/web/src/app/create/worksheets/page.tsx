@@ -1,10 +1,16 @@
 import { eq, and } from 'drizzle-orm'
+import type { Metadata } from 'next'
 import { db, schema } from '@/db'
+import { createToolMetadata } from '@/lib/create-tools/createToolMetadata'
 import { getUserId } from '@/lib/viewer'
 import { parseAdditionConfig, defaultAdditionConfig } from '@/app/create/worksheets/config-schemas'
 import { AdditionWorksheetClient } from './components/AdditionWorksheetClient'
 import { WorksheetErrorBoundary } from './components/WorksheetErrorBoundary'
 import type { WorksheetFormState } from '@/app/create/worksheets/types'
+
+// Inline rather than in a layout: this page is already a server component, so
+// it can carry its own metadata (the four client-component tool routes can't).
+export const metadata: Metadata = createToolMetadata('worksheets')
 
 /**
  * Get current date formatted as "Month Day, Year"

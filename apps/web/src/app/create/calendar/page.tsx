@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { css } from '../../../../styled-system/css'
 import { useAbacusConfig } from '@soroban/abacus-react'
+import { MoreCreateTools } from '@/components/create/MoreCreateTools'
 import { PageWithNav } from '@/components/PageWithNav'
 import { CalendarConfigPanel } from './components/CalendarConfigPanel'
 import { CalendarPreview } from './components/CalendarPreview'
@@ -81,12 +82,18 @@ export default function CalendarCreatorPage() {
     <PageWithNav navTitle="Create" navEmoji="📅">
       <div
         data-component="calendar-creator"
-        className={`with-fixed-nav ${css({
+        // `with-fixed-nav` used to supply the offset, but it sets `padding-top`
+        // while the rule below sets the `padding` SHORTHAND — same specificity,
+        // so whichever sheet loaded last won and the page rendered flush under
+        // the fixed nav with its 2rem gone. One rule owns padding now.
+        className={css({
           minHeight: '100vh',
           bg: 'bg.canvas',
           color: 'text.primary',
-          padding: '2rem',
-        })}`}
+          paddingTop: 'calc(var(--app-nav-height) + 2rem)',
+          paddingX: '2rem',
+          paddingBottom: '2rem',
+        })}
       >
         <div
           className={css({
@@ -147,6 +154,8 @@ export default function CalendarCreatorPage() {
             {/* Preview */}
             <CalendarPreview month={month} year={year} format={format} previewSvg={previewSvg} />
           </div>
+
+          <MoreCreateTools currentToolId="calendar" />
         </div>
       </div>
     </PageWithNav>

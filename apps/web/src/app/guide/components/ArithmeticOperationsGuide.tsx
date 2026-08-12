@@ -4,6 +4,7 @@ import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import Link from 'next/link'
 import { useMessages, useTranslations } from 'next-intl'
 import { TutorialPlayer } from '@/components/tutorial/TutorialPlayer'
+import { CREATE_TOOL_HREF } from '@/lib/create-tools/createToolList'
 import { getTutorialForEditor } from '@/utils/tutorialConverter'
 import { css } from '../../../../styled-system/css'
 import { grid } from '../../../../styled-system/patterns'
@@ -543,8 +544,12 @@ export function ArithmeticOperationsGuide() {
         >
           {t('practiceTips.description')}
         </p>
+        {/* The label promises arithmetic practice, so it lands on the worksheet
+            builder rather than the hub the reader now has to shop around in. */}
         <Link
-          href="/create"
+          href={CREATE_TOOL_HREF.worksheets}
+          data-action="open-create-tool"
+          data-tool-id="worksheets"
           className={css({
             display: 'inline-block',
             px: '6',

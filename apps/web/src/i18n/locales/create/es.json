@@ -1,8 +1,31 @@
 {
   "create": {
+    "crossLinks": {
+      "heading": "Más herramientas de creación",
+      "subheading": "Otras cosas que puedes crear aquí"
+    },
     "hub": {
-      "pageTitle": "Crea Tus Herramientas de Aprendizaje",
-      "pageSubtitle": "Diseña tarjetas didácticas personalizadas o modelos de ábaco imprimibles en 3D para mejorar tu experiencia de aprendizaje",
+      "pageTitle": "Crea algo para practicar",
+      "pageSubtitle": "Diseña un ábaco real, imprime hojas de ejercicios y tarjetas, o llena un calendario de cuentas: cada herramienta aquí produce algo que puedes sostener.",
+      "flagshipEyebrow": "Empieza aquí",
+      "moreHeading": "Más imprimibles",
+      "moreSubheading": "Otras cosas que vale la pena imprimir",
+      "visionAbacus": {
+        "title": "Tu Ábaco",
+        "description": "Convierte el ábaco que usas en pantalla en uno real: imprímelo en 3D con marcadores incorporados, o pega marcadores en el que ya tienes, para que la cámara pueda leerlo.",
+        "feature1": "Imprimible en 3D, con marcadores incorporados",
+        "feature2": "O marcadores adhesivos para cualquier ábaco",
+        "feature3": "Lectura en vivo con tu cámara",
+        "button": "Abrir Tu Ábaco"
+      },
+      "worksheets": {
+        "title": "Creador de Hojas de Ejercicios",
+        "description": "Genera hojas de sumas personalizadas con dificultad ajustable y práctica de llevadas.",
+        "feature1": "Progresión de dificultad ajustable",
+        "feature2": "Control de la práctica de llevadas",
+        "feature3": "Generación de PDF listo para imprimir",
+        "button": "Crear Hojas de Ejercicios"
+      },
       "flashcards": {
         "title": "Creador de Tarjetas Didácticas",
         "description": "Diseña tarjetas didácticas personalizadas con visualizaciones de ábaco. Perfecto para aprender y enseñar reconocimiento de números y aritmética.",
@@ -11,14 +34,6 @@
         "feature3": "Generación de PDF listo para imprimir",
         "button": "Crear Tarjetas Didácticas"
       },
-      "abacus": {
-        "title": "Creador de Ábaco 3D",
-        "description": "Personaliza y descarga modelos de ábaco imprimibles en 3D. Elige tu tamaño, columnas y colores para la herramienta de aprendizaje perfecta.",
-        "feature1": "Tamaño y columnas ajustables",
-        "feature2": "Personalización de color 3MF",
-        "feature3": "Vista previa 3D en vivo",
-        "button": "Crear Modelo 3D"
-      },
       "calendar": {
         "title": "Calendario de Ábaco",
         "description": "Genera calendarios imprimibles donde cada fecha se muestra como un ábaco. Perfecto para enseñar representación numérica.",
@@ -26,46 +41,14 @@
         "feature2": "Múltiples tamaños de papel",
         "feature3": "Usa tu estilo de ábaco",
         "button": "Crear Calendario"
-      }
-    },
-    "abacus": {
-      "navTitle": "Creador de Ábaco 3D",
-      "pageTitle": "Personaliza Tu Ábaco Imprimible en 3D",
-      "pageSubtitle": "Ajusta los parámetros a continuación para personalizar tu ábaco, luego genera y descarga el archivo para impresión 3D.",
-      "customizationTitle": "Parámetros de Personalización",
-      "columns": {
-        "label": "Número de Columnas: {{count}}",
-        "help": "Número total de columnas en el ábaco (1-13)"
       },
-      "scaleFactor": {
-        "label": "Factor de Escala: {{factor}}x",
-        "help": "Multiplicador de tamaño general (preserva la relación de aspecto, valores más grandes = mayor tamaño de archivo)"
-      },
-      "widthMm": {
-        "label": "Ancho en mm (opcional)",
-        "placeholder": "Dejar vacío para usar factor de escala",
-        "help": "Especificar ancho exacto en milímetros (anula el factor de escala)"
-      },
-      "format": {
-        "label": "Formato de Salida"
-      },
-      "colors": {
-        "title": "Personalización de Color 3MF",
-        "frame": "Color del Marco",
-        "heavenBead": "Color de Cuenta Celestial",
-        "earthBead": "Color de Cuenta Terrestre",
-        "decoration": "Color de Decoración"
-      },
-      "generate": {
-        "button": "Generar Archivo",
-        "generating": "Generando..."
-      },
-      "download": "Descargar {{format}}",
-      "preview": {
-        "title": "Vista Previa",
-        "liveDescription": "Vista previa en vivo: La vista previa se actualiza automáticamente a medida que ajustas los parámetros (con un retraso de 1 segundo). Esto muestra el diseño exacto de pliegue de libro espejo que se generará.",
-        "note": "Nota: La generación de vista previa requiere OpenSCAD. Si ves un error, la función de vista previa solo funciona en producción (Docker). La funcionalidad de descarga seguirá funcionando cuando se implemente.",
-        "instructions": "Usa tu ratón para rotar y hacer zoom en el modelo 3D."
+      "musicFlashcards": {
+        "title": "Tarjetas de Música",
+        "description": "Tarjetas imprimibles para leer notas en clave de sol y de fa, con un ajuste para la primera posición de violín.",
+        "feature1": "Clave de sol y de fa",
+        "feature2": "Ajuste de primera posición de violín",
+        "feature3": "Múltiples opciones de diseño",
+        "button": "Crear tarjetas de música"
       }
     },
     "flashcards": {

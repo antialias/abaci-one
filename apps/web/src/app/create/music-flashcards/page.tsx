@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { MoreCreateTools } from '@/components/create/MoreCreateTools'
 import { PageWithNav } from '@/components/PageWithNav'
 import { css } from '../../../../styled-system/css'
 import { container, stack, hstack, grid } from '../../../../styled-system/patterns'
@@ -95,7 +96,10 @@ export default function MusicFlashcardsPage() {
 
   return (
     <PageWithNav navTitle="Music Flashcards" navEmoji="🎵">
-      <div className={css({ minHeight: '100vh', bg: 'bg.canvas' })}>
+      {/* `PageWithNav` only auto-offsets the no-navTitle path, so this one pays
+          for the fixed nav itself. `box-sizing: border-box` keeps the page at
+          100vh rather than 100vh + nav. */}
+      <div className={css({ minHeight: '100vh', pt: 'var(--app-nav-height)', bg: 'bg.canvas' })}>
         <div className={container({ maxW: '4xl', px: '4', py: '8' })}>
           <div className={stack({ gap: '6', mb: '8' })}>
             <div className={stack({ gap: '2', textAlign: 'center' })}>
@@ -395,6 +399,8 @@ export default function MusicFlashcardsPage() {
               </div>
             </div>
           </div>
+
+          <MoreCreateTools currentToolId="music-flashcards" />
         </div>
       </div>
     </PageWithNav>
