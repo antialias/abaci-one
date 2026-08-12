@@ -124,6 +124,7 @@ feet_retention = "crossbar"; // printed: crossbar (linked loop) | dovetail (flar
    Joint dims are ABSOLUTE (a fit contract between prints, like clearance —
    two modules at different scale_factor must still mate at the seam). */
 seam_mode     = "mono"; // "mono" = one solid frame (every render today);
+joint_type    = "vertical_snap"; // vertical_snap | sliding_dovetail
                        // "modular" = the final assembly instantiates per-column
                        // modules instead (CP5). Until that lands this knob is
                        // deliberately INERT — the TS model already sends it so
@@ -143,6 +144,45 @@ joint_clip_l  = 9.5;   // clip protrusion depth. Prong flex length L = this −
                        // incl. tuning headroom = 2.1× margin. The assert by
                        // sc_prong refuses geometry wood PLA would crack.
 joint_ridge   = 0.2;   // click ridge proud height (0 = no click, friction only)
+
+/* Fixed sliding-dovetail identity, mirrored in the TypeScript DFM model.
+   GRADUATED SEGMENTED sliding dovetail: three short male keys of graduated
+   Z-size (largest at the rear entry mouth, smallest at the blind front stop)
+   ride one continuous female groove whose only tight sections are each key's
+   own seated berth. Every key clears every section it passes by ≥ slide_step/2
+   per side until the final key-length of travel — the tapered-batten
+   principle: loose the whole way in, home in the last centimeter. Retention is
+   the seat itself: the berth's front slide_pinch over slide_pinch_l is a
+   ~1.9° travel-direction taper, far under PLA's atan(µ≈0.25)≈14° self-holding
+   limit — it seats with a firm push and releases with a firm rearward tug.
+   No flexures: nothing to crack, and the insertion sweep is provably
+   collision-free at every offset. */
+slide_angle        = 14;    // flank from +X rail-depth axis
+slide_depth        = 1.0;   // male X depth (all keys)
+slide_neck         = 2.8;   // MID key Z neck; sizes are slide_neck ± slide_step
+slide_step         = 0.6;   // Z graduation between adjacent key sizes
+slide_min_backing  = 1.2;
+slide_min_lip      = 1.2;
+slide_key_l        = 8;     // engaged length of each key
+slide_funnel       = 3;     // relieved→tight approach funnel at each berth mouth
+slide_pinch        = 0.05;  // final-seat X squeeze across the berth's front …
+slide_pinch_l      = 1.5;   // … this much travel (atan(.05/1.5)≈1.9°, self-holding)
+slide_relief       = 0.15;  // runway floor relief past groove depth (loose travel)
+slide_datum_relief = 0.2;   // non-datum berth fronts stand off — ONE Y stop
+slide_seat_clear   = 0.02;  // CAD gap at the front stop (print swell closes it)
+slide_mouth_flare  = 0.6;   // rear-mouth Z flare beyond the pass-through size
+slide_head          = slide_neck + 2 * slide_depth * tan(slide_angle);
+slide_groove_depth  = slide_depth + joint_fit;                 // berth floor
+slide_running_clear = joint_fit * sin(slide_angle);            // flank-normal
+
+assert(joint_type == "vertical_snap" || joint_type == "sliding_dovetail",
+       "joint_type must be vertical_snap | sliding_dovetail");
+
+pair_dy = 0;           // module_pair harness knob: +Y insertion offset of the
+                       // male-side module. 0 = seated inspection pair; the
+                       // geometry harness sweeps it to prove the sliding
+                       // insertion path never intersects solids. Not a Studio
+                       // knob and never set by the exporter.
 
 /* ===== myabacus style (driven by abaci.one AbacusDisplayConfig) ===== */
 color_scheme  = "place-value";  // monochrome | place-value | heaven-earth | alternating
@@ -911,20 +951,38 @@ function is_module_pass(o) =   // the six module render passes (bodies + feet)
 mod_active = is_module_pass(only) || only == "module_pair"
           || (only == "" && seam_mode == "modular");   // the assembled modular preview (CP5)
 sc_active = only == "seam_coupon" || only == "seam_coupon_pair" || mod_active;
-                               // seam geometry in this render? The strain gate
-                               // above is knob-only (S-free) and stays loud in
-                               // EVERY render, but the asserts below compare
-                               // ABSOLUTE joint dims against SCALED strip widths
+assert(!sc_active || joint_type != "sliding_dovetail" || only == "seam_coupon" ||
+       joint_fit == 0.10 || joint_fit == 0.11 || joint_fit == 0.12,
+       "sliding dovetail joint_fit must be 0.10 | 0.11 | 0.12");
+                               // seam geometry in this render? These asserts
+                               // compare ABSOLUTE joint dims against SCALED strip widths
                                // and s_fh — they genuinely fail at small
                                // scale_factor (clip walls below S≈0.95!) and
                                // must never trip a render that instantiates no
                                // seam geometry at all.
-assert(!sc_active || joint_neck + 2 * (joint_flare + joint_fit) + 3.2 <= min(sc_f1, outer_d - sc_k0),
+assert(!sc_active || joint_type != "vertical_snap" ||
+       joint_neck + 2 * (joint_flare + joint_fit) + 3.2 <= min(sc_f1, outer_d - sc_k0),
        "dovetail socket leaves <1.6mm walls in the border strips — shrink joint_neck/joint_flare or raise scale_factor");
-assert(!sc_active || joint_clip_w + 2 * (joint_fit + joint_ridge + 0.05) + 2.4 <= sc_b1 - sc_b0,
+assert(!sc_active || joint_type != "vertical_snap" ||
+       joint_clip_w + 2 * (joint_fit + joint_ridge + 0.05) + 2.4 <= sc_b1 - sc_b0,
        "clip socket leaves <1.2mm walls in the bar strip — shrink joint_clip_w/joint_ridge or raise scale_factor");
-assert(!sc_active || (sc_seat >= 0.6 && sc_seat + joint_tab + 1 <= s_fh),
+assert(!sc_active || joint_type != "vertical_snap" ||
+       (sc_seat >= 0.6 && sc_seat + joint_tab + 1 <= s_fh),
        "bottom seat + 45° chamfer leave <1mm of straight dovetail wall — raise scale_factor or shrink sc_seat/joint_tab");
+assert(!sc_active || joint_type != "sliding_dovetail" ||
+       sc_wall - (slide_groove_depth + slide_relief) >= slide_min_backing,
+       "sliding groove leaves <1.2mm backing wall — raise scale_factor");
+assert(!sc_active || joint_type != "sliding_dovetail" ||
+       (s_fh - (slide_neck + 2 * slide_step + slide_mouth_flare
+                + 2 * (slide_depth + 2 * joint_fit + slide_relief) * tan(slide_angle))) / 2
+         >= slide_min_lip,
+       "sliding dovetail mouth leaves insufficient top/bottom lips — raise scale_factor");
+assert(!sc_active || joint_type != "sliding_dovetail" ||
+       (chamf + 1 + slide_key_l + slide_seat_clear + 0.3 + slide_funnel + 1
+          <= outer_d / 2 - slide_key_l / 2 - slide_datum_relief
+        && outer_d / 2 + slide_key_l / 2 + 0.3 + slide_funnel + 1
+          <= outer_d - chamf - 0.1 - slide_key_l - slide_datum_relief),
+       "graduated berths + funnels don't fit along the module — raise scale_factor");
 
 /* ----- module family (CP3): real per-column modules -----
    mid    = the coupon geometry grown up: rim-chamfered slab (never on the seam
@@ -954,7 +1012,9 @@ mod_we = s_bw + s_em + s_bd / 2 + clearance + sc_wall;  // end-module width (26.
    - adhesive: the TRUE bumper width, or an abort. The bumper is bought
      hardware — a pocket narrower than the bumper seats nothing — so a bumper
      wider than the band is refused outright instead of silently shrunk. */
-mf_sock  = joint_tab + joint_fit + sc_deep;  // deepest socket cut into x (4.9)
+mf_sock  = joint_type == "sliding_dovetail" ? slide_groove_depth + slide_relief
+                                              : joint_tab + joint_fit + sc_deep;
+                                             // topology's deepest female cut into x
 mf_wall  = 1.6;                              // min wall: socket→pocket and pocket→seam face
 mf_band  = sc_w - mf_sock - 2 * mf_wall - 2 * feet_undercut_eff - 2 * feet_fit_eff;
 mf_w     = feet_printed ? min(feet_w, 6.35, mf_band) : feet_w;
@@ -1043,20 +1103,112 @@ module sc_clip_pocket() {
         sc_ridge_xz(joint_clip_l + joint_fit + 0.31, 0.05);
 }
 
-module sc_tabs()               // on the RIGHT face (x = sc_w)
+/* Sliding topology — graduated segmented (see the constants block).
+   Insertion is from the REAR mouth: the joining module starts offset +Y and
+   slides −Y until key S contacts the blind front stop, the ONE Y datum.
+   Kinematics, provable: key i sweeps female y ∈ [its berth, outer_d]; every
+   section on that path is either its own berth's funnel or sized for a LARGER
+   key, so clearance is ≥ slide_step/2 per side everywhere until the final
+   slide_key_l of travel. Compensation is explicit and X-semantic: the female
+   trapezoid keeps the 14° flanks, grows the neck by 2·fit·tan(angle) and the
+   floor by fit, giving exactly fit·sin(angle) flank-normal running clearance
+   (the old profile shifted the flank line without growing the neck — female
+   SMALLER than male by fit·tan(angle), the 4.9 mm³ overlap this replaces). */
+slide_center_z = s_fh / 2;     // groove Z-centered in the (scaled) slab
+slide_k0_s = chamf + 1 + slide_seat_clear;          // smallest key: front berth
+slide_k0_m = outer_d / 2 - slide_key_l / 2;         // mid key: mid-depth berth
+slide_k1_l = outer_d - chamf - 0.1;                 // largest key: rear berth
+SLIDE_KEYS = [[slide_neck - slide_step, slide_k0_s, slide_k0_s + slide_key_l],
+              [slide_neck,              slide_k0_m, slide_k0_m + slide_key_l],
+              [slide_neck + slide_step, slide_k1_l - slide_key_l, slide_k1_l]];
+
+function slide_profile(neck, depth = slide_depth) =
+  [[0, slide_center_z - neck / 2],
+   [depth, slide_center_z - neck / 2 - depth * tan(slide_angle)],
+   [depth, slide_center_z + neck / 2 + depth * tan(slide_angle)],
+   [0, slide_center_z + neck / 2]];
+/* Same-angle containing trapezoid: half-height neck/2 + (x+fit)·tan(angle) at
+   every x, floor at depth+fit+xr — a uniform fit·sin(angle) flank-normal gap. */
+function slide_groove_profile(neck, fit, xr = 0) =
+  let(t = tan(slide_angle), d = slide_depth + fit + xr)
+  [[-0.01, slide_center_z - neck / 2 - (fit - 0.01) * t],
+   [d, slide_center_z - neck / 2 - (d + fit) * t],
+   [d, slide_center_z + neck / 2 + (d + fit) * t],
+   [-0.01, slide_center_z + neck / 2 + (fit - 0.01) * t]];
+
+module slide_xz(pts, y0, y1)
+  translate([0, (y0 + y1) / 2, 0]) prism_xz(pts, 0, y1 - y0);
+module slide_key(neck, y0, y1) { // one male key; −Y nose chamfered for the funnels
+  hull() {
+    slide_xz(slide_profile(neck - 1.2, 0.3), y0, y0 + 0.01);
+    slide_xz(slide_profile(neck), y0 + 0.8, y0 + 0.81);
+  }
+  slide_xz(slide_profile(neck), y0 + 0.8, y1);
+}
+module slide_zone(neck, y0, y1, fit) { // tight berth; graduated seat pinch at the
+  hull() {                             // front: fit−pinch → fit over pinch_l, a
+    slide_xz(slide_groove_profile(neck, fit - slide_pinch), y0, y0 + 0.01);   // self-
+    slide_xz(slide_groove_profile(neck, fit), y0 + slide_pinch_l, y0 + slide_pinch_l + 0.01);
+  }                                    // holding ~1.9° wedge that is the retention
+  slide_xz(slide_groove_profile(neck, fit), y0 + slide_pinch_l, y1);
+}
+module slide_funnel(neck_tight, neck_run, y0, fit) // berth mouth → relieved runway
+  hull() {
+    slide_xz(slide_groove_profile(neck_tight, fit), y0 - 0.01, y0);
+    slide_xz(slide_groove_profile(neck_run, fit, slide_relief),
+             y0 + slide_funnel - 0.01, y0 + slide_funnel);
+  }
+
+module slide_tabs()              // on RIGHT face after caller translates to seam
+  translate([sc_w, 0, 0]) for (k = SLIDE_KEYS) slide_key(k[0], k[1], k[2]);
+module slide_pockets(fit = joint_fit) { // into LEFT face; front berth wall = Y datum
+  n_s = slide_neck - slide_step; n_m = slide_neck; n_l = slide_neck + slide_step;
+  z0_s = slide_k0_s - slide_seat_clear;
+  z1_s = slide_k0_s + slide_key_l + 0.3;
+  z0_m = slide_k0_m - slide_datum_relief;   // non-datum fronts stand off 0.2 —
+  z1_m = slide_k0_m + slide_key_l + 0.3;    // only key S ever touches a Y stop
+  z0_l = slide_k1_l - slide_key_l - slide_datum_relief;
+  z1_l = slide_k1_l + 0.3;
+  slide_zone(n_s, z0_s, z1_s, fit);
+  slide_funnel(n_s, n_m, z1_s, fit);        // runway sizes: one graduation step
+  slide_xz(slide_groove_profile(n_m, fit, slide_relief),   // above the largest
+           z1_s + slide_funnel - 0.01, z0_m + 0.01);       // key that sweeps it
+  slide_zone(n_m, z0_m, z1_m, fit);
+  slide_funnel(n_m, n_l, z1_m, fit);
+  slide_xz(slide_groove_profile(n_l, fit, slide_relief),
+           z1_m + slide_funnel - 0.01, z0_l + 0.01);
+  slide_zone(n_l, z0_l, z1_l, fit);
+  hull() {  // rear entry mouth: Z-flared, breaks through the rear rim chamfer
+    slide_xz(slide_groove_profile(n_l, fit), z1_l - 0.01, z1_l);
+    slide_xz(slide_groove_profile(n_l + slide_step + slide_mouth_flare, fit, slide_relief),
+             outer_d, outer_d + 0.01);
+  }
+}
+
+/* Public wrappers are the topology boundary. The vertical bodies below are the
+   shipped geometry verbatim; only this dispatch is new. */
+module sc_vertical_tabs()       // on the RIGHT face (x = sc_w)
   translate([sc_w, 0, 0]) {
     for (yc = SC_DOVE_Y) translate([0, yc, 0]) sc_seated_post() sc_dove_2d();
     translate([0, sc_clip_y, 0]) sc_clip_tab();
   }
-module sc_pockets() {          // into the LEFT face (x = 0)
+module sc_vertical_pockets() {  // into the LEFT face (x = 0)
   for (yc = SC_DOVE_Y) translate([0, yc, 0]) sc_seated_pocket() sc_deep_2d() sc_dove_2d(joint_fit);
   translate([0, sc_clip_y, 0]) sc_clip_pocket();
+}
+module sc_tabs() {
+  if (joint_type == "sliding_dovetail") slide_tabs();
+  else sc_vertical_tabs();
+}
+module sc_pockets(fit = joint_fit) {   // fit is only meaningful for sliding: the
+  if (joint_type == "sliding_dovetail") slide_pockets(fit);   // coupon plate
+  else sc_vertical_pockets();          // threads its per-sample compensation here
 }
 
 /* The coupon: a real single column — live captive beads, real strip positions,
    full outer_d depth — with the seam features on its faces. No markers, feet,
    text or rim chamfer: those are Phase-1 module concerns, not seam questions. */
-module seam_coupon() {
+module seam_coupon_one(fit = joint_fit) {
   color(frame_color) difference() {
     union() {
       linear_extrude(s_fh) square([sc_w, outer_d]);
@@ -1066,12 +1218,29 @@ module seam_coupon() {
       channel(sc_w / 2, s_elo, s_ehi);
       channel(sc_w / 2, s_hlo, s_hhi);
     }
-    sc_pockets();
+    sc_pockets(fit);
   }
   translate([0, s_bw, 0]) {   // the ones column, per place_value(cols−1)
     for (j = [0 : earth - 1]) color(bead_color(cols - 1, false)) bead(sc_w / 2, earthy(j));
     color(bead_color(cols - 1, true)) bead(sc_w / 2, s_hy);
   }
+}
+module seam_coupon() {
+  /* Preserve the historical one-STL contract. Sliding emits a bounded plate of
+     three mechanically identical samples; only explicit X compensation varies,
+     threaded as a real parameter (a call-site `let(joint_fit=…)` would NOT
+     rebind the global inside modules — OpenSCAD scoping is lexical). Labels
+     are raised on the non-mating top face, clear of keys and groove. */
+  if (joint_type == "sliding_dovetail")
+    for (i = [0 : 2]) {
+      fit = [0.10, 0.11, 0.12][i];
+      translate([i * (sc_w + 6), 0, 0]) {
+        seam_coupon_one(fit);
+        translate([sc_w / 2, 5, s_fh])
+          linear_extrude(0.35) text(str(fit), size = 2.4, halign = "center", valign = "center");
+      }
+    }
+  else seam_coupon_one();
 }
 
 /* ===== module columns (Gitea #30 CP3) =====
@@ -1223,7 +1392,11 @@ else if (only == "frame")        color(frame_color) frame();
    the harness leans on: at joint_fit > 0 the pair's volume must equal exactly
    2× the single coupon's, or a tab is fused into its socket. */
 else if (only == "seam_coupon")      seam_coupon();
-else if (only == "seam_coupon_pair") { seam_coupon(); translate([sc_w, 0, 0]) seam_coupon(); }
+else if (only == "seam_coupon_pair") {
+  /* Inspection remains one selected-fit seated pair; the printable coupon pass
+     above is the three-fit calibration plate. Pass vocabulary stays unchanged. */
+  seam_coupon_one(); translate([sc_w, 0, 0]) seam_coupon_one();
+}
 /* Module columns (Gitea #30 CP3): the six per-module passes the kit exporter
    renders — three PLA bodies, three TPU feet sets — plus `module_pair`, the
    inspection/harness twin of seam_coupon_pair (two seated mids; volume must be
@@ -1236,7 +1409,8 @@ else if (only == "module_right")      module_end(false);
 else if (only == "module_left_feet")  module_feet("left");
 else if (only == "module_mid_feet")   module_feet("mid");
 else if (only == "module_right_feet") module_feet("right");
-else if (only == "module_pair")      { module_mid(); translate([sc_w, 0, 0]) module_mid(); }
+else if (only == "module_pair")      { translate([0, pair_dy, 0]) module_mid();
+                                       translate([sc_w, 0, 0]) module_mid(); }
 /* The assembled modular preview (CP5): the same left + mids + right the kit
    prints, seated at zero gap on the sc_w pitch — one full web per seam, total
    width 2·mod_we + (cols−2)·sc_w (the TS derived() identity). Everything here

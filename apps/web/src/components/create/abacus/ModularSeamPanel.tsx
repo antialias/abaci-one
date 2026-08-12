@@ -20,9 +20,17 @@
 
 import { useState } from 'react'
 import { Disclosure } from '@/components/studio/Disclosure'
+import { StudioSelect } from '@/components/studio/StudioSelect'
 import { DebugCheckbox, DebugSlider } from '@/components/toys/ToyDebugPanel'
 import { useAbacusStudio } from './AbacusStudioContext'
-import { derived, isModular, type Params, seamFit } from './abacus-model'
+import {
+  derived,
+  isModular,
+  type JointType,
+  type Params,
+  SLIDING_FIT_VALUES,
+  seamFit,
+} from './abacus-model'
 import { buildModuleKit, moduleKitPlan } from './abacus-module-kit'
 import { downloadBlob } from './download-blob'
 
@@ -61,6 +69,8 @@ export function ModularSeamPanel() {
   const [error, setError] = useState<string | null>(null)
 
   const on = isModular(params)
+  const sliding = params.joint_type === 'sliding_dovetail'
+  const jointSlug = sliding ? 'sliding-dovetail' : 'vertical-snap'
   // Both sizes come from the ONE derived chain the geometry uses, evaluated at
   // each mode — a second copy of the arithmetic here is exactly how a readout
   // and the thing it describes drift apart.
@@ -70,13 +80,22 @@ export function ModularSeamPanel() {
   // assert, so a failing row means the coupon/module renders would ABORT.
   const fit = seamFit(params)
   const failing = fit.verdicts.filter((v) => !v.ok)
+  // Coupon passes contain no feet. The sliding coupon also carries all three
+  // calibrated compensations regardless of the currently selected kit fit.
+  const couponFitOk = fit.verdicts
+    .filter(
+      (v) =>
+        !['module_feet', 'feet_bumper', 'feet_socket', 'feet_crossbar'].includes(v.code) &&
+        !(sliding && v.code === 'sliding_fit')
+    )
+    .every((v) => v.ok)
 
   // What the kit would contain, from the same plan the build uses. Only
   // meaningful in modular mode (the kit build throws on a mono design).
   const plan = on ? moduleKitPlan(params, filamentMap) : null
   const pieces = plan?.reduce((n, e) => n + e.count, 0) ?? 0
 
-  const couponReady = exporterReady && fit.ok && busy === null
+  const couponReady = exporterReady && couponFitOk && busy === null
   const kitReady = exporterReady && fit.ok && on && busy === null
 
   const downloadCoupon = async () => {
@@ -89,7 +108,7 @@ export function ModularSeamPanel() {
       const stl = await requestExportPass({ only: 'seam_coupon' })
       downloadBlob(
         new Blob([stl], { type: 'model/stl' }),
-        `abacus-seam-coupon-fit${params.joint_fit}-x${params.scale_factor}.stl`
+        `abacus-seam-coupon-${jointSlug}-fit${params.joint_fit}-x${params.scale_factor}.stl`
       )
     } catch (err) {
       setError(String((err as Error)?.message ?? err))
@@ -129,10 +148,40 @@ export function ModularSeamPanel() {
         style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
       >
         <DebugCheckbox
-          label="Print as snap-together column modules"
+          label="Print as separate column modules"
           checked={on}
           onChange={(v) => set('seam_mode', v ? 'modular' : 'mono')}
         />
+
+        <StudioSelect
+          label="Joint mechanism"
+          value={params.joint_type}
+          options={[
+            { value: 'vertical_snap', label: 'Vertical dovetails + snap clip' },
+            { value: 'sliding_dovetail', label: 'Front-to-back sliding dovetail' },
+          ]}
+          onChange={(v) => {
+            const joint = v as JointType
+            set('joint_type', joint)
+            if (
+              joint === 'sliding_dovetail' &&
+              !SLIDING_FIT_VALUES.some((fitValue) => Math.abs(fitValue - params.joint_fit) < 1e-9)
+            ) {
+              set('joint_fit', SLIDING_FIT_VALUES[0])
+            }
+          }}
+          dataElement="modular-joint-type"
+          dataAction="select-modular-joint-type"
+        />
+
+        <div
+          data-element="modular-joint-explanation"
+          style={{ fontSize: 11, lineHeight: 1.5, color: 'rgba(226,232,240,0.75)' }}
+        >
+          {sliding
+            ? 'Three graduated dovetail keys slide in through the rear entry mouth — loose the whole way, engaging only over the last centimeter. Push firmly until the module stops against the blind front seat; the tapered seat is self-holding. Remove with a firm rearward tug.'
+            : 'Vertical dovetails carry the seam while the crossbar clip clicks at full depth. Modules press straight down and any middle module can lift straight out.'}
+        </div>
 
         <div
           data-element="modular-seam-size-delta"
@@ -161,7 +210,9 @@ export function ModularSeamPanel() {
             data-element="modular-seam-verdict-ok"
             style={{ fontSize: 11, color: 'rgba(134,239,172,0.9)', lineHeight: 1.5 }}
           >
-            Seam fit OK — snap-clip strain {fit.strainPct.toFixed(2)}% (wood-PLA gate 1.0%).
+            {sliding
+              ? 'Sliding joint fit OK — no flexures; the ~1.9° seat taper is self-holding.'
+              : `Vertical snap joint fit OK — snap-clip strain ${fit.strainPct.toFixed(2)}% (wood-PLA gate 1.0%).`}
           </div>
         ) : (
           <div
@@ -187,15 +238,17 @@ export function ModularSeamPanel() {
           </div>
         )}
 
-        <DebugSlider
-          label="joint fit (mm)"
-          value={params.joint_fit}
-          min={-0.1}
-          max={0.3}
-          step={0.01}
-          formatValue={(v) => `${v.toFixed(2)} mm`}
-          onChange={(v) => set('joint_fit', v)}
-        />
+        <div data-element="modular-joint-fit-control">
+          <DebugSlider
+            label={sliding ? 'dovetail compensation (mm)' : 'joint fit (mm)'}
+            value={params.joint_fit}
+            min={sliding ? SLIDING_FIT_VALUES[0] : -0.1}
+            max={sliding ? SLIDING_FIT_VALUES[SLIDING_FIT_VALUES.length - 1] : 0.3}
+            step={sliding ? 0.01 : 0.01}
+            formatValue={(v) => `${v.toFixed(2)} mm`}
+            onChange={(v) => set('joint_fit', v)}
+          />
+        </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <button
@@ -204,19 +257,23 @@ export function ModularSeamPanel() {
             disabled={!couponReady}
             onClick={downloadCoupon}
             title={
-              fit.ok
+              couponFitOk
                 ? exporterReady
                   ? 'Download the seam-fit test coupon'
                   : 'Preparing the 3D exporter…'
-                : 'Fix the seam-fit problems above'
+                : 'Fix the coupon geometry problems above'
             }
             style={BTN(couponReady)}
           >
             {busy === 'coupon' ? 'Rendering…' : '⬇ Seam coupon (STL)'}
           </button>
-          <div style={{ fontSize: 10, lineHeight: 1.45, color: 'rgba(148,163,184,0.85)' }}>
-            One small plate — print it twice; the pair is the snap test. Tune joint fit until the
-            copies click shut flush, then cut the kit at that fit.
+          <div
+            data-element="modular-seam-coupon-instructions"
+            style={{ fontSize: 10, lineHeight: 1.45, color: 'rgba(148,163,184,0.85)' }}
+          >
+            {sliding
+              ? 'One bounded plate contains 0.10, 0.11, and 0.12 mm samples. Slide pairs together from the rear mouth: reject any that bind before the front stop or will not release with a firm tug; choose the loosest sample with no seated play, then regenerate the kit at that value.'
+              : 'One small plate — print it twice; the pair is the vertical snap test. Tune joint fit until the copies click shut flush with no seam wiggle, then generate the kit at that fit.'}
           </div>
         </div>
 

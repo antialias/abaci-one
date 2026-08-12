@@ -18,7 +18,10 @@ import {
   type Params,
   previewDedupKey,
   SEAM,
+  SLIDING_DOVETAIL,
+  SLIDING_FIT_VALUES,
   seamFit,
+  slidingDovetailDerived,
 } from '../abacus-model'
 
 // CP4 of the modular-columns epic (Gitea #30): the TS model grew a mirror of the
@@ -71,10 +74,48 @@ describe('SEAM constants mirror the scad', () => {
     expect(SEAM[ts]).toBe(knob(scad))
   })
 
-  it('scad defaults for the two new Params match defaultParams', () => {
-    const m = SCAD.match(/^seam_mode\s*=\s*"(\w+)"\s*;/m)
-    expect(m?.[1]).toBe(defaultParams.seam_mode)
+  it('scad defaults for the seam Params match defaultParams', () => {
+    const seam = SCAD.match(/^seam_mode\s*=\s*"(\w+)"\s*;/m)
+    const joint = SCAD.match(/^joint_type\s*=\s*"(\w+)"\s*;/m)
+    expect(seam?.[1]).toBe(defaultParams.seam_mode)
+    expect(joint?.[1]).toBe(defaultParams.joint_type)
     expect(knob('joint_fit')).toBe(defaultParams.joint_fit)
+  })
+
+  it('sliding constants mirror SCAD and preserve conventional profile arithmetic', () => {
+    const pins: [keyof typeof SLIDING_DOVETAIL, string][] = [
+      ['angleDeg', 'slide_angle'],
+      ['maleDepth', 'slide_depth'],
+      ['neck', 'slide_neck'],
+      ['step', 'slide_step'],
+      ['minBackingWall', 'slide_min_backing'],
+      ['minLip', 'slide_min_lip'],
+      ['keyLength', 'slide_key_l'],
+      ['funnel', 'slide_funnel'],
+      ['pinch', 'slide_pinch'],
+      ['pinchLength', 'slide_pinch_l'],
+      ['floorRelief', 'slide_relief'],
+      ['datumRelief', 'slide_datum_relief'],
+      ['seatClear', 'slide_seat_clear'],
+      ['mouthFlare', 'slide_mouth_flare'],
+    ]
+    for (const [ts, scad] of pins) expect(SLIDING_DOVETAIL[ts]).toBe(knob(scad))
+    const g = slidingDovetailDerived(0.1)
+    // graduated key family: neck ± step, heads = neck + 2·depth·tan14° (+0.498656)
+    expect(g.necks.s).toBeCloseTo(2.2, 12)
+    expect(g.necks.m).toBe(2.8)
+    expect(g.necks.l).toBeCloseTo(3.4, 12)
+    expect(g.head).toBeCloseTo(3.298656, 5)
+    expect(g.headL).toBeCloseTo(3.898656, 5)
+    // deepest female cut = depth + fit + floor relief = 1.25 at coupon fit 0.10
+    expect(g.deepestCut).toBeCloseTo(1.25, 12)
+    // widest female Z opening = flared rear mouth: 4.6 + 2·1.35·tan14° = 5.273186
+    expect(g.mouthOpening).toBeCloseTo(5.273186, 5)
+    // any key passing a one-step-up section clears ≥ step/2 + fit·tan14° per side
+    expect(g.passClearance).toBeCloseTo(0.324933, 5)
+    // retention physics: 0.05/1.5 seat taper = 1.909° ≪ atan(µ 0.25) = 14.036°
+    expect(g.seatTaperDeg).toBeCloseTo(1.90915, 4)
+    expect(g.selfHoldLimitDeg).toBeCloseTo(14.03624, 4)
   })
 })
 
@@ -299,6 +340,66 @@ describe('seamFit', () => {
       expect(v.message.length).toBeGreaterThan(0)
     }
   })
+
+  it.each(SLIDING_FIT_VALUES)(
+    'sliding fit %.2f derives groove and flank-normal clearance',
+    (fit) => {
+      const g = slidingDovetailDerived(fit)
+      expect(g.grooveDepth).toBeCloseTo(1 + fit, 12)
+      expect(g.runningClearance).toBeCloseTo(fit * Math.sin((14 * Math.PI) / 180), 12)
+      expect(seamFit(p({ joint_type: 'sliding_dovetail', joint_fit: fit })).ok).toBe(true)
+    }
+  )
+
+  it('sliding dispatch changes foot topology while vertical arithmetic stays unchanged', () => {
+    const vertical = moduleFeetLayout(p())
+    const sliding = moduleFeetLayout(p({ joint_type: 'sliding_dovetail' }))
+    expect(vertical.sock).toBeCloseTo(4.9, 12)
+    // sliding sock clears the DEEPEST female cut: groove depth + floor relief
+    expect(sliding.sock).toBeCloseTo(1.25, 12)
+    expect(seamFit(p()).verdicts.map((v) => v.code)).toEqual([
+      'strain',
+      'dove_walls',
+      'clip_walls',
+      'seat',
+      'module_feet',
+      'feet_bumper',
+      'feet_socket',
+      'feet_crossbar',
+    ])
+  })
+
+  it('sliding verdict table: no flexures, so no strain row — retention is physics instead', () => {
+    const fit = seamFit(p({ joint_type: 'sliding_dovetail' }))
+    expect(fit.ok).toBe(true)
+    expect(fit.strainPct).toBe(0) // nothing bends in this topology
+    expect(fit.verdicts.map((v) => v.code)).toEqual([
+      'sliding_fit',
+      'backing_wall',
+      'z_lips',
+      'datum_lead',
+      'retention',
+      'module_feet',
+      'feet_bumper',
+      'feet_socket',
+      'feet_crossbar',
+    ])
+    const retention = fit.verdicts.find((v) => v.code === 'retention')
+    expect(retention?.ok).toBe(true)
+    expect(retention?.knob).toBe('none')
+    expect(retention?.message).toContain('self-holding')
+  })
+
+  it('sliding rejects non-coupon fit and insufficient backing wall', () => {
+    expect(failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.13 }))).toContain('sliding_fit')
+    expect(
+      failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.1, scale_factor: 0.8 }))
+    ).toContain('backing_wall')
+    // S=0.85: lips (6.8 − 5.273)/2 = 0.76 < 1.2 — the flared mouth is the widest cut
+    expect(
+      failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.1, scale_factor: 0.85 }))
+    ).toContain('z_lips')
+  })
 })
 
 // ---- preview dedup key ------------------------------------------------------------
@@ -308,14 +409,16 @@ describe('previewDedupKey', () => {
     for (const k of PART_ONLY_DEFINE_KEYS) expect(DEFINE_KEYS).toContain(k)
   })
 
-  it('joint_fit rides every render but never re-solves the assembled preview', () => {
+  it('joint_fit rides every render and re-solves topology-dependent preview geometry', () => {
     expect(definesFrom(p())).toContain('-Djoint_fit=0.1')
+    expect(definesFrom(p())).toContain('-Djoint_type="vertical_snap"')
     expect(definesFrom(p())).toContain('-Dseam_mode="mono"')
-    expect(previewDedupKey(p({ joint_fit: 0.25 }))).toBe(previewDedupKey(p()))
-    expect(previewDedupKey(p())).not.toContain('-Djoint_fit')
+    expect(previewDedupKey(p({ joint_fit: 0.25 }))).not.toBe(previewDedupKey(p()))
+    expect(previewDedupKey(p())).toContain('-Djoint_fit=0.1')
   })
 
-  it('seam_mode and ordinary geometry knobs DO move the key', () => {
+  it('joint topology, seam_mode, and ordinary geometry knobs DO move the key', () => {
+    expect(previewDedupKey(p({ joint_type: 'sliding_dovetail' }))).not.toBe(previewDedupKey(p()))
     expect(previewDedupKey(p({ seam_mode: 'modular' }))).not.toBe(previewDedupKey(p()))
     expect(previewDedupKey(p({ cols: 7 }))).not.toBe(previewDedupKey(p()))
   })
@@ -415,3 +518,4 @@ describe('analyzeShells on a welded modular chain', () => {
     expect(shellInfo.filter((s) => s.isFrame)).toHaveLength(1) // widest wins, the strand does not
   })
 })
+

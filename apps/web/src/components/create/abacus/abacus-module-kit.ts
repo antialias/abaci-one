@@ -276,10 +276,14 @@ export function buildModuleThreeMf(args: {
   })
 }
 
-/** Sweep-encoded kit name: the fit these modules were generated at rides the
- *  filename so a reprint after coupon tuning is attributable. */
+/** Stable human-readable topology identity used by outer deliverable names. */
+export const jointFilenameSlug = (p: Params): string =>
+  p.joint_type === 'sliding_dovetail' ? 'sliding-dovetail' : 'vertical-snap'
+
+/** Sweep-encoded kit name: topology and fit ride the filename so a reprint
+ *  after coupon tuning is attributable. */
 export const kitFilename = (p: Params): string =>
-  `abacus-modular-kit-${p.cols}col-x${p.scale_factor}-fit${p.joint_fit}.zip`
+  `abacus-modular-kit-${jointFilenameSlug(p)}-${p.cols}col-x${p.scale_factor}-fit${p.joint_fit}.zip`
 
 export interface ModuleKitFile {
   file: string
@@ -367,6 +371,7 @@ function kitReadme(p: Params, modules: readonly ModuleKitFile[]): string {
 ========================
 
 Design: ${p.cols} columns at scale x${p.scale_factor}, joint fit ${p.joint_fit} mm
+Joint mechanism: ${p.joint_type === 'sliding_dovetail' ? 'rear-entry graduated sliding dovetail' : 'vertical dovetails + snap clip'}
 Assembled size: ${d.frameW.toFixed(1)} x ${d.outerD.toFixed(1)} x ${(
     p.frame_h * p.scale_factor
   ).toFixed(1)} mm (2 end modules + ${p.cols - 2} mid columns)
@@ -379,22 +384,13 @@ Each .3mf is a complete per-module print job. Mid variants differ only in
 bead filament slots — print each one as many times as the x-count in its
 filename says.
 
-Assembly
---------
-Modules snap together left to right. The two dovetails (front and back
-edges) carry the pull-apart load, and the two-prong clip at the crossbar
-band locks the height with a click. All joint features are full-height
-vertical prisms, so any middle module drops straight in — or lifts straight
-out — of an assembled row. The dovetail bottom seat sets the seated height:
-press down until the click and the tops sit flush.
+Assembly and removal
+--------------------
+${assemblyNote(p)}
 
-Tuning joint fit
-----------------
-Before printing the whole kit, print the seam coupon pair from the studio
-and walk joint_fit in 0.05 mm steps: looser (+) if the click takes more
-than firm hand force, tighter (-) until seam wiggle dies. Then regenerate
-the kit at the fit the coupon settles on — the kit filename records the fit
-these modules were generated at.
+Coupon and joint fit
+--------------------
+${couponNote(p)}
 
 Feet
 ----
@@ -411,6 +407,47 @@ Frame text
 ----------
 ${frameTextNote(p)}
 `
+}
+
+function assemblyNote(p: Params): string {
+  if (p.joint_type === 'sliding_dovetail') {
+    return `Build the row from left to right. Each seam carries three graduated dovetail
+keys that enter through the REAR face: align the new module behind its
+neighbor, drop the keys into the rear entry mouth, and slide it forward. The
+keys run loose for almost the whole travel and only engage over roughly the
+last centimeter, so there is no full-length scraping. Push firmly until the
+module stops against the blind front seat and the seam shoulders close — the
+tapered seat is self-holding, like a lightly set Morse taper. There is no
+clip and nothing to click.
+
+To remove a module, grip it and give it a firm rearward tug to break the
+taper, then slide it out the back. A middle module cannot lift straight out;
+unzip the row from either end until the module is exposed. Do not pry the
+dovetail apart.`
+  }
+  return `Modules join left to right. The two vertical dovetails (front and back
+edges) carry the pull-apart load, and the two-prong clip at the crossbar
+band locks the height with a click. Any middle module drops straight in —
+or lifts straight out — of an assembled row. Press down until the clip
+clicks, the bottom seat is reached, and the tops sit flush.`
+}
+
+function couponNote(p: Params): string {
+  if (p.joint_type === 'sliding_dovetail') {
+    return `Before printing the whole kit, print the bounded sliding-dovetail coupon
+plate from the studio. It contains mechanically representative 0.10, 0.11,
+and 0.12 mm compensation samples. Slide pairs together from the rear mouth:
+reject a sample if it binds before reaching the front stop or cannot be
+released with a firm rearward tug. Among the remainder, choose the
+loosest-running sample with no perceptible seated X/Z/rocking play, set
+joint fit to that value, and regenerate the kit. The outer filename records
+both the sliding-dovetail topology and selected fit.`
+  }
+  return `Before printing the whole kit, print the vertical-snap seam coupon pair
+from the studio and walk joint_fit in 0.05 mm steps: looser (+) if the click
+takes more than firm hand force, tighter (-) until seam wiggle dies. Then
+regenerate the kit at the fit the coupon settles on — the outer filename
+records both the vertical-snap topology and selected fit.`
 }
 
 /** The README's feet paragraph — one story per feet_mode. Printed studs ride

@@ -75,7 +75,7 @@ const modularParts = (): ModuleExportParts => ({
 
 const fakeKit = (): ModuleKit => ({
   bytes: new Uint8Array([0x50, 0x4b]),
-  filename: 'abacus-modular-kit-13col-x1-fit0.1.zip',
+  filename: 'abacus-modular-kit-vertical-snap-13col-x1-fit0.1.zip',
   modules: [],
 })
 
@@ -163,6 +163,14 @@ describe('ModularSeamPanel', () => {
     expect((screen.getByText('⬇ Module print kit (.zip)') as HTMLButtonElement).disabled).toBe(true)
   })
 
+  it('keeps the feet-free coupon available when only module-foot checks fail', () => {
+    studio({ seam_mode: 'modular', feet_mode: 'adhesive', feet_w: 9.5 })
+    open()
+    expect(screen.getByText(/stick-on bumper doesn’t fit/)).toBeInTheDocument()
+    expect((screen.getByText('⬇ Seam coupon (STL)') as HTMLButtonElement).disabled).toBe(false)
+    expect((screen.getByText('⬇ Module print kit (.zip)') as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it('the kit needs modular mode; the coupon does not', () => {
     open() // defaults: mono, everything passing
     expect((screen.getByText('⬇ Seam coupon (STL)') as HTMLButtonElement).disabled).toBe(false)
@@ -187,8 +195,34 @@ describe('ModularSeamPanel', () => {
     await waitFor(() => expect(downloads).toHaveLength(1))
     expect(requestExportPass).toHaveBeenCalledWith({ only: 'seam_coupon' })
     expect(downloads[0]).toBe(
-      `abacus-seam-coupon-fit${defaultParams.joint_fit}-x${defaultParams.scale_factor}.stl`
+      `abacus-seam-coupon-vertical-snap-fit${defaultParams.joint_fit}-x${defaultParams.scale_factor}.stl`
     )
+  })
+
+  it('selects the joint topology and shows sliding-specific controls and guidance', () => {
+    studio({ seam_mode: 'modular', joint_type: 'sliding_dovetail', joint_fit: 0.11 })
+    const { container } = open()
+    const select = container.querySelector('[data-action="select-modular-joint-type"]')
+    expect(select).toHaveValue('sliding_dovetail')
+    expect(
+      container.querySelector('[data-element="modular-joint-explanation"]')?.textContent
+    ).toContain('rear entry mouth')
+    expect(screen.getByText(/bounded plate contains 0\.10, 0\.11, and 0\.12/)).toBeInTheDocument()
+    // no flexures in this topology: the ok line reports self-holding taper, not strain %
+    const ok = container.querySelector('[data-element="modular-seam-verdict-ok"]')
+    expect(ok?.textContent).toContain('self-holding')
+    expect(ok?.textContent).not.toMatch(/strain/)
+    fireEvent.change(select!, { target: { value: 'vertical_snap' } })
+    expect(set).toHaveBeenCalledWith('joint_type', 'vertical_snap')
+  })
+
+  it('sliding coupon filename carries the stable joint slug', async () => {
+    requestExportPass.mockResolvedValue(new ArrayBuffer(84))
+    studio({ joint_type: 'sliding_dovetail', joint_fit: 0.11 })
+    open()
+    fireEvent.click(screen.getByText('⬇ Seam coupon (STL)'))
+    await waitFor(() => expect(downloads).toHaveLength(1))
+    expect(downloads[0]).toBe('abacus-seam-coupon-sliding-dovetail-fit0.11-x1.stl')
   })
 
   it('kit: snapshot bundle → buildModuleKit with the live map and spool names', async () => {
