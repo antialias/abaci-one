@@ -756,11 +756,23 @@ function weldShellBoxes(positions: ArrayLike<number>): { ts: Int32Array; boxes: 
   return { ts, boxes }
 }
 
+/** The Studio's "take it apart" gap — mm of +X per seam in the exploded modular
+ *  preview. View state only: it rides the render as `-Dexplode` and this
+ *  classifier's third argument, never Params, so snapshots, content hashes and
+ *  every export stay seated. */
+export const EXPLODE_GAP = 12
+
 // union-find the STL's triangles into connected shells (frame + free beads), then
 // map each bead shell's centroid back to its (column, heaven/earth) cell with the
 // same layout the .scad uses. Frame = the one shell far wider than a column pitch.
 // `positions` is the flat triangle-soup position array (9 floats per triangle).
-export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAnalysis {
+//
+// `explode` mirrors the scad's view knob: module i (carrying column i) slides
+// +i·explode, so a seated chain that welds into ONE frame shell becomes cols
+// separate slabs. Exploded classification flips two rules and only those:
+// frame = ANY shell spanning the full outer depth (each module qualifies; a
+// bead never does), and the bead column pitch widens to sCp + explode.
+export function analyzeShells(positions: ArrayLike<number>, p: Params, explode = 0): ShellAnalysis {
   const { ts, boxes } = weldShellBoxes(positions)
 
   // border offset: the bead field sits at (border_w, border_w) inside the outer rect
@@ -769,21 +781,25 @@ export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAna
   const s_cp = d.sCp
   const s_hy = p.border_w * p.scale_factor + d.sHy
   const s_ep = d.sEp
+  const exploded = explode > 0 && isModular(p)
   let frameSi = -1
   let frameSpan = 2 * s_cp // a shell must beat >1 column pitch to be the frame
-  for (let si = 0; si < boxes.length; si++) {
-    const sp = boxes[si].xmax - boxes[si].xmin
-    if (sp > frameSpan) {
-      frameSpan = sp
-      frameSi = si
+  if (!exploded)
+    for (let si = 0; si < boxes.length; si++) {
+      const sp = boxes[si].xmax - boxes[si].xmin
+      if (sp > frameSpan) {
+        frameSpan = sp
+        frameSi = si
+      }
     }
-  }
 
   const shellInfo = boxes.map((b, si): ShellInfo => {
-    if (si === frameSi) return { isFrame: true, i: 0, isHeaven: false }
+    if (exploded ? b.ymax - b.ymin >= d.outerD - 1 : si === frameSi)
+      return { isFrame: true, i: 0, isHeaven: false }
     const cx = (b.xmin + b.xmax) / 2
     const cy = (b.ymin + b.ymax) / 2
-    const i = Math.max(0, Math.min(p.cols - 1, Math.round((cx - s_em) / s_cp)))
+    const pitch = s_cp + (exploded ? explode : 0)
+    const i = Math.max(0, Math.min(p.cols - 1, Math.round((cx - s_em) / pitch)))
     return { isFrame: false, i, isHeaven: Math.abs(cy - s_hy) < s_ep * 0.5 }
   })
   return { triShell: ts, shellInfo }

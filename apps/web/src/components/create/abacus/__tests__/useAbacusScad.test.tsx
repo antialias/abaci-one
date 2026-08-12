@@ -60,6 +60,7 @@ const modular: Params = { ...mono, seam_mode: 'modular' }
 const sideMono: Params = { ...blank, edge_left: 'HI' }
 const sideModular: Params = { ...sideMono, seam_mode: 'modular' }
 
+const mainWorker = () => FakeWorker.instances[0]
 const plugWorker = () => FakeWorker.instances[1]
 
 async function mount() {
@@ -153,5 +154,69 @@ describe('useAbacusScad plug pump', () => {
     const stl = new ArrayBuffer(84)
     plugWorker().emit({ id: plugWorker().posted[1].id, ok: true, stl })
     expect(onPlug).toHaveBeenLastCalledWith(stl)
+  })
+})
+
+// The "take it apart" toggle: explode is VIEW state threaded through render(),
+// never a Param — it must ride the main render as -Dexplode, participate in the
+// main dedup key (seated↔exploded is a real geometry change), and gate the plug
+// pass off (text_plugs renders at SEATED positions; over a taken-apart chain
+// the overlay would drift by i·explode per module — the CP8 stale-overlay
+// family again).
+describe('useAbacusScad explode (take-it-apart view)', () => {
+  it('rides the main render as -Dexplode — and only when nonzero', async () => {
+    const { result } = await mount()
+    result.current.render(modular)
+    expect(mainWorker().posted).toHaveLength(1)
+    expect(mainWorker().posted[0].defines.join(' ')).not.toContain('-Dexplode')
+
+    mainWorker().emit({ id: mainWorker().posted[0].id, ok: true, stl: new ArrayBuffer(84), ms: 1 })
+    result.current.render(modular, 12)
+    expect(mainWorker().posted).toHaveLength(2)
+    // exploded defines = the exact seated defines + the one view knob
+    expect(mainWorker().posted[1].defines).toEqual([
+      ...mainWorker().posted[0].defines,
+      '-Dexplode=12',
+    ])
+  })
+
+  it('joins the dedup key: exploded repeat no-ops, seated↔exploded always re-renders', async () => {
+    const { result } = await mount()
+    result.current.render(modular)
+    mainWorker().emit({ id: mainWorker().posted[0].id, ok: true, stl: new ArrayBuffer(84), ms: 1 })
+
+    result.current.render(modular, 12)
+    mainWorker().emit({ id: mainWorker().posted[1].id, ok: true, stl: new ArrayBuffer(84), ms: 1 })
+    result.current.render(modular, 12) // same exploded key — must not re-post
+    expect(mainWorker().posted).toHaveLength(2)
+
+    result.current.render(modular) // back together: seated key differs from exploded
+    expect(mainWorker().posted).toHaveLength(3)
+    expect(mainWorker().posted[2].defines).toEqual(mainWorker().posted[0].defines)
+  })
+
+  it('clears + orphans the plug pass — surviving side tokens do not keep it alive', async () => {
+    const { result, onPlug } = await mount()
+    result.current.render(sideModular) // side tokens: plug pass in flight
+    expect(plugWorker().posted).toHaveLength(1)
+
+    result.current.render(sideModular, 12)
+    expect(onPlug).toHaveBeenLastCalledWith(null)
+    // the seated plug render completes AFTER the toggle — dropped, not drawn
+    plugWorker().emit({ id: plugWorker().posted[0].id, ok: true, stl: new ArrayBuffer(84) })
+    expect(onPlug.mock.calls.every(([v]) => v === null)).toBe(true)
+    expect(plugWorker().posted).toHaveLength(1) // and no exploded plug render either
+  })
+
+  it('putting it back together re-renders the plug it cleared', async () => {
+    const { result, onPlug } = await mount()
+    result.current.render(sideModular)
+    plugWorker().emit({ id: plugWorker().posted[0].id, ok: true, stl: new ArrayBuffer(84) })
+
+    result.current.render(sideModular, 12)
+    expect(onPlug).toHaveBeenLastCalledWith(null)
+
+    result.current.render(sideModular) // reassembled: the clear wiped drawnKey
+    expect(plugWorker().posted).toHaveLength(2)
   })
 })

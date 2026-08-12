@@ -184,6 +184,12 @@ pair_dy = 0;           // module_pair harness knob: +Y insertion offset of the
                        // insertion path never intersects solids. Not a Studio
                        // knob and never set by the exporter.
 
+explode = 0;           // "take it apart" VIEW knob: +X gap per seam in the
+                       // assembled modular preview ONLY (module i slides by
+                       // i·explode, beads riding). View state, not a design
+                       // param — never in snapshots and never sent by the
+                       // export/kit paths, so every deliverable stays seated.
+
 /* ===== myabacus style (driven by abaci.one AbacusDisplayConfig) ===== */
 color_scheme  = "place-value";  // monochrome | place-value | heaven-earth | alternating
 color_palette = "default";      // default | colorblind | mnemonic | grayscale | nature
@@ -1425,9 +1431,14 @@ else if (only == "module_pair")      { translate([0, pair_dy, 0]) module_mid();
    is untouched — mono renders stay byte-identical, which the fingerprint
    harness pins after every scad change. */
 else if (seam_mode == "modular") {
+  // explode (view knob, 0 in every export): module i slides +i·explode so the
+  // Studio's "take it apart" toggle can show the joint faces. Column i rides
+  // module i, so the viewer's exploded shell classifier maps beads back with
+  // pitch (sc_w + explode)·S-free arithmetic — keep the two in step.
   module_end(true);
-  for (i = [1 : cols - 2]) translate([mod_we + (i - 1) * sc_w, 0, 0]) module_mid();
-  translate([mod_we + (cols - 2) * sc_w, 0, 0]) module_end(false);
+  for (i = [1 : cols - 2])
+    translate([mod_we + (i - 1) * sc_w + i * explode, 0, 0]) module_mid();
+  translate([mod_we + (cols - 2) * sc_w + (cols - 1) * explode, 0, 0]) module_end(false);
 }
 else {
   if (show_frame) {

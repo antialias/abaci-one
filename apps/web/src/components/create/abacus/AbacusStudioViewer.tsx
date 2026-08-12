@@ -25,6 +25,7 @@ import { useAbacusStudio } from './AbacusStudioContext'
 import {
   analyzeShells,
   COLOR_PALETTES,
+  EXPLODE_GAP,
   emphasisCaption,
   FEET_ROLE_KEY,
   feetEffective,
@@ -108,6 +109,16 @@ export function AbacusStudioViewer() {
 
   const [status, setStatus] = useState<StatusUpdate>({ text: 'booting…' })
   const [meta, setMeta] = useState<{ ms?: number; tris?: number }>({})
+  // "take it apart" toggle: pure VIEW state, never a Param — explode rides the
+  // render call (and the shell classifier) but stays out of snapshots, content
+  // hashes and every export. Auto-collapses to 0 whenever the design isn't
+  // modular, so leaving modular mode reassembles without clearing the toggle.
+  const [exploded, setExploded] = useState(false)
+  const explodeMm = exploded && isModular(params) ? EXPLODE_GAP : 0
+  // mirrored for the mount-once three.js closures (recenter/swapMesh), same
+  // pattern as paramsRef above.
+  const explodeRef = useRef(0)
+  explodeRef.current = explodeMm
   const mountRef = useRef<HTMLDivElement | null>(null)
   const drawRef = useRef<DrawApi | null>(null)
 
@@ -221,8 +232,14 @@ export function AbacusStudioViewer() {
     // inset text ghosts along with its beads instead of floating solid over them.
     let xrayOn = false
 
+    // exploded width: each of the cols-1 seams opens by explodeRef mm in +X, so
+    // the taken-apart chain recenters on its true extent (0 when seated).
     const recenter = () =>
-      centered.position.set(-frameW(paramsRef.current) / 2, -outerD(paramsRef.current) / 2, 0)
+      centered.position.set(
+        -(frameW(paramsRef.current) + (paramsRef.current.cols - 1) * explodeRef.current) / 2,
+        -outerD(paramsRef.current) / 2,
+        0
+      )
     recenter()
 
     function recolor() {
@@ -305,7 +322,11 @@ export function AbacusStudioViewer() {
         renderMesh = new THREE.Mesh(geo, renderMat)
         centered.add(renderMesh)
       }
-      const a = analyzeShells(geo.attributes.position.array as ArrayLike<number>, paramsRef.current)
+      const a = analyzeShells(
+        geo.attributes.position.array as ArrayLike<number>,
+        paramsRef.current,
+        explodeRef.current
+      )
       triShell = a.triShell
       shellInfo = a.shellInfo
       recolor()
@@ -714,10 +735,13 @@ export function AbacusStudioViewer() {
   }, [])
 
   // ---- react to param edits: cheap redraw + (deduped) WASM re-render --------
+  // explodeMm rides along: toggling "take it apart" re-renders with -Dexplode
+  // (mainKeyOf keys on it, so seated↔exploded never dedupes away) and recenters
+  // on the wider extent immediately.
   useEffect(() => {
     drawRef.current?.applyParams()
-    scad.render(params)
-  }, [params, scad])
+    scad.render(params, explodeMm)
+  }, [params, scad, explodeMm])
 
   // editing the filament mapping (a pin, or new spools) is geometry-free: the
   // default filament projection changed, so recolor without a WASM re-render.
@@ -881,6 +905,41 @@ export function AbacusStudioViewer() {
       >
         Print preview · hover a swatch for your design
       </div>
+
+      {/* "take it apart" toggle (modular mode only): slides the modules apart in
+          the hero so the joint faces are inspectable without downloading an STL.
+          View-only — exports, snapshots and the kit always stay seated. */}
+      {isModular(params) && (
+        <button
+          type="button"
+          data-element="abacus-studio-explode-toggle"
+          data-action="toggle-explode"
+          aria-pressed={exploded}
+          onClick={() => setExploded((v) => !v)}
+          style={{
+            position: 'absolute',
+            top: 12,
+            left: 12,
+            padding: '5px 12px',
+            borderRadius: 999,
+            border: exploded
+              ? '1px solid rgba(103,232,249,0.5)'
+              : '1px solid rgba(148,163,184,0.18)',
+            background: exploded ? 'rgba(8,22,30,0.85)' : 'rgba(17,24,39,0.7)',
+            color: exploded ? '#e6faff' : 'rgba(209,213,219,0.95)',
+            font: '12px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif',
+            fontWeight: 600,
+            letterSpacing: 0.2,
+            cursor: 'pointer',
+            backdropFilter: 'blur(6px)',
+            boxShadow: exploded ? '0 2px 14px rgba(6,182,212,0.22)' : 'none',
+            transition: 'color 120ms, background 120ms, border-color 120ms, box-shadow 120ms',
+            zIndex: 2,
+          }}
+        >
+          {exploded ? 'Put it back together' : 'Take it apart'}
+        </button>
+      )}
 
       {/* status HUD */}
       <div

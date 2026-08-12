@@ -10,6 +10,7 @@ import {
   defaultParams,
   definesFrom,
   derived,
+  EXPLODE_GAP,
   feetEffective,
   isModular,
   moduleFeetLayout,
@@ -519,3 +520,61 @@ describe('analyzeShells on a welded modular chain', () => {
   })
 })
 
+// ---- the exploded "take it apart" view --------------------------------------
+// With explode > 0 every module is its own shell, so the widest-shell heuristic
+// dies: the exploded classifier calls ANY shell spanning the full frame depth in
+// Y a frame (module slabs span exactly outerD; beads never come close), and the
+// bead column pitch widens to sCp + explode because column i rides module i.
+// Explode is view state, never a Param — the 2-arg calls above double as the
+// e=0 regression control.
+
+describe('analyzeShells on the exploded ("take it apart") chain', () => {
+  const mp = p({ seam_mode: 'modular' })
+  const d = derived(mp)
+  const sEm = mp.border_w * mp.scale_factor + d.sEm
+  const sHy = mp.border_w * mp.scale_factor + d.sHy
+  const e = EXPLODE_GAP
+  // exploded module slab: full frame depth in Y, unlike the shallow rect() strips
+  const slab = (x0: number, x1: number): number[] => rect(x0, x1, 0, d.outerD)
+
+  it('separated modules all classify as frame by Y span; beads map by the widened pitch', () => {
+    const soup = new Float32Array([
+      ...slab(0, d.modWe), // left end (carries column 0)
+      ...slab(d.modWe + e, d.modWe + d.scW + e), // mid 1, slid by 1·e
+      ...slab(d.modWe + d.scW + 2 * e, d.modWe + 2 * d.scW + 2 * e), // mid 2, slid by 2·e
+      ...beadTri(sEm, sHy), // column 0, heaven row — seated position
+      ...beadTri(sEm + 2 * (d.sCp + e), sHy - 3 * d.sEp), // column 2 rides mid 2
+    ])
+    const { shellInfo } = analyzeShells(soup, mp, e)
+    expect(shellInfo).toHaveLength(5)
+    expect(shellInfo.filter((s) => s.isFrame)).toHaveLength(3)
+    const beads = shellInfo.filter((s) => !s.isFrame)
+    expect(beads.map((b) => [b.i, b.isHeaven])).toEqual([
+      [0, true],
+      [2, false],
+    ])
+  })
+
+  it('explode=0 takes exactly the seated path — same result object as the 2-arg call', () => {
+    const soup = new Float32Array([
+      ...rect(0, d.modWe),
+      ...rect(d.modWe, d.modWe + d.scW),
+      ...beadTri(sEm, sHy),
+    ])
+    expect(analyzeShells(soup, mp, 0)).toEqual(analyzeShells(soup, mp))
+  })
+
+  it('mono designs never explode: nonzero explode keeps the widest-shell rule and pitch', () => {
+    const mono = p()
+    const dm = derived(mono)
+    const sEmM = mono.border_w * mono.scale_factor + dm.sEm
+    const sHyM = mono.border_w * mono.scale_factor + dm.sHy
+    const soup = new Float32Array([
+      ...rect(0, 100), // wide shallow strip — only the widest-shell rule calls this a frame
+      ...beadTri(sEmM + dm.sCp, sHyM),
+    ])
+    const { shellInfo } = analyzeShells(soup, mono, e)
+    expect(shellInfo.map((s) => s.isFrame)).toEqual([true, false])
+    expect(shellInfo[1].i).toBe(1) // pitch NOT widened — explode is modular-only
+  })
+})
