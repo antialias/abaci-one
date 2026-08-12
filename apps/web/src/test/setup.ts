@@ -219,19 +219,39 @@ vi.mock('@soroban/abacus-react', () => ({
   calculateAbacusCrop: vi.fn(() => ({})),
 }))
 
-// Prevent jsdom errors when rendering images. Setting any <img> src makes
-// jsdom decode it through canvas (`new Canvas.Image()`), which canvas-mock
-// doesn't provide — it throws "Canvas.Image is not a constructor". This fires
-// for every src scheme (data: URIs AND endpoint URLs like /api/.../frame.jpg),
-// so intercept all of them: stash the value on the element so `.src` reads
-// back, but skip jsdom's image loading. Patches the prototype before jsdom
-// uses it; guarded for the node environment where HTMLImageElement is absent.
+// Prevent jsdom errors when rendering images. jsdom re-runs "update the image
+// data" — which decodes through canvas (`new Canvas.Image()`), something
+// canvas-mock doesn't provide, so it throws "Canvas.Image is not a
+// constructor" — whenever one of the attributes that IDENTIFIES the image
+// changes. Per spec that's `src`, `srcset`, `sizes`, `crossorigin` and the
+// intrinsic-size attributes `width`/`height`. All of them show up in practice:
+// `src` for data: URIs and endpoint URLs like /api/.../frame.jpg, and the rest
+// from `next/image`, which emits a full responsive srcset.
+//
+// Intercept them: stash the value as a property so `img.src`, `img.srcset`,
+// `img.width` etc. still read back, but skip jsdom's image loading. Note the
+// trade-off — `getAttribute('width')` reads null, so assert against the
+// property, not the attribute. Patches the prototype before jsdom uses it;
+// guarded for the node environment where HTMLImageElement is absent.
 if (typeof HTMLImageElement !== 'undefined') {
+  // Attribute name (lowercased) → the DOM IDL property to stash it under.
+  // Matching is case-insensitive because React 18 calls setAttribute with the
+  // JSX casing for some of these — it passes 'srcSet', not 'srcset'.
+  const IMAGE_DATA_ATTRS: Record<string, string> = {
+    src: 'src',
+    srcset: 'srcset',
+    sizes: 'sizes',
+    crossorigin: 'crossOrigin',
+    width: 'width',
+    height: 'height',
+  }
+  const NUMERIC_ATTRS = new Set(['width', 'height'])
   const originalSetAttribute = HTMLImageElement.prototype.setAttribute
   HTMLImageElement.prototype.setAttribute = function (name: string, value: string) {
-    if (name === 'src') {
-      Object.defineProperty(this, 'src', {
-        value,
+    const prop = IMAGE_DATA_ATTRS[name.toLowerCase()]
+    if (prop) {
+      Object.defineProperty(this, prop, {
+        value: NUMERIC_ATTRS.has(prop) ? Number(value) : value,
         writable: true,
         configurable: true,
       })

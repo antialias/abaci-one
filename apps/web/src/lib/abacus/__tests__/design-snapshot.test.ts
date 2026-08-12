@@ -55,6 +55,31 @@ describe('parseDesignSnapshot', () => {
     expect('evil_key' in parsed!.params).toBe(false)
   })
 
+  it('normalizes absent and unknown joint topology to vertical while preserving a valid sliding choice', () => {
+    const absent = valid()
+    delete (absent.params as Partial<typeof defaultParams>).joint_type
+    expect(parseDesignSnapshot(absent)!.params.joint_type).toBe('vertical_snap')
+    expect(
+      parseDesignSnapshot({ ...valid(), params: { ...valid().params, joint_type: 'magnetic' } })!
+        .params.joint_type
+    ).toBe('vertical_snap')
+    expect(
+      parseDesignSnapshot({
+        ...valid(),
+        params: { ...valid().params, joint_type: 'sliding_dovetail' },
+      })!.params.joint_type
+    ).toBe('sliding_dovetail')
+  })
+
+  it('normalizes a saved sliding topology to a calibrated fit', () => {
+    const parsed = parseDesignSnapshot({
+      ...valid(),
+      params: { ...valid().params, joint_type: 'sliding_dovetail', joint_fit: 0.2 },
+    })
+    expect(parsed!.params.joint_type).toBe('sliding_dovetail')
+    expect(parsed!.params.joint_fit).toBe(0.1)
+  })
+
   it('clamps cols into the studio range', () => {
     const at = (cols: number) =>
       parseDesignSnapshot({ v: 1, params: { cols }, overrides: {}, profileId: '' })!.params.cols
@@ -101,10 +126,15 @@ describe('canonicalDesignSnapshot', () => {
     expect(canonicalDesignSnapshot(shuffled)).toBe(canonicalDesignSnapshot(a))
   })
 
-  it('differs when any restorable field differs', () => {
+  it('differs when any restorable field or joint topology differs', () => {
     const base = parseDesignSnapshot(valid())!
     const edited = parseDesignSnapshot({ ...valid(), overrides: {} })!
+    const sliding = parseDesignSnapshot({
+      ...valid(),
+      params: { ...valid().params, joint_type: 'sliding_dovetail' },
+    })!
     expect(canonicalDesignSnapshot(edited)).not.toBe(canonicalDesignSnapshot(base))
+    expect(canonicalDesignSnapshot(sliding)).not.toBe(canonicalDesignSnapshot(base))
   })
 })
 

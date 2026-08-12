@@ -23,6 +23,7 @@ import {
   type AidKey,
   clampCols,
   defaultParams,
+  JOINT_TYPES,
   LEGACY_PRESET_AID,
   type Params,
   TEXT_SLOTS,
@@ -90,6 +91,15 @@ function parseParams(input: unknown): Params | null {
     }
   }
   out.cols = clampCols(out.cols)
+  // String-shape validation is insufficient for enums: an unknown topology must
+  // preserve the legacy mechanism rather than reaching SCAD as an invalid value.
+  if (!JOINT_TYPES.includes(out.joint_type)) out.joint_type = 'vertical_snap'
+  if (
+    out.joint_type === 'sliding_dovetail' &&
+    ![0.1, 0.11, 0.12].some((fit) => Math.abs(fit - out.joint_fit) < 1e-9)
+  ) {
+    out.joint_fit = 0.1
+  }
   // an unrecognized aid intent would render as a blank <select>; 'auto' is what
   // it would have behaved as anyway (placeAids treats anything unnamed as auto)
   for (const aid of AIDS) if (!AID_OPTS.includes(out[aid.key])) out[aid.key] = 'auto'

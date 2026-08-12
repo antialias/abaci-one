@@ -37,8 +37,11 @@ const FONT_URLS = ['/fonts/DejaVuSans-Bold.ttf', '/fonts/NotoEmoji-Regular.ttf']
 
 // Keyed on previewDedupKey, not the full define list: part-pass-only defines
 // (joint_fit) ride every render but provably cannot change the assembled
-// preview, so dragging them must not force a re-solve.
-const mainKeyOf = (p: Params): string => `${previewDedupKey(p)}\u0002${p.fn}`
+// preview, so dragging them must not force a re-solve. The explode view knob
+// (Studio "take it apart", never a Param) joins the key only when nonzero so
+// the seated case keys exactly as it always did.
+const mainKeyOf = (p: Params, explode: number): string =>
+  `${previewDedupKey(p)}\u0002${p.fn}${explode > 0 ? `\u0002explode=${explode}` : ''}`
 
 export type MainResult = { stl: ArrayBuffer; ms: number; id: number }
 export type StatusUpdate = { text: string; error?: boolean }
@@ -57,8 +60,10 @@ export type UseAbacusScadArgs = {
 
 export type UseAbacusScad = {
   /** Request a render of `params`; latest-wins, and a no-op if the scad inputs
-   *  are unchanged (color-only edits don't re-render). */
-  render: (params: Params) => void
+   *  are unchanged (color-only edits don't re-render). `explode` is the Studio's
+   *  "take it apart" VIEW state (mm of +X per modular seam) — deliberately not a
+   *  Param so it can never leak into snapshots, content hashes, or exports. */
+  render: (params: Params, explode?: number) => void
   /** Fire a one-shot high-quality ($fn=64 by default) render. `pass` selects a
    *  single `only=` slice instead of the whole abacus: either a 3MF filament
    *  body (marker plugs, feet, one text-inlay color group) or an inspection part
@@ -69,6 +74,7 @@ export type UseAbacusScad = {
 
 type Pump = {
   latest: Params | null
+  latestExplode: number // main pump only; the plug pass never renders exploded
   latestKey: string
   drawnKey: string
   rendering: boolean
@@ -77,6 +83,7 @@ type Pump = {
 }
 const newPump = (): Pump => ({
   latest: null,
+  latestExplode: 0,
   latestKey: '',
   drawnKey: '',
   rendering: false,
@@ -131,7 +138,12 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
         id,
         entry: '/abacus.scad',
         files: renderFiles(),
-        defines: definesFrom(m.latest),
+        // -Dexplode only when nonzero: the scad default is 0, and the zero case
+        // must post byte-identical defines to what it always posted.
+        defines: [
+          ...definesFrom(m.latest),
+          ...(m.latestExplode > 0 ? [`-Dexplode=${m.latestExplode}`] : []),
+        ],
         fn: m.latest.fn,
       })
     }
@@ -237,10 +249,11 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
     // empty; biome's useExhaustiveDependencies is off for this repo)
   }, [])
 
-  const render = (params: Params): void => {
+  const render = (params: Params, explode = 0): void => {
     const st = stateRef.current
-    const key = mainKeyOf(params)
+    const key = mainKeyOf(params, explode)
     st.main.latest = params
+    st.main.latestExplode = explode
     st.main.latestKey = key
     st.pumpMain?.()
     // The plug pass follows anyTokens, which is modular-aware: on snap-together
@@ -251,7 +264,13 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
     // whose words all sit on crossing slots skips the pass entirely, and the
     // else branch must clear + orphan, or a render still in flight repaints the
     // gated-out overlay after the flip (the CP8-aftercare race).
-    if (params.text_mode === 'inset' && anyTokens(params)) {
+    //
+    // Exploded view joins the gate: text_plugs renders at SEATED assembled
+    // positions, so over a taken-apart chain the overlay would drift by
+    // i·explode per module — the same stale-overlay family as the CP8 race.
+    // The pockets carved in each module still show; only the color overlay
+    // rests until the chain is put back together.
+    if (params.text_mode === 'inset' && anyTokens(params) && explode === 0) {
       st.plug.latest = params
       st.plug.latestKey = key
       st.pumpPlug?.()

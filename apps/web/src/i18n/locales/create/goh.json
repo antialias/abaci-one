@@ -1,8 +1,31 @@
 {
   "create": {
+    "crossLinks": {
+      "heading": "Mēr werkzoug ze scaffanne",
+      "subheading": "Andaru dinc thiu du hier scaffan maht"
+    },
     "hub": {
-      "pageTitle": "Thīna Lernawerkzūg Giskaffen",
-      "pageSubtitle": "Anamahhōn fleissachartun odo 3D drucchāri abacusmodellun ze firbezzirungu thīnēro lernunga",
+      "pageTitle": "Giskaffen Wat ze Uobenne",
+      "pageSubtitle": "Anamahhōn wāran abacum, drucchen uobunblat inti fleissachartun, odo fullen kalendarium mit calculin — iegilich werkzūg hier giskaffit wat man in hantum haben mag.",
+      "flagshipEyebrow": "Hier biginnan",
+      "moreHeading": "Mēr ze drucchenne",
+      "moreSubheading": "Andaru dinc thiu wirdig sint ze drucchenne",
+      "visionAbacus": {
+        "title": "Thīn Abacus",
+        "description": "Wentit thēn abacum thēn thu in scermu nuzzis in wāran — drucchi in 3D mit inbrungenen zeihanun, odo klebi zeihan an thīnan eiganan, thaz thiu camera in lesan megi.",
+        "feature1": "3D drucchāri, zeihan inbrungan",
+        "feature2": "Odo klebizeihan zi iegilichemo abacu",
+        "feature3": "Mit thīnero camera lebentī lesan",
+        "button": "Thīnan Abacum Intuon"
+      },
+      "worksheets": {
+        "title": "Uobunblat Giskaffari",
+        "description": "Giskaffen uobunblat zi zuosamanezellenne mit anamahhōntero swārī inti ubarfuorunga-uobungu.",
+        "feature1": "Anamahhōnti swārī-stiga",
+        "feature2": "Giwalt ubar ubarfuorunga-uobunga",
+        "feature3": "Drucchgareiti PDF giskaffunga",
+        "button": "Uobunblat Giskaffen"
+      },
       "flashcards": {
         "title": "Fleissachartun Giskaffari",
         "description": "Anamahhōn fleissachartun mit abacussihti. Folkomano ze lernenne inti lerenne zalakennunga inti rehnunga.",
@@ -11,14 +34,6 @@
         "feature3": "Drucchgareiti PDF giskaffunga",
         "button": "Fleissachartun Giskaffen"
       },
-      "abacus": {
-        "title": "3D Abacus Giskaffari",
-        "description": "Anamahhōn inti hladan 3D drucchāri abacusmodellun. Giweli thīna grōzi, spaltunga inti farawa fora folkomano lernawerkzūg.",
-        "feature1": "Gistellbāri grōzi inti spaltunga",
-        "feature2": "3MF farawaanamahhōn",
-        "feature3": "Libenti 3D forasihti",
-        "button": "3D Modellun Giskaffen"
-      },
       "calendar": {
         "title": "Abacuskalendarium",
         "description": "Giskaffen drucchāri kalendariun wār iegilich tag als abacus gizeignit wirdit. Folkomano ze lerenne zalaforesteldunga.",
@@ -26,46 +41,14 @@
         "feature2": "Managfalti papirgrōzi",
         "feature3": "Nuzzit thīnan abacusstil",
         "button": "Kalendarium Giskaffen"
-      }
-    },
-    "abacus": {
-      "navTitle": "3D Abacus Giskaffari",
-      "pageTitle": "Gianamahho Thīnan 3D Drucchāran Abacus",
-      "pageSubtitle": "Gistellōn thie parameterōn untanafora ze gianamahhōnne thīnan abacus, thanne giskaffo inti hlado thia datei fora 3D drucch.",
-      "customizationTitle": "Anamahhōnparameterōn",
-      "columns": {
-        "label": "Zala Spaltungo: {{count}}",
-        "help": "Allu zala spaltungo in abaco (1-13)"
       },
-      "scaleFactor": {
-        "label": "Skālefaktor: {{factor}}x",
-        "help": "Allugrōzimultiplikator (gihaltet aspektaferhāltnissa, grōziri wertē = grōziri dateigr ōzi)"
-      },
-      "widthMm": {
-        "label": "Breiti in mm (wāllīg)",
-        "placeholder": "Lāzzilosun fora skālefaktor ze nuzzenne",
-        "help": "Spezifizieri genawe breiti in millimeterun (ūbarskrībit skālefaktor)"
-      },
-      "format": {
-        "label": "Ūzgangaforma"
-      },
-      "colors": {
-        "title": "3MF Farawaanamahhōn",
-        "frame": "Rāmafarawa",
-        "heavenBead": "Himilesglobulifarawa",
-        "earthBead": "Erdusglobulifarawa",
-        "decoration": "Zieratafarawa"
-      },
-      "generate": {
-        "button": "Datei Giskaffen",
-        "generating": "Wirdit giskaffan..."
-      },
-      "download": "{{format}} Hladan",
-      "preview": {
-        "title": "Forasihti",
-        "liveDescription": "Libenti forasihti: Thiu forasihti wirdit automatisch girēniwit sō du parameterōn gistellōst (mit 1 secunda firziagu). Thiz zeignit thaz genawe gespegelti buohfalzentuurf thaz giskaffan wirdit.",
-        "note": "Nota: Forasihtigiskaffunga bidarfit OpenSCAD. Oba thu errorem gisihist, thiu forasihtikunst arbeitet nur in productione (Docker). Thiu hladukunst arbeitet noch immir wanne gistellit wirdit.",
-        "instructions": "Nuzzi thīna mūs ze rōtenne inti zōmenne thaz 3D modellun."
+      "musicFlashcards": {
+        "title": "Sangchartun",
+        "description": "Drucchāri chartun zi lesenne notun in hōhemo inti nidaremo sluzzile, mit fidula-ērista-stat gareitī.",
+        "feature1": "Hōhēr inti nidarēr sluzzil",
+        "feature2": "Fidula ērista stat gareitī",
+        "feature3": "Managfalti legari",
+        "button": "Sangchartun Giskaffen"
       }
     },
     "flashcards": {

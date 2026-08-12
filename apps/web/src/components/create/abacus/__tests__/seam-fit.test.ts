@@ -10,6 +10,7 @@ import {
   defaultParams,
   definesFrom,
   derived,
+  EXPLODE_GAP,
   feetEffective,
   isModular,
   moduleFeetLayout,
@@ -18,7 +19,10 @@ import {
   type Params,
   previewDedupKey,
   SEAM,
+  SLIDING_DOVETAIL,
+  SLIDING_FIT_VALUES,
   seamFit,
+  slidingDovetailDerived,
 } from '../abacus-model'
 
 // CP4 of the modular-columns epic (Gitea #30): the TS model grew a mirror of the
@@ -71,10 +75,64 @@ describe('SEAM constants mirror the scad', () => {
     expect(SEAM[ts]).toBe(knob(scad))
   })
 
-  it('scad defaults for the two new Params match defaultParams', () => {
-    const m = SCAD.match(/^seam_mode\s*=\s*"(\w+)"\s*;/m)
-    expect(m?.[1]).toBe(defaultParams.seam_mode)
+  it('scad defaults for the seam Params match defaultParams', () => {
+    const seam = SCAD.match(/^seam_mode\s*=\s*"(\w+)"\s*;/m)
+    const joint = SCAD.match(/^joint_type\s*=\s*"(\w+)"\s*;/m)
+    expect(seam?.[1]).toBe(defaultParams.seam_mode)
+    expect(joint?.[1]).toBe(defaultParams.joint_type)
     expect(knob('joint_fit')).toBe(defaultParams.joint_fit)
+  })
+
+  it('sliding constants mirror SCAD and preserve conventional profile arithmetic', () => {
+    const pins: [keyof typeof SLIDING_DOVETAIL, string][] = [
+      ['angleDeg', 'slide_angle'],
+      ['maleDepth', 'slide_depth'],
+      ['neck', 'slide_neck'],
+      ['step', 'slide_step'],
+      ['minBackingWall', 'slide_min_backing'],
+      ['minLip', 'slide_min_lip'],
+      ['keyLength', 'slide_key_l'],
+      ['funnel', 'slide_funnel'],
+      ['pinch', 'slide_pinch'],
+      ['pinchLength', 'slide_pinch_l'],
+      ['floorRelief', 'slide_relief'],
+      ['datumRelief', 'slide_datum_relief'],
+      ['seatClear', 'slide_seat_clear'],
+      ['mouthFlare', 'slide_mouth_flare'],
+      ['deepDepth', 'slide_deep_depth'],
+      ['deepFloor', 'slide_deep_floor'],
+      ['mouthLength', 'slide_mouth_l'],
+    ]
+    for (const [ts, scad] of pins) expect(SLIDING_DOVETAIL[ts]).toBe(knob(scad))
+    const g = slidingDovetailDerived(0.1)
+    // graduated rail family: neck ± step, heads = neck + 2·depth·tan14° (+0.498656)
+    expect(g.necks.s).toBeCloseTo(2.2, 12)
+    expect(g.necks.m).toBe(2.8)
+    expect(g.necks.l).toBeCloseTo(3.4, 12)
+    expect(g.head).toBeCloseTo(3.298656, 5)
+    expect(g.headL).toBeCloseTo(3.898656, 5)
+    // deepest SHALLOW female cut = depth + fit + floor relief = 1.25 at fit 0.10
+    expect(g.deepestCut).toBeCloseTo(1.25, 12)
+    // deep anchor pocket cut = deep depth + fit + floor relief = 3.75
+    expect(g.deepPocketCut).toBeCloseTo(3.75, 12)
+    // widest SHALLOW female Z opening = the large segment's relieved runway:
+    // 3.4 + 2·1.35·tan14° = 4.073186 (the deep mouth's Z-flare is lip-budget
+    // capped in the scad, so the runway is the honest z_lips driver)
+    expect(g.runwayOpening).toBeCloseTo(4.073186, 5)
+    // the large rail head passes its own relieved runway with room to spare
+    expect(g.runwayOpening).toBeGreaterThan(g.headL)
+    // deep anchor hook = 3.5·tan14° — exactly 1.75× the shallow TOTAL hook
+    // (2·depth·tan14°), the "one flank is the only hook" trade made explicit
+    expect(g.anchorHook).toBeCloseTo(0.872648, 5)
+    expect(g.anchorHook / (2 * SLIDING_DOVETAIL.maleDepth * Math.tan(g.angleRad))).toBeCloseTo(
+      1.75,
+      12
+    )
+    // any rail section passing a one-step-up station clears ≥ step/2 + fit·tan14° per side
+    expect(g.passClearance).toBeCloseTo(0.324933, 5)
+    // retention physics: 0.05/1.5 seat taper = 1.909° ≪ atan(µ 0.25) = 14.036°
+    expect(g.seatTaperDeg).toBeCloseTo(1.90915, 4)
+    expect(g.selfHoldLimitDeg).toBeCloseTo(14.03624, 4)
   })
 })
 
@@ -299,6 +357,75 @@ describe('seamFit', () => {
       expect(v.message.length).toBeGreaterThan(0)
     }
   })
+
+  it.each(SLIDING_FIT_VALUES)(
+    'sliding fit %.2f derives groove and flank-normal clearance',
+    (fit) => {
+      const g = slidingDovetailDerived(fit)
+      expect(g.grooveDepth).toBeCloseTo(1 + fit, 12)
+      expect(g.runningClearance).toBeCloseTo(fit * Math.sin((14 * Math.PI) / 180), 12)
+      expect(seamFit(p({ joint_type: 'sliding_dovetail', joint_fit: fit })).ok).toBe(true)
+    }
+  )
+
+  it('sliding dispatch changes foot topology while vertical arithmetic stays unchanged', () => {
+    const vertical = moduleFeetLayout(p())
+    const sliding = moduleFeetLayout(p({ joint_type: 'sliding_dovetail' }))
+    expect(vertical.sock).toBeCloseTo(4.9, 12)
+    // sliding sock clears the DEEP ANCHOR pocket (bottom-open through the
+    // underside along its rear span): deep depth + fit + floor relief
+    expect(sliding.sock).toBeCloseTo(3.75, 12)
+    expect(seamFit(p()).verdicts.map((v) => v.code)).toEqual([
+      'strain',
+      'dove_walls',
+      'clip_walls',
+      'seat',
+      'module_feet',
+      'feet_bumper',
+      'feet_socket',
+      'feet_crossbar',
+    ])
+  })
+
+  it('sliding verdict table: no flexures, so no strain row — retention is physics instead', () => {
+    const fit = seamFit(p({ joint_type: 'sliding_dovetail' }))
+    expect(fit.ok).toBe(true)
+    expect(fit.strainPct).toBe(0) // nothing bends in this topology
+    expect(fit.verdicts.map((v) => v.code)).toEqual([
+      'sliding_fit',
+      'backing_wall',
+      'z_lips',
+      'datum_lead',
+      'deep_backing',
+      'deep_lip',
+      'retention',
+      'module_feet',
+      'feet_bumper',
+      'feet_socket',
+      'feet_crossbar',
+    ])
+    const retention = fit.verdicts.find((v) => v.code === 'retention')
+    expect(retention?.ok).toBe(true)
+    expect(retention?.knob).toBe('none')
+    expect(retention?.message).toContain('self-holding')
+  })
+
+  it('sliding rejects non-coupon fit, thin backing and a squeezed anchor ceiling', () => {
+    expect(failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.13 }))).toContain('sliding_fit')
+    expect(
+      failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.1, scale_factor: 0.8 }))
+    ).toContain('backing_wall')
+    // S=0.85: the deep anchor's TIGHT ceiling is the first Z casualty —
+    // 6.8 − (3.4 + 1.7 + 3.89·tan14°) = 0.73 < 1.2 — while the shallow runway
+    // lips still clear ((6.8 − 4.073)/2 = 1.36)
+    const at85 = failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.1, scale_factor: 0.85 }))
+    expect(at85).toContain('deep_lip')
+    expect(at85).not.toContain('z_lips')
+    // S=0.8: now the runway lips go too ((6.4 − 4.073)/2 = 1.16 < 1.2)
+    expect(
+      failing(p({ joint_type: 'sliding_dovetail', joint_fit: 0.1, scale_factor: 0.8 }))
+    ).toContain('z_lips')
+  })
 })
 
 // ---- preview dedup key ------------------------------------------------------------
@@ -308,14 +435,16 @@ describe('previewDedupKey', () => {
     for (const k of PART_ONLY_DEFINE_KEYS) expect(DEFINE_KEYS).toContain(k)
   })
 
-  it('joint_fit rides every render but never re-solves the assembled preview', () => {
+  it('joint_fit rides every render and re-solves topology-dependent preview geometry', () => {
     expect(definesFrom(p())).toContain('-Djoint_fit=0.1')
+    expect(definesFrom(p())).toContain('-Djoint_type="vertical_snap"')
     expect(definesFrom(p())).toContain('-Dseam_mode="mono"')
-    expect(previewDedupKey(p({ joint_fit: 0.25 }))).toBe(previewDedupKey(p()))
-    expect(previewDedupKey(p())).not.toContain('-Djoint_fit')
+    expect(previewDedupKey(p({ joint_fit: 0.25 }))).not.toBe(previewDedupKey(p()))
+    expect(previewDedupKey(p())).toContain('-Djoint_fit=0.1')
   })
 
-  it('seam_mode and ordinary geometry knobs DO move the key', () => {
+  it('joint topology, seam_mode, and ordinary geometry knobs DO move the key', () => {
+    expect(previewDedupKey(p({ joint_type: 'sliding_dovetail' }))).not.toBe(previewDedupKey(p()))
     expect(previewDedupKey(p({ seam_mode: 'modular' }))).not.toBe(previewDedupKey(p()))
     expect(previewDedupKey(p({ cols: 7 }))).not.toBe(previewDedupKey(p()))
   })
@@ -413,5 +542,64 @@ describe('analyzeShells on a welded modular chain', () => {
     const { shellInfo } = analyzeShells(soup, mp)
     expect(shellInfo).toHaveLength(3) // welded pair + the stranded module + one bead
     expect(shellInfo.filter((s) => s.isFrame)).toHaveLength(1) // widest wins, the strand does not
+  })
+})
+
+// ---- the exploded "take it apart" view --------------------------------------
+// With explode > 0 every module is its own shell, so the widest-shell heuristic
+// dies: the exploded classifier calls ANY shell spanning the full frame depth in
+// Y a frame (module slabs span exactly outerD; beads never come close), and the
+// bead column pitch widens to sCp + explode because column i rides module i.
+// Explode is view state, never a Param — the 2-arg calls above double as the
+// e=0 regression control.
+
+describe('analyzeShells on the exploded ("take it apart") chain', () => {
+  const mp = p({ seam_mode: 'modular' })
+  const d = derived(mp)
+  const sEm = mp.border_w * mp.scale_factor + d.sEm
+  const sHy = mp.border_w * mp.scale_factor + d.sHy
+  const e = EXPLODE_GAP
+  // exploded module slab: full frame depth in Y, unlike the shallow rect() strips
+  const slab = (x0: number, x1: number): number[] => rect(x0, x1, 0, d.outerD)
+
+  it('separated modules all classify as frame by Y span; beads map by the widened pitch', () => {
+    const soup = new Float32Array([
+      ...slab(0, d.modWe), // left end (carries column 0)
+      ...slab(d.modWe + e, d.modWe + d.scW + e), // mid 1, slid by 1·e
+      ...slab(d.modWe + d.scW + 2 * e, d.modWe + 2 * d.scW + 2 * e), // mid 2, slid by 2·e
+      ...beadTri(sEm, sHy), // column 0, heaven row — seated position
+      ...beadTri(sEm + 2 * (d.sCp + e), sHy - 3 * d.sEp), // column 2 rides mid 2
+    ])
+    const { shellInfo } = analyzeShells(soup, mp, e)
+    expect(shellInfo).toHaveLength(5)
+    expect(shellInfo.filter((s) => s.isFrame)).toHaveLength(3)
+    const beads = shellInfo.filter((s) => !s.isFrame)
+    expect(beads.map((b) => [b.i, b.isHeaven])).toEqual([
+      [0, true],
+      [2, false],
+    ])
+  })
+
+  it('explode=0 takes exactly the seated path — same result object as the 2-arg call', () => {
+    const soup = new Float32Array([
+      ...rect(0, d.modWe),
+      ...rect(d.modWe, d.modWe + d.scW),
+      ...beadTri(sEm, sHy),
+    ])
+    expect(analyzeShells(soup, mp, 0)).toEqual(analyzeShells(soup, mp))
+  })
+
+  it('mono designs never explode: nonzero explode keeps the widest-shell rule and pitch', () => {
+    const mono = p()
+    const dm = derived(mono)
+    const sEmM = mono.border_w * mono.scale_factor + dm.sEm
+    const sHyM = mono.border_w * mono.scale_factor + dm.sHy
+    const soup = new Float32Array([
+      ...rect(0, 100), // wide shallow strip — only the widest-shell rule calls this a frame
+      ...beadTri(sEmM + dm.sCp, sHyM),
+    ])
+    const { shellInfo } = analyzeShells(soup, mono, e)
+    expect(shellInfo.map((s) => s.isFrame)).toEqual([true, false])
+    expect(shellInfo[1].i).toBe(1) // pitch NOT widened — explode is modular-only
   })
 })

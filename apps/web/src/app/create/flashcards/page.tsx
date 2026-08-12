@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { ConfigurationFormWithoutGenerate } from '@/components/ConfigurationFormWithoutGenerate'
 import { GenerationProgress } from '@/components/GenerationProgress'
 import { FlashcardPreview } from '@/components/FlashcardPreview'
+import { MoreCreateTools } from '@/components/create/MoreCreateTools'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StyleControls } from '@/components/StyleControls'
 import { css } from '../../../../styled-system/css'
@@ -189,7 +190,10 @@ export default function CreatePage() {
 
   return (
     <PageWithNav navTitle={t('navTitle')} navEmoji="✨">
-      <div className={css({ minHeight: '100vh', bg: 'bg.canvas' })}>
+      {/* `PageWithNav` only auto-offsets the no-navTitle path, so this one pays
+          for the fixed nav itself. `box-sizing: border-box` keeps the page at
+          100vh rather than 100vh + nav. */}
+      <div className={css({ minHeight: '100vh', pt: 'var(--app-nav-height)', bg: 'bg.canvas' })}>
         {/* Main Content */}
         <div className={container({ maxW: '7xl', px: '4', py: '8' })}>
           <div className={stack({ gap: '6', mb: '8' })}>
@@ -408,6 +412,8 @@ export default function CreatePage() {
               </div>
             </div>
           )}
+
+          <MoreCreateTools currentToolId="flashcards" />
         </div>
       </div>
     </PageWithNav>

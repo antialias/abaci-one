@@ -3,6 +3,7 @@
 import { AbacusReact, useAbacusConfig } from '@soroban/abacus-react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { CREATE_TOOL_HREF } from '@/lib/create-tools/createToolList'
 import { css } from '../../../../styled-system/css'
 import { grid, hstack, stack } from '../../../../styled-system/patterns'
 
@@ -655,8 +656,12 @@ export function ReadingNumbersGuide() {
             >
               {t('practice.readyToPractice.description')}
             </p>
+            {/* "Create Practice Flashcards" — so it opens the flashcard
+                builder, not the hub. */}
             <Link
-              href="/create"
+              href={CREATE_TOOL_HREF.flashcards}
+              data-action="open-create-tool"
+              data-tool-id="flashcards"
               className={css({
                 display: 'inline-block',
                 px: '6',
@@ -849,8 +854,12 @@ export function ReadingNumbersGuide() {
             >
               {t('interactive.readyToPractice.description')}
             </p>
+            {/* "Create Practice Flashcards" — so it opens the flashcard
+                builder, not the hub. */}
             <Link
-              href="/create"
+              href={CREATE_TOOL_HREF.flashcards}
+              data-action="open-create-tool"
+              data-tool-id="flashcards"
               className={css({
                 display: 'inline-block',
                 px: '6',

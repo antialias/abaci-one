@@ -24,6 +24,9 @@
 import { BEAD_COLOR_PALETTES, beadColorActive } from '@soroban/abacus-react/color'
 
 // ---- parameters -------------------------------------------------------------
+export const JOINT_TYPES = ['vertical_snap', 'sliding_dovetail'] as const
+export type JointType = (typeof JOINT_TYPES)[number]
+
 export const defaultParams = {
   // frame
   frame_h: 8,
@@ -120,6 +123,7 @@ export const defaultParams = {
   // it toward 0/negative until seam wiggle dies. Old snapshots predate both
   // keys and parse to these defaults (mono, stock fit) — zero migration.
   seam_mode: 'mono',
+  joint_type: 'vertical_snap' as JointType,
   joint_fit: 0.1,
   // toggles / quality
   show_frame: true,
@@ -357,6 +361,7 @@ export const DEFINE_KEYS: (keyof Params)[] = [
   'feet_proud',
   'feet_retention',
   'seam_mode',
+  'joint_type',
   'joint_fit',
   'show_frame',
   'show_beads',
@@ -386,17 +391,12 @@ export const definesFrom = (p: Params): string[] => [
 ]
 
 /** Defines that can only ever change a PART PASS, never the assembled abacus.
- *  They still ride every render — the part passes need them, and a define the
- *  worker never sees is one the scad silently defaults — but they are excluded
- *  from the preview's dedup key below.
- *
- *  Without this, dragging the seam's joint_fit slider would re-solve the whole
- *  abacus on every step, for a model the knob provably cannot touch: fit only
- *  grows the coupon/module SOCKETS, and in the assembled preview those voids
- *  are interior — the exterior the camera sees is identical at any fit.
- *  `seam_mode` is deliberately NOT here: it moves the assembled abacus's own
- *  pitch and width, so it must stay in the key. */
-export const PART_ONLY_DEFINE_KEYS: readonly (keyof Params)[] = ['joint_fit']
+ * They still ride every render because a define the worker never sees silently
+ * falls back to the SCAD default. Keep this list empty unless a parameter is
+ * proven not to affect any assembled topology: `joint_fit` changes sliding
+ * groove entrances and topology-aware module foot pockets, so it belongs in
+ * the preview identity. */
+export const PART_ONLY_DEFINE_KEYS: readonly (keyof Params)[] = []
 
 /** The dedup key the preview pump compares renders on. Same rule the color and
  *  filament knobs already follow (JS-only, never reach the scad, never re-solve):
@@ -756,11 +756,23 @@ function weldShellBoxes(positions: ArrayLike<number>): { ts: Int32Array; boxes: 
   return { ts, boxes }
 }
 
+/** The Studio's "take it apart" gap — mm of +X per seam in the exploded modular
+ *  preview. View state only: it rides the render as `-Dexplode` and this
+ *  classifier's third argument, never Params, so snapshots, content hashes and
+ *  every export stay seated. */
+export const EXPLODE_GAP = 12
+
 // union-find the STL's triangles into connected shells (frame + free beads), then
 // map each bead shell's centroid back to its (column, heaven/earth) cell with the
 // same layout the .scad uses. Frame = the one shell far wider than a column pitch.
 // `positions` is the flat triangle-soup position array (9 floats per triangle).
-export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAnalysis {
+//
+// `explode` mirrors the scad's view knob: module i (carrying column i) slides
+// +i·explode, so a seated chain that welds into ONE frame shell becomes cols
+// separate slabs. Exploded classification flips two rules and only those:
+// frame = ANY shell spanning the full outer depth (each module qualifies; a
+// bead never does), and the bead column pitch widens to sCp + explode.
+export function analyzeShells(positions: ArrayLike<number>, p: Params, explode = 0): ShellAnalysis {
   const { ts, boxes } = weldShellBoxes(positions)
 
   // border offset: the bead field sits at (border_w, border_w) inside the outer rect
@@ -769,21 +781,25 @@ export function analyzeShells(positions: ArrayLike<number>, p: Params): ShellAna
   const s_cp = d.sCp
   const s_hy = p.border_w * p.scale_factor + d.sHy
   const s_ep = d.sEp
+  const exploded = explode > 0 && isModular(p)
   let frameSi = -1
   let frameSpan = 2 * s_cp // a shell must beat >1 column pitch to be the frame
-  for (let si = 0; si < boxes.length; si++) {
-    const sp = boxes[si].xmax - boxes[si].xmin
-    if (sp > frameSpan) {
-      frameSpan = sp
-      frameSi = si
+  if (!exploded)
+    for (let si = 0; si < boxes.length; si++) {
+      const sp = boxes[si].xmax - boxes[si].xmin
+      if (sp > frameSpan) {
+        frameSpan = sp
+        frameSi = si
+      }
     }
-  }
 
   const shellInfo = boxes.map((b, si): ShellInfo => {
-    if (si === frameSi) return { isFrame: true, i: 0, isHeaven: false }
+    if (exploded ? b.ymax - b.ymin >= d.outerD - 1 : si === frameSi)
+      return { isFrame: true, i: 0, isHeaven: false }
     const cx = (b.xmin + b.xmax) / 2
     const cy = (b.ymin + b.ymax) / 2
-    const i = Math.max(0, Math.min(p.cols - 1, Math.round((cx - s_em) / s_cp)))
+    const pitch = s_cp + (exploded ? explode : 0)
+    const i = Math.max(0, Math.min(p.cols - 1, Math.round((cx - s_em) / pitch)))
     return { isFrame: false, i, isHeaven: Math.abs(cy - s_hy) < s_ep * 0.5 }
   })
   return { triShell: ts, shellInfo }
@@ -1669,6 +1685,87 @@ export const SEAM = {
   xbarEmbed: 2, // crossbar end reach past the seat into frame material
 } as const
 
+/** Fixed engineering identity for the rear-entry GRADUATED CONTINUOUS sliding
+ * topology, mirrored as top-level SCAD constants (not Studio knobs). ONE male
+ * rail runs the full seam in three Z-sizes (largest at the rear entry mouth,
+ * smallest at the blind front stop) and rides one continuous female groove
+ * whose only tight sections are the three seated berths — every rail section
+ * clears every female station it passes by ≥ step/2 per side until the final
+ * keyLength of travel. The rear segment is the DEEP ANCHOR: deepDepth into the
+ * neighbor, top flank the only hook (~1.75× the shallow hook, ~3.5× the flank
+ * bearing area), a 45° skirt running to the BED below it and a bottom-open
+ * female pocket — the seated anchor block fills the opening flush with both
+ * bottoms. Retention is the seat itself: the berth-front pinch is a ~1.9°
+ * travel-direction taper, far inside PLA's atan(µ)≈14° self-holding limit, so
+ * the joint seats with a firm push and releases with a firm rearward tug.
+ * No flexures — nothing to crack, and the insertion sweep is provably
+ * collision-free at every offset (female depth is monotone non-decreasing
+ * toward the mouth, and the rail only ever sits rearward of its seat). */
+export const SLIDING_DOVETAIL = {
+  angleDeg: 14,
+  maleDepth: 1, // shallow rail X depth — capped by the channel webs
+  neck: 2.8, // MID segment Z neck; sizes are neck ± step
+  step: 0.6, // Z graduation between adjacent rail sizes
+  minBackingWall: 1.2,
+  minLip: 1.2,
+  keyLength: 8, // engaged (tight-berth) length per rail size
+  funnel: 3, // relieved→tight approach funnel at each berth mouth
+  pinch: 0.05, // final-seat X squeeze across the berth's front …
+  pinchLength: 1.5, // … this much travel — the self-holding retention wedge
+  floorRelief: 0.15, // runway floor relief past groove depth (loose travel)
+  datumRelief: 0.2, // non-datum berth fronts stand off — ONE Y stop
+  seatClear: 0.02, // CAD gap at the front stop (print swell closes it)
+  mouthFlare: 0.6, // rear-mouth Z flare beyond the pass-through size
+  deepDepth: 3.5, // rear anchor X depth — bounded by the top lip over the
+  // anchor pocket ceiling, NOT by the channel webs: the anchor never leaves
+  // the solid back strip
+  deepFloor: 0.5, // thinnest printable female floor; below it the anchor
+  // pocket opens through the bottom face (both sides take the open branch at
+  // default frame_h = 8)
+  mouthLength: 2.5, // deep rear mouth flare length
+  selfHoldMu: 0.25, // conservative PLA-on-PLA static friction lower bound
+} as const
+
+export const SLIDING_FIT_VALUES = [0.1, 0.11, 0.12] as const
+export const slidingDovetailDerived = (jointFit: number) => {
+  const c = SLIDING_DOVETAIL
+  const angleRad = (c.angleDeg * Math.PI) / 180
+  const tan = Math.tan(angleRad)
+  const grooveDepth = c.maleDepth + jointFit // berth floor
+  const deepestCut = grooveDepth + c.floorRelief // shallow runway/berth floor
+  // The deep anchor pocket's X cut — what the module feet must stand clear of
+  // (the scad's mf_sock on this topology).
+  const deepPocketCut = c.deepDepth + jointFit + c.floorRelief
+  const headOf = (neck: number) => neck + 2 * c.maleDepth * tan
+  // Widest SHALLOW female Z opening: the large segment's relieved runway
+  // (the deep mouth's Z-flare is derived from the remaining lip budget in the
+  // scad, so it can never open wider than the lip gate allows).
+  const runwayOpening = c.neck + c.step + 2 * (c.maleDepth + 2 * jointFit + c.floorRelief) * tan
+  // The deep anchor's Z hook — its top flank's rise over deepDepth, the only
+  // pull-apart engagement (~1.75× the shallow hook, ~3.5× the bearing area).
+  const anchorHook = c.deepDepth * tan
+  const runningClearance = jointFit * Math.sin(angleRad) // flank-normal, in-berth
+  // A rail section passing any female station sized one graduation step up (per side).
+  const passClearance = c.step / 2 + jointFit * tan
+  const seatTaperDeg = (Math.atan(c.pinch / c.pinchLength) * 180) / Math.PI
+  const selfHoldLimitDeg = (Math.atan(c.selfHoldMu) * 180) / Math.PI
+  return {
+    angleRad,
+    grooveDepth,
+    deepestCut,
+    deepPocketCut,
+    necks: { s: c.neck - c.step, m: c.neck, l: c.neck + c.step },
+    head: headOf(c.neck),
+    headL: headOf(c.neck + c.step),
+    runwayOpening,
+    anchorHook,
+    runningClearance,
+    passClearance,
+    seatTaperDeg,
+    selfHoldLimitDeg,
+  }
+}
+
 /** The seam-relevant band edges and module widths, all in scad names — one
  *  derivation shared by seamFit, moduleFeetLayout and the CP5+ preview math so
  *  a verdict can never disagree with the geometry it's a verdict about. */
@@ -1726,7 +1823,10 @@ export function moduleFeetLayout(p: Params): ModuleFeetLayout {
   const fitEff = f.mouth / 2 - p.feet_w / 2 // recover fit_eff without re-branching
   const undercutEff = (f.seat - f.mouth) / 2
   const printed = p.feet_mode === 'printed'
-  const sock = SEAM.jointTab + p.joint_fit + SEAM.scDeep
+  const sock =
+    p.joint_type === 'sliding_dovetail'
+      ? slidingDovetailDerived(p.joint_fit).deepPocketCut
+      : SEAM.jointTab + p.joint_fit + SEAM.scDeep
   const bandAt = (s: number) =>
     derived({ ...p, scale_factor: s }).scW - sock - 2 * SEAM.mfWall - 2 * undercutEff - 2 * fitEff
   const band = bandAt(p.scale_factor)
@@ -1799,6 +1899,13 @@ export type SeamVerdict = {
     | 'feet_bumper'
     | 'feet_socket'
     | 'feet_crossbar'
+    | 'sliding_fit'
+    | 'backing_wall'
+    | 'z_lips'
+    | 'datum_lead'
+    | 'deep_backing'
+    | 'deep_lip'
+    | 'retention'
   ok: boolean
   message: string
   knob: 'scale_factor' | 'joint_fit' | 'feet_w' | 'feet_mode' | 'none'
@@ -1818,7 +1925,7 @@ export type SeamFit = {
  *  Like feetFit this computes unconditionally — the feet rows pass trivially
  *  when feet are off, exactly as the scad's `!(mod_active && feet) || …`
  *  predicates do — and callers gate on seam_mode for WHEN to show it. */
-export function seamFit(p: Params): SeamFit {
+function verticalSeamFit(p: Params): SeamFit {
   const b = seamBands(p)
   const mf = moduleFeetLayout(p)
   const feetOn = p.feet_mode !== 'none'
@@ -1881,4 +1988,117 @@ export function seamFit(p: Params): SeamFit {
     },
   ]
   return { ok: verdicts.every((v) => v.ok), verdicts, strainPct }
+}
+
+function slidingSeamFit(p: Params): SeamFit {
+  const b = seamBands(p)
+  const mf = moduleFeetLayout(p)
+  const g = slidingDovetailDerived(p.joint_fit)
+  const c = SLIDING_DOVETAIL
+  const tanA = Math.tan(g.angleRad)
+  const feetOn = p.feet_mode !== 'none'
+  const crossbar = feetEffective(p).crossbar
+  const legalFit = SLIDING_FIT_VALUES.some((fit) => Math.abs(fit - p.joint_fit) < 1e-9)
+  const backingWall = p.web * p.scale_factor - g.deepestCut
+  const lip = (b.sFh - g.runwayOpening) / 2
+  // The scad's Y stations, in the same names (slide_k0_s … slide_mouth0):
+  // rail front datum, A→B graduation, shallow→deep taper start, deep mouth.
+  const { chamf, outerD, scW } = b.d
+  const k0S = chamf + 1 + c.seatClear
+  const k0M = outerD / 2 - c.keyLength / 2
+  const taper0 = b.scK0 + 0.3
+  const mouth0 = outerD - c.mouthLength
+  // Mirror of the scad berth-layout assert: S berth + funnel clear the mid
+  // berth, mid berth + funnel clear the taper start, and taper + funnel +
+  // pinch clear the deep mouth, each with slack.
+  const layoutOk =
+    k0S + c.keyLength + 0.3 + c.funnel + 1 <= k0M - c.datumRelief &&
+    k0M + c.keyLength + 0.3 + c.funnel + 1 <= taper0 &&
+    taper0 + c.funnel + c.pinchLength + 2 <= mouth0
+  // Deep-anchor gates at the WORST legal fit, exactly as the scad hardcodes
+  // 0.12 — the anchor must clear at any coupon-calibrated compensation.
+  const worstFit = Math.max(...SLIDING_FIT_VALUES)
+  const deepBacking = scW - (c.deepDepth + worstFit + c.floorRelief)
+  const deepLip =
+    b.sFh -
+    (b.sFh / 2 + (c.neck + c.step) / 2 + (c.deepDepth + 2 * worstFit + c.floorRelief) * tanA)
+  const verdicts: SeamVerdict[] = [
+    {
+      code: 'sliding_fit',
+      ok: legalFit,
+      message: legalFit
+        ? `sliding compensation ${p.joint_fit.toFixed(2)} mm is coupon-calibrated`
+        : 'sliding compensation must be 0.10, 0.11, or 0.12 mm',
+      knob: 'joint_fit',
+    },
+    {
+      code: 'backing_wall',
+      ok: backingWall >= c.minBackingWall,
+      message: `female groove leaves ${backingWall.toFixed(2)} mm backing wall (minimum ${c.minBackingWall.toFixed(2)} mm)`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'z_lips',
+      ok: lip >= c.minLip,
+      message: `large-segment runway leaves ${lip.toFixed(2)} mm top/bottom lips`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'datum_lead',
+      ok: layoutOk,
+      message: 'graduated berths, funnels and the deep anchor don’t fit along the module',
+      knob: 'scale_factor',
+    },
+    {
+      code: 'deep_backing',
+      ok: deepBacking >= 2,
+      message: `deep anchor pocket leaves ${deepBacking.toFixed(2)} mm before the module’s own rail (minimum 2 mm)`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'deep_lip',
+      ok: deepLip >= c.minLip,
+      message: `deep anchor pocket ceiling leaves ${deepLip.toFixed(2)} mm top lip`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'retention',
+      ok: g.seatTaperDeg <= g.selfHoldLimitDeg,
+      message: `seat taper ${g.seatTaperDeg.toFixed(1)}° is self-holding (PLA µ ≥ ${c.selfHoldMu} → limit ${g.selfHoldLimitDeg.toFixed(0)}°)`,
+      knob: 'none',
+    },
+    {
+      code: 'module_feet',
+      ok: !feetOn || mf.fits,
+      message: 'module feet don’t fit beside the sliding groove',
+      knob: 'scale_factor',
+    },
+    {
+      code: 'feet_bumper',
+      ok: !feetOn || mf.bumperFits,
+      message: `stick-on bumper doesn’t fit beside the sliding groove (${p.feet_w.toFixed(1)} mm into a ${Math.max(0, mf.band).toFixed(1)} mm band)`,
+      knob: 'feet_w',
+    },
+    {
+      code: 'feet_socket',
+      ok: !feetOn || mf.walls,
+      message: 'module foot pocket too close to the sliding groove or seam face',
+      knob: 'feet_w',
+    },
+    {
+      code: 'feet_crossbar',
+      ok: !feetOn || !crossbar || feetEffective(p).c + mf.seat / 2 + SEAM.xbarEmbed + 0.8 <= b.scF1,
+      message: 'module foot crossbar would break into the bead channel',
+      knob: 'feet_w',
+    },
+  ]
+  // No flexures in this topology — nothing bends, so peak strain is 0. The
+  // panel's strain provenance line branches on topology instead.
+  return { ok: verdicts.every((v) => v.ok), verdicts, strainPct: 0 }
+}
+
+/** Topology dispatcher. The legacy branch is intentionally isolated above so its
+ * arithmetic and verdict order remain byte-for-byte stable. */
+export function seamFit(p: Params): SeamFit {
+  return p.joint_type === 'sliding_dovetail' ? slidingSeamFit(p) : verticalSeamFit(p)
 }

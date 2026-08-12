@@ -445,7 +445,7 @@ describe('buildModuleKit', () => {
     const pp = p({ color_scheme: 'heaven-earth' })
     const kit = buildModuleKit({ parts: kitParts(pp), filamentMap: fmHeavenEarth })
 
-    expect(kit.filename).toBe('abacus-modular-kit-13col-x1-fit0.1.zip')
+    expect(kit.filename).toBe('abacus-modular-kit-vertical-snap-13col-x1-fit0.1.zip')
     const members = unzipSync(kit.bytes)
     expect(Object.keys(members).sort()).toEqual([
       'README.txt',
@@ -552,9 +552,50 @@ describe('buildModuleKit', () => {
     )
   })
 
-  it('kitFilename sweep-encodes cols, scale and fit', () => {
+  it('kitFilename sweep-encodes topology, cols, scale and fit', () => {
     expect(kitFilename(p({ cols: 7, scale_factor: 0.9, joint_fit: 0.05 }))).toBe(
-      'abacus-modular-kit-7col-x0.9-fit0.05.zip'
+      'abacus-modular-kit-vertical-snap-7col-x0.9-fit0.05.zip'
     )
+    expect(
+      kitFilename(
+        p({
+          cols: 7,
+          scale_factor: 0.9,
+          joint_type: 'sliding_dovetail',
+          joint_fit: 0.11,
+        })
+      )
+    ).toBe('abacus-modular-kit-sliding-dovetail-7col-x0.9-fit0.11.zip')
+  })
+
+  it('branches README assembly, removal, and coupon instructions by topology', () => {
+    const vertical = buildModuleKit({
+      parts: kitParts(p({ color_scheme: 'heaven-earth' })),
+      filamentMap: fmHeavenEarth,
+    })
+    const verticalReadme = strFromU8(unzipSync(vertical.bytes)['README.txt'])
+    expect(verticalReadme).toContain('vertical dovetails + snap clip')
+    expect(verticalReadme).toContain('lifts straight out')
+    expect(verticalReadme).toContain('vertical-snap seam coupon pair')
+
+    const slidingParams = p({
+      color_scheme: 'heaven-earth',
+      joint_type: 'sliding_dovetail',
+      joint_fit: 0.11,
+    })
+    const sliding = buildModuleKit({
+      parts: kitParts(slidingParams),
+      filamentMap: fmHeavenEarth,
+    })
+    const slidingReadme = strFromU8(unzipSync(sliding.bytes)['README.txt'])
+    expect(slidingReadme).toContain('rear-entry graduated sliding dovetail')
+    expect(slidingReadme).toMatch(/ONE continuous\s+graduated dovetail rail/)
+    expect(slidingReadme).toMatch(/enters through the REAR face/)
+    expect(slidingReadme).toMatch(/deep anchor block/)
+    expect(slidingReadme).toMatch(/the table is the height datum/)
+    expect(slidingReadme).toMatch(/blind front\s+seat/)
+    expect(slidingReadme).toMatch(/firm rearward tug/)
+    expect(slidingReadme).toContain('cannot lift straight out')
+    expect(slidingReadme).toMatch(/0\.10, 0\.11,\s+and 0\.12 mm compensation samples/)
   })
 })
