@@ -7,7 +7,7 @@
  * leaves a row), the `?? not ||` AMS tri-state (a live `false` never falls back to the
  * static capability), and that the monochrome note is scoped to a single EXTERNAL spool.
  */
-import type { TicketStyle } from '@eink/print-dialog'
+import type { CapabilityDocument, CapabilityKeyEntry, TicketStyle } from '@eink/print-dialog'
 import { describe, expect, it } from 'vitest'
 import type { FilamentCatalog, FilamentSpool } from '../abacus-catalog'
 import {
@@ -15,7 +15,11 @@ import {
   abacusPrintPanelState,
   designSlotIds,
   feetSupportGate,
+  SLOW_FIRST_LAYER_PROCESS,
+  slowFirstLayerEnabled,
   supportsEnabled,
+  supportsSlowFirstLayer,
+  withSlowFirstLayer,
 } from '../abacus-print-panel-state'
 
 const spool = (over: Partial<FilamentSpool> = {}): FilamentSpool => ({
@@ -165,6 +169,107 @@ describe('supportsEnabled (Gitea #23)', () => {
     expect(supportsEnabled(withProcess({ enable_support: '0' }))).toBe(false)
     expect(supportsEnabled(withProcess({}))).toBe(false)
     expect(supportsEnabled(null)).toBe(false)
+  })
+})
+
+describe('slow first layer', () => {
+  const entry = (over: Partial<CapabilityKeyEntry> = {}): CapabilityKeyEntry => ({
+    class: 'process',
+    type: 'coFloat',
+    group: 'Speed',
+    tier: 'open',
+    audience: 'consumer',
+    ...over,
+  })
+  const capabilities = (
+    speed: CapabilityKeyEntry | null = entry({ min: 1 }),
+    acceleration: CapabilityKeyEntry | null = entry({ min: 0 })
+  ): Pick<CapabilityDocument, 'keys'> => ({
+    keys: {
+      ...(speed ? { initial_layer_speed: speed } : {}),
+      ...(acceleration ? { initial_layer_acceleration: acceleration } : {}),
+    },
+  })
+  const style = (process: TicketStyle['process']): TicketStyle => ({
+    basePreset: '0.20mm-standard',
+    process,
+  })
+
+  it('offers the recipe only when both numeric process keys can accept it', () => {
+    expect(supportsSlowFirstLayer(capabilities())).toBe(true)
+    expect(supportsSlowFirstLayer(capabilities(null, entry()))).toBe(false)
+    expect(supportsSlowFirstLayer(capabilities(entry(), null))).toBe(false)
+    expect(supportsSlowFirstLayer(capabilities(entry({ tier: 'blocked' }), entry()))).toBe(false)
+    expect(supportsSlowFirstLayer(capabilities(entry({ class: 'machine' }), entry()))).toBe(false)
+    expect(supportsSlowFirstLayer(capabilities(entry({ audience: 'never' }), entry()))).toBe(false)
+    expect(supportsSlowFirstLayer(capabilities(entry({ type: 'coFloats' }), entry()))).toBe(false)
+    expect(supportsSlowFirstLayer(capabilities(entry({ min: 13 }), entry()))).toBe(false)
+    expect(supportsSlowFirstLayer(capabilities(entry(), entry({ max: 299 })))).toBe(false)
+    expect(supportsSlowFirstLayer(null)).toBe(false)
+  })
+
+  it('is active only when both explicit overrides exactly match the recipe', () => {
+    expect(slowFirstLayerEnabled(style({ ...SLOW_FIRST_LAYER_PROCESS }))).toBe(true)
+    expect(slowFirstLayerEnabled(style({ initial_layer_speed: 12 }))).toBe(false)
+    expect(slowFirstLayerEnabled(style({ initial_layer_acceleration: 300 }))).toBe(false)
+    expect(
+      slowFirstLayerEnabled(style({ initial_layer_speed: 10, initial_layer_acceleration: 300 }))
+    ).toBe(false)
+    expect(slowFirstLayerEnabled(style({}))).toBe(false)
+    expect(slowFirstLayerEnabled(null)).toBe(false)
+  })
+
+  it('applies the recipe without mutating or discarding unrelated choices', () => {
+    const original = style({
+      initial_layer_speed: 9,
+      brim_type: 'outer_only',
+      enable_support: true,
+      wall_loops: 4,
+    })
+    const result = withSlowFirstLayer(original, true)
+
+    expect(result).toEqual({
+      basePreset: '0.20mm-standard',
+      process: {
+        initial_layer_speed: 12,
+        initial_layer_acceleration: 300,
+        brim_type: 'outer_only',
+        enable_support: true,
+        wall_loops: 4,
+      },
+    })
+    expect(original.process).toEqual({
+      initial_layer_speed: 9,
+      brim_type: 'outer_only',
+      enable_support: true,
+      wall_loops: 4,
+    })
+  })
+
+  it('resets only the recipe keys so the preset becomes effective again', () => {
+    const original = style({
+      ...SLOW_FIRST_LAYER_PROCESS,
+      brim_type: 'outer_only',
+      enable_support: true,
+      support_on_build_plate_only: true,
+    })
+    const result = withSlowFirstLayer(original, false)
+
+    expect(result).toEqual({
+      basePreset: '0.20mm-standard',
+      process: {
+        brim_type: 'outer_only',
+        enable_support: true,
+        support_on_build_plate_only: true,
+      },
+    })
+    expect(original.process).toEqual({
+      ...SLOW_FIRST_LAYER_PROCESS,
+      brim_type: 'outer_only',
+      enable_support: true,
+      support_on_build_plate_only: true,
+    })
+    expect(withSlowFirstLayer(style({ ...SLOW_FIRST_LAYER_PROCESS }), false).process).toEqual({})
   })
 })
 

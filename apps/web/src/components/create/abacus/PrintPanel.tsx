@@ -56,7 +56,11 @@ import {
   designSlotIds,
   FEET_SUPPORT_PROCESS,
   feetSupportGate,
+  SLOW_FIRST_LAYER_PROCESS,
+  slowFirstLayerEnabled,
   supportsEnabled,
+  supportsSlowFirstLayer,
+  withSlowFirstLayer,
 } from './abacus-print-panel-state'
 import { buildAbacusAuthoring, buildAbacusTicket } from './abacus-ticket'
 import { JobNotices } from './JobNotices'
@@ -161,6 +165,8 @@ const COMMON_KEYS = [
   // prints on supports, and off, Orca is free to grow them on the beads. See
   // FEET_SUPPORT_PROCESS.
   'support_on_build_plate_only',
+  'initial_layer_speed',
+  'initial_layer_acceleration',
   'brim_type',
 ] as const
 
@@ -262,6 +268,8 @@ export function PrintPanel(props: PrintPanelProps) {
     return preset ? { basePreset: preset, process: {} } : null
   }, [caps.data])
   const style = styleEdits ?? savedSettings.data ?? seededStyle
+  const slowFirstLayerSupported = supportsSlowFirstLayer(caps.data)
+  const slowFirstLayerActive = slowFirstLayerEnabled(style)
 
   // ---- support-interface negotiation (Gitea #23, THH#367) -------------------
   // Active only when the style EXPLICITLY enables supports (the client owns
@@ -957,6 +965,59 @@ export function PrintPanel(props: PrintPanelProps) {
               </button>
             </div>
           )}
+          {slowFirstLayerSupported && (
+            <div
+              data-element="slow-first-layer-choice"
+              data-active={slowFirstLayerActive || undefined}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 10,
+                padding: '8px 10px',
+                borderRadius: 8,
+                background: slowFirstLayerActive ? 'rgba(8,145,178,0.22)' : 'rgba(30,41,59,0.48)',
+                border: slowFirstLayerActive
+                  ? '1px solid rgba(34,211,238,0.5)'
+                  : '1px solid rgba(148,163,184,0.3)',
+              }}
+            >
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.35 }}>
+                <strong style={{ color: 'rgba(226,232,240,0.98)' }}>Slow first layer</strong>
+                <span style={{ color: 'rgba(148,163,184,0.95)', fontSize: 11 }}>
+                  {SLOW_FIRST_LAYER_PROCESS.initial_layer_speed} mm/s ·{' '}
+                  {SLOW_FIRST_LAYER_PROCESS.initial_layer_acceleration} mm/s². Try this before
+                  adding a brim.
+                </span>
+              </span>
+              <button
+                type="button"
+                data-action="toggle-slow-first-layer"
+                aria-pressed={slowFirstLayerActive}
+                disabled={!style}
+                onClick={() =>
+                  style && handleStyleChange(withSlowFirstLayer(style, !slowFirstLayerActive))
+                }
+                style={{
+                  flex: '0 0 auto',
+                  padding: '5px 10px',
+                  borderRadius: 6,
+                  border: slowFirstLayerActive
+                    ? '1px solid rgba(34,211,238,0.7)'
+                    : '1px solid rgba(148,163,184,0.45)',
+                  background: slowFirstLayerActive
+                    ? 'rgba(34,211,238,0.16)'
+                    : 'rgba(255,255,255,0.06)',
+                  color: slowFirstLayerActive ? 'rgba(207,250,254,0.98)' : 'rgba(226,232,240,0.95)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: style ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {slowFirstLayerActive ? 'Use preset speed' : 'Slow it down'}
+              </button>
+            </div>
+          )}
           {/* Directly above the commit, because that's the question it answers:
               this is the bed you're about to print. */}
           {kit && (
@@ -972,6 +1033,7 @@ export function PrintPanel(props: PrintPanelProps) {
               />
             </div>
           )}
+
 
           <button
             type="button"
