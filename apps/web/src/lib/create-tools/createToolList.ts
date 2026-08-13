@@ -251,12 +251,15 @@ export function getCreateToolsByTier(tier: CreateToolTier): CreateToolMeta[] {
 }
 
 /**
- * Every tool except `id` — the cross-link row on a tool's own page. Primary
- * tier first (the abacus trio is what most visitors want next), then `order`.
+ * Every tool, in the order a chip row should read them: primary tier first (the
+ * abacus trio is what most visitors want), then `order` within a tier.
  */
-export function getOtherCreateTools(id: CreateToolId): CreateToolMeta[] {
+export function getSortedCreateTools(): CreateToolMeta[] {
   const tierRank = (tier: CreateToolTier) => (tier === 'primary' ? 0 : 1)
-  return CREATE_TOOLS.filter((tool) => tool.id !== id).sort(
-    (a, b) => tierRank(a.tier) - tierRank(b.tier) || a.order - b.order
-  )
+  return [...CREATE_TOOLS].sort((a, b) => tierRank(a.tier) - tierRank(b.tier) || a.order - b.order)
+}
+
+/** Every tool except `id` — the cross-link row on a tool's own page. */
+export function getOtherCreateTools(id: CreateToolId): CreateToolMeta[] {
+  return getSortedCreateTools().filter((tool) => tool.id !== id)
 }

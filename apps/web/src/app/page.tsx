@@ -10,6 +10,8 @@ import { PageWithNav } from '@/components/PageWithNav'
 import { getTutorialForEditor, type Tutorial } from '@/utils/tutorialConverter'
 import { useAvailableGames } from '@/hooks/useAllGames'
 import { HomeBlogSection } from '@/components/HomeBlogSection'
+import { CreateToolChips } from '@/components/create/CreateToolChips'
+import { getSortedCreateTools } from '@/lib/create-tools/createToolList'
 import { BarChart3, Gamepad2, Users } from 'lucide-react'
 import Image from 'next/image'
 import { css } from '../../styled-system/css'
@@ -1123,6 +1125,19 @@ function PrintableToolsSection() {
                 <div className={css({ fontSize: 'xs', color: 'gray.400' })}>{feature.desc}</div>
               </div>
             ))}
+          </div>
+
+          {/*
+            The heading above promises worksheets, flashcards and calendars,
+            and until this row the section only ever showed flashcards — the
+            three tiles above describe the output but never name a tool, and
+            Abacus Studio, the flagship, went unmentioned on the whole page.
+            Chips rather than the hub's cards: this page already carries
+            AbacusReact for the draggable demo, so it is the last place to add
+            five preview images.
+          */}
+          <div className={css({ mb: '6' })}>
+            <CreateToolChips tools={getSortedCreateTools()} tone="dark" align="center" />
           </div>
 
           <div className={css({ textAlign: 'center' })}>
