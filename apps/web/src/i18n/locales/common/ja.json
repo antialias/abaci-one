@@ -1,0 +1,15 @@
+{
+  "common": {
+    "nav": {
+      "home": "ホーム",
+      "create": "作成",
+      "practice": "練習",
+      "myStuff": "マイページ",
+      "flowcharts": "フローチャート",
+      "games": "ゲーム",
+      "toys": "おもちゃ",
+      "guide": "ガイド",
+      "blog": "ブログ"
+    }
+  }
+}

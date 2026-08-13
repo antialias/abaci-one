@@ -1,0 +1,15 @@
+{
+  "common": {
+    "nav": {
+      "home": "Heim",
+      "create": "Scaffan",
+      "practice": "Uoben",
+      "myStuff": "Mîniu dinc",
+      "flowcharts": "Fluozbilidi",
+      "games": "Spil",
+      "toys": "Spilazoug",
+      "guide": "Wîsunga",
+      "blog": "Tagabuoh"
+    }
+  }
+}
