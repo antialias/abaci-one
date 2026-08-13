@@ -1,6 +1,23 @@
-import { NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/withAuth'
 import { jsPDF } from 'jspdf'
+import { NextResponse } from 'next/server'
+import {
+  clefExtent,
+  clefGlyph,
+  fitStaff,
+  halfSpaceForWidth,
+  ledgerHalfWidth,
+  noteExtent,
+  placeClef,
+  placeNotehead,
+  positionY,
+  STAFF_EXTENT,
+  type StaffMetrics,
+  stemRect,
+  traceGlyph,
+  unionExtents,
+} from '@/components/music/glyphPath'
+import { SMUFL_GLYPHS } from '@/components/music/smuflGlyphs'
+import { withAuth } from '@/lib/auth/withAuth'
 
 interface MusicFlashcardRequest {
   clef: 'treble' | 'bass' | 'both'
@@ -38,13 +55,13 @@ function getNoteName(position: number, clef: 'treble' | 'bass'): string {
 const LABEL_BAND = 9
 
 /**
- * Ceiling on `lineGap` as a fraction of card height. Without it a narrow range
- * (beginner is only 10 half-spaces) would scale the staff up to fill the card,
- * and a staff taller than it is wide stops reading as notation. 0.08 is the
- * scale every card used before the range-aware fit, so beginner decks look
- * unchanged and only the ranges that used to overflow get smaller.
+ * Ceiling on `lineGap` as a fraction of card height, so a staff never grows
+ * taller than it is wide — at that point it stops reading as notation.
  */
 const MAX_LINE_GAP_RATIO = 0.08
+
+/** Fraction of the card width the staff spans. */
+const STAFF_WIDTH_RATIO = 0.85
 
 /**
  * How the staff is scaled and placed inside a card.
@@ -57,34 +74,30 @@ const MAX_LINE_GAP_RATIO = 0.08
  * border entirely. Computing this once per deck also keeps every card's staff
  * identical, which matters when a learner compares two cards side by side.
  */
-interface StaffGeometry {
-  lineGap: number
-  /** Offset from the card's top edge to the TOP staff line (position 8). */
-  staffTopOffset: number
-}
-
+/**
+ * Scale and placement for every card in a deck, measured from the card's own
+ * top-left corner. `staffTop` is therefore an offset, not an absolute y.
+ */
 function computeStaffGeometry(
+  width: number,
   height: number,
-  minPosition: number,
-  maxPosition: number
-): StaffGeometry {
-  // The staff itself always shows, so the drawn extent is the union of the
-  // staff (0..8) and the deck's range.
-  const topUnit = Math.max(maxPosition, 8)
-  const bottomUnit = Math.min(minPosition, 0)
-  const spanUnits = topUnit - bottomUnit
-
-  const band = height - LABEL_BAND * 2
-  // A note head is one staff space tall, i.e. 2 half-spaces, so it overhangs
-  // its own position by one `lineGap` at each end: `span + 2` units of room.
-  const lineGap = Math.min(band / (spanUnits + 2), height * MAX_LINE_GAP_RATIO)
-
-  const contentHeight = (spanUnits + 2) * lineGap
-  const contentTop = LABEL_BAND + (band - contentHeight) / 2
-
-  // Place the topmost drawn position one lineGap below the content top.
-  const staffTopOffset = contentTop + lineGap - (8 - topUnit) * lineGap
-  return { lineGap, staffTopOffset }
+  positions: number[],
+  clefs: Array<'treble' | 'bass'>
+): StaffMetrics {
+  // Everything drawn has to fit, and the notes are not the tallest thing on the
+  // card. A real G clef reaches from roughly position -3 to +11, almost twice
+  // the staff's own height, and a stem adds three and a half spaces past its
+  // notehead. Sizing to the staff and note range alone — which is what this did
+  // while the clef was a Helvetica letter — pushes the clef off the card.
+  return fitStaff({
+    top: LABEL_BAND,
+    availableHeight: height - LABEL_BAND * 2,
+    extent: unionExtents(STAFF_EXTENT, ...clefs.map(clefExtent), ...positions.map(noteExtent)),
+    maxHalfSpace: [
+      halfSpaceForWidth(width * STAFF_WIDTH_RATIO), // leave the note room beside the clef
+      height * MAX_LINE_GAP_RATIO,
+    ],
+  })
 }
 
 // Draw a music staff with a note
@@ -97,12 +110,14 @@ function drawMusicCard(
   position: number,
   clef: 'treble' | 'bass',
   showNoteName: boolean,
-  geometry: StaffGeometry
+  geometry: StaffMetrics
 ) {
-  const { lineGap } = geometry
-  const staffTop = y + geometry.staffTopOffset
-  const staffWidth = width * 0.85
+  const lineGap = geometry.halfSpace
+  const staffWidth = width * STAFF_WIDTH_RATIO
   const staffLeft = x + (width - staffWidth) / 2
+  // The deck geometry is relative to a card's top-left corner; place it.
+  const metrics: StaffMetrics = { ...geometry, staffTop: y + geometry.staffTop }
+  const staffTop = metrics.staffTop
 
   // Draw card border
   doc.setDrawColor(180)
@@ -117,20 +132,20 @@ function drawMusicCard(
     doc.line(staffLeft, lineY, staffLeft + staffWidth, lineY)
   }
 
-  // Draw clef (using text since we can't embed Bravura easily)
-  doc.setFontSize(Math.max(8, lineGap * 4))
-  doc.setFont('helvetica', 'bold')
-  const clefText = clef === 'treble' ? 'G' : 'F'
-  doc.text(clefText, staffLeft + lineGap, staffTop + lineGap * 6)
+  // Draw the clef from its Bravura outline. One fill across every subpath keeps
+  // the counters (the eye of the G clef) hollow via nonzero winding.
+  doc.setFillColor(0, 0, 0)
+  const clefAt = placeClef(metrics, clef, staffLeft + lineGap)
+  traceGlyph(clefGlyph(clef).commands, clefAt, doc)
+  doc.fill()
 
-  // Calculate note Y position
-  const noteY = staffTop + (8 - position) * lineGap
-  const noteX = staffLeft + staffWidth * 0.55
-
-  // Note heads are one staff space tall and slightly wider than they are high.
-  const noteRy = lineGap
-  const noteRx = lineGap * 1.3
-  const ledgerHalf = noteRx * 1.7
+  // Centre the note in what the clef leaves of the staff. A fixed fraction of
+  // the staff width (this was 0.55) put the note underneath the clef as soon as
+  // the clef became a real glyph rather than a letter.
+  const glyph = clefGlyph(clef)
+  const clefRight = clefAt.x + glyph.bbox.right * clefAt.scale
+  const noteX = (clefRight + lineGap * 2 + staffLeft + staffWidth) / 2
+  const ledgerHalf = ledgerHalfWidth(metrics)
 
   // Draw ledger lines if needed
   doc.setLineWidth(0.3)
@@ -138,7 +153,7 @@ function drawMusicCard(
     // Ledger lines below
     let ledgerPos = -2
     while (ledgerPos >= position) {
-      const ledgerY = staffTop + (8 - ledgerPos) * lineGap
+      const ledgerY = positionY(metrics, ledgerPos)
       doc.line(noteX - ledgerHalf, ledgerY, noteX + ledgerHalf, ledgerY)
       ledgerPos -= 2
     }
@@ -147,15 +162,22 @@ function drawMusicCard(
     // Ledger lines above
     let ledgerPos = 10
     while (ledgerPos <= position) {
-      const ledgerY = staffTop + (8 - ledgerPos) * lineGap
+      const ledgerY = positionY(metrics, ledgerPos)
       doc.line(noteX - ledgerHalf, ledgerY, noteX + ledgerHalf, ledgerY)
       ledgerPos += 2
     }
   }
 
-  // Draw note (filled ellipse)
-  doc.setFillColor('0')
-  doc.ellipse(noteX, noteY, noteRx, noteRy, 'F')
+  // Draw the note. This was an upright filled ellipse with no stem, which is
+  // not a note of any duration; it is now Bravura's quarter-note head (already
+  // carrying the correct tilt) with a stem attached at the font's own anchor.
+  doc.setFillColor(0, 0, 0)
+  const headAt = placeNotehead(metrics, position, noteX)
+  traceGlyph(SMUFL_GLYPHS.noteheadBlack.commands, headAt, doc)
+  doc.fill()
+
+  const stem = stemRect(metrics, position, headAt)
+  doc.rect(stem.x, stem.y, stem.width, stem.height, 'F')
 
   // Draw note name in corner if requested
   if (showNoteName) {
@@ -245,11 +267,11 @@ export const POST = withAuth(async (request) => {
 
     // One geometry for the whole deck: every card is the same card size, and a
     // staff that changed scale per note would make the deck unreadable.
-    const positions = notes.map((n) => n.position)
     const geometry = computeStaffGeometry(
+      cardWidth,
       cardHeight,
-      Math.min(...positions),
-      Math.max(...positions)
+      notes.map((n) => n.position),
+      [...new Set(notes.map((n) => n.clef))]
     )
 
     for (const note of notes) {

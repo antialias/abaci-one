@@ -1,7 +1,26 @@
 'use client'
 
-import { pitchToStaffPosition, getStemDirection, getLedgerLinePositions } from './noteUtils'
-import type { PitchClass, Clef, Accidental } from './noteUtils'
+import {
+  ANY_CLEF_EXTENT,
+  COMMON_NOTE_RANGE,
+  clefGlyph,
+  fitStaff,
+  glyphPathData,
+  halfSpaceForWidth,
+  ledgerHalfWidth,
+  noteExtent,
+  noteRangeExtent,
+  placeClef,
+  placeNotehead,
+  positionY,
+  STAFF_EXTENT,
+  staffSpace,
+  stemRect,
+  unionExtents,
+} from './glyphPath'
+import type { Accidental, Clef, PitchClass } from './noteUtils'
+import { getLedgerLinePositions, pitchToStaffPosition } from './noteUtils'
+import { SMUFL_GLYPHS } from './smuflGlyphs'
 
 export interface MusicStaffProps {
   pitchClass: PitchClass
@@ -13,12 +32,21 @@ export interface MusicStaffProps {
   showClef?: boolean
 }
 
+/** Fraction of the box width the staff spans. */
+const STAFF_WIDTH_RATIO = 0.85
+
+const INK = '#333'
+
 /**
- * SVG component rendering a music staff with a single note.
+ * SVG staff with a single note.
  *
- * Ported from the jsPDF rendering in api/create/music-flashcards/route.ts.
- * Position system: 0 = bottom line, 8 = top line.
- * Y formula: staffTop + (8 - position) * lineGap
+ * Shares all of its geometry with the printable PDF via `glyphPath.ts`. It used
+ * to be a hand-port of that renderer and the copies had drifted: this drew the
+ * clefs as Unicode characters in whatever serif font the machine happened to
+ * have (U+1D11E is missing from most of them, and the two clefs needed wildly
+ * different font sizes to line up), anchored the bass clef to the middle line
+ * rather than the F line, and sized the notehead and ledger lines in fixed
+ * pixels so they stopped matching the staff whenever `height` changed.
  */
 export function MusicStaff({
   pitchClass,
@@ -29,69 +57,70 @@ export function MusicStaff({
   height = 80,
   showClef = true,
 }: MusicStaffProps) {
-  const lineGap = height * 0.08
-  const staffTop = height * 0.3
-  const staffWidth = width * 0.85
-  const staffLeft = (width - staffWidth) / 2
-
-  const position = pitchToStaffPosition(pitchClass as PitchClass, octave, clef)
-  const stemDir = getStemDirection(position)
+  const position = pitchToStaffPosition(pitchClass, octave, clef)
   const ledgerPositions = getLedgerLinePositions(position)
 
-  // Note position
-  const noteY = staffTop + (8 - position) * lineGap
-  const noteX = staffLeft + staffWidth * 0.72
+  const staffWidth = width * STAFF_WIDTH_RATIO
+  const staffLeft = (width - staffWidth) / 2
 
-  // Note head dimensions (ellipse) — sized to fill a staff space
-  const noteRx = 6
-  const noteRy = 4.2
+  // Fit everything that gets drawn inside the box. The clef is the tallest of
+  // them by some way — a G clef spans about 14 half-spaces against the staff's
+  // own 8 — so this is what keeps it from spilling out of the SVG.
+  //
+  // The reserved range, rather than this note alone, is what fixes the scale:
+  // two cards side by side must show the same size staff in the same place.
+  // `noteExtent(position)` is unioned in as well so a note beyond the usual
+  // range still fits, at the cost of that one card being scaled down.
+  const metrics = fitStaff({
+    top: 0,
+    availableHeight: height,
+    extent: unionExtents(
+      STAFF_EXTENT,
+      noteRangeExtent(COMMON_NOTE_RANGE.lowest, COMMON_NOTE_RANGE.highest),
+      noteExtent(position),
+      ...(showClef ? [ANY_CLEF_EXTENT] : [])
+    ),
+    maxHalfSpace: [halfSpaceForWidth(staffWidth)],
+  })
+  const { halfSpace } = metrics
+  const space = staffSpace(metrics)
 
-  // Stem
-  const stemHeight = lineGap * 7
-  const stemX = stemDir === 'up' ? noteX + noteRx - 0.5 : noteX - noteRx + 0.5
-  const stemY1 = noteY
-  const stemY2 = stemDir === 'up' ? noteY - stemHeight : noteY + stemHeight
+  const clefAt = showClef ? placeClef(metrics, clef, staffLeft + halfSpace) : null
+  const clefRight = clefAt ? clefAt.x + clefGlyph(clef).bbox.right * clefAt.scale : staffLeft
 
-  // Clef positioning
-  // The staff spans from staffTop (top line) to staffTop + 8*lineGap (bottom line).
-  // The treble clef glyph (𝄞) visually centers around the G line (position 2).
-  // The bass clef glyph (𝄢) visually centers around the F line (position 6, i.e. 4th line).
-  // These Unicode glyphs are tall and need large font sizes to span the staff properly.
-  const staffHeight = lineGap * 8
-  const clefX = staffLeft + 2
-  const clefSymbol = clef === 'treble' ? '\u{1D11E}' : '\u{1D122}'
-  const clefFontSize = clef === 'treble' ? staffHeight * 2.4 : staffHeight * 0.9
-  // Treble clef: anchor near bottom of staff — the glyph extends upward
-  const trebleClefY = staffTop + staffHeight * 0.85 - lineGap * 1.5
-  // Bass clef: anchor near the F line (4th line from bottom)
-  const bassClefY = staffTop + (8 - 4) * lineGap + lineGap * 0.3
-  const clefY = clef === 'treble' ? trebleClefY : bassClefY
+  // Centre the note in whatever the clef leaves of the staff.
+  const noteX = (clefRight + space + staffLeft + staffWidth) / 2
+  const noteY = positionY(metrics, position)
+  const headAt = placeNotehead(metrics, position, noteX)
+  const stem = stemRect(metrics, position, headAt)
+  const ledgerHalf = ledgerHalfWidth(metrics)
 
-  // Accidental positioning
   const accidentalSymbol =
     accidental === 'sharp'
-      ? '\u266F'
+      ? '♯'
       : accidental === 'flat'
-        ? '\u266D'
+        ? '♭'
         : accidental === 'natural'
-          ? '\u266E'
+          ? '♮'
           : null
-  const accidentalX = noteX - noteRx - 8
-  const accidentalY = noteY + 3
 
   return (
     <svg
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
-      overflow="visible"
+      // A <title> child would surface as a hover tooltip, which on the matching
+      // game's cards reads as an answer key. role/aria-label names the graphic
+      // for assistive tech without drawing anything.
+      role="img"
+      aria-label={`${pitchClass}${accidentalSymbol ?? ''}${octave} on the ${clef} staff`}
       data-component="MusicStaff"
       data-clef={clef}
       data-note={`${pitchClass}${octave}`}
     >
       {/* Staff lines */}
       {Array.from({ length: 5 }, (_, i) => {
-        const y = staffTop + i * lineGap * 2
+        const y = positionY(metrics, i * 2)
         return (
           <line
             key={`staff-${i}`}
@@ -99,38 +128,37 @@ export function MusicStaff({
             y1={y}
             x2={staffLeft + staffWidth}
             y2={y}
-            stroke="#333"
+            stroke={INK}
             strokeWidth={0.8}
           />
         )
       })}
 
-      {/* Clef */}
-      {showClef && (
-        <text
-          x={clefX}
-          y={clefY}
-          fontSize={clefFontSize}
-          fontFamily="serif"
-          fill="#333"
-          dominantBaseline="middle"
-          textAnchor="start"
-        >
-          {clefSymbol}
-        </text>
+      {/*
+        Clef, notehead and stem all come from Bravura outlines. A single <path>
+        per glyph with the default nonzero fill rule keeps counters — the eye of
+        the G clef — hollow.
+      */}
+      {clefAt && (
+        <path
+          d={glyphPathData(clefGlyph(clef), clefAt)}
+          fill={INK}
+          data-element="clef"
+          data-clef-glyph={clefGlyph(clef).smuflName}
+        />
       )}
 
       {/* Ledger lines */}
       {ledgerPositions.map((pos) => {
-        const y = staffTop + (8 - pos) * lineGap
+        const y = positionY(metrics, pos)
         return (
           <line
             key={`ledger-${pos}`}
-            x1={noteX - 11}
+            x1={noteX - ledgerHalf}
             y1={y}
-            x2={noteX + 11}
+            x2={noteX + ledgerHalf}
             y2={y}
-            stroke="#333"
+            stroke={INK}
             strokeWidth={0.8}
           />
         )
@@ -139,29 +167,33 @@ export function MusicStaff({
       {/* Accidental */}
       {accidentalSymbol && (
         <text
-          x={accidentalX}
-          y={accidentalY}
-          fontSize={12}
+          x={noteX - ledgerHalf - space * 0.4}
+          y={noteY}
+          fontSize={space * 2}
           fontFamily="serif"
-          fill="#333"
+          fill={INK}
+          dominantBaseline="central"
           textAnchor="middle"
+          data-element="accidental"
         >
           {accidentalSymbol}
         </text>
       )}
 
-      {/* Note head (slightly tilted ellipse) */}
-      <ellipse
-        cx={noteX}
-        cy={noteY}
-        rx={noteRx}
-        ry={noteRy}
-        fill="#333"
-        transform={`rotate(-10, ${noteX}, ${noteY})`}
+      <path
+        d={glyphPathData(SMUFL_GLYPHS.noteheadBlack, headAt)}
+        fill={INK}
+        data-element="notehead"
       />
-
-      {/* Stem */}
-      <line x1={stemX} y1={stemY1} x2={stemX} y2={stemY2} stroke="#333" strokeWidth={1.2} />
+      <rect
+        x={stem.x}
+        y={stem.y}
+        width={stem.width}
+        height={stem.height}
+        fill={INK}
+        data-element="stem"
+        data-stem-direction={stem.direction}
+      />
     </svg>
   )
 }

@@ -391,7 +391,7 @@ export default function MusicFlashcardsPage() {
                   <ul className={css({ listStyle: 'disc', pl: '5', mt: '2' })}>
                     <li>Professional music staff with {config.clef} clef</li>
                     <li>One note per card for focused practice</li>
-                    <li>Bravura music font for authentic notation</li>
+                    <li>Clefs and noteheads drawn from Bravura, the SMuFL reference font</li>
                     {config.showNoteNames && <li>Note name in corner (can be covered)</li>}
                     <li>Print-ready PDF at {config.layout} per page</li>
                   </ul>
