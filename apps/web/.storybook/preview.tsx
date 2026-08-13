@@ -14,6 +14,7 @@ import { PageTransitionProvider } from '../src/contexts/PageTransitionContext'
 import { ThemeProvider } from '../src/contexts/ThemeContext'
 import { UserProfileProvider } from '../src/contexts/UserProfileContext'
 import { VisualDebugProvider } from '../src/contexts/VisualDebugContext'
+import commonEn from '../src/i18n/locales/common/en.json'
 import tutorialEn from '../src/i18n/locales/tutorial/en.json'
 
 // Create a client for Storybook
@@ -34,6 +35,9 @@ import '../src/app/globals.css'
 
 // Merge messages for Storybook (add more as needed)
 const messages = {
+  // `common.nav` is what AppNavBar and FloatingHamburgerMenu label their links
+  // with; without it every story containing app nav renders raw key paths.
+  common: commonEn.common,
   tutorial: tutorialEn.tutorial,
 }
 

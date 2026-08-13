@@ -1,0 +1,15 @@
+{
+  "common": {
+    "nav": {
+      "home": "Domus",
+      "create": "Crea",
+      "practice": "Exercitium",
+      "myStuff": "Mea",
+      "flowcharts": "Diagrammata",
+      "games": "Ludi",
+      "toys": "Ludicra",
+      "guide": "Praecepta",
+      "blog": "Diarium"
+    }
+  }
+}

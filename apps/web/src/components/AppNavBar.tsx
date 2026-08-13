@@ -5,10 +5,12 @@ import * as Tooltip from '@radix-ui/react-tooltip'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
+import { useTranslations } from 'next-intl'
 import React, { useContext, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { css } from '../../styled-system/css'
 import { container, hstack } from '../../styled-system/patterns'
+import { type NavDesktopBreakpoint, navItemsFor } from '../config/navItems'
 import { Z_INDEX } from '../constants/zIndex'
 import { useDeploymentInfoPanel } from '@tidepool/debug-panel'
 import { useFullscreen } from '../contexts/FullscreenContext'
@@ -24,6 +26,21 @@ type HomeHeroContextValue = {
   subtitle: Subtitle
   isHeroVisible: boolean
 } | null
+
+/**
+ * Per-breakpoint visibility classes for the desktop bar's progressive reveal.
+ *
+ * Written out rather than computed: Panda extracts styles by reading source, so
+ * `css({ display: { base: 'none', [bp]: 'block' } })` with a variable key emits
+ * no class at all and the link would simply never appear. Enumerating the four
+ * keeps the CSS static while the lookup stays data-driven.
+ */
+const DESKTOP_DISPLAY: Record<NavDesktopBreakpoint, string> = {
+  sm: css({ display: { base: 'none', sm: 'block' } }),
+  md: css({ display: { base: 'none', md: 'block' } }),
+  lg: css({ display: { base: 'none', lg: 'block' } }),
+  xl: css({ display: { base: 'none', xl: 'block' } }),
+}
 
 // HomeHeroContext - imported dynamically to avoid circular deps
 let HomeHeroContextModule: any = null
@@ -76,6 +93,7 @@ function MenuContent({
   const isDark = resolvedTheme === 'dark'
   const { open: openDeploymentInfo } = useDeploymentInfoPanel()
   const { isVisualDebugEnabled, toggleVisualDebug, isDebugAllowed } = useVisualDebug()
+  const t = useTranslations('common.nav')
 
   const linkStyle = {
     display: 'flex',
@@ -335,15 +353,11 @@ function MenuContent({
               {/* Site Navigation Section */}
               <div style={sectionHeaderStyle}>Navigation</div>
 
-              {renderNavLink('/', '🧮', 'Home')}
-              {renderNavLink('/create', '✏️', 'Create')}
-              {renderNavLink('/practice', '📚', 'Practice')}
-              {renderNavLink('/my-stuff', '⭐', 'My Stuff')}
-              {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
-              {renderNavLink('/games', '🎮', 'Games')}
-              {renderNavLink('/toys', '🧸', 'Toys')}
-              {renderNavLink('/guide', '📖', 'Guide')}
-              {renderNavLink('/blog', '📝', 'Blog')}
+              {navItemsFor('drawer').map((item) => (
+                <React.Fragment key={item.href}>
+                  {renderNavLink(item.href, item.emoji, t(item.labelKey))}
+                </React.Fragment>
+              ))}
 
               <div style={separatorStyle} />
 
@@ -708,15 +722,11 @@ function MenuContent({
           {/* Site Navigation Section */}
           <div style={sectionHeaderStyle}>Navigation</div>
 
-          {renderNavLink('/', '🧮', 'Home')}
-          {renderNavLink('/create', '✏️', 'Create')}
-          {renderNavLink('/practice', '📚', 'Practice')}
-          {renderNavLink('/my-stuff', '⭐', 'My Stuff')}
-          {renderNavLink('/flowchart', '🗺️', 'Flowcharts')}
-          {renderNavLink('/games', '🎮', 'Games')}
-          {renderNavLink('/toys', '🧸', 'Toys')}
-          {renderNavLink('/guide', '📖', 'Guide')}
-          {renderNavLink('/blog', '📝', 'Blog')}
+          {navItemsFor('dropdown').map((item) => (
+            <React.Fragment key={item.href}>
+              {renderNavLink(item.href, item.emoji, t(item.labelKey))}
+            </React.Fragment>
+          ))}
 
           <DropdownMenu.Separator style={separatorStyle} />
 
@@ -1375,6 +1385,7 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
   const isHomePage = pathname === '/'
   const { isFullscreen, toggleFullscreen, exitFullscreen } = useFullscreen()
   const { open: openDeploymentInfo } = useDeploymentInfoPanel()
+  const t = useTranslations('common.nav')
 
   // Try to get home hero context (if on homepage)
   const homeHero = useOptionalHomeHero()
@@ -1518,33 +1529,16 @@ export function AppNavBar({ variant = 'full', navSlot }: AppNavBarProps) {
             <div className={hstack({ gap: '6', alignItems: 'center' })}>
               {/* Navigation Links - progressively hide as viewport narrows */}
               <nav className={hstack({ gap: '4' })}>
-                {/* Create - always visible when nav is shown */}
-                <div className={css({ display: { base: 'none', sm: 'block' } })}>
-                  <NavLink href="/create" currentPath={pathname} isTransparent={isTransparent}>
-                    Create
-                  </NavLink>
-                </div>
-
-                {/* Practice - hidden below md breakpoint */}
-                <div className={css({ display: { base: 'none', md: 'block' } })}>
-                  <NavLink href="/practice" currentPath={pathname} isTransparent={isTransparent}>
-                    Practice
-                  </NavLink>
-                </div>
-
-                {/* Games - hidden below lg breakpoint */}
-                <div className={css({ display: { base: 'none', lg: 'block' } })}>
-                  <NavLink href="/games" currentPath={pathname} isTransparent={isTransparent}>
-                    Games
-                  </NavLink>
-                </div>
-
-                {/* Blog - hidden below xl breakpoint */}
-                <div className={css({ display: { base: 'none', xl: 'block' } })}>
-                  <NavLink href="/blog" currentPath={pathname} isTransparent={isTransparent}>
-                    Blog
-                  </NavLink>
-                </div>
+                {/* Progressively revealed as the viewport widens; each item
+                    carries its own breakpoint. `?? 'sm'` is unreachable —
+                    navItems.test.ts asserts every desktop item sets one. */}
+                {navItemsFor('desktop').map((item) => (
+                  <div key={item.href} className={DESKTOP_DISPLAY[item.desktopFrom ?? 'sm']}>
+                    <NavLink href={item.href} currentPath={pathname} isTransparent={isTransparent}>
+                      {t(item.labelKey)}
+                    </NavLink>
+                  </div>
+                ))}
               </nav>
 
               {/* Hamburger Menu - always visible, contains all links + user actions */}
