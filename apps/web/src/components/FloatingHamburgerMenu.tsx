@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useTheme } from '@/contexts/ThemeContext'
 import Link from 'next/link'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { useFullscreen } from '@/contexts/FullscreenContext'
 import { useDeploymentInfoPanel } from '@tidepool/debug-panel'
 import { css } from '../../styled-system/css'
+import { navItemsFor } from '@/config/navItems'
 import { Z_INDEX } from '@/constants/zIndex'
 
 /**
@@ -40,6 +42,7 @@ export function FloatingHamburgerMenu({
   const { resolvedTheme, setTheme } = useTheme()
   const { isFullscreen, toggleFullscreen } = useFullscreen()
   const { open: openDeploymentInfo } = useDeploymentInfoPanel()
+  const t = useTranslations('common.nav')
 
   const [open, setOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -114,14 +117,13 @@ export function FloatingHamburgerMenu({
     background: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
   }
 
-  // Navigation links
-  const navLinks = [
-    { href: '/', label: 'Home', emoji: '🏠' },
-    { href: '/create', label: 'Create', emoji: '✏️' },
-    { href: '/practice', label: 'Practice', emoji: '🎯' },
-    { href: '/flowchart', label: 'Flowcharts', emoji: '🗺️' },
-    { href: '/games', label: 'Games', emoji: '🎮' },
-  ]
+  /**
+   * A deliberate subset — this menu is for distraction-free pages, so it stays
+   * shorter than the full app drawer. The membership lives in `navItems.ts`, so
+   * the emoji and labels here can no longer drift from the drawer's (they had:
+   * this menu used to show 🏠 and 🎯 for Home and Practice).
+   */
+  const navLinks = navItemsFor('floating')
 
   // Mobile: Full-screen overlay
   if (isMobile && open) {
@@ -225,7 +227,7 @@ export function FloatingHamburgerMenu({
                 }}
               >
                 <span style={{ fontSize: '18px' }}>{link.emoji}</span>
-                <span>{link.label}</span>
+                <span>{t(link.labelKey)}</span>
               </Link>
             ))}
 
@@ -408,7 +410,7 @@ export function FloatingHamburgerMenu({
                   }}
                 >
                   <span style={{ fontSize: '16px' }}>{link.emoji}</span>
-                  <span>{link.label}</span>
+                  <span>{t(link.labelKey)}</span>
                 </div>
               </DropdownMenu.Item>
             ))}

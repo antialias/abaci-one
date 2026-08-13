@@ -1,0 +1,15 @@
+{
+  "common": {
+    "nav": {
+      "home": "Inicio",
+      "create": "Crear",
+      "practice": "Practicar",
+      "myStuff": "Mis cosas",
+      "flowcharts": "Diagramas de flujo",
+      "games": "Juegos",
+      "toys": "Juguetes",
+      "guide": "Guía",
+      "blog": "Blog"
+    }
+  }
+}

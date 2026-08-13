@@ -2,6 +2,7 @@
 // dynamically on their respective pages to avoid bloating the global bundle.
 // Do NOT import them here - they add 500KB+ of geography hints and game data.
 import { calendarMessages } from '@/i18n/locales/calendar/messages'
+import { commonMessages } from '@/i18n/locales/common/messages'
 import { createMessages } from '@/i18n/locales/create/messages'
 import { gamesMessages } from '@/i18n/locales/games/messages'
 import { guideMessages } from '@/i18n/locales/guide/messages'
@@ -32,18 +33,11 @@ function mergeMessages(...sources: Record<string, any>[]): Record<string, any> {
  * Get all messages for a locale by aggregating co-located translations
  */
 export async function getMessages(locale: Locale) {
-  // Common app-wide messages (minimal for now, can expand later)
-  const common = {
-    common: {
-      // Add app-wide translations here as needed
-    },
-  }
-
   // Merge all co-located feature messages
   // NOTE: Game-specific messages (knowYourWorld, rithmomachia) are loaded
   // dynamically on their game pages - not included here to save 500KB+
   return mergeMessages(
-    common,
+    { common: commonMessages[locale] },
     { home: homeMessages[locale] },
     { games: gamesMessages[locale] },
     { guide: guideMessages[locale] },
