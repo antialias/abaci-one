@@ -591,11 +591,28 @@ describe('buildModuleKit', () => {
     expect(slidingReadme).toContain('rear-entry graduated sliding dovetail')
     expect(slidingReadme).toMatch(/ONE continuous\s+graduated dovetail rail/)
     expect(slidingReadme).toMatch(/enters through the REAR face/)
-    expect(slidingReadme).toMatch(/deep anchor block/)
-    expect(slidingReadme).toMatch(/the table is the height datum/)
+    expect(slidingReadme).toMatch(/deep anchor block that bites\s+9 mm into the neighbor/)
+    // the anchor's two load-bearing claims: symmetric hook, and a closed underside
+    expect(slidingReadme).toMatch(/hooks the pull-apart direction on BOTH lips/)
+    expect(slidingReadme).toMatch(/solid 1\.7 mm berth floor/)
+    expect(slidingReadme).toMatch(/no seam surface opens through the bottom\s+face/)
+    // the price of the deeper rail, stated where the builder measures the row
+    expect(slidingReadme).toMatch(/adds 2 mm of assembled width/)
     expect(slidingReadme).toMatch(/blind front\s+seat/)
     expect(slidingReadme).toMatch(/firm rearward tug/)
     expect(slidingReadme).toContain('cannot lift straight out')
     expect(slidingReadme).toMatch(/0\.10, 0\.11,\s+and 0\.12 mm compensation samples/)
+    // the detent: the seated signal a builder can act on, and the warning that
+    // the firm last stretch is the ridge rather than a bad fit
+    expect(slidingReadme).toMatch(/climbs a ridge on the berth floor/)
+    expect(slidingReadme).toMatch(/with a click as\s+the seat is reached/)
+    expect(slidingReadme).toMatch(/That click is the seated signal/)
+    expect(slidingReadme).toMatch(/lift the detent out of its notch/)
+    expect(slidingReadme).toMatch(/never clicks into the\s+notch/)
+    expect(slidingReadme).toMatch(/MEANT to be firm/)
+    // and it is still not a separate part — but the builder is told WHICH module
+    // flexes, because that decides which one to hold
+    expect(slidingReadme).toMatch(/makes that stretch of rail its own spring/)
+    expect(slidingReadme).toMatch(/not the one already in\s+the row/)
   })
 })

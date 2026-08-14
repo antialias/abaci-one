@@ -266,10 +266,11 @@ export type Derived = {
   frameW: number
   outerD: number
   /** Mid-module width (the seam coupon's sc_w): bead + clearances + a full
-   *  edge web per side. Meaningful in modular mode; computed always. */
+   *  edge wall per side — a web, plus the sliding rail's edge allowance on that
+   *  topology. Meaningful in modular mode; computed always. */
   scW: number
   /** End-module width (scad mod_we): border + field margin + half its column's
-   *  channel + one full edge web. 2·modWe + (cols−2)·scW === frameW exactly in
+   *  channel + one full edge wall. 2·modWe + (cols−2)·scW === frameW exactly in
    *  modular mode — the identity the width tests pin. */
   modWe: number
 }
@@ -288,8 +289,13 @@ export const derived = (p: Params): Derived => {
   // couldn't capture beads), so each seam costs +web·S vs mono — the honest
   // price of modularity, paid here so every consumer (assembled width, the
   // shell classifier's bead-column matching, the panel's size delta) reads the
-  // same number. scad mirror: sc_wall / the module composition, not s_cp.
-  const sCp = sBd + 2 * cl + (p.seam_mode === 'modular' ? 2 : 1) * p.web * S
+  // same number. The sliding rail buys its depth with a further edgeAllowance
+  // per edge; like the scad's sc_wall that rides on joint_type alone, since a
+  // mono render has no seam face to widen. scad mirror: sc_wall / the module
+  // composition, not s_cp.
+  const seamEdge =
+    p.web * S + (p.joint_type === 'sliding_dovetail' ? SLIDING_DOVETAIL.edgeAllowance : 0)
+  const sCp = sBd + 2 * cl + (p.seam_mode === 'modular' ? 2 * seamEdge : p.web * S)
   const sEm = sShelf + cl + sBd / 2
   const sEp = sBl + p.print_gap
   const sElo = sShelf + cl + sBl / 2
@@ -315,8 +321,8 @@ export const derived = (p: Params): Derived => {
     chamf,
     frameW: fieldW + 2 * sBw,
     outerD: sFd + 2 * sBw,
-    scW: sBd + 2 * cl + 2 * p.web * S,
-    modWe: sBw + sEm + sBd / 2 + cl + p.web * S,
+    scW: sBd + 2 * cl + 2 * seamEdge,
+    modWe: sBw + sEm + sBd / 2 + cl + seamEdge,
   }
 }
 // OUTER dims: bead field (from cols) + the flush border band on each side.
@@ -1691,19 +1697,28 @@ export const SEAM = {
  * smallest at the blind front stop) and rides one continuous female groove
  * whose only tight sections are the three seated berths — every rail section
  * clears every female station it passes by ≥ step/2 per side until the final
- * keyLength of travel. The rear segment is the DEEP ANCHOR: deepDepth into the
- * neighbor, top flank the only hook (~1.75× the shallow hook, ~3.5× the flank
- * bearing area), a 45° skirt running to the BED below it and a bottom-open
- * female pocket — the seated anchor block fills the opening flush with both
- * bottoms. Retention is the seat itself: the berth-front pinch is a ~1.9°
- * travel-direction taper, far inside PLA's atan(µ)≈14° self-holding limit, so
- * the joint seats with a firm push and releases with a firm rearward tug.
- * No flexures — nothing to crack, and the insertion sweep is provably
- * collision-free at every offset (female depth is monotone non-decreasing
- * toward the mouth, and the rail only ever sits rearward of its seat). */
+ * keyLength of travel. Every profile is centered in the slab; nothing in this
+ * topology reaches the plate, so no part of the seam prints as a blade over a
+ * sliver. The rear segment is the DEEP ANCHOR: deepDepth into the neighbor,
+ * both flanks leaving the neck at angleDeg and then CLAMPED FLAT at deepFloor
+ * and its mirror — symmetric about mid-slab, landing on a solid berth floor,
+ * hooking on both lips with the per-side undercut the full-length teeth carry,
+ * and spending its depth on bearing area rather than lip. Retention is the seat
+ * itself: the berth-front pinch is a ~1.9° travel-direction taper, far inside
+ * PLA's atan(µ)≈14° self-holding limit, so the joint seats with a firm push and
+ * releases with a firm rearward tug — and a detent ridge makes that seat positive
+ * rather than frictional. ONE flexure, and it is not an added finger: the male's
+ * own front key, cut free as a tongue. The insertion sweep is collision-free at every
+ * offset except that one designed interference, which is checked as a deflection
+ * instead (female depth is monotone non-decreasing toward the mouth, and the rail
+ * only ever sits rearward of its seat). */
 export const SLIDING_DOVETAIL = {
   angleDeg: 14,
-  maleDepth: 1, // shallow rail X depth — capped by the channel webs
+  maleDepth: 2, // full-length rail X depth — capped by the channel webs, which
+  // edgeAllowance widens
+  edgeAllowance: 1, // extra solid on EACH sliding module seam edge (+2 mm of
+  // column spacing per assembled seam), spent entirely on tooth engagement: the
+  // groove keeps the same backing wall a 1 mm rail had
   neck: 2.8, // MID segment Z neck; sizes are neck ± step
   step: 0.6, // Z graduation between adjacent rail sizes
   minBackingWall: 1.2,
@@ -1714,16 +1729,94 @@ export const SLIDING_DOVETAIL = {
   pinchLength: 1.5, // … this much travel — the self-holding retention wedge
   floorRelief: 0.15, // runway floor relief past groove depth (loose travel)
   datumRelief: 0.2, // non-datum berth fronts stand off — ONE Y stop
+  leadOut: 0.6, // ramp AHEAD of a berth's front, out to the runway. funnel does
+  // this at a berth's REAR; nothing did it at the front, so the runway (cut
+  // floorRelief deeper) butted the berth (pinch tighter) and left a rearward
+  // facing ledge of floorRelief + pinch standing the berth's full height. Only
+  // the next size DOWN is ever at those stations, so the ramp costs no travel
   seatClear: 0.02, // CAD gap at the front stop (print swell closes it)
   mouthFlare: 0.6, // rear-mouth Z flare beyond the pass-through size
-  deepDepth: 3.5, // rear anchor X depth — bounded by the top lip over the
-  // anchor pocket ceiling, NOT by the channel webs: the anchor never leaves
+  deepDepth: 9, // rear anchor X depth — bounded by the NEIGHBOUR's rear foot
+  // pocket (sock + mfWall), NOT by the channel webs: the anchor never leaves
   // the solid back strip
-  deepFloor: 0.5, // thinnest printable female floor; below it the anchor
-  // pocket opens through the bottom face (both sides take the open branch at
-  // default frame_h = 8)
+  deepFloor: 1.8, // female berth floor under the anchor AND, mirrored about
+  // mid-slab, the ceiling lip over it — ONE knob for both, which is what makes
+  // the anchor symmetric. Nothing on the male sits below it, and the berth
+  // never opens through the underside
   mouthLength: 2.5, // deep rear mouth flare length
+  corner: 0.5, // anchor edge break — an inset in x/z hulled over the same run in
+  // Y, so every broken face (underside included) is at exactly 45°
+  anchorLead: 1.5, // B→anchor graduation run. The jump from a 2 mm rail to a
+  // 9 mm one is the largest single face on the part — 7 mm of x by
+  // (sFh − 2·deepFloor) of z, a cliff standing across the track — and at
+  // `corner` it was barely broken at all. Same 45° inset break, given enough run
+  // to BE the graduation instead of decorating it. Not the Y-blend the underside
+  // can't have: an inset hulled over its own run is 45° everywhere, floor
+  // included. Bounded by the z budget (the inset closes from floor AND ceiling,
+  // so twice the lead has to leave a tip land) and by anchor bearing (the ramp
+  // is inset for its whole run, so it bears on nothing)
   selfHoldMu: 0.25, // conservative PLA-on-PLA static friction lower bound
+  // The detent — the click. A ridge on the female MIDDLE berth's floor drops into
+  // a notch in the male's MIDDLE (B) section, at the mid-length of the track —
+  // NOT out at the module's front corner, where the tongue's free end would be a
+  // lever a thumb can reach and crack off, and never on the anchor (a spring
+  // there would make the anchor itself a lever). Mid-track costs the kinematic
+  // exclusivity a front-berth ridge got for free — rear entry means a female
+  // feature at f is swept by every male section ahead of f — so exclusivity is
+  // bought geometrically instead, by the relief channel below. The spring is the
+  // male side: a Z-through slot behind the rail turns the B key plus its backing
+  // skin into a cantilever tongue, so the female stays rigid and the ridge gets a
+  // flat, known berth floor to stand on.
+  detent: 0.15, // ridge engagement — how far the crest stands INSIDE the rail's
+  // tip face at seat, which is also the deflection the tongue takes to pass it.
+  // Bounded by TWO gates: the flexure's strain against the WHOLE tongue section
+  // (see leaf below — skin plus rail is ~11× the skin's own second moment), and
+  // the RETRACTION LIMIT, which is the non-obvious one. The female is the male
+  // profile translated jointFit in +x, so the rail can back out of its groove
+  // exactly jointFit before its own 14° flanks bottom on the groove's — refusing
+  // to come out radially is the whole job of a dovetail — and the tongue cannot
+  // deflect further than the rail it carries can retract. An insertion sweep is
+  // blind to that: it measures the ridge's volume, not whether the rail has
+  // anywhere to go
+  detentRelief: 0.07, // middle berth NECK opened over the detent window, TOTAL
+  // across both flanks (half per side). Converts to X retraction at
+  // 1/(2·tan(angle)) — 0.07 of neck is 0.14 of extra room. Floor depth and flank
+  // angle untouched, so neither the seat nor the undercut changes; it is purely
+  // the sideways slack the deflecting tongue needs. The MIDDLE berth deliberately:
+  // the front and anchor berths locate the module, so this is the one berth that
+  // can afford to give up a sliver of Z grip — itself an argument for mid-track
+  channelClear: 0.2, // relief channel half-width past the ridge, per side
+  channelAir: 0.25, // gap between the ridge crest and the channel floor — the
+  // margin every un-sprung section ahead of the tongue passes the ridge on. The
+  // channel runs down the CENTRE of the rail's tip face, nose → tongue tip, and
+  // is a tip-face feature only: the 14° flanks, which are what actually grip, are
+  // never cut, so the small section keeps its full undercut
+  detentLand: 0.6, // crest land in Y
+  detentHalfHeight: 0.9, // ridge half-height in Z — the notch grown from it has
+  // to stay off the rail's flanks at EVERY coupon fit, and 1.0 misses that gate
+  // at 0.12
+  detentOutDeg: 55, // front flank — the retention wall the male pulls out over
+  detentInDeg: 18, // rear flank — the insertion cam
+  detentSlop: 0.04, // flank-normal gap between ridge and notch at seat. NOT
+  // joint_fit: joint_fit is running clearance for a sliding fit and a detent does
+  // not run, it parks. Whatever is here is pure Y backlash before the retention
+  // flank bites (slop/sin(out)), so it is held to the seat's tolerance rather than
+  // the rail's — and it is still a real gap, so the click can never hold the seam
+  // off its blind front stop
+  springSlot: 0.8, // Z-THROUGH slot behind the rail that frees the tongue, and —
+  // turned 90° at the tongue's tip and driven out through the seam face — the gap
+  // that frees that tip. Both ends are inside the module now, so the slot is an L
+  // in plan with a rounded blind root; it cannot move in x or y to dodge anything
+  leafT: 1.2, // seam skin kept in front of the slot: the rail's backing, and the
+  // tongue's root section with it
+  springA: 11.25, // notch → root. The cantilever length, so the strain knob: ε
+  // goes as 1/a², k as 1/a³. Set so the root lands ON scB0 — the bar strip is the
+  // only solid the tongue can grow out of without a bead channel behind it to bow
+  // into, and the gate below holds it there
+  // Wood PLA's tensile modulus (MPa) and the conservative PLA-on-PLA static
+  // friction bound the seat taper is judged against. Strain does not need either;
+  // the assembly-force gate needs both, and the scad carries the same two.
+  modulusMPa: 2500,
 } as const
 
 export const SLIDING_FIT_VALUES = [0.1, 0.11, 0.12] as const
@@ -1741,9 +1834,12 @@ export const slidingDovetailDerived = (jointFit: number) => {
   // (the deep mouth's Z-flare is derived from the remaining lip budget in the
   // scad, so it can never open wider than the lip gate allows).
   const runwayOpening = c.neck + c.step + 2 * (c.maleDepth + 2 * jointFit + c.floorRelief) * tan
-  // The deep anchor's Z hook — its top flank's rise over deepDepth, the only
-  // pull-apart engagement (~1.75× the shallow hook, ~3.5× the bearing area).
-  const anchorHook = c.deepDepth * tan
+  // The berth floor left under the deep anchor, which is ALSO the ceiling lip
+  // over it — the profile is symmetric about mid-slab, so one number is both.
+  const anchorFloor = c.deepFloor - jointFit
+  // The deep mouth's Z-flare, spent out of that lip budget and capped at the
+  // shallow mouth's step + flare (scad: the zf clamp in slide_pockets).
+  const anchorMouthFlare = Math.min(c.step + c.mouthFlare, Math.max(0, anchorFloor - c.minLip))
   const runningClearance = jointFit * Math.sin(angleRad) // flank-normal, in-berth
   // A rail section passing any female station sized one graduation step up (per side).
   const passClearance = c.step / 2 + jointFit * tan
@@ -1751,6 +1847,7 @@ export const slidingDovetailDerived = (jointFit: number) => {
   const selfHoldLimitDeg = (Math.atan(c.selfHoldMu) * 180) / Math.PI
   return {
     angleRad,
+    tan,
     grooveDepth,
     deepestCut,
     deepPocketCut,
@@ -1758,11 +1855,351 @@ export const slidingDovetailDerived = (jointFit: number) => {
     head: headOf(c.neck),
     headL: headOf(c.neck + c.step),
     runwayOpening,
-    anchorHook,
+    anchorFloor,
+    anchorMouthFlare,
     runningClearance,
     passClearance,
     seatTaperDeg,
     selfHoldLimitDeg,
+  }
+}
+
+/** An XZ cross-section of the seam, in the scad's coordinates: x = depth into
+ *  the neighbour measured from the seam face, z = height off the build plate.
+ *  Vertices run counter-clockwise, the ordering the scad's prism_xz needs. */
+export type SeamProfile = [number, number][]
+
+/** The male rail's full-length cross-section (scad slide_profile): a trapezoid
+ *  centered on the slab, `neck` tall at the seam face, opening at angleDeg. */
+export const slideProfile = (
+  neck: number,
+  sFh: number,
+  depth: number = SLIDING_DOVETAIL.maleDepth
+): SeamProfile => {
+  const t = Math.tan((SLIDING_DOVETAIL.angleDeg * Math.PI) / 180)
+  const cz = sFh / 2
+  return [
+    [0, cz - neck / 2],
+    [depth, cz - neck / 2 - depth * t],
+    [depth, cz + neck / 2 + depth * t],
+    [0, cz + neck / 2],
+  ]
+}
+
+/** The deep anchor's male cross-section (scad slide_deep_profile): the same
+ *  trapezoid until each flank reaches deepFloor / its mirror, then CLAMPED flat
+ *  to the tip. Symmetric about mid-slab, so both lips hook and the per-side
+ *  undercut is fixed by the floor knob instead of growing with the bite.
+ *  `corner` breaks the two long tip edges. `inset` shrinks floor, cap and tip
+ *  while the seam root stays put — hulling an inset section `corner` behind a
+ *  full one is what breaks each END of the anchor at 45°, underside included —
+ *  and an inset deep enough to reach the neck leaves no flank to state. */
+export const slideDeepProfile = (
+  neck: number,
+  sFh: number,
+  inset = 0,
+  corner = SLIDING_DOVETAIL.corner
+): SeamProfile => {
+  const c = SLIDING_DOVETAIL
+  const t = Math.tan((c.angleDeg * Math.PI) / 180)
+  const cz = sFh / 2
+  const rb = cz - neck / 2
+  const rt = cz + neck / 2
+  const fl = c.deepFloor + inset
+  const cap = sFh - c.deepFloor - inset
+  const xb = Math.max(0, (rb - fl) / t)
+  const xt = Math.max(0, (cap - rt) / t)
+  const d = c.deepDepth - inset
+  const k = Math.min(corner, (d - Math.max(xb, xt)) / 2, (cap - fl) / 2)
+  return [
+    [0, rb],
+    ...(xb > 0 ? ([[xb, fl]] as SeamProfile) : []),
+    [d - k, fl],
+    [d, fl + k],
+    [d, cap - k],
+    [d - k, cap],
+    ...(xt > 0 ? ([[xt, cap]] as SeamProfile) : []),
+    [0, rt],
+  ]
+}
+
+/** The female berth containing it (scad slide_deep_groove_profile): the same
+ *  shape grown the file's way — flanks offset `fit` along +x (the uniform
+ *  fit·sin(angle) flank-normal gap), floor and ceiling offset `fit` along ∓z,
+ *  far wall pushed out by `xr`. `zflare` opens floor and ceiling — each with its
+ *  own root corner, so neither corner moves — by the same amount at the rear
+ *  mouth: it eases all four sides, which only became possible once the anchor
+ *  landed on a floor instead of on the bed. The berth keeps deepFloor − fit of
+ *  solid PLA underneath: the catch shelf, whose seam-edge lip hooks the male's
+ *  bottom flank. */
+export const slideDeepGrooveProfile = (
+  neck: number,
+  fit: number,
+  sFh: number,
+  xr = 0,
+  zflare = 0
+): SeamProfile => {
+  const c = SLIDING_DOVETAIL
+  const t = Math.tan((c.angleDeg * Math.PI) / 180)
+  const cz = sFh / 2
+  const d = c.deepDepth + fit + xr
+  const rb = cz - neck / 2 - zflare
+  const rt = cz + neck / 2 + zflare
+  const fl = c.deepFloor - fit - zflare
+  const cap = sFh - c.deepFloor + fit + zflare
+  return [
+    [-0.01, rb - (fit - 0.01) * t],
+    [(rb - fl) / t - fit, fl],
+    [d, fl],
+    [d, cap],
+    [(cap - rt) / t - fit, cap],
+    [-0.01, rt + (fit - 0.01) * t],
+  ]
+}
+
+/** The deep anchor's scale-dependent geometry — the only part of the sliding
+ *  identity that is not scale-free, because the neck and the berth floor are
+ *  absolute while the slab centerline is not. `flankRun` is where each flank
+ *  clamps flat; `flatLength` is what is left of the bite to bear on, and the
+ *  scad gates both (a slab tall enough to push flankRun past the tip would fold
+ *  the profile on itself). */
+export const slidingAnchorGeometry = (sFh: number) => {
+  const c = SLIDING_DOVETAIL
+  const t = Math.tan((c.angleDeg * Math.PI) / 180)
+  const neck = c.neck + c.step // the anchor is always the LARGE graduation
+  const rootBottom = sFh / 2 - neck / 2
+  const undercut = rootBottom - c.deepFloor // per side; == capPlane − rootTop
+  const flankRun = undercut / t
+  return {
+    neck,
+    centerZ: sFh / 2,
+    rootBottom,
+    rootTop: sFh / 2 + neck / 2,
+    floorPlane: c.deepFloor,
+    capPlane: sFh - c.deepFloor,
+    undercut,
+    flankRun,
+    flatLength: c.deepDepth - flankRun,
+  }
+}
+
+/** An XY plan polygon in the scad's coordinates: x = depth into the neighbour
+ *  measured from the seam face, y = along the seam from the module's front
+ *  face. Extruded in Z — the detent's wedges are plan shapes, where every
+ *  other seam profile in this file is a cross-section. */
+export type SeamPlan = [number, number][]
+
+/** The detent — the click, and the one flexure in this topology. The ridge sits
+ *  in the MIDDLE berth, at the mid-length of the track: a berth floor is the one
+ *  stretch of groove with a flat, known floor (the runway behind it is relieved
+ *  and the berth's own front is the seat pinch), so the proud height is a
+ *  constant, and mid-track keeps the tongue's free end buried ~48 mm from either
+ *  end of the module where nothing can reach it to snap it off.
+ *
+ *  Mid-track gives up the exclusivity a front-berth ridge got free from rear
+ *  entry — a female feature at f is swept by every male section ahead of f, and
+ *  mid-track that is most of the rail — so exclusivity is bought geometrically:
+ *  the RELIEF CHANNEL, a channelDepth-deep slot down the centre of the rail's TIP
+ *  FACE from the nose to the tongue's tip, wide enough to clear the ridge by
+ *  channelClear per side and deep enough to clear its crest by channelAir. Every
+ *  un-sprung section runs past the ridge on air; contact begins only when the
+ *  ridge reaches the tongue, a couple of millimetres before seat, so the click
+ *  still lands on the seat. Tip face only — the 14° flanks are never cut.
+ *
+ *  The spring is the MALE side. An L-shaped Z-through slot behind the rail frees
+ *  the B key and the leafT of skin backing it into one cantilever tongue: rooted
+ *  at the slot's blind end on the solid bar strip, free at the short leg that
+ *  cuts out through the seam face. Its bending SECTION is the whole tongue — skin
+ *  AND the rail's own trapezoid, which is welded to it along the entire free
+ *  length and carries ~11× the skin's second moment. Counting the skin alone is
+ *  the same class of error as counting the female's backing strip without its
+ *  groove lips, in the other direction. Strain is one gate; force is the second,
+ *  because a click nobody can push home is as dead as one that cracks; the
+ *  RETRACTION LIMIT (see detent/detentRelief) is the third, and it binds on the
+ *  free TIP, which overswings the notch because a cantilever is straight past its
+ *  load. All use the RIGID-ROOT cantilever: the wall the tongue roots into does
+ *  rotate, making the real spring ~14% softer, and overstating both stiffness and
+ *  strain is the safe direction. */
+export const slidingDetentGeometry = (p: Params) => {
+  const c = SLIDING_DOVETAIL
+  const b = seamBands(p)
+  const g = slidingDovetailDerived(p.joint_fit)
+  const rad = (deg: number) => (deg * Math.PI) / 180
+  const tanOut = Math.tan(rad(c.detentOutDeg))
+  const tanIn = Math.tan(rad(c.detentInDeg))
+  const cz = b.sFh / 2
+  const k0S = b.d.chamf + 1 + c.seatClear // rail front datum
+  const k0M = b.d.outerD / 2 - c.keyLength / 2 // A→B graduation
+  const midY0 = k0M - c.datumRelief // the MIDDLE berth's front …
+  const midY1 = k0M + c.keyLength + 0.3 // … and its rear
+  const berthY1 = midY1 // the berth the ridge lives in
+  const yc = k0M + c.keyLength / 2 // crest centre = the berth's mid-length,
+  // which on this module lands on outerD / 2 exactly: the middle of the track
+  const y0 = yc - c.detentLand / 2 // crest land [y0, y1]
+  const y1 = yc + c.detentLand / 2
+  const proud = p.joint_fit + c.detent // over the BERTH floor
+  const y00 = y0 - proud / tanOut // front toe, on the berth floor
+  const yr = y1 + proud / tanIn
+  // The tongue's tip, and with it the relief channel's rear end: the slot's short
+  // leg goes at the forward-most station that does NOT cut the middle berth's
+  // seat pinch. One station splits rail from tongue — everything ahead of it is
+  // un-sprung rail that must pass the ridge on air, everything behind it flexes.
+  const channelY1 = midY0 + c.pinchLength
+  const springY0 = channelY1 + c.springSlot
+  const springA = c.springA // notch → the slot's blind root
+  const springY1 = yc + springA
+  const channelDepth = c.detent + c.channelAir // into the rail's tip face
+  const channelWidth = 2 * (c.detentHalfHeight + c.channelClear) // … and in Z
+  const floorX = g.grooveDepth // berth floor the ridge grows from
+  const crestX = c.maleDepth - c.detent // crest, inside the rail's tip face
+  const notchFloorX = crestX - p.joint_fit // rail left behind the notch
+  // The retraction limit. Past its load a cantilever is straight, so the free tip
+  // overswings the notch by 1.5·b/a and the TIP is what binds. Against it: the
+  // jointFit the dovetail leaves before its 14° flanks bottom, plus what the
+  // berth's neck relief converts to, at 1/(2·tan(angle)) per unit of neck.
+  const tipOver = yc - springY0 // load → free tip
+  const tipDefl = c.detent * (1 + (1.5 * tipOver) / springA)
+  const retractRoom = p.joint_fit + c.detentRelief / (2 * g.tan)
+  // The tongue's section, in x measured from the slot's inner face: the skin is a
+  // rectangle at full slab height, the rail is the B trapezoid (neck at the seam
+  // face, head at the tip). Moments are accumulated about x = 0 and shifted to
+  // the centroid once, so no piece needs its own parallel-axis term.
+  const wall = p.web * p.scale_factor + c.edgeAllowance
+  const backing = wall - g.deepestCut // the FEMALE's post-groove wall, reported only
+  const neckB = c.neck // the tongue carries the MIDDLE section now, not the small
+  const headB = neckB + 2 * c.maleDepth * Math.tan(g.angleRad)
+  const railArea = (c.maleDepth * (neckB + headB)) / 2
+  const leafA = c.leafT * b.sFh + railArea
+  const leafQ =
+    (b.sFh * c.leafT ** 2) / 2 + c.leafT * railArea + c.maleDepth ** 2 * (neckB / 6 + headB / 3)
+  const leafJ =
+    (b.sFh * c.leafT ** 3) / 3 +
+    c.leafT ** 2 * railArea +
+    2 * c.leafT * c.maleDepth ** 2 * (neckB / 6 + headB / 3) +
+    c.maleDepth ** 3 * (neckB / 12 + headB / 4)
+  const leafX = leafQ / leafA // centroid depth
+  const inertia = leafJ - leafA * leafX ** 2
+  const leafC = Math.max(leafX, c.leafT + c.maleDepth - leafX) // outer fibre
+  // Cantilever, loaded at the notch: δ = F·a³/(3EI) and M = F·a at the root, so
+  // ε = M·c/(EI) drops E and I alike and the gate is 3·δ·c/a² (×100 for %).
+  const strainPct = (300 * c.detent * leafC) / springA ** 2
+  const stiffnessN = (3 * c.modulusMPa * inertia) / springA ** 3 // N/mm
+  const forceN = stiffnessN * c.detent
+  // Axial force at a flank: the spring load through a wedge of that angle to
+  // the travel, with PLA's friction taken at the same conservative µ the seat
+  // taper is judged against. Rearward (18°) is the insertion cam; forward (55°)
+  // is the wall a pull has to climb.
+  const cam = (deg: number) =>
+    (forceN * (Math.tan(rad(deg)) + c.selfHoldMu)) / (1 - c.selfHoldMu * Math.tan(rad(deg)))
+  return {
+    k0S,
+    k0M,
+    midY0,
+    midY1,
+    y0: y00,
+    crest0: y0,
+    crest1: y1,
+    rearToe: yr,
+    crestY: yc,
+    proud,
+    floorX,
+    crestX,
+    notchFloorX,
+    berthY1,
+    springA,
+    springY0,
+    springY1,
+    channelY1,
+    channelDepth,
+    channelWidth,
+    tipOver,
+    tipDefl,
+    retractRoom,
+    backing,
+    leafA,
+    leafX,
+    leafC,
+    inertia,
+    strainPct,
+    stiffnessN,
+    forceN,
+    seatForceN: cam(c.detentInDeg),
+    partForceN: cam(c.detentOutDeg),
+    /** Y free travel at seat before a flank bears: a y-shift of s closes a
+     *  flank-normal gap by s·sin(flank). Forward is the blind stop's business,
+     *  so the retention (out) flank's number is the click's backlash. */
+    backlashOut: c.detentSlop / Math.sin(rad(c.detentOutDeg)),
+    backlashIn: c.detentSlop / Math.sin(rad(c.detentInDeg)),
+    /** the female wedge, standing off the berth floor. `fit` is the SAMPLE's, so
+     *  a coupon plate's other fits can never leave the ridge floating over a
+     *  floor cut somewhere else — the crest land stays pinned to the berth's
+     *  mid-length and only the toes move with the floor. */
+    ridge: (fit = p.joint_fit): SeamPlan => {
+      const xf = c.maleDepth + fit
+      const pr = xf - crestX
+      return [
+        [xf, y0 - pr / tanOut],
+        [crestX, y0],
+        [crestX, y1],
+        [xf, y1 + pr / tanIn],
+      ]
+    },
+    /** the male wedge: the ridge's two flank LINES, each stepped back detentSlop
+     *  along its own normal, plus a `fit` of depth at the floor and of half-height
+     *  in Z. The flanks are stated where the ridge's cross the rail's TIP face —
+     *  the surface the notch is cut into. Read them off the ridge's toes on the
+     *  groove floor instead and every flank gains (floor − tip)·cos(flank) it
+     *  never asked for, which is backlash: the seam still seats on its blind front
+     *  stop, but the click is loose against a pull by that much before it bites. */
+    notch: (fit = p.joint_fit): SeamPlan => {
+      const xt = c.maleDepth + 0.01
+      const xc = crestX - fit
+      const yf = y0 - c.detent / tanOut - c.detentSlop / Math.sin(rad(c.detentOutDeg))
+      const yb = y1 + c.detent / tanIn + c.detentSlop / Math.sin(rad(c.detentInDeg))
+      const front = (x: number) => yf - (x - c.maleDepth) / tanOut
+      const rear = (x: number) => yb + (x - c.maleDepth) / tanIn
+      return [
+        [xt, front(xt)],
+        [xc, front(xc)],
+        [xc, rear(xc)],
+        [xt, rear(xt)],
+      ]
+    },
+    ridgeZ: [cz - c.detentHalfHeight, cz + c.detentHalfHeight] as [number, number],
+    notchZ: [cz - c.detentHalfHeight - p.joint_fit, cz + c.detentHalfHeight + p.joint_fit] as [
+      number,
+      number,
+    ],
+    /** the L-shaped slot that frees the tongue (scad slide_spring_slot_cut), in
+     *  the module's own x from its LEFT face. The LONG leg sits behind the seam
+     *  skin on the male (right) edge and runs [channelY1, springY1], blind at both
+     *  ends — the rounded root is the tongue's; the SHORT leg is the same width of
+     *  Y turned 90° at channelY1 and driven out through the seam face, which is
+     *  what frees the tongue's TIP. Both ends are inside the module, so nothing
+     *  about this slot reaches an outer face in plan. Z-through — it opens the top
+     *  face as well as the bottom. */
+    slot: {
+      x0: b.d.scW - c.leafT - c.springSlot,
+      w: c.springSlot,
+      y0: channelY1,
+      y1: springY1,
+      /** the short leg: [tipY0, tipY1] in Y, out through the seam face in x */
+      tipY0: channelY1,
+      tipY1: springY0,
+    },
+    /** the relief channel (scad slide_relief_channel), the feature that buys back
+     *  the exclusivity mid-track gave up: a groove down the CENTRE of the rail's
+     *  TIP FACE, from the nose to the tongue's tip, that every un-sprung section
+     *  passes the ridge inside. Stated as the cut, in the rail's own x (depth from
+     *  the seam face) and z about mid-slab. Tip face only — it stops channelDepth
+     *  short of the flanks, so the 14° grip surfaces are untouched. */
+    channel: {
+      x0: c.maleDepth - channelDepth,
+      d: channelDepth,
+      y0: k0S,
+      y1: springY0,
+      z: [cz - channelWidth / 2, cz + channelWidth / 2] as [number, number],
+    },
   }
 }
 
@@ -1797,8 +2234,20 @@ export type ModuleFeetLayout = {
   w: number
   mouth: number
   seat: number
-  /** pocket center X in module-local coords — centered in the band beside the socket */
+  /** REAR pocket center X in module-local coords — centered in the band beside
+   *  the socket (the socket is the rear anchor berth, a rear-strip feature) */
   x: number
+  /** FRONT pocket center X — the rear's again. It was not, when the tongue was a
+   *  front-corner cantilever: the spring slot ran out through the module's FRONT
+   *  face, straight past this pocket, so the front foot had to be squeezed into
+   *  its own band between the groove's deepest cut and the slot's inner face. The
+   *  tongue is mid-track now, forty-odd millimetres behind the front foot, so the
+   *  front strip's only obstruction is the groove again. */
+  xFront: number
+  /** that band's bounds, kept because the slot verdict still reads them: a scale
+   *  that couldn't fit the band couldn't fit this pocket either */
+  frontLo: number
+  frontHi: number
   /** deepest seam-socket cut into module X (tab + fit + deepening) */
   sock: number
   /** the free width beside the socket a mid-module pocket can occupy */
@@ -1834,6 +2283,11 @@ export function moduleFeetLayout(p: Params): ModuleFeetLayout {
   const mouth = w + 2 * fitEff
   const seat = mouth + 2 * undercutEff
   const x = (sock + d.scW) / 2
+  const g = slidingDovetailDerived(p.joint_fit)
+  const frontLo = g.deepestCut + SEAM.mfWall + seat / 2
+  const frontHi =
+    d.scW - SLIDING_DOVETAIL.leafT - SLIDING_DOVETAIL.springSlot - SEAM.mfWall - seat / 2
+  const xFront = x // scad mf_x_front — see the type's note
   const bumperFits = printed || p.feet_w <= band
   let minScale: number | null = null
   if (!bumperFits && p.feet_w <= bandAt(4)) {
@@ -1851,6 +2305,9 @@ export function moduleFeetLayout(p: Params): ModuleFeetLayout {
     mouth,
     seat,
     x,
+    xFront,
+    frontLo,
+    frontHi,
     sock,
     band,
     fits: w >= 4,
@@ -1871,9 +2328,9 @@ export function moduleFeetPositions(p: Params, kind: 'left' | 'mid' | 'right'): 
   const { c } = feetEffective(p)
   const D = d.outerD
   if (kind === 'mid') {
-    const { x } = moduleFeetLayout(p)
+    const { x, xFront } = moduleFeetLayout(p)
     return [
-      [x, c],
+      [xFront, c],
       [x, D - c],
     ]
   }
@@ -1905,6 +2362,26 @@ export type SeamVerdict = {
     | 'datum_lead'
     | 'deep_backing'
     | 'deep_lip'
+    | 'anchor_flanks'
+    | 'anchor_flats'
+    | 'anchor_lead_tip'
+    | 'anchor_lead_bearing'
+    | 'mouth_lip'
+    | 'detent_flanks'
+    | 'detent_rail'
+    | 'detent_reach'
+    | 'detent_pinch'
+    | 'detent_retract'
+    | 'detent_tip_land'
+    | 'detent_channel_rail'
+    | 'detent_channel_flanks'
+    | 'detent_strain'
+    | 'detent_push'
+    | 'detent_backlash'
+    | 'detent_skin'
+    | 'detent_slot'
+    | 'detent_slot_end'
+    | 'feet_front_band'
     | 'retention'
   ok: boolean
   message: string
@@ -1916,8 +2393,9 @@ export type SeamFit = {
   verdicts: SeamVerdict[]
   /** wood-PLA peak outer-fibre strain at worst intended engagement, in % —
    *  the number the flexure gate compares against wood PLA's ~1.5% break
-   *  strain with 1.5× safety (so the gate line is 1.0). Knob-only: it cannot
-   *  change from the studio, but the panel shows it as provenance. */
+   *  strain with 1.5× safety (so the gate line is 1.0). The snap clip's is
+   *  knob-only; the sliding detent's rides scale_factor and joint_fit, because
+   *  its leaf is the module's own channel wall rather than a printed finger. */
   strainPct: number
 }
 
@@ -1995,11 +2473,15 @@ function slidingSeamFit(p: Params): SeamFit {
   const mf = moduleFeetLayout(p)
   const g = slidingDovetailDerived(p.joint_fit)
   const c = SLIDING_DOVETAIL
-  const tanA = Math.tan(g.angleRad)
+  const a = slidingAnchorGeometry(b.sFh)
+  const dt = slidingDetentGeometry(p)
   const feetOn = p.feet_mode !== 'none'
   const crossbar = feetEffective(p).crossbar
   const legalFit = SLIDING_FIT_VALUES.some((fit) => Math.abs(fit - p.joint_fit) < 1e-9)
-  const backingWall = p.web * p.scale_factor - g.deepestCut
+  // scad sc_wall: the solid a modular edge carries, groove and slot both cut
+  // from it.
+  const seamWall = p.web * p.scale_factor + c.edgeAllowance
+  const backingWall = seamWall - g.deepestCut
   const lip = (b.sFh - g.runwayOpening) / 2
   // The scad's Y stations, in the same names (slide_k0_s … slide_mouth0):
   // rail front datum, A→B graduation, shallow→deep taper start, deep mouth.
@@ -2007,21 +2489,23 @@ function slidingSeamFit(p: Params): SeamFit {
   const k0S = chamf + 1 + c.seatClear
   const k0M = outerD / 2 - c.keyLength / 2
   const taper0 = b.scK0 + 0.3
+  const anchor0 = taper0 + c.funnel + c.datumRelief
   const mouth0 = outerD - c.mouthLength
-  // Mirror of the scad berth-layout assert: S berth + funnel clear the mid
-  // berth, mid berth + funnel clear the taper start, and taper + funnel +
-  // pinch clear the deep mouth, each with slack.
+  // Mirror of the scad berth-layout assert: S berth + funnel + lead-out clear
+  // the mid berth, mid berth + funnel clear the taper start, and taper + funnel
+  // + pinch clear the deep mouth, each with slack.
   const layoutOk =
-    k0S + c.keyLength + 0.3 + c.funnel + 1 <= k0M - c.datumRelief &&
+    k0S + c.keyLength + 0.3 + c.funnel + c.leadOut + 1 <= k0M - c.datumRelief &&
     k0M + c.keyLength + 0.3 + c.funnel + 1 <= taper0 &&
     taper0 + c.funnel + c.pinchLength + 2 <= mouth0
-  // Deep-anchor gates at the WORST legal fit, exactly as the scad hardcodes
-  // 0.12 — the anchor must clear at any coupon-calibrated compensation.
+  // The pocket-vs-own-rail gate runs at the WORST legal fit, exactly as the
+  // scad hardcodes 0.12 — that cut must clear at any coupon-calibrated
+  // compensation. The lip gate reads the actual fit, like its scad assert: the
+  // ceiling is the mirrored berth floor, so it is scale-free and the fit is the
+  // only thing that eats it.
   const worstFit = Math.max(...SLIDING_FIT_VALUES)
   const deepBacking = scW - (c.deepDepth + worstFit + c.floorRelief)
-  const deepLip =
-    b.sFh -
-    (b.sFh / 2 + (c.neck + c.step) / 2 + (c.deepDepth + 2 * worstFit + c.floorRelief) * tanA)
+  const deepLip = g.anchorFloor
   const verdicts: SeamVerdict[] = [
     {
       code: 'sliding_fit',
@@ -2058,13 +2542,146 @@ function slidingSeamFit(p: Params): SeamFit {
     {
       code: 'deep_lip',
       ok: deepLip >= c.minLip,
-      message: `deep anchor pocket ceiling leaves ${deepLip.toFixed(2)} mm top lip`,
+      message: `deep anchor berth floor — and the ceiling lip mirroring it — is ${deepLip.toFixed(2)} mm`,
+      knob: 'joint_fit',
+    },
+    {
+      code: 'anchor_flanks',
+      ok: a.undercut >= 0.3,
+      message: `deep anchor hooks ${a.undercut.toFixed(2)} mm per side between neck and berth floor (minimum 0.30 mm)`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'anchor_flats',
+      ok: a.flatLength >= 1,
+      message: `deep anchor flanks clamp flat ${a.flatLength.toFixed(2)} mm before the tip (minimum 1 mm) — a taller slab needs a shallower bite`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'anchor_lead_tip',
+      ok: b.sFh - 2 * (c.deepFloor + c.anchorLead) >= 0.4,
+      message: `B→anchor ramp closes to a ${(b.sFh - 2 * (c.deepFloor + c.anchorLead)).toFixed(2)} mm tip land (minimum 0.40 mm) — the inset eats the anchor from floor and ceiling at once`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'anchor_lead_bearing',
+      ok: outerD - c.corner - (anchor0 + c.anchorLead) >= 6,
+      message: `B→anchor ramp leaves ${(outerD - c.corner - (anchor0 + c.anchorLead)).toFixed(2)} mm of full-section anchor bearing (minimum 6 mm)`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'mouth_lip',
+      ok: c.deepFloor - p.joint_fit - c.minLip >= 0,
+      message: `deep mouth has ${(c.deepFloor - p.joint_fit - c.minLip).toFixed(2)} mm of flare budget over the berth floor lip`,
+      knob: 'joint_fit',
+    },
+    {
+      code: 'detent_flanks',
+      ok:
+        c.detentHalfHeight + p.joint_fit + 0.3 <=
+        c.neck / 2 + dt.notchFloorX * Math.tan(g.angleRad),
+      message:
+        'detent notch would cut the rail flanks — the dovetail’s grip is what it must not touch',
+      knob: 'joint_fit',
+    },
+    {
+      code: 'detent_rail',
+      ok: dt.notchFloorX >= 1.2,
+      message: `detent notch leaves ${dt.notchFloorX.toFixed(2)} mm of rail depth behind it (minimum 1.2 mm)`,
+      knob: 'joint_fit',
+    },
+    {
+      code: 'detent_pinch',
+      ok: dt.y0 >= dt.midY0 + c.pinchLength,
+      message: 'detent ridge starts on the berth’s seat pinch, not on its floor',
+      knob: 'scale_factor',
+    },
+    {
+      code: 'detent_reach',
+      ok: dt.rearToe <= dt.berthY1,
+      message: `detent ridge ends ${(dt.berthY1 - dt.rearToe).toFixed(2)} mm inside the middle berth — past it it would stand on relieved runway`,
+      knob: 'scale_factor',
+    },
+    {
+      // The gate an insertion sweep is blind to: it measures the ridge's volume,
+      // not whether the rail carrying the tongue has anywhere to retract to.
+      code: 'detent_retract',
+      ok: dt.tipDefl <= dt.retractRoom,
+      message: `tongue’s tip swings ${dt.tipDefl.toFixed(3)} mm into the ${dt.retractRoom.toFixed(3)} mm the dovetail leaves it — past that the 14° flanks bottom out and the click stops being a flexure`,
+      knob: 'joint_fit',
+    },
+    {
+      code: 'detent_tip_land',
+      ok: dt.springY0 < dt.y0,
+      message: `tongue’s tip gap leaves ${(dt.y0 - dt.springY0).toFixed(2)} mm of land in front of the notch`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'detent_channel_rail',
+      ok: dt.channelDepth + 1.2 <= c.maleDepth,
+      message: `relief channel leaves ${(c.maleDepth - dt.channelDepth).toFixed(2)} mm of rail behind it (minimum 1.2 mm)`,
+      knob: 'none',
+    },
+    {
+      code: 'detent_channel_flanks',
+      ok:
+        dt.channelWidth / 2 + 0.3 <=
+        (c.neck - c.step) / 2 + (c.maleDepth - dt.channelDepth) * Math.tan(g.angleRad),
+      message:
+        'relief channel would cut the small section’s flanks — it is a tip-face feature, and the 14° flanks are what grip',
+      knob: 'none',
+    },
+    {
+      code: 'detent_strain',
+      ok: dt.strainPct <= 1.0,
+      message:
+        dt.strainPct <= 1.0
+          ? `detent strain ${dt.strainPct.toFixed(2)}% — safe for wood PLA (gate 1.0%)`
+          : `detent strain ${dt.strainPct.toFixed(2)}% would crack wood PLA`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'detent_push',
+      ok: dt.seatForceN <= 15,
+      message: `detent needs ${dt.seatForceN.toFixed(1)} N along the seam to push home (hand limit 15 N)`,
+      knob: 'scale_factor',
+    },
+    {
+      code: 'detent_backlash',
+      ok: dt.backlashOut <= 0.05,
+      message: `detent has ${dt.backlashOut.toFixed(3)} mm of free travel before the retention flank bites (limit 0.05 mm)`,
+      knob: 'none',
+    },
+    {
+      code: 'detent_skin',
+      ok: c.leafT >= c.minBackingWall,
+      message: `spring slot leaves the rail ${c.leafT.toFixed(2)} mm of backing skin (minimum ${c.minBackingWall})`,
+      knob: 'none',
+    },
+    {
+      code: 'detent_slot',
+      ok: c.leafT + c.springSlot <= seamWall - c.minBackingWall,
+      message: `spring slot leaves ${(seamWall - c.leafT - c.springSlot).toFixed(2)} mm of wall in front of the bead channel (minimum ${c.minBackingWall})`,
+      knob: 'scale_factor',
+    },
+    {
+      // The root has to land ON the bar strip: it is the only solid the tongue can
+      // grow out of with no bead channel behind it to bow into. Past scB0 the slot
+      // runs THROUGH that strip; short of scF1 the root is still in the front one.
+      code: 'detent_slot_end',
+      ok: dt.springY1 <= b.scB0 && dt.springY1 >= b.scF1,
+      message:
+        dt.springY1 > b.scB0
+          ? `spring slot runs ${(dt.springY1 - b.scB0).toFixed(1)} mm through the bar strip the tongue is meant to root in`
+          : dt.springY1 < b.scF1
+            ? 'spring slot’s root is still in the front strip — the tongue is not rooted where it thinks it is'
+            : `spring slot roots ${(b.scB0 - dt.springY1).toFixed(1)} mm inside the bar strip`,
       knob: 'scale_factor',
     },
     {
       code: 'retention',
       ok: g.seatTaperDeg <= g.selfHoldLimitDeg,
-      message: `seat taper ${g.seatTaperDeg.toFixed(1)}° is self-holding (PLA µ ≥ ${c.selfHoldMu} → limit ${g.selfHoldLimitDeg.toFixed(0)}°)`,
+      message: `seat taper ${g.seatTaperDeg.toFixed(1)}° is self-holding (PLA µ ≥ ${c.selfHoldMu} → limit ${g.selfHoldLimitDeg.toFixed(0)}°), and the detent adds a ${dt.partForceN.toFixed(0)} N wall to climb`,
       knob: 'none',
     },
     {
@@ -2091,10 +2708,16 @@ function slidingSeamFit(p: Params): SeamFit {
       message: 'module foot crossbar would break into the bead channel',
       knob: 'feet_w',
     },
+    {
+      code: 'feet_front_band',
+      ok: !feetOn || mf.frontHi - mf.frontLo >= 1.5,
+      message: `front module foot has ${(mf.frontHi - mf.frontLo).toFixed(2)} mm of band between the sliding groove and the spring slot (minimum 1.5 mm)`,
+      knob: 'scale_factor',
+    },
   ]
-  // No flexures in this topology — nothing bends, so peak strain is 0. The
-  // panel's strain provenance line branches on topology instead.
-  return { ok: verdicts.every((v) => v.ok), verdicts, strainPct: 0 }
+  // The one flexure: the tongue the detent notch rides on, at the engagement it
+  // has to give up to let the ridge pass.
+  return { ok: verdicts.every((v) => v.ok), verdicts, strainPct: dt.strainPct }
 }
 
 /** Topology dispatcher. The legacy branch is intentionally isolated above so its
