@@ -179,7 +179,7 @@ export function ModularSeamPanel() {
           style={{ fontSize: 11, lineHeight: 1.5, color: 'rgba(226,232,240,0.75)' }}
         >
           {sliding
-            ? 'One continuous graduated dovetail rail slides in through the rear entry mouth — loose the whole way, engaging only over the last centimeter. Its rear end is a deep anchor that reaches 3.5 mm into the neighbor and hooks the pull-apart direction; the table registers both bottoms flush. Push firmly until the module stops against the blind front seat; the tapered seat is self-holding. Remove with a firm rearward tug.'
+            ? 'One continuous graduated dovetail rail slides in through the rear entry mouth — loose the whole way, engaging only over the last centimeter. Its rear end is a deep anchor that bites 9 mm into the neighbor and hooks the pull-apart direction on both lips; it rides on a solid berth floor, so no seam surface opens through the underside. Push firmly until the module stops against the blind front seat: over the last few millimetres the rail rides up a ridge on the berth floor and drops into a notch with a click. The rail is its own spring — a slot behind its middle stretch makes that part of the seam edge a tongue, buried where nothing can catch it — so nothing on the socket side has to flex. The taper is self-holding and the ridge makes the seat positive; removal takes a firm rearward tug over the same ridge.'
             : 'Vertical dovetails carry the seam while the crossbar clip clicks at full depth. Modules press straight down and any middle module can lift straight out.'}
         </div>
 
@@ -197,8 +197,11 @@ export function ModularSeamPanel() {
           </strong>
           <div style={{ marginTop: 3, color: 'rgba(148,163,184,0.85)' }}>
             Each seam keeps a full wall on both sides — every column carries its own web — so the
-            row grows by one web per seam. Every module also carries its own feet, so any subset
-            stands.
+            row grows by one web per seam.{' '}
+            {sliding
+              ? 'The sliding rail buys its depth with 1 mm more on each mating edge, adding a further 2 mm per seam without touching the bead channels. '
+              : ''}
+            Every module also carries its own feet, so any subset stands.
           </div>
         </div>
 
@@ -211,7 +214,7 @@ export function ModularSeamPanel() {
             style={{ fontSize: 11, color: 'rgba(134,239,172,0.9)', lineHeight: 1.5 }}
           >
             {sliding
-              ? 'Sliding joint fit OK — no flexures; the ~1.9° seat taper is self-holding.'
+              ? `Sliding joint fit OK — detent strain ${fit.strainPct.toFixed(2)}% (wood-PLA gate 1.0%); the ~1.9° seat taper is self-holding.`
               : `Vertical snap joint fit OK — snap-clip strain ${fit.strainPct.toFixed(2)}% (wood-PLA gate 1.0%).`}
           </div>
         ) : (

@@ -208,10 +208,11 @@ describe('ModularSeamPanel', () => {
       container.querySelector('[data-element="modular-joint-explanation"]')?.textContent
     ).toContain('rear entry mouth')
     expect(screen.getByText(/bounded plate contains 0\.10, 0\.11, and 0\.12/)).toBeInTheDocument()
-    // no flexures in this topology: the ok line reports self-holding taper, not strain %
+    // one flexure in this topology — the detent's male tongue — so the ok line
+    // carries its strain alongside the self-holding taper
     const ok = container.querySelector('[data-element="modular-seam-verdict-ok"]')
     expect(ok?.textContent).toContain('self-holding')
-    expect(ok?.textContent).not.toMatch(/strain/)
+    expect(ok?.textContent).toMatch(/detent strain 0\.69%/)
     fireEvent.change(select!, { target: { value: 'vertical_snap' } })
     expect(set).toHaveBeenCalledWith('joint_type', 'vertical_snap')
   })

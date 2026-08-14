@@ -416,19 +416,30 @@ graduated dovetail rail that enters through the REAR face: align the new
 module behind its neighbor, drop the rail into the rear entry mouth, and
 slide it forward on the table. The rail runs loose for almost the whole
 travel and only engages over roughly the last centimeter, so there is no
-full-length scraping. Its rear end is a deep anchor block that reaches
-3.5 mm into the neighbor and hooks the pull-apart direction; the anchor
-pocket opens through the bottom face and the seated block fills that
-opening flush, so keep both modules flat on the table while sliding —
-the table is the height datum. Push firmly until the module stops against
-the blind front seat and the seam shoulders close — the tapered seat is
-self-holding, like a lightly set Morse taper. There is no clip and nothing
-to click.
+full-length scraping. Its rear end is a deep anchor block that bites
+9 mm into the neighbor — more than half way across its underside — and
+hooks the pull-apart direction on BOTH lips: the anchor is symmetric top
+to bottom, and it rides on a solid 1.7 mm berth floor rather than on the
+table, so no seam surface opens through the bottom face. Keep both
+modules flat on the table while sliding. Push firmly until the module
+stops against the blind front seat and the seam shoulders close — the
+tapered seat is self-holding, like a lightly set Morse taper. Over the
+last few millimeters the rail climbs a ridge on the berth floor and the
+push gets noticeably firmer; the ridge drops into a notch with a click as
+the seat is reached. That click is the seated signal: if it has not
+happened, the module is not home. There is no separate clip — a slot
+behind the middle of the rail makes that stretch of rail its own spring,
+so it is the module you are pushing that flexes, not the one already in
+the row.
 
-To remove a module, grip it and give it a firm rearward tug to break the
-taper, then slide it out the back. A middle module cannot lift straight out;
-unzip the row from either end until the module is exposed. Do not pry the
-dovetail apart.`
+Each sliding seam adds 2 mm of assembled width — that is what pays for a
+2 mm-deep rail — so a sliding row is wider than the same abacus in
+vertical-snap modules. The bead channels are untouched.
+
+To remove a module, grip it and give it a firm rearward tug — enough to
+lift the detent out of its notch and break the taper — then slide it out
+the back. A middle module cannot lift straight out; unzip the row from
+either end until the module is exposed. Do not pry the dovetail apart.`
   }
   return `Modules join left to right. The two vertical dovetails (front and back
 edges) carry the pull-apart load, and the two-prong clip at the crossbar
@@ -442,11 +453,13 @@ function couponNote(p: Params): string {
     return `Before printing the whole kit, print the bounded sliding-dovetail coupon
 plate from the studio. It contains mechanically representative 0.10, 0.11,
 and 0.12 mm compensation samples. Slide pairs together from the rear mouth:
-reject a sample if it binds before reaching the front stop or cannot be
-released with a firm rearward tug. Among the remainder, choose the
-loosest-running sample with no perceptible seated X/Z/rocking play, set
-joint fit to that value, and regenerate the kit. The outer filename records
-both the sliding-dovetail topology and selected fit.`
+reject a sample if it binds before the detent ridge, never clicks into the
+notch at the front stop, or cannot be released with a firm rearward tug.
+The last stretch is MEANT to be firm — that is the ridge, not a bad fit.
+Among the remainder, choose the loosest-running sample with no perceptible
+seated X/Z/rocking play, set joint fit to that value, and regenerate the
+kit. The outer filename records both the sliding-dovetail topology and
+selected fit.`
   }
   return `Before printing the whole kit, print the vertical-snap seam coupon pair
 from the studio and walk joint_fit in 0.05 mm steps: looser (+) if the click
