@@ -283,6 +283,34 @@ export const abacusPrintKeys = {
       modelFamily,
       connectionId ?? 'sole',
     ] as const,
+  // The filament plan (THH#442 / Gitea #37) — which loaded spool each palette
+  // role prints in. Keyed on BOTH of its inputs, because it is a pure function of
+  // exactly those two and nothing else: the request bytes (the design's colour and
+  // constraint intent) and a signature over the raw roster rows the plan resolves
+  // against. Any change to either mints a new key and refetches; no change reuses
+  // the cached plan even across a roster poll that returned identical rows.
+  //
+  // Structural invalidation rather than an invalidate call, on purpose. The
+  // planner's answer moves when a spool is swapped, and a subscriber that had to
+  // *remember* to invalidate is a subscriber that will eventually paint a plan for
+  // a spool that is no longer loaded. Keying on the roster makes the stale state
+  // unrepresentable instead of merely unlikely. The doorbell's prefix invalidation
+  // still reaches this (the key opens with `abacusPrintKeys.all`), which covers a
+  // service-side planner change that the roster bytes cannot show.
+  filamentPlan: (
+    printerId: string,
+    requestKey: string,
+    rosterSignature: string,
+    connectionId?: string
+  ) =>
+    [
+      ...abacusPrintKeys.all,
+      'filament-plan',
+      printerId,
+      requestKey,
+      rosterSignature,
+      connectionId ?? 'sole',
+    ] as const,
   settings: () => [...abacusPrintKeys.all, 'settings'] as const,
   // The packed kit plate behind the bed preview (Gitea #32). Local work, not a
   // fetch — it lives here because it caches like one: the key IS the layout's

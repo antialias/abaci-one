@@ -301,7 +301,7 @@ describe('buildAbacusTicket', () => {
     })
   })
 
-  it('refuses more than one external spool — a no-AMS print is single-filament', () => {
+  it('refuses more than one external spool — a printer has one external holder', () => {
     const twoExternal: FilamentCatalog = {
       source: 'thh-ams',
       fetchedAt: '2026-07-20T00:00:00Z',
@@ -315,7 +315,23 @@ describe('buildAbacusTicket', () => {
       { slot: 1, label: 'red', colorHex: '#C0392B', triangleCount: 10 },
     ]
     expect(() => buildAbacusTicket({ ...base, catalog: twoExternal, bodies: twoBodies })).toThrow(
-      /exactly one spool/i
+      /one external spool holder/i
+    )
+  })
+
+  // The print gate's backstop (Gitea #37). The authority swap made a FilamentMap
+  // able to be LONGER than the roster: `planToFilamentMap` appends a design-color
+  // slot for every role the planner could not place, so the viewer paints the
+  // user's intent. Those slots have no spool, and a ticket naming one describes a
+  // body on an extruder that is never loaded. The panel blocks the submit
+  // (`unplacedRoles`); this is what catches a caller that got past it.
+  it('refuses a body on a slot past the end of the roster, and says why', () => {
+    const pastEnd: SpoolBodySummary[] = [
+      { slot: 0, label: 'latte', colorHex: '#C9A26E', triangleCount: 10 },
+      { slot: 9, label: 'heaven beads', colorHex: '#FF00AA', triangleCount: 10 },
+    ]
+    expect(() => buildAbacusTicket({ ...base, bodies: pastEnd })).toThrow(
+      /unplaced role rendering in its designed color/
     )
   })
 })

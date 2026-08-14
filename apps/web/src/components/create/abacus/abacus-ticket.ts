@@ -134,7 +134,17 @@ export function buildAbacusTicket(args: AbacusTicketArgs): AbacusPrintTicket {
     seenSlots.add(body.slot)
     const spool = catalog.spools[body.slot]
     if (!spool) {
-      throw new Error(`3MF body "${body.label}" references slot ${body.slot}, not in the catalog`)
+      // Post-#37 this has one likely cause worth naming: `planToFilamentMap`
+      // appends a DESIGN-COLOR slot past the end of the roster for any role the
+      // service could not place, so the viewer can paint the user's intent. Such a
+      // slot has no spool and must never reach a ticket — the panel gates on it
+      // (`unplacedRoles`), and this is the backstop behind that gate.
+      throw new Error(
+        `3MF body "${body.label}" references slot ${body.slot}, not in the catalog` +
+          (body.slot >= catalog.spools.length
+            ? ' — this is an unplaced role rendering in its designed color, which has no filament to print in'
+            : '')
+      )
     }
     // An AMS slot names its physical `slotId`; a no-AMS external spool (#19) has no
     // slot — the service resolves it by {external, family} instead. The catalog only
@@ -145,11 +155,18 @@ export function buildAbacusTicket(args: AbacusTicketArgs): AbacusPrintTicket {
     )
   }
 
-  // A no-AMS print is single-filament by construction — one nozzle, one external
-  // spool. More than one external means the catalog projection went wrong upstream;
-  // fail loud rather than silently collapse the design onto the wrong colour.
-  if (filaments.filter((f) => 'external' in f).length > 1) {
-    throw new Error('an external (no-AMS) print carries exactly one spool; got multiple')
+  // A printer has ONE external spool holder, so at most one external entry can
+  // ever be real — more means the catalog projection went wrong upstream, and
+  // silently collapsing the design onto the wrong colour is the worse failure.
+  //
+  // Note what this deliberately does NOT refuse: an external entry alongside AMS
+  // slots. The holder is a selectable feed, not a no-AMS fallback — a printer with
+  // an AMS can still pull from it, and that mixed roster is a normal multi-material
+  // print. "No AMS" is the narrower shape the panel detects as the external being
+  // the ONLY spool (`monochromeExternal`).
+  const externals = filaments.filter((f) => 'external' in f).length
+  if (externals > 1) {
+    throw new Error('a printer has one external spool holder; got multiple external filaments')
   }
 
   // The support-interface role entry (THH#367). THH's contract: at most one,

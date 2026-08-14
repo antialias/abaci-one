@@ -11,11 +11,21 @@
 // Quantize by ROLE, not by pixel. A scheme has a small set of intended color
 // roles (monochrome → 1, heaven-earth / alternating → 2, place-value → one per
 // palette entry); mapping the roles — not each of the up-to-21 columns —
-// preserves the distinctions the user meant. The algorithm is the role-aware,
-// distinct-first, marker-contrast-locked mapping graduated verbatim from the
-// bench (it lived in abacus-model as `computeFilamentMap`); `computeFilamentMap`
-// now re-exports it as a thin adapter over `materialize`, byte-for-byte identical
-// (see __tests__/filament-map-snapshot.json).
+// preserves the distinctions the user meant.
+//
+// WHO CHOOSES THE SPOOL (Gitea #37 — the authority swap). Not this file, and no
+// longer a redmean nearest-color search over a family-name heuristic. The design's
+// intent leaves as a `filament-plan/v1` request (abacus-plan-request.ts) and THH
+// answers it against the roster that is loaded RIGHT NOW; `materialize` projects
+// that answer onto the studio's role/warning vocabulary. The old local matcher —
+// `snapWithin`, `candidateGroups`, the `/tpu\s*for\s*ams/i` feet test and the
+// co-print anchor loop — is deleted rather than kept as a fallback, because a
+// fallback matcher is a second answer that silently disagrees with the first.
+//
+// So this file is now PURE JUDGEMENT over someone else's assignment. It stays
+// synchronous and side-effect-free on purpose: the fetch is the caller's problem
+// (useFilamentPlan, cached on the request bytes + the roster bytes), so the panel
+// and the parent's recolor still agree by construction.
 //
 // Scope: frame + ArUco markers + bead roles + printed feet + one role per inset
 // text color group (Gitea #26 — those roles are what give the inlay plugs a slot
@@ -24,39 +34,33 @@
 // budget: erroring on it would refuse to print the studio's own default design.
 // Framework-free (no React, no three).
 //
-// Material compatibility (gh#163 + the P4 weld rule's auto half, landed): with a
-// THH catalog (real families), auto-snap is ANCHOR-RESTRICTED — it picks one
-// co-print temperature group (support media excluded) and keeps every automatic
-// assignment inside it, so the default mapping can never mix plate temperatures
-// or put a visible part on breakaway support. The welded same-part cluster —
-// frame + ArUco markers + inset text — therefore lands on one family by
-// construction. User PINS from the viewer's filament-mapping panel may cross any
-// of these lines deliberately; the plan answers with warnings, never blocks
-// (material-mix for plate temperature, support-material for breakaway media,
-// material-interface for a mixed weld) — the slicer stays the final authority.
-// BEADS ARE EXEMPT from the weld rule — captive on a print clearance gap, never
-// welded — but they ride the plate's temperature anchor like everything else.
+// WHICH WARNINGS ARE OURS. Material compatibility is THH's — its `compat` module
+// exists precisely so that "cockpit, eink-web, abaci" don't each re-encode
+// filament folklore, and it answers from real Orca profile temperatures with
+// provenance, which this file never could. `poor_interlayer_adhesion` (the weld
+// rule, driven by the `interfaces` we declare), `nozzle_temp_conflict` (the old
+// material-mix), `thermal_environment_conflict` and `ams_feed_unsuitable` all
+// arrive as service warnings and are projected verbatim.
+//
+// What stays local is what is ABACUS semantics and has no service equivalent:
+// marker contrast, bead role collision and its budget, the rainbow ink budget,
+// text that vanishes into the frame's own filament, and — the one material check
+// THH structurally will not make — a visible role sitting on breakaway support
+// media. Every role an abacus prints is a visible part, and the planner only
+// filters support media *toward* a `support-interface` role, never away from a
+// `model` one. That check survives, but it now reads the service's own
+// `supportKind` instead of guessing from the family name.
 
 import {
-  catalogFromParams,
   coPrintGroup,
   type FilamentCatalog,
   type FilamentSpool,
   isSupportSpool,
 } from './abacus-catalog'
 import type { AbacusDesign } from './abacus-design'
-import { toAbacusDesign } from './abacus-design'
-import {
-  beadRoleColors,
-  beadRoleNames,
-  colorDist,
-  contrastRatio,
-  type FilamentMap,
-  type Params,
-  type TextGroup,
-  textGroupNeighbors,
-  textGroups,
-} from './abacus-model'
+import { contrastRatio, type FilamentMap, type TextGroup, textGroups } from './abacus-model'
+import { designRoles, type PrintRole, type PrintRoleKind } from './abacus-plan-request'
+import type { FilamentPlanResponseV1 } from '@eink/print-dialog'
 
 export const PRINT_PLAN_SCHEMA_VERSION = 1
 
@@ -65,24 +69,28 @@ export const PRINT_PLAN_SCHEMA_VERSION = 1
 // intent (WCAG ratio of the mapped marker pair).
 export const MARKER_CONTRAST_MIN = 3
 
-export type PrintRoleKind = 'frame' | 'markerBlack' | 'markerWhite' | 'bead' | 'text' | 'feet'
+// `PrintRole` and the role vocabulary are minted by abacus-plan-request.ts, which
+// is also what turns them into the planner's palette. Re-exported here because
+// this module is what the studio has always imported them from, and because
+// keeping ONE definition is what guarantees a palette id and a role key are the
+// same string — the whole join between the request and the answer.
+export type { PrintRole, PrintRoleKind }
 
-// A single printable color region, tagged with its INTRINSIC (pre-quantization)
-// hex. `key` is stable across a re-materialize so overrides can pin a role.
-export type PrintRole = {
-  kind: PrintRoleKind
-  key: string
-  label: string
-  intrinsicHex: string
-}
-
-// A role after quantization: which spool it landed on, how far that spool is from
-// the intrinsic color (redmean units), and whether a user override pinned it.
+// A role after planning: which spool it landed on, how far that spool is from the
+// intrinsic color, and whether a user override pinned it.
 export type RoleAssignment = {
   role: PrintRole
   spoolId: string
   spoolIndex: number
-  distance: number
+  // CIEDE2000 distance from the designed color to the spool's, as the SERVICE
+  // measured it. Was redmean (~0–800) computed locally; ΔE00 (~0–100) is both a
+  // different scale and a better one — see SHIFT_DISTANCE_THRESHOLD.
+  //
+  // Null when there is no measurement rather than 0: the service reports null for
+  // a spool with no usable color metadata, and a locally-echoed pin has no
+  // measurement until the next plan lands. Zero would mean "an exact match",
+  // which is the one thing an unknown distance must not claim.
+  distance: number | null
   overridden: boolean
 }
 
@@ -90,18 +98,33 @@ export type PlanWarningCode =
   | 'marker-contrast'
   | 'role-collision'
   | 'budget-exceeded'
-  | 'material-mix' // plate-wide temperature mix — the slicer's temp guard likely refuses it (gh#163)
-  | 'support-material' // a visible role pinned onto breakaway support filament
-  | 'material-interface' // the weld-adhesion rule: the fused frame/marker/text cluster mixes families
+  | 'support-material' // a visible role sitting on breakaway support filament
   | 'feet-material' // printed feet found no flexible (TPU) spool — they fall back to the frame's
   | 'rainbow-unrealizable' // rainbow inset text asks for more inks than the loaded spools can give
   | 'text-invisible' // an inlay group landed on the frame's own filament — unreadable writing
+  | 'plan-unresolved' // the service found no live filament that can serve a role
+  // Service warning codes pass through under their own names (`origin: 'service'`)
+  // — `poor_interlayer_adhesion`, `nozzle_temp_conflict`, `ams_feed_unsuitable`,
+  // `thermal_environment_conflict`, `color_tolerance_exceeded`… Open on purpose:
+  // THH adding a compatibility axis must reach the user without an Abaci release,
+  // which is the entire reason compatibility lives there and not here.
+  | (string & {})
 
 export type PlanWarning = {
   code: PlanWarningCode
+  // Who is making this claim. 'studio' is abacus semantics (a marker that won't
+  // read, writing that vanishes); 'service' is THH's material authority, relayed
+  // verbatim. Worth distinguishing in the UI: one is about your design, the other
+  // about what's loaded.
+  origin: 'studio' | 'service'
   severity: 'error' | 'warning'
   message: string
   roleKeys?: string[]
+  // The service's own severity, preserved unflattened. THH grades 'blocker' /
+  // 'caution' / 'info' as PREDICTIONS ("the slicer will likely refuse this"), and
+  // collapsing them into this file's two-value severity would throw away the
+  // difference between a clog risk and an advisory note.
+  serviceSeverity?: 'blocker' | 'caution' | 'info'
 }
 
 export type PrintPlan = {
@@ -110,10 +133,16 @@ export type PrintPlan = {
   assignments: RoleAssignment[]
   markerContrast: number // WCAG ratio of the mapped ArUco pair (camera wants ≥3)
   warnings: PlanWarning[]
-  // The co-print temperature group auto-snap anchored the plate to (e.g. "PLA").
-  // Present only for a thh-ams catalog with at least one non-support spool —
-  // the params catalog fabricates families, so it never claims an anchor. The
-  // viewer's picker groups compatible-vs-not around this.
+  // Where this plan came from. 'unplanned' is a first-class state, not an error:
+  // no printer paired, the roster still loading, or a params catalog — cases where
+  // the honest answer is "nobody has decided yet", and the studio renders the
+  // DESIGNED colors rather than a guess. It used to be impossible to represent,
+  // which is exactly why a local matcher had to invent something.
+  planStatus: 'satisfied' | 'degraded' | 'unresolved' | 'unplanned'
+  // The co-print group most of the plate's model roles actually landed on (e.g.
+  // "PLA"), read back off the plan. DISPLAY ONLY — the picker sections
+  // compatible-vs-not around it. It is no longer an input to any decision: nothing
+  // is restricted to it, because the service decides what co-prints.
   anchorGroup?: string
   // true iff no error-severity warning — mirrors the solver's export gate.
   // Nothing here is an error today and nothing should lightly become one: this
@@ -122,115 +151,22 @@ export type PrintPlan = {
   ok: boolean
 }
 
-// roleKey → spoolId. A user pin from the viewer's filament-mapping panel; the
-// empty (no-override) path is exactly the historical mapping (proven by the
-// snapshot). Pins onto an unloaded spool are ignored — the role stays auto-snapped.
-export type MaterializeOpts = { overrides?: Record<string, string> }
-
-// Weighting for the anchor-group choice: the ArUco markers are CV-critical (the
-// detector must read them), so a group that serves them poorly pays triple.
-const MARKER_COST_WEIGHT = 3
-
-// One full auto-snap pass restricted to the `allowed` spool indexes, in catalog
-// order — the exact algorithm that always ran (markers first: black darkest-fit,
-// white lightest-fit distinct; then frame nearest; then beads distinct-first),
-// now parameterized by the set it may choose from. `allowed` = every index
-// reproduces the historical mapping byte-for-byte (the snapshot test pins it).
-// Returns the chosen slots plus the weighted total color error, so anchor
-// selection compares groups by running the REAL assignment, not an
-// approximation of it.
-type AutoSnap = {
-  blackIdx: number
-  whiteIdx: number
-  frameIdx: number
-  beadIdxs: number[]
-  cost: number
-}
-
-function snapWithin(
-  hexes: string[],
-  frameHex: string,
-  roleHexes: string[],
-  allowed: number[]
-): AutoSnap {
-  const nearestIn = (target: string, exclude = -1): number => {
-    // `?? 0` guards an empty `allowed` (e.g. a future candidate group with no
-    // members): never emit `undefined`, which would index `spools[undefined]`
-    // and throw in the provider. materialize's empty-catalog guard makes slot 0
-    // always exist here.
-    let best = allowed[0] ?? 0
-    let bd = Number.POSITIVE_INFINITY
-    for (const idx of allowed) {
-      if (idx === exclude) continue
-      const d = colorDist(target, hexes[idx])
-      if (d < bd) {
-        bd = d
-        best = idx
-      }
-    }
-    return best
-  }
-  const blackIdx = nearestIn('#000000')
-  // with one allowed spool there's no distinct white, so both markers collapse
-  const whiteIdx = allowed.length > 1 ? nearestIn('#ffffff', blackIdx) : blackIdx
-  const frameIdx = nearestIn(frameHex)
-  const usedByBeads = new Set<number>()
-  const beadIdxs = roleHexes.map((intrinsicHex) => {
-    let best = -1
-    let bd = Number.POSITIVE_INFINITY
-    for (const idx of allowed) {
-      if (usedByBeads.has(idx)) continue
-      const d = colorDist(intrinsicHex, hexes[idx])
-      if (d < bd) {
-        bd = d
-        best = idx
-      }
-    }
-    if (best < 0) best = nearestIn(intrinsicHex) // more roles than slots → reuse
-    usedByBeads.add(best)
-    return best
-  })
-  const cost =
-    MARKER_COST_WEIGHT *
-      (colorDist('#000000', hexes[blackIdx]) + colorDist('#ffffff', hexes[whiteIdx])) +
-    colorDist(frameHex, hexes[frameIdx]) +
-    beadIdxs.reduce((sum, idx, r) => sum + colorDist(roleHexes[r], hexes[idx]), 0)
-  return { blackIdx, whiteIdx, frameIdx, beadIdxs, cost }
-}
-
-// The co-print groups automatic assignment may anchor to: THH spools bucketed by
-// temperature group, support media excluded (breakaway filament is never an
-// automatic pick for a visible part). null = no restriction — the params catalog
-// fabricates families, and an all-support AMS has nothing sensible to prefer.
-function candidateGroups(catalog: FilamentCatalog): Map<string, number[]> | null {
-  if (catalog.source !== 'thh-ams') return null
-  const groups = new Map<string, number[]>()
-  catalog.spools.forEach((s, i) => {
-    if (isSupportSpool(s)) return
-    const g = coPrintGroup(s.material)
-    const idxs = groups.get(g) ?? []
-    idxs.push(i)
-    groups.set(g, idxs)
-  })
-  return groups.size > 0 ? groups : null
-}
-
-// The feet spool is picked by FAMILY, not color — printed TPU feet (Gitea #23)
-// want a flexible filament, and `coPrintGroup('TPU') === 'TPU'` means a TPU
-// spool can never sit inside the plate's (PLA-led) anchor group, so the pick
-// runs OUTSIDE the anchor loop entirely. Preference order: a spool literally
-// named "TPU for AMS" (Bambu's Shore-68D — the only AMS-safe TPU) beats any
-// other TPU, which beats AMS order. No TPU loaded → null; the caller falls back
-// to the frame's spool (rigid feet still print — the geometry is identical)
-// and raises the 'feet-material' warning on a real roster. The params catalog
-// fabricates families, so it never has a TPU to find and stays silent.
-function pickFeetSpool(spools: FilamentSpool[], source: FilamentCatalog['source']): number | null {
-  if (source !== 'thh-ams') return null
-  const tpus = spools
-    .map((s, i) => ({ s, i }))
-    .filter(({ s }) => coPrintGroup(s.material) === 'TPU' && !isSupportSpool(s))
-  if (tpus.length === 0) return null
-  return (tpus.find(({ s }) => /tpu\s*for\s*ams/i.test(s.name)) ?? tpus[0]).i
+export type MaterializeOpts = {
+  // roleKey → spoolId. A user pin from the viewer's filament-mapping panel.
+  //
+  // A pin's REAL home is the request: it becomes a `required` identity selector so
+  // the service plans (and judges compatibility) around it. Applying it here too
+  // is a local echo so the preview moves on the same frame as the click, instead
+  // of blanking until the re-plan returns. The echo and the authoritative answer
+  // agree by construction — `required` is a hard constraint — so this can never
+  // drift into a second opinion.
+  //
+  // Pins onto a spool that isn't loaded are ignored; the role keeps the service's
+  // assignment.
+  overrides?: Record<string, string>
+  // The service's answer for this design. Null ⇒ 'unplanned' (see planStatus):
+  // no spool is assigned to anything, and the caller renders designed colors.
+  plan?: FilamentPlanResponseV1 | null
 }
 
 // A valid plan for an EMPTY catalog: no spools ⇒ nothing to assign. materialize's
@@ -240,16 +176,51 @@ function pickFeetSpool(spools: FilamentSpool[], source: FilamentCatalog['source'
 // provider — above every React error boundary — so a throw here blanks the whole
 // page instead of one pane. Returning a degenerate-but-valid plan keeps the
 // function total: an empty roster degrades, never crashes.
-function emptyPlan(source: FilamentCatalog['source']): PrintPlan {
+function emptyPlan(source: FilamentCatalog['source'], planStatus: PrintPlan['planStatus']): PrintPlan {
   return {
     schemaVersion: PRINT_PLAN_SCHEMA_VERSION,
     catalogSource: source,
     assignments: [],
+    // No mapped pair to measure. 1 (no contrast at all) rather than 21, so a
+    // degenerate plan can never read as "the markers are fine".
     markerContrast: 1,
     warnings: [],
+    planStatus,
     ok: true,
   }
 }
+
+// Which catalog spool the service named. The plan speaks the printer's language
+// (a slot id, or the external-spool flag); the catalog speaks the studio's (a
+// stable `id` per row). `thhFilamentsToCatalog` mints those ids FROM the same
+// rows the planner ranked, so this join is exact rather than a nearest guess:
+// slot rows keep their `slotId`, and the one external row is found by its flag.
+//
+// A null means the service picked something this catalog doesn't contain — only
+// reachable if the roster moved between the two reads, which the plan's cache key
+// (request bytes + roster bytes) is built to prevent. Treated as "no spool"
+// rather than silently rounded to a neighbouring slot.
+function indexOfPlanned(
+  planned: FilamentPlanResponseV1['assignments'][number]['filament'],
+  spools: readonly FilamentSpool[]
+): number {
+  if (!planned) return NO_SPOOL
+  if (planned.slotId) {
+    const i = spools.findIndex((s) => s.id === planned.slotId)
+    if (i >= 0) return i
+  }
+  if (planned.external) {
+    const i = spools.findIndex((s) => s.external === true)
+    if (i >= 0) return i
+  }
+  return NO_SPOOL
+}
+
+// A role the service could not place has NO spool — not slot 0. The sentinel is
+// explicit so every consumer has to decide what to do about it; a defaulted 0
+// would print the whole role in whatever happened to be loaded first and look
+// exactly like a successful plan.
+export const NO_SPOOL = -1
 
 // A text row's label: the writing that group actually inks, so the mapping panel
 // row explains itself ("1+9 2+8" beats "Text 3"). A present group always has at
@@ -258,278 +229,172 @@ function emptyPlan(source: FilamentCatalog['source']): PrintPlan {
 const textGroupLabel = (t: TextGroup, single: boolean): string =>
   single ? 'Inlay text' : t.tokens.slice(0, 2).join(' ')
 
-// Project a design onto a catalog. Role assignment order matches the bench's
-// historical precedence EXACTLY (markers first — they're CV-critical — then
-// frame, then bead roles distinct-first), so `computeFilamentMap` can adapt this
-// back to the legacy `FilamentMap` shape without drift. With a THH catalog the
-// pass is anchor-restricted (see candidateGroups): the cheapest co-print group
-// wins the whole plate, so the default mapping never mixes temperatures and
-// never lands a visible part on support media — the pit of success. Pins go
-// wherever the user says; the warnings answer.
-//
-// TOTAL by contract: a catalog with zero spools returns emptyPlan rather than
-// throwing (see above). Every index the quantizer produces below therefore
-// references a real spool, so the assignments can't read `.id` off undefined.
+/**
+ * Project a design + the service's filament plan onto the studio's role model.
+ *
+ * The role list and the plan's palette are the SAME list (both come from
+ * `designRoles`, and `abacus-plan-request` uses `role.key` as the palette id), so
+ * this is a join on a shared key, not a re-derivation. That is the property that
+ * makes the swap safe: there is no second opinion to disagree with the first.
+ *
+ * TOTAL by contract. Three degenerate inputs all return a valid plan rather than
+ * throwing, because `materialize` runs inside the studio provider — above every
+ * React error boundary — so a throw here blanks the whole page instead of one
+ * pane: a catalog with no spools, no service plan at all ('unplanned'), and a
+ * plan whose assignments name spools this catalog no longer has.
+ */
 export function materialize(
   design: AbacusDesign,
   catalog: FilamentCatalog,
   opts: MaterializeOpts = {}
 ): PrintPlan {
   const spools = catalog.spools
-  if (spools.length === 0) return emptyPlan(catalog.source)
+  const servicePlan = opts.plan ?? null
+  // No plan ⇒ no spool assignment. This is the params-catalog path and the
+  // still-loading path, and it is deliberately EMPTY rather than locally matched:
+  // the caller renders the designed colors (see `designFilamentMap`), which is
+  // what the fallback always claimed to do and now actually does.
+  if (!servicePlan) return emptyPlan(catalog.source, 'unplanned')
+  if (spools.length === 0) return emptyPlan(catalog.source, 'unresolved')
+
   const hexes = spools.map((s) => s.hex)
   const overrides = opts.overrides ?? {}
   const idToIndex = new Map(spools.map((s, i) => [s.id, i] as const))
+  const byPaletteId = new Map(servicePlan.assignments.map((a) => [a.paletteId, a] as const))
 
-  // Build an assignment for a role at its solver-chosen slot, letting an explicit
-  // override repoint it. `distance` always reflects the FINAL spool.
-  const assign = (role: PrintRole, chosenIndex: number): RoleAssignment => {
-    let idx = chosenIndex
+  // Build an assignment from the service's answer, letting an explicit pin
+  // repoint it. The pin is only an ECHO here — it also travelled into the request
+  // as a `required` selector, so the next plan agrees with what this shows now.
+  const assign = (role: PrintRole): RoleAssignment => {
+    const answer = byPaletteId.get(role.key)
+    let idx = answer ? indexOfPlanned(answer.filament, spools) : NO_SPOOL
+    // `deltaE00` describes the SERVICE's pick. A pin that moves the role
+    // invalidates that measurement, and this file no longer owns a color metric
+    // to recompute one with — so it becomes null ("not measured") until the
+    // re-plan lands, never a stale number attached to a different spool.
+    let distance = answer?.deltaE00 ?? null
     let overridden = false
     const pinned = overrides[role.key]
     if (pinned && idToIndex.has(pinned)) {
-      idx = idToIndex.get(pinned) as number
+      const pinnedIdx = idToIndex.get(pinned) as number
+      if (pinnedIdx !== idx) distance = null
+      idx = pinnedIdx
       overridden = true
     }
     return {
       role,
-      spoolId: spools[idx].id,
+      spoolId: idx === NO_SPOOL ? '' : spools[idx].id,
       spoolIndex: idx,
-      distance: colorDist(role.intrinsicHex, hexes[idx]),
+      distance,
       overridden,
     }
   }
 
-  const roleHexes = beadRoleColors(design.params.color_scheme, design.params.color_palette)
-  const roleNames = beadRoleNames(design.params.color_scheme)
-  const frameHex = design.resolvedColors.frame
-
-  // Anchor choice: run the real assignment inside each candidate group and keep
-  // the cheapest (ties → the bigger group, then AMS order). No groups → the
-  // historical unrestricted pass.
-  const groups = candidateGroups(catalog)
-  let snap: AutoSnap
-  let anchorGroup: string | undefined
-  // The index set the winning pass drew from. Hoisted because the text roles
-  // below must stay INSIDE it (they weld to the frame) without being part of the
-  // pass that chooses it — see the text block for why.
-  let allowed: number[]
-  if (!groups) {
-    allowed = spools.map((_, i) => i)
-    snap = snapWithin(hexes, frameHex, roleHexes, allowed)
-  } else {
-    let bestIdxs: number[] = []
-    let bestSnap: AutoSnap | null = null
-    for (const [g, idxs] of groups) {
-      const s = snapWithin(hexes, frameHex, roleHexes, idxs)
-      if (
-        !bestSnap ||
-        s.cost < bestSnap.cost ||
-        (s.cost === bestSnap.cost && idxs.length > bestIdxs.length)
-      ) {
-        anchorGroup = g
-        bestIdxs = idxs
-        bestSnap = s
-      }
-    }
-    snap = bestSnap as AutoSnap
-    allowed = bestIdxs
-  }
-
-  const markerBlack = assign(
-    { kind: 'markerBlack', key: 'marker-black', label: 'ArUco black', intrinsicHex: '#000000' },
-    snap.blackIdx
+  // Roles are minted from the SAME function that built the request, so the
+  // palette ids and the role keys cannot drift apart.
+  const roles = designRoles(design)
+  const single = design.params.text_fill !== 'rainbow'
+  const textLabels = new Map<string, string>(
+    textGroups(design.params).map((t) => [`text-${t.g}`, textGroupLabel(t, single)] as const)
   )
-  const markerWhite = assign(
-    { kind: 'markerWhite', key: 'marker-white', label: 'ArUco white', intrinsicHex: '#ffffff' },
-    snap.whiteIdx
-  )
-  const frame = assign(
-    { kind: 'frame', key: 'frame', label: 'Frame', intrinsicHex: frameHex },
-    snap.frameIdx
-  )
-  const beadAssignments: RoleAssignment[] = snap.beadIdxs.map((idx, r) =>
-    assign(
-      {
-        kind: 'bead',
-        key: `bead-${r}`,
-        label: roleNames[r] ?? `bead ${r}`,
-        intrinsicHex: roleHexes[r],
-      },
-      idx
-    )
+  const assignments = roles.map((role) =>
+    assign(textLabels.has(role.key) ? { ...role, label: textLabels.get(role.key) as string } : role)
   )
 
-  // Printed feet (Gitea #23): a family-picked role, minted only when the design
-  // wants in-place feet. The intrinsic hex is a fixed dark slate — feet are
-  // picked by MATERIAL, so their color distance is decorative and must never
-  // influence snapping (the pick runs outside the anchor loop, see
-  // pickFeetSpool). Appended LAST so every historical assignment keeps its
-  // index. A pin (`overrides['feet']`) can still repoint it anywhere.
-  //
-  // Deliberately NOT gated on `show_frame`, even though the feet BODY is (see
-  // abacus-3mf.ts). This plan describes design intent — which spool each role
-  // would use — not which bodies a particular render emits; that's why the frame
-  // and marker roles are minted whatever `show_frame`/`show_markers` say. The
-  // 3MF re-checks `show_frame` before consuming `filamentMap.feet`, so an unused
-  // role index here is inert, exactly as an unused marker index already is.
-  let feetAssignment: RoleAssignment | null = null
-  let feetFallback = false
-  if (design.params.feet_mode === 'printed') {
-    const tpuIdx = pickFeetSpool(spools, catalog.source)
-    feetFallback = tpuIdx === null && catalog.source === 'thh-ams'
-    feetAssignment = assign(
-      { kind: 'feet', key: 'feet', label: 'Feet', intrinsicHex: '#1f2937' },
-      // The fallback is "the frame's filament" as the warning below promises, so
-      // it has to read the FINAL frame spool — a pinned frame moves the feet with
-      // it. snap.frameIdx is only where the auto-snapper started.
-      tpuIdx ?? frame.spoolIndex
-    )
-  }
+  const at = (kind: PrintRoleKind): RoleAssignment | undefined =>
+    assignments.find((a) => a.role.kind === kind)
+  const markerBlack = at('markerBlack')
+  const markerWhite = at('markerWhite')
+  const frame = at('frame')
+  const beadAssignments = assignments.filter((a) => a.role.kind === 'bead')
+  const textAssignments = assignments.filter((a) => a.role.kind === 'text')
 
-  // Inset text inlay: one role per color group (see textGroups — rainbow text
-  // spans up to 5 inks, single fill exactly 1). Without these the plugs ride no
-  // slot, which is why every 3MF to date printed the perimeter writing as bare
-  // pockets in frame filament.
-  //
-  // Assigned AFTER the anchor pass and deliberately NOT part of it. snapWithin's
-  // distinct-first loop and its cost are what choose the anchor group, so letting
-  // text vote there would move bead assignments on existing designs and could
-  // flip the whole plate to another temperature family. Text is decorative ink:
-  // it takes the nearest spool in the group the structure already picked, sharing
-  // freely (an honest near-match beats being forced onto the black marker spool).
-  // Restricting it to `allowed` is also what satisfies the weld rule by
-  // construction — the inlay is fused into the frame, and weldedKinds counts it.
-  //
-  // Gated like the geometry: only `inset` mode carves pockets that need filling.
-  // Not gated on show_frame — same reasoning as feet above, the plan describes
-  // design intent and the 3MF re-checks before consuming the slot.
-  // DISTINCT-FIRST, FRAME-LAST — the same shape as snapWithin's bead loop, plus
-  // one rule the beads don't need.
-  //
-  // Independent nearest-match was the bug: five rainbow groups each picked their
-  // own closest spool, four of them landed on the same one, and two perfectly
-  // good contrasting spools sat unused. A rainbow that prints as two colors when
-  // three were available isn't a near-miss, it's a wasted slot. So a group
-  // prefers a spool no other group has taken.
-  //
-  // The frame's spool is held back until every other candidate is spoken for.
-  // An inlay plug fills its pocket FLUSH and level, so text in frame filament
-  // doesn't print a near-miss color — it VANISHES. Distinctness must never be
-  // bought with invisibility, and neither must fidelity: this is the one role
-  // where the nearest color can be the wrong answer.
-  //
-  // Groups still share once the spools run out, and that's honest: a 5-ink
-  // rainbow needs 5 spare spools, and a 4-slot AMS already owes slots to the
-  // frame, both ArUco markers and the bead roles. rainbow-unrealizable reports
-  // what it actually got.
-  //
-  // But NOT WITH ITS NEIGHBOUR. Sharing spread across a rail is a smaller
-  // palette; sharing between two words that touch is a rendering bug — a
-  // four-spool roster printed "1+9 2+8 3+7 4+6 5+5" as blue/brown/dark/brown/
-  // brown, and the last two ran together into one blob. Three inks over five
-  // words has a perfectly good answer (A B C A B); nearest-color alone just
-  // never looks for it. So the sharing branch skips whatever ink the adjacent
-  // groups already took — see textGroupNeighbors for what "adjacent" means.
-  const textAssignments: RoleAssignment[] = []
-  if (design.params.text_mode === 'inset') {
-    const usedByText = new Set<number>()
-    // every candidate that isn't the frame's own filament, i.e. the ones that
-    // will actually read as writing. Uses the FINAL frame index, so pinning the
-    // frame moves what counts as invisible.
-    const visible = allowed.filter((i) => i !== frame.spoolIndex)
-    const nearestIn = (pool: number[], hex: string): number | null => {
-      let best: number | null = null
-      let bd = Number.POSITIVE_INFINITY
-      for (const i of pool) {
-        const d = colorDist(hex, hexes[i])
-        if (d < bd) {
-          bd = d
-          best = i
-        }
-      }
-      return best
-    }
-    // Who each group is written NEXT TO on the plate, and what ink that neighbour
-    // ended up with. Sharing is fine — sharing with the word touching yours is
-    // not, because the two then read as one word.
-    const neighbors = textGroupNeighbors(design.params)
-    const inkOf = new Map<number, number>()
-    const neighborInks = (g: number): Set<number> => {
-      const s = new Set<number>()
-      for (const n of neighbors[g] ?? []) {
-        const i = inkOf.get(n)
-        if (i !== undefined) s.add(i)
-      }
-      return s
-    }
-    for (const t of textGroups(design.params)) {
-      const beside = neighborInks(t.g)
-      const idx =
-        nearestIn(
-          visible.filter((i) => !usedByText.has(i)),
-          t.hex
-        ) ?? // fresh and readable — the rainbow's whole point. Never needs the
-        // adjacency filter: "fresh" already means no group holds it, neighbour
-        // or not, so this branch is byte-identical to before the rule landed.
-        nearestIn(
-          visible.filter((i) => !beside.has(i)),
-          t.hex
-        ) ?? // out of fresh spools: share, but not with the word touching this one
-        nearestIn(visible, t.hex) ?? // one visible spool for two adjacent groups —
-        // unsatisfiable, and readable beats separated (rainbow-unrealizable says so)
-        nearestIn(allowed, t.hex) ?? // a roster whose only candidate IS the frame
-        allowed[0] ??
-        0
-      usedByText.add(idx)
-      inkOf.set(t.g, idx)
-      textAssignments.push(
-        assign(
-          {
-            kind: 'text',
-            key: `text-${t.g}`,
-            label: textGroupLabel(t, design.params.text_fill !== 'rainbow'),
-            intrinsicHex: t.hex,
-          },
-          idx
-        )
-      )
-    }
-  }
+  // The color a role will ACTUALLY show: its spool's, or — when nothing is
+  // assigned — the color the user designed. Nothing here invents a spool; it
+  // answers "what does the viewer paint", which for an unplaced role is the
+  // design's own intent.
+  const effectiveHex = (a: RoleAssignment | undefined, fallback: string): string =>
+    a && a.spoolIndex !== NO_SPOOL ? hexes[a.spoolIndex] : fallback
 
   // Contrast of the FINAL marker pair (pins included) — the camera reads what
-  // actually prints, so a pinned marker must move this warning too.
-  const markerContrast = contrastRatio(hexes[markerWhite.spoolIndex], hexes[markerBlack.spoolIndex])
-  // Text is appended LAST (after feet) for the same reason feet went last: every
-  // historical assignment keeps its index. Display order is independent — the
-  // panel sorts by kind.
-  const assignments = [
-    markerBlack,
-    markerWhite,
-    frame,
-    ...beadAssignments,
-    ...(feetAssignment ? [feetAssignment] : []),
-    ...textAssignments,
-  ]
-  const warnings = planWarnings(markerContrast, beadAssignments, roleHexes.length)
-  const voters = materialVoters(assignments)
-  for (const w of [
-    materialMixWarning(voters, spools, catalog.source),
-    supportMaterialWarning(assignments, spools, catalog.source),
-    weldMixWarning(voters, spools, catalog.source),
-  ]) {
-    if (w) warnings.push(w)
-  }
-  if (feetAssignment && feetFallback && !feetAssignment.overridden) {
+  // actually prints, so a pinned marker must move this warning too. An unplaced
+  // marker falls back to its designed hex, so a roster that can't serve the
+  // markers reports 'plan-unresolved' rather than a spurious contrast failure.
+  const markerContrast = contrastRatio(
+    effectiveHex(markerWhite, '#ffffff'),
+    effectiveHex(markerBlack, '#000000')
+  )
+
+  const warnings = planWarnings(markerContrast, beadAssignments, beadAssignments.length)
+
+  // The one material check THH structurally will not make (see the header): a
+  // visible role on breakaway support media. Reads the service's own
+  // `supportKind`, projected verbatim onto the catalog — not a family-name guess.
+  const support = supportMaterialWarning(assignments, spools, catalog.source)
+  if (support) warnings.push(support)
+
+  // Printed feet want a FLEXIBLE material, and that preference now travels as a
+  // `preferred: [{family:'TPU'}]` selector. The service says it couldn't honour it
+  // by relaxing `preferred_identity_unavailable` — so the studio's friendlier
+  // prose is driven by the service's own relaxation instead of by a name regex
+  // over the spool's product string.
+  const feet = at('feet')
+  const feetRelaxed = byPaletteId
+    .get('feet')
+    ?.relaxations.includes('preferred_identity_unavailable')
+  if (feet && feetRelaxed && !feet.overridden) {
     warnings.push({
       code: 'feet-material',
+      origin: 'studio',
       severity: 'warning',
       message:
-        'No flexible (TPU) filament is loaded, so the printed feet fall back to the frame\'s filament — rigid feet slide and scuff. Load Bambu "TPU for AMS" for feet that grip.',
+        'No flexible (TPU) filament is loaded, so the printed feet fall back to a rigid one — rigid feet slide and scuff. Load Bambu "TPU for AMS" for feet that grip.',
       roleKeys: ['feet'],
     })
   }
-  warnings.push(...textWarnings(textAssignments, frame.spoolIndex))
+
+  if (frame) warnings.push(...textWarnings(textAssignments, frame.spoolIndex))
+
+  // Roles the service could not place. Named explicitly, because the alternative
+  // — a role quietly missing from the mapping panel — is how an unprintable design
+  // reaches the plate looking fine.
+  //
+  // Only roles the plan ANSWERED, though. A role the response doesn't mention at
+  // all is not evidence the roster can't serve it — it is an answer to a different
+  // question, which is exactly what the studio holds on screen while a new plan is
+  // in flight (`keepPreviousData` in useFilamentPlan). Warning on those would flash
+  // "no loaded filament can serve this" about a role the planner hasn't been asked
+  // about yet. They still render in their designed color; the fresh plan decides.
+  const unplaced = assignments.filter(
+    (a) => a.spoolIndex === NO_SPOOL && byPaletteId.has(a.role.key)
+  )
+  if (unplaced.length > 0) {
+    warnings.push({
+      code: 'plan-unresolved',
+      origin: 'studio',
+      severity: 'warning',
+      message: `${listProse(unplaced.map((a) => a.role.label))} ${
+        unplaced.length === 1 ? 'has' : 'have'
+      } no loaded filament that can serve ${
+        unplaced.length === 1 ? 'it' : 'them'
+      } — ${unplaced.length === 1 ? 'it prints' : 'they print'} in the designed color here, but not on the plate. Load a suitable spool or pin one.`,
+      roleKeys: unplaced.map((a) => a.role.key),
+    })
+  }
+
+  warnings.push(...serviceWarnings(servicePlan, feetRelaxed === true))
+
+  // Display-only: what the plate mostly turned out to be. Read off the plan, not
+  // used to restrict anything.
+  const anchorGroup =
+    catalog.source === 'thh-ams'
+      ? majorityGroup(
+          assignments
+            .filter((a) => a.spoolIndex !== NO_SPOOL && a.role.kind !== 'feet')
+            .map((a) => coPrintGroup(spools[a.spoolIndex].material))
+        )
+      : undefined
+
   const ok = !warnings.some((w) => w.severity === 'error')
 
   return {
@@ -538,9 +403,65 @@ export function materialize(
     assignments,
     markerContrast,
     warnings,
-    anchorGroup,
+    planStatus: servicePlan.status,
+    ...(anchorGroup ? { anchorGroup } : {}),
     ok,
   }
+}
+
+// The most common entry, ties broken by first appearance. `undefined` for an
+// empty list rather than a fabricated default.
+function majorityGroup(groups: string[]): string | undefined {
+  const counts = new Map<string, number>()
+  for (const g of groups) counts.set(g, (counts.get(g) ?? 0) + 1)
+  let best: string | undefined
+  let bestN = 0
+  for (const [g, n] of counts) {
+    if (n > bestN) {
+      best = g
+      bestN = n
+    }
+  }
+  return best
+}
+
+/**
+ * THH's warnings, relayed under their own codes.
+ *
+ * Relayed rather than re-worded: the detail text carries provenance the studio
+ * cannot reconstruct ("Orca reports 255 °C for this profile" beats "the slicer
+ * will likely refuse the mix"), and an unrecognized future code still reaches the
+ * user instead of being dropped by a switch that hasn't heard of it.
+ *
+ * Two families are filtered, and only because the studio says the same thing
+ * better with role labels the user recognises: the unresolved-palette blockers
+ * (covered by 'plan-unresolved') and, when it fired, the feet's preferred-identity
+ * relaxation (covered by 'feet-material'). Nothing else is suppressed.
+ */
+function serviceWarnings(plan: FilamentPlanResponseV1, feetCovered: boolean): PlanWarning[] {
+  const covered = new Set(['palette_unresolved', 'palette_constraint_unresolved'])
+  return plan.warnings
+    .filter((w) => !covered.has(w.code))
+    .filter(
+      (w) =>
+        !(
+          feetCovered &&
+          w.code === 'preferred_identity_unavailable' &&
+          w.paletteIds.length === 1 &&
+          w.paletteIds[0] === 'feet'
+        )
+    )
+    .map((w) => ({
+      code: w.code,
+      origin: 'service' as const,
+      // This file warns and never blocks — the slicer stays the authority, and
+      // THH grades its own severities as predictions. The prediction is preserved
+      // in `serviceSeverity` rather than promoted into an export gate here.
+      severity: 'warning' as const,
+      message: w.detail,
+      roleKeys: [...w.paletteIds],
+      serviceSeverity: w.severity,
+    }))
 }
 
 // Oxford-comma prose for a short list of family names.
@@ -551,126 +472,30 @@ const listProse = (xs: string[]): string =>
       ? `${xs[0]} and ${xs[1]}`
       : `${xs.slice(0, -1).join(', ')}, and ${xs[xs.length - 1]}`
 
-// Which assignments get a VOTE in the two material-majority warnings below.
+// support-material: a visible role sitting on breakaway support filament.
 //
-// Inset text is ink riding a spool, and rainbow text is five roles that normally
-// land on one or two filaments the structure already prints in. Letting each of
-// those vote would make "what does this plate print at" answer a question about
-// how many ink groups a design happens to have rather than about what's loaded —
-// enough to flip a genuine 2/2 tie into a false majority. So a text role votes
-// only when it occupies a spool nothing else does: that alone introduces a
-// material to the plate (and to the weld), which is exactly what these warnings
-// are looking for. Text still shows up unfiltered in support-material, where
-// there's no majority math and a text group on breakaway media is a real defect.
-const materialVoters = (assignments: RoleAssignment[]): RoleAssignment[] => {
-  const spoken = new Set(assignments.filter((a) => a.role.kind !== 'text').map((a) => a.spoolIndex))
-  return assignments.filter((a) => {
-    if (a.role.kind !== 'text') return true
-    if (spoken.has(a.spoolIndex)) return false
-    spoken.add(a.spoolIndex) // two groups on one new spool are still one material
-    return true
-  })
-}
-
-// Bucket assignments by a key of their mapped spool, preserving assignment
-// order, and split majority vs. the callout set (with no majority — a tie —
-// there is no "odd one out", so everything is named). Shared by the material
-// warnings below, which differ only in the key and the prose.
-function splitByKey(
-  assignments: RoleAssignment[],
-  keyOf: (a: RoleAssignment) => string
-): { keys: string[]; named: RoleAssignment[]; tie: boolean } | null {
-  const buckets = new Map<string, RoleAssignment[]>()
-  for (const a of assignments) {
-    const k = keyOf(a)
-    const arr = buckets.get(k) ?? []
-    arr.push(a)
-    buckets.set(k, arr)
-  }
-  if (buckets.size <= 1) return null
-  const groups = [...buckets.values()]
-  const top = Math.max(...groups.map((g) => g.length))
-  const tie = groups.filter((g) => g.length === top).length > 1
-  const named = tie ? assignments : groups.filter((g) => g.length !== top).flat()
-  const keys = [...buckets.keys()].sort(
-    (a, b) =>
-      (buckets.get(b) as RoleAssignment[]).length - (buckets.get(a) as RoleAssignment[]).length
-  )
-  return { keys, named, tie }
-}
-
-// material-mix (gh#163): the plate-wide temperature heuristic. The first real
-// print failed at the slicer, not here — color-blind auto-snap chased a bead
-// onto the one PETG spool alongside three PLAs, and Orca refused the whole
-// plate ("temperature difference of the filaments used is too large"). Auto-
-// snap is anchor-restricted now, so it can no longer create that state; this
-// is the backstop for user PINS that cross temperature groups. Buckets by
-// CO-PRINT group, not raw family — Support-for-PLA prints at PLA temperatures
-// by design, so PLA + PLA-S is not a temperature mix (the support-material
-// warning owns that case). Warns and never blocks — the slicer stays the
-// authority. Only the THH catalog carries real families; the params catalog
-// fabricates PLA everywhere and stays inert by design (abacus-catalog.ts).
-// Only spools actually used by the mapping count (a lone PETG sitting unmapped
-// in the AMS is harmless).
-function materialMixWarning(
-  assignments: RoleAssignment[],
-  spools: FilamentSpool[],
-  source: FilamentCatalog['source']
-): PlanWarning | null {
-  if (source !== 'thh-ams') return null
-  // Feet riding TPU are EXEMPT from the temperature bucketing: Bambu's "TPU for
-  // AMS" (220–240 °C) genuinely co-prints on a PLA-led plate — the whole point of
-  // the feet role is that deliberate mix (crossbar-retained, Gitea #23), and
-  // bucketing it would fire this warning on every default printed-feet plan.
-  // The exemption is the MATERIAL's, not the role's: the feet row has a full
-  // picker, so a foot pinned to ABS on a PLA plate is the ordinary plate-temp
-  // hazard this check exists for and must still warn.
-  const split = splitByKey(
-    assignments.filter(
-      (a) => a.role.kind !== 'feet' || coPrintGroup(spools[a.spoolIndex].material) !== 'TPU'
-    ),
-    (a) => coPrintGroup(spools[a.spoolIndex].material)
-  )
-  if (!split) return null
-  const { keys, named, tie } = split
-
-  if (tie) {
-    return {
-      code: 'material-mix',
-      severity: 'warning',
-      message: `This plate splits across ${listProse(keys)} temperatures — the slicer will likely refuse the mix. Keep every part in one temperature family.`,
-      roleKeys: named.map((a) => a.role.key),
-    }
-  }
-  const majority = keys[0]
-  const callouts = named
-    .map(
-      (a) => `${a.role.label} is on ${spools[a.spoolIndex].name} (${spools[a.spoolIndex].material})`
-    )
-    .join('; ')
-  return {
-    code: 'material-mix',
-    severity: 'warning',
-    message: `${callouts} — the rest of this plate prints at ${majority} temperatures, and the slicer will likely refuse the mix. Move ${
-      named.length === 1 ? 'it' : 'them'
-    } onto ${majority}, or change what's loaded.`,
-    roleKeys: named.map((a) => a.role.key),
-  }
-}
-
-// support-material: a visible role mapped onto breakaway support filament.
-// Every studio role IS a visible part (an abacus has no support geometry), and
-// support media is engineered to bond weakly and print chalky. Auto-snap never
-// picks it, so this fires only on user pins. Deliberately distinct from the
-// temperature story — Support-for-PLA co-prints with PLA just fine; it still
-// looks and holds up wrong.
+// The one material check that stays local, and only because THH structurally
+// will not make it: its planner filters support media *toward* a
+// `support-interface` role, never away from a `model` one, so a chalky PLA-S can
+// still win a bead on color alone. Every studio role IS a visible part (an abacus
+// has no support geometry), and support media is engineered to bond weakly.
+//
+// The EVIDENCE is the service's, not a guess: `supportKind` is projected verbatim
+// from the roster row, and `spoolSupportKind` only falls back to the family-name
+// heuristic when talking to a pre-#367 service that omitted the field. So this
+// warning states a fact the printer reported, then applies an abacus rule to it.
+//
+// Deliberately distinct from the temperature story, which is THH's now:
+// Support-for-PLA co-prints with PLA just fine; it still looks and holds up wrong.
 function supportMaterialWarning(
   assignments: RoleAssignment[],
   spools: FilamentSpool[],
   source: FilamentCatalog['source']
 ): PlanWarning | null {
   if (source !== 'thh-ams') return null
-  const named = assignments.filter((a) => isSupportSpool(spools[a.spoolIndex]))
+  const named = assignments.filter(
+    (a) => a.spoolIndex !== NO_SPOOL && isSupportSpool(spools[a.spoolIndex])
+  )
   if (named.length === 0) return null
   const callouts = named
     .map(
@@ -680,6 +505,7 @@ function supportMaterialWarning(
   const one = named.length === 1
   return {
     code: 'support-material',
+    origin: 'studio',
     severity: 'warning',
     message: `${callouts} — that's breakaway support filament. It prints weak and chalky, so ${
       one ? 'this visible part' : 'these visible parts'
@@ -687,71 +513,16 @@ function supportMaterialWarning(
     roleKeys: named.map((a) => a.role.key),
   }
 }
-
-// material-interface (the weld rule — its warning half): frame + ArUco markers
-// + inset-text inlays fuse into ONE printed piece, so they
-// must share a weldable material. Auto-snap satisfies this by construction (one
-// anchor group, support excluded); this is the backstop for pins. The weld test
-// is RAW family equality among non-support members — PLA↔PLA-CF welds, but
-// PLA↔PETG delaminates even when the slicer would print it. Support members are
-// excluded here (bonding weakly is their whole design) so the support-material
-// warning owns them without double-reporting. Beads are exempt: captive on a
-// clearance gap, never welded.
-function weldMixWarning(
-  assignments: RoleAssignment[],
-  spools: FilamentSpool[],
-  source: FilamentCatalog['source']
-): PlanWarning | null {
-  if (source !== 'thh-ams') return null
-  // 'feet' is deliberately ABSENT: the TPU foot ↔ PLA pocket boundary is a
-  // cross-material weld by design, mechanically backed by the crossbar (the
-  // foot is a closed loop around a frame bar — retention doesn't depend on
-  // the weld, Gitea #23). 'bead' stays absent too (captive, never welded).
-  const weldedKinds: PrintRoleKind[] = ['frame', 'markerBlack', 'markerWhite', 'text']
-  const welded = assignments.filter(
-    (a) => weldedKinds.includes(a.role.kind) && !isSupportSpool(spools[a.spoolIndex])
-  )
-  const split = splitByKey(welded, (a) => spools[a.spoolIndex].material)
-  if (!split) return null
-  const { keys, named, tie } = split
-
-  // Name the parts actually in the weld, not a fixed pair: inset text joins the
-  // cluster whenever the design has any (its plugs are fused flush into the
-  // frame's pockets), and a design can have markers off.
-  const has = (k: PrintRoleKind): boolean => welded.some((a) => a.role.kind === k)
-  const subject = listProse(
-    [
-      has('frame') ? 'the frame' : null,
-      has('markerBlack') || has('markerWhite') ? 'the ArUco markers' : null,
-      has('text') ? 'the inset text' : null,
-    ].filter((s): s is string => s !== null)
-  )
-  const Subject = subject.charAt(0).toUpperCase() + subject.slice(1)
-  const remedy = `Keep ${subject} on one material.`
-  if (tie) {
-    return {
-      code: 'material-interface',
-      severity: 'warning',
-      message: `${Subject} print as one welded piece, but the mapping splits them across ${listProse(keys)} — mixed joints delaminate. ${remedy}`,
-      roleKeys: named.map((a) => a.role.key),
-    }
-  }
-  const callouts = named
-    .map((a) => `${a.role.label} is on ${spools[a.spoolIndex].material}`)
-    .join('; ')
-  return {
-    code: 'material-interface',
-    severity: 'warning',
-    message: `${Subject} print as one welded piece, but ${callouts} while the rest is ${keys[0]} — mixed joints delaminate. ${remedy}`,
-    roleKeys: named.map((a) => a.role.key),
-  }
-}
-
 // The inset-text reductions. Both are warnings, deliberately: this file warns
 // and never blocks, and the reduction they describe still prints — just with
 // less color than the design asked for.
-function textWarnings(textAssignments: RoleAssignment[], frameIndex: number): PlanWarning[] {
+function textWarnings(all: RoleAssignment[], frameIndex: number): PlanWarning[] {
   const warnings: PlanWarning[] = []
+  // Unplaced roles are excluded from BOTH checks below. They share no filament
+  // (they have none), so counting them would report a collision between two roles
+  // that the service placed nowhere — 'plan-unresolved' is what describes them,
+  // and saying it twice in different words helps nobody.
+  const textAssignments = all.filter((a) => a.spoolIndex !== NO_SPOOL)
   if (textAssignments.length === 0) return warnings
 
   // rainbow-unrealizable: the ink budget. Rainbow text wants one filament per
@@ -767,6 +538,7 @@ function textWarnings(textAssignments: RoleAssignment[], frameIndex: number): Pl
   if (distinct < textAssignments.length) {
     warnings.push({
       code: 'rainbow-unrealizable',
+      origin: 'studio',
       severity: 'warning',
       message: `Your rainbow inlay text asks for ${textAssignments.length} ink colors, but only ${distinct} distinct ${
         distinct === 1 ? 'filament serves' : 'filaments serve'
@@ -779,11 +551,14 @@ function textWarnings(textAssignments: RoleAssignment[], frameIndex: number): Pl
   // fills its pocket FLUSH and in the same color, so the writing simply
   // disappears — the one text outcome a user is guaranteed to notice on the
   // plate, and the reason a near-color match is not good enough here.
+  // An unplaced FRAME matches nothing: `frameIndex` is then NO_SPOOL, and the
+  // filter above already removed every assignment that could equal it.
   const invisible = textAssignments.filter((a) => a.spoolIndex === frameIndex)
   if (invisible.length > 0) {
     const all = invisible.length === textAssignments.length
     warnings.push({
       code: 'text-invisible',
+      origin: 'studio',
       severity: 'warning',
       message: `${
         all ? 'The inlay text prints' : `${invisible.length} of the inlay text colors print`
@@ -800,14 +575,18 @@ function textWarnings(textAssignments: RoleAssignment[], frameIndex: number): Pl
 // export; the slicer and the solver own the real gates).
 function planWarnings(
   markerContrast: number,
-  beadAssignments: RoleAssignment[],
+  allBeads: RoleAssignment[],
   roleCount: number
 ): PlanWarning[] {
   const warnings: PlanWarning[] = []
+  // Same reason as textWarnings: two roles the service placed nowhere are not
+  // "sharing a filament", and 'plan-unresolved' already names them.
+  const beadAssignments = allBeads.filter((a) => a.spoolIndex !== NO_SPOOL)
 
   if (markerContrast < MARKER_CONTRAST_MIN) {
     warnings.push({
       code: 'marker-contrast',
+      origin: 'studio',
       severity: 'warning',
       message: `The ArUco corner markers map to filaments only ${markerContrast.toFixed(
         1
@@ -821,6 +600,7 @@ function planWarnings(
   if (beadAssignments.length > distinctBeadSpools) {
     warnings.push({
       code: 'budget-exceeded',
+      origin: 'studio',
       severity: 'warning',
       message: `Your color scheme uses ${roleCount} bead colors but there aren't that many distinct filaments loaded, so some beads share one.`,
       roleKeys: beadAssignments.map((a) => a.role.key),
@@ -839,6 +619,7 @@ function planWarnings(
     if (keys.length > 1) {
       warnings.push({
         code: 'role-collision',
+        origin: 'studio',
         severity: 'warning',
         message: `${keys.length} bead colors print on the same filament and won't be tellable apart.`,
         roleKeys: keys,
@@ -855,58 +636,138 @@ function planWarnings(
 // through a FilamentMap; deriving it FROM the plan (instead of recomputing) is what
 // lets a manual override flow straight into the live preview, and keeps the plan
 // the single source of truth for both the warnings and the pixels.
+//
+// UNPLACED ROLES get an appended slot carrying the color the user designed, so the
+// viewer paints the design's own intent for anything the service could not serve.
+// That is the honest picture — "we don't know what this would print as, here's
+// what you asked for" — and it is why `slots` is returned possibly longer than the
+// catalog. Mapping them to slot 0 instead would paint them in whatever happens to
+// be loaded first and look exactly like a plan that worked.
 export function planToFilamentMap(plan: PrintPlan, slots: string[]): FilamentMap {
-  // `?? 0` keeps this total for an emptyPlan (no assignments): a missing role maps
-  // to slot 0. Paired with hexRGB's neutral fallback, a degenerate catalog renders
-  // a neutral preview instead of throwing. A normal plan always has every role, so
-  // this changes nothing on the live path (the snapshot test pins that).
-  const pick = (kind: PrintRoleKind): number =>
-    plan.assignments.find((a) => a.role.kind === kind)?.spoolIndex ?? 0
+  const out = [...slots]
+  // Slot index for an assignment, minting a design-color slot for an unplaced one.
+  // `?? 0` still guards a role the plan never minted at all (an emptyPlan), where
+  // there is no intrinsic color to fall back to either.
+  const slotFor = (a: RoleAssignment | undefined): number | undefined => {
+    if (!a) return undefined
+    if (a.spoolIndex !== NO_SPOOL) return a.spoolIndex
+    out.push(a.role.intrinsicHex)
+    return out.length - 1
+  }
+  const of = (kind: PrintRoleKind): RoleAssignment | undefined =>
+    plan.assignments.find((a) => a.role.kind === kind)
+  const pick = (kind: PrintRoleKind): number => slotFor(of(kind)) ?? 0
+  const frame = pick('frame')
+  const markerWhite = pick('markerWhite')
+  const markerBlack = pick('markerBlack')
+  const beadRoles = plan.assignments
+    .filter((a) => a.role.kind === 'bead')
+    .map((a) => slotFor(a) as number)
   // feet is CONDITIONAL, not defaulted: the key exists iff the plan minted a
   // feet role (feet_mode === 'printed'), so the 3MF builder can distinguish
   // "no printed feet" from "feet on slot 0".
-  const feet = plan.assignments.find((a) => a.role.kind === 'feet')?.spoolIndex
+  const feet = slotFor(of('feet'))
   // text is CONDITIONAL for the same reason: absent means the design has no
   // inset text to ink, which the 3MF must distinguish from "text on slot 0".
   // Dense over the groups by construction (they're minted in group order and the
   // present set is always the prefix 0…G−1 — see textGroups).
-  const textRoles = plan.assignments.filter((a) => a.role.kind === 'text').map((a) => a.spoolIndex)
+  const textRoles = plan.assignments
+    .filter((a) => a.role.kind === 'text')
+    .map((a) => slotFor(a) as number)
   return {
-    slots,
-    frame: pick('frame'),
-    markerWhite: pick('markerWhite'),
-    markerBlack: pick('markerBlack'),
-    beadRoles: plan.assignments.filter((a) => a.role.kind === 'bead').map((a) => a.spoolIndex),
+    slots: out,
+    frame,
+    markerWhite,
+    markerBlack,
+    beadRoles,
     markerContrast: plan.markerContrast,
     ...(feet !== undefined ? { feet } : {}),
     ...(textRoles.length > 0 ? { textRoles } : {}),
   }
 }
 
-// The no-override map, byte-for-byte identical to the pre-plan implementation for
-// every scheme × palette × filament_count (the snapshot test). The profileId is
-// irrelevant to quantization, so the throwaway design uses ''.
-export function computeFilamentMap(p: Params): FilamentMap {
-  const catalog = catalogFromParams(p)
-  const plan = materialize(toAbacusDesign(p, ''), catalog)
-  return planToFilamentMap(
-    plan,
-    catalog.spools.map((s) => s.hex)
-  )
+// The map for a design NOBODY HAS PLANNED — no printer paired, the roster still
+// loading, or a params catalog. Every role gets its own slot holding exactly the
+// color the user designed, so the viewer renders the design itself.
+//
+// This is what replaced `computeFilamentMap`, and the difference is the whole
+// point of Gitea #37. That function quantized the design onto the eight
+// `filament_N` params with a redmean nearest-color search — a full matching
+// algorithm whose answer nothing could print, since the params catalog describes
+// no real spools. Approximating a design against a fictional roster is strictly
+// worse than showing the design, and it was the last place redmean survived.
+export function designFilamentMap(design: AbacusDesign): FilamentMap {
+  const roles = designRoles(design)
+  const slots = roles.map((r) => r.intrinsicHex)
+  const indexOf = (kind: PrintRoleKind): number => roles.findIndex((r) => r.kind === kind)
+  const kindSlots = (kind: PrintRoleKind): number[] =>
+    roles.map((r, i) => (r.kind === kind ? i : -1)).filter((i) => i >= 0)
+  const feet = indexOf('feet')
+  const textRoles = kindSlots('text')
+  return {
+    slots,
+    frame: indexOf('frame'),
+    markerWhite: indexOf('markerWhite'),
+    markerBlack: indexOf('markerBlack'),
+    beadRoles: kindSlots('bead'),
+    // The DESIGNED markers are pure black on pure white, so the design's own
+    // contrast is perfect. Nothing is claimed about what a printer would manage —
+    // that only becomes knowable once a plan exists.
+    markerContrast: contrastRatio('#ffffff', '#000000'),
+    ...(feet >= 0 ? { feet } : {}),
+    ...(textRoles.length > 0 ? { textRoles } : {}),
+  }
 }
 
 // ---- shift signal -----------------------------------------------------------
-// redmean distance (see `colorDist`, ~0–800) above which a role's spool reads as a
-// genuinely different color rather than a near-match. Calibrated so a same-hue
-// near-match like #dc2626→#c1272d (~46) stays silent while a real hue change like
-// teal→green (~113) flecks. Tune here if the flecks feel too eager / too shy.
-export const SHIFT_DISTANCE_THRESHOLD = 85
+// CIEDE2000 distance above which a role's spool reads as a genuinely different
+// color rather than a near-match.
+//
+// RECALIBRATED, not merely renamed (Gitea #37): the old threshold was 85 in
+// redmean units (~0–800), and `distance` is now the service's ΔE00 (~0–100), so
+// carrying the number across would have silenced every fleck. Placed by measuring
+// the same reference pairs the old comment named:
+//
+//   #dc2626 → #c1272d   same-hue near-match   redmean  46   ΔE00  6.3   stay silent
+//   #ffffff → #f3f4f6   off-white             redmean  33   ΔE00  2.5   stay silent
+//   #000000 → #1f2937   black → slate         redmean 133   ΔE00 13.1   fleck
+//   #14b8a6 → #22c55e   teal → green          redmean 127   ΔE00 19.0   fleck
+//
+// 10 sits in the empirical gap (6.3 … 13.1) and coincides with the textbook mark
+// for "a different color at a glance". Tune here if the flecks feel too eager /
+// too shy.
+export const SHIFT_DISTANCE_THRESHOLD = 10
 
 // Does a role print as a noticeably DIFFERENT color than the user designed? A pure
-// readout of the assignment's own redmean distance (see `colorDist`) vs the shift
-// threshold — no independent color math. The single source of truth the mapping
-// rows' corner fleck and the "N colors shift" footer both read. Feet never
-// shift: their spool is picked by FAMILY (TPU), so the color distance from the
-// fixed intrinsic slate is decorative, not a reduction the user should audit.
+// readout of the assignment's own ΔE00 vs the shift threshold — no independent
+// color math, and none available: this file no longer owns a color metric.
+//
+// A null distance is NOT a shift. It means unmeasured — a spool with no color
+// metadata, a pin the next plan hasn't confirmed, or an unplaced role — and
+// flecking on "we don't know" would cry wolf on every click of the picker.
+//
+// Feet never shift: their spool is chosen by MATERIAL (the `preferred` TPU
+// selector), so the color distance from the fixed intrinsic slate is decorative,
+// not a reduction the user should audit.
 export const roleShifted = (a: RoleAssignment, threshold = SHIFT_DISTANCE_THRESHOLD): boolean =>
-  a.role.kind !== 'feet' && a.distance > threshold
+  a.role.kind !== 'feet' && a.distance !== null && a.distance > threshold
+
+// ---- the print gate ---------------------------------------------------------
+// Roles that would print in a color no loaded spool can produce — the labels the
+// panel names when it refuses to submit.
+//
+// This gate is new with the authority swap (Gitea #37), and it exists because the
+// swap changed what a FilamentMap can contain. The local quantizer always returned
+// a real catalog slot for every role, because it snapped onto whatever was loaded;
+// a plan does not. `planToFilamentMap` appends a design-color slot for anything the
+// service could not place, so the viewer paints the user's intent — and that slot
+// has no spool behind it. Sent to a printer it is not a near miss, it is a body
+// referencing an extruder that will never be loaded.
+//
+// An UNPLANNED plan (no printer paired, or the read still in flight) reports no
+// unplaced roles: nothing has been judged yet, and the panel's own loading and
+// roster states already describe that. Only a plan that answered and came up short
+// blocks the submit.
+export function unplacedRoleLabels(plan: PrintPlan): string[] {
+  return plan.assignments.filter((a) => a.spoolIndex === NO_SPOOL).map((a) => a.role.label)
+}

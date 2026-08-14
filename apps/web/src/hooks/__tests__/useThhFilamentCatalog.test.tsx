@@ -71,7 +71,16 @@ describe('useThhFilamentCatalog — external (no-AMS) spool', () => {
 
     await waitFor(() => expect(result.current.catalog?.source).toBe('thh-ams'))
     expect(result.current.catalog?.spools).toEqual([
-      { id: 'external-0', name: 'Sunlu PLA+', hex: '#112233', material: 'PLA', external: true },
+      {
+        id: 'external-0',
+        name: 'Sunlu PLA+',
+        hex: '#112233',
+        material: 'PLA',
+        // kept as fields so a pin can name this spool by identity (Gitea #37)
+        brand: 'Sunlu',
+        product: 'PLA+',
+        external: true,
+      },
     ])
     expect(result.current.amsPresent).toBe(false)
     expect(result.current.externalUnprintable).toBe(false)

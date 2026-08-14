@@ -1,46 +1,42 @@
 import { describe, expect, it } from 'vitest'
+import {
+  exactMatchPlan,
+  stubCompatWarning,
+  stubFilamentPlan,
+  type StubPick,
+} from '../__fixtures__/filament-plan-stub'
 import { catalogFromParams, type FilamentCatalog, type FilamentSpool } from '../abacus-catalog'
 import { toAbacusDesign } from '../abacus-design'
+import { beadRoleColors, COLOR_PALETTES, defaultParams, type Params } from '../abacus-model'
 import {
-  beadRoleColors,
-  COLOR_PALETTES,
-  defaultParams,
-  type Params,
-  textSlots,
-  tokGroup,
-} from '../abacus-model'
-import {
-  computeFilamentMap,
+  designFilamentMap,
   materialize,
+  NO_SPOOL,
   PRINT_PLAN_SCHEMA_VERSION,
   planToFilamentMap,
-  roleShifted,
-  SHIFT_DISTANCE_THRESHOLD,
 } from '../abacus-plan'
-import snapshot from './filament-map-snapshot.json'
 
-// The matrix the characterization snapshot was captured over: the structure
-// roles (frame, ArUco pair, beads) depend only on color_scheme, color_palette,
-// frame_color and the loaded filament slots — NOT on cols. That is the surface
-// the frozen fixture pins. The map ALSO carries text roles now, which depend on
-// text_mode / text_fill / text_color and what's written on the eight slots;
-// that axis is covered by its own describe below rather than by widening this
-// matrix 5×.
-const SCHEMES = ['monochrome', 'heaven-earth', 'alternating', 'place-value']
-const PALETTES = ['default', 'colorblind', 'grayscale']
-const COUNTS = [8, 3, 1]
-// Keys the frozen fixture pins byte-for-byte. `textRoles` is the one key allowed
-// to appear beyond them — see the assertion below for why the fixture stayed
-// untouched rather than being regenerated.
-const FROZEN_KEYS = [
-  'beadRoles',
-  'feet',
-  'frame',
-  'markerBlack',
-  'markerContrast',
-  'markerWhite',
-  'slots',
-]
+// `materialize` after the authority swap (Gitea #37).
+//
+// What this file no longer tests, because the code no longer does it: choosing a
+// spool. There is no redmean search, no anchor-group restriction, no distinct-first
+// loop, no TPU-by-name feet pick. THH's `filament-plan/v1` decides, and this module
+// PROJECTS that decision onto the studio's role model. So the tests here are about
+// the projection (does the service's answer arrive intact, and total on every
+// degenerate input) and about the small set of warnings the studio still owns.
+//
+// The intent the deleted tests encoded did not evaporate — it moved to the layer
+// that now owns it, and is asserted there:
+//   • which roles must differ, what the feet prefer, what is welded to what
+//     → abacus-plan-request.test.ts, as request constraints
+//   • whether a given roster satisfies them → THH's planner, not this repo
+//
+// Gone with them: `filament-map-snapshot.json` and its byte-parity suite. That
+// fixture characterized `computeFilamentMap` — a redmean quantization of the design
+// onto the eight `filament_N` params. Its subject is deleted, and pinning it against
+// `designFilamentMap` would be meaningless: the params catalog describes no real
+// spools, so the unplanned path now shows the DESIGN rather than approximating it
+// against a fictional roster.
 
 const paramsFor = (
   color_scheme: string,
@@ -53,591 +49,314 @@ const paramsFor = (
   filament_count,
 })
 
-describe('computeFilamentMap — byte-parity with the pre-plan implementation', () => {
-  // The whole point of moving computeFilamentMap into materialize(): the viewer's
-  // marker + text-plug snapping must be untouched. This asserts the adapter
-  // reproduces the frozen bench output EXACTLY for every scheme × palette × count.
-  //
-  // toMatchObject, not toEqual, since inset text gained a role: every frozen key
-  // must still match exactly (toMatchObject compares arrays by length AND
-  // element, so beadRoles/slots keep their byte-parity guarantee) while the new
-  // `textRoles` key is allowed through. The fixture itself is deliberately NOT
-  // regenerated — transcribing 180 freshly-generated numbers into a "frozen"
-  // file would just rubber-stamp whatever the code now does, which is the
-  // opposite of what a characterization fixture is for. The key-set guard below
-  // stops anything ELSE sneaking in unnoticed.
-  for (const color_scheme of SCHEMES) {
-    for (const color_palette of PALETTES) {
-      for (const filament_count of COUNTS) {
-        const key = `${color_scheme}|${color_palette}|${filament_count}`
-        it(key, () => {
-          const got = computeFilamentMap(paramsFor(color_scheme, color_palette, filament_count))
-          expect(got).toMatchObject(
-            (snapshot as Record<string, Record<string, unknown>>)[key] as object
-          )
-          expect(Object.keys(got).sort()).toEqual([...FROZEN_KEYS, 'textRoles'].sort())
-        })
-      }
-    }
-  }
-
-  it('covers every captured combination (no snapshot rot)', () => {
-    const expected = SCHEMES.length * PALETTES.length * COUNTS.length
-    expect(Object.keys(snapshot as Record<string, unknown>)).toHaveLength(expected)
-  })
-
-  it('the frozen fixture still pins the exact key set it was captured with', () => {
-    for (const entry of Object.values(snapshot as Record<string, Record<string, unknown>>)) {
-      expect(Object.keys(entry).sort()).toEqual(FROZEN_KEYS)
-    }
-  })
+const spool = (id: string, name: string, hex: string, material: string): FilamentSpool => ({
+  id,
+  name,
+  hex,
+  material,
+})
+const thh = (spools: FilamentSpool[]): FilamentCatalog => ({
+  source: 'thh-ams',
+  fetchedAt: '2026-08-14T00:00:00Z',
+  spools,
 })
 
-describe('materialize — structure', () => {
-  const plan = (p: Params, catalog?: FilamentCatalog) =>
-    materialize(toAbacusDesign(p, 'test-profile'), catalog ?? catalogFromParams(p))
+// heaven-earth = the smallest scheme whose bead colors are distinct from the
+// marker/frame anchors (monochrome's bead is intrinsically #000000).
+const p = paramsFor('heaven-earth', 'default', 8)
+const design = toAbacusDesign(p, 'test-profile')
+const [heavenHex, earthHex] = beadRoleColors(p.color_scheme, p.color_palette)
 
-  it('tags the plan with the schema version and the catalog source', () => {
-    const p = paramsFor('place-value', 'default', 8)
-    const result = plan(p)
+const plaRoster = () => [
+  spool('s-black', 'Matte Black', '#000000', 'PLA'),
+  spool('s-white', 'Matte White', '#ffffff', 'PLA'),
+  spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
+  spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
+  spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
+]
+// The mapping a healthy planner returns on that roster.
+const plaPicks: Record<string, StubPick> = {
+  'marker-black': 's-black',
+  'marker-white': 's-white',
+  frame: 's-frame',
+  'bead-0': 's-heaven',
+  'bead-1': 's-earth',
+  feet: 's-frame',
+}
+
+/** materialize against a staged plan, in one line. */
+const planned = (
+  catalog: FilamentCatalog,
+  picks: Record<string, StubPick> = plaPicks,
+  opts: {
+    overrides?: Record<string, string>
+    d?: typeof design
+    extra?: Parameters<typeof stubFilamentPlan>[3]
+  } = {}
+) => {
+  const d = opts.d ?? design
+  return materialize(d, catalog, {
+    overrides: opts.overrides,
+    plan: stubFilamentPlan(d, catalog, picks, opts.extra),
+  })
+}
+
+describe('materialize — structure', () => {
+  it('tags the plan with the schema version, the catalog source, and the plan status', () => {
+    const result = planned(thh(plaRoster()))
     expect(result.schemaVersion).toBe(PRINT_PLAN_SCHEMA_VERSION)
-    expect(result.catalogSource).toBe('manual-params')
+    expect(result.catalogSource).toBe('thh-ams')
+    expect(result.planStatus).toBe('satisfied')
   })
 
   it('emits exactly one frame + two marker roles plus one assignment per bead role', () => {
-    const p = paramsFor('place-value', 'default', 8) // 5 place-value bead roles
-    const result = plan(p)
-    const kinds = result.assignments.map((a) => a.role.kind)
+    const pv = toAbacusDesign(paramsFor('place-value', 'default', 8), '') // 5 bead roles
+    const catalog = thh(plaRoster())
+    const kinds = planned(catalog, {}, { d: pv }).assignments.map((a) => a.role.kind)
     expect(kinds.filter((k) => k === 'frame')).toHaveLength(1)
     expect(kinds.filter((k) => k === 'markerBlack')).toHaveLength(1)
     expect(kinds.filter((k) => k === 'markerWhite')).toHaveLength(1)
     expect(kinds.filter((k) => k === 'bead')).toHaveLength(5)
   })
 
-  it('bakes each role its INTRINSIC (pre-quantization) hex', () => {
-    const p = paramsFor('heaven-earth', 'default', 8)
-    const result = plan(p)
-    const frame = result.assignments.find((a) => a.role.kind === 'frame')
-    // heaven-earth intrinsic pair is the fixed Typst orange/blue, regardless of the
-    // spools loaded — the design boundary, not the catalog.
-    const heaven = result.assignments.find((a) => a.role.key === 'bead-0')
-    const earth = result.assignments.find((a) => a.role.key === 'bead-1')
-    expect(frame?.role.intrinsicHex).toBe(p.frame_color)
-    expect(heaven?.role.intrinsicHex).toBe('#F18F01')
-    expect(earth?.role.intrinsicHex).toBe('#2E86AB')
-  })
-
-  it('scores an exact spool match at distance 0', () => {
-    // frame_color equals filament_1 in defaultParams, so the frame lands on it.
-    const p = paramsFor('monochrome', 'default', 8)
-    const frame = plan(p).assignments.find((a) => a.role.kind === 'frame')
-    expect(frame?.distance).toBe(0)
-    expect(frame?.overridden).toBe(false)
-  })
-
-  it('is P1-clean: no error-severity warnings, so ok stays true', () => {
-    for (const color_scheme of SCHEMES) {
-      for (const color_palette of PALETTES) {
-        for (const filament_count of COUNTS) {
-          const result = plan(paramsFor(color_scheme, color_palette, filament_count))
-          expect(result.warnings.every((w) => w.severity === 'warning')).toBe(true)
-          expect(result.ok).toBe(true)
-        }
-      }
-    }
-  })
-})
-
-describe('materialize — warnings', () => {
-  const plan = (p: Params) => materialize(toAbacusDesign(p, ''), catalogFromParams(p))
-
-  it('warns on unreadable ArUco contrast when one filament is loaded', () => {
-    // count=1 collapses black+white onto the same spool → 1:1 contrast.
-    const result = plan(paramsFor('monochrome', 'default', 1))
-    const w = result.warnings.find((x) => x.code === 'marker-contrast')
-    expect(w).toBeDefined()
-    expect(w?.severity).toBe('warning')
-    expect(result.markerContrast).toBeCloseTo(1, 5)
-  })
-
-  it('warns budget-exceeded + role-collision when the palette outnumbers the spools', () => {
-    // place-value has 5 bead roles; 3 slots forces reuse.
-    const result = plan(paramsFor('place-value', 'default', 3))
-    expect(result.warnings.some((w) => w.code === 'budget-exceeded')).toBe(true)
-    const collision = result.warnings.find((w) => w.code === 'role-collision')
-    expect(collision).toBeDefined()
-    // the colliding roles are named so the review panel can point at them.
-    expect(collision?.roleKeys?.length ?? 0).toBeGreaterThan(1)
-  })
-
-  it('does not warn budget-exceeded when every bead role gets a distinct spool', () => {
-    const result = plan(paramsFor('place-value', 'default', 8)) // 5 roles ≤ 8 slots
-    expect(result.warnings.some((w) => w.code === 'budget-exceeded')).toBe(false)
-    expect(result.warnings.some((w) => w.code === 'role-collision')).toBe(false)
-  })
-})
-
-// Shared fixtures for the material suites: heaven-earth = the smallest scheme
-// whose bead colors are distinct from the marker/frame anchors (monochrome's
-// bead is intrinsically #000000 and would collide with the ArUco black spool).
-// Five roles: marker pair, frame, heaven, earth. Catalogs load an EXACT-match
-// spool per role so auto-snap's landing spots are fixed by construction.
-const materialFixtures = () => {
-  const p = paramsFor('heaven-earth', 'default', 8)
-  const design = toAbacusDesign(p, '')
-  const [heavenHex, earthHex] = beadRoleColors(p.color_scheme, p.color_palette)
-  const spool = (id: string, name: string, hex: string, material: string): FilamentSpool => ({
-    id,
-    name,
-    hex,
-    material,
-  })
-  const thh = (spools: FilamentSpool[]): FilamentCatalog => ({
-    source: 'thh-ams',
-    fetchedAt: '2026-07-16T00:00:00Z',
-    spools,
-  })
-  return { p, design, heavenHex, earthHex, spool, thh }
-}
-
-describe('materialize — material-aware auto-snap (gh#163: the pit of success)', () => {
-  const { design, heavenHex, earthHex, spool, thh } = materialFixtures()
-
-  it('keeps every role inside one anchor group — the prod failure cannot happen by default', () => {
-    // four PLAs + the one PETG the heaven bead color chases — the exact shape
-    // that slipped through to Orca's temp guard in prod. Color-blind snapping
-    // would land heaven on the PETG; the anchor restriction must not.
-    const result = materialize(
-      design,
-      thh([
-        spool('s-black', 'Matte Black', '#000000', 'PLA'),
-        spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-        spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-        spool('s-petg', 'Bambu PETG Basic', heavenHex, 'PETG'),
-        spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
-      ])
+  it('bakes each role its INTRINSIC (pre-plan) hex', () => {
+    const result = planned(thh(plaRoster()))
+    // the heaven-earth intrinsic pair is the fixed Typst orange/blue regardless of
+    // what the printer has loaded — the design boundary, not the roster.
+    expect(result.assignments.find((a) => a.role.kind === 'frame')?.role.intrinsicHex).toBe(
+      p.frame_color
     )
-    expect(result.anchorGroup).toBe('PLA')
-    expect(result.warnings.find((w) => w.code === 'material-mix')).toBeUndefined()
-    const heaven = result.assignments.find((a) => a.role.key === 'bead-0')
-    expect(heaven?.spoolId).not.toBe('s-petg') // stays in-group, at a color cost
-    expect(result.assignments.find((a) => a.spoolId === 's-petg')).toBeUndefined()
+    expect(result.assignments.find((a) => a.role.key === 'bead-0')?.role.intrinsicHex).toBe(
+      '#F18F01'
+    )
+    expect(result.assignments.find((a) => a.role.key === 'bead-1')?.role.intrinsicHex).toBe(
+      '#2E86AB'
+    )
+  })
+})
+
+describe('materialize — the projection is a join, not a re-derivation', () => {
+  const catalog = thh(plaRoster())
+
+  it('lands every role on the spool the SERVICE named', () => {
+    const result = planned(catalog)
+    expect(
+      Object.fromEntries(result.assignments.map((a) => [a.role.key, a.spoolId]))
+    ).toMatchObject(plaPicks)
     expect(result.assignments.every((a) => !a.overridden)).toBe(true)
   })
 
-  it('never auto-assigns breakaway support media, even on an exact color match', () => {
-    // the support spool is EXACTLY ArUco black; the honest PLA is slightly off.
-    const result = materialize(
-      design,
-      thh([
-        spool('s-sup', 'Bambu Support for PLA', '#000000', 'PLA-S'),
-        spool('s-black', 'Matte Black', '#101010', 'PLA'),
-        spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-        spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-        spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
-        spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
-      ])
-    )
-    const black = result.assignments.find((a) => a.role.key === 'marker-black')
-    expect(black?.spoolId).toBe('s-black')
-    expect(result.warnings.find((w) => w.code === 'support-material')).toBeUndefined()
-    // PLA-S rides the PLA temperature window, so the anchor is still plain PLA
-    expect(result.anchorGroup).toBe('PLA')
+  it('takes a color it would never have picked itself, without arguing', () => {
+    // The proof that no local matcher survives: the service puts ArUco black on
+    // the WHITE spool. A quantizer would "fix" this; a projection reports it.
+    const result = planned(catalog, { ...plaPicks, 'marker-black': ['s-white', 0] })
+    expect(result.assignments.find((a) => a.role.key === 'marker-black')?.spoolId).toBe('s-white')
+    // ...and the consequence is judged honestly: both markers are now white.
+    expect(result.markerContrast).toBeCloseTo(1, 5)
+    expect(result.warnings.some((w) => w.code === 'marker-contrast')).toBe(true)
   })
 
-  it('claims no anchor for the params catalog (fabricated families) and one for THH', () => {
-    const p = paramsFor('heaven-earth', 'default', 8)
-    expect(materialize(design, catalogFromParams(p)).anchorGroup).toBeUndefined()
-    expect(
-      materialize(design, thh([spool('s-white', 'Matte White', '#ffffff', 'PLA')])).anchorGroup
-    ).toBe('PLA')
+  it('carries the service ΔE00 through as the assignment distance', () => {
+    const result = planned(catalog, { ...plaPicks, 'bead-0': ['s-white', 37.5] })
+    expect(result.assignments.find((a) => a.role.key === 'bead-0')?.distance).toBe(37.5)
+    // an exact match reports 0, which is NOT the same as unmeasured
+    expect(result.assignments.find((a) => a.role.key === 'frame')?.distance).toBe(0)
   })
-})
 
-describe('materialize — material warnings answer pins (gh#163)', () => {
-  const { design, heavenHex, earthHex, spool, thh } = materialFixtures()
-  const warnOf = (code: string, catalog: FilamentCatalog, overrides?: Record<string, string>) =>
-    materialize(design, catalog, { overrides }).warnings.find((w) => w.code === code)
+  it('resolves the external spool by its flag, not by a slot id', () => {
+    // A no-AMS printer's direct spool has no slotId (things-haunt-house#382), so the
+    // plan names it with `external: true` and the join has to find it that way.
+    const ext = thh([{ ...spool('ext-0', 'Direct PLA', '#101010', 'PLA'), external: true }])
+    const result = planned(ext, {})
+    expect(result.assignments.every((a) => a.spoolId === 'ext-0')).toBe(true)
+  })
 
-  // all-PLA auto-snap with odd-family spools loaded but unmapped: harmless
-  // until the user pins onto them.
-  const catalog = thh([
-    spool('s-black', 'Matte Black', '#000000', 'PLA'),
-    spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-    spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-    spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
-    spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
-    spool('s-petg', 'Bambu PETG Basic', '#ff00ff', 'PETG'),
-    spool('s-sup', 'Bambu Support for PLA', '#fefefe', 'PLA-S'),
-  ])
+  it('reports NO_SPOOL — never slot 0 — for a role the service could not place', () => {
+    const result = planned(catalog, plaPicks, { extra: { unplaced: ['bead-1'], status: 'degraded' } })
+    const earth = result.assignments.find((a) => a.role.key === 'bead-1')
+    expect(earth?.spoolIndex).toBe(NO_SPOOL)
+    expect(earth?.spoolId).toBe('')
+    expect(earth?.distance).toBeNull()
+    expect(result.planStatus).toBe('degraded')
+  })
 
-  it('material-mix: fires only once a pin crosses temperature groups, and only counts USED spools', () => {
-    expect(warnOf('material-mix', catalog)).toBeUndefined()
-    const result = materialize(design, catalog, { overrides: { 'bead-0': 's-petg' } })
-    const w = result.warnings.find((x) => x.code === 'material-mix')
-    expect(w).toBeDefined()
+  it('names the unplaced roles in a plan-unresolved warning', () => {
+    // The alternative — a role quietly missing from the mapping panel — is how an
+    // unprintable design reaches the plate looking fine.
+    const w = planned(catalog, plaPicks, {
+      extra: { unplaced: ['bead-1'], status: 'degraded' },
+    }).warnings.find((x) => x.code === 'plan-unresolved')
+    expect(w?.roleKeys).toEqual(['bead-1'])
     expect(w?.severity).toBe('warning')
-    expect(result.ok).toBe(true) // heuristic, never a block — the slicer stays the authority
-    // names the odd-one-out pick, not the majority
-    expect(w?.roleKeys).toEqual(['bead-0'])
-    expect(w?.message).toContain('heaven is on Bambu PETG Basic (PETG)')
-    expect(w?.message).toContain('the rest of this plate prints at PLA temperatures')
-    expect(w?.message).toContain('Move it onto PLA')
+    expect(w?.message).toContain('no loaded filament')
   })
 
-  it('material-mix: a PLA-S pin is NOT a temperature mix (support rides the PLA window)', () => {
-    expect(warnOf('material-mix', catalog, { 'marker-white': 's-sup' })).toBeUndefined()
-  })
-
-  it('support-material: fires when a visible role is pinned onto breakaway support', () => {
-    const w = warnOf('support-material', catalog, { 'marker-white': 's-sup' })
-    expect(w).toBeDefined()
-    expect(w?.roleKeys).toEqual(['marker-white'])
-    expect(w?.message).toContain('ArUco white is on Bambu Support for PLA (PLA-S)')
-    expect(w?.message).toContain('breakaway support filament')
-    // the weld rule does not double-report the support member
-    expect(warnOf('material-interface', catalog, { 'marker-white': 's-sup' })).toBeUndefined()
-  })
-
-  it('material-interface: a pin that splits the welded frame/marker piece warns about delamination', () => {
-    const overrides = { frame: 's-petg' }
-    const weld = warnOf('material-interface', catalog, overrides)
-    expect(weld).toBeDefined()
-    expect(weld?.severity).toBe('warning')
-    expect(weld?.roleKeys).toEqual(['frame'])
-    expect(weld?.message).toContain('Frame is on PETG while the rest is PLA')
-    expect(weld?.message).toContain('delaminate')
-    // The temperature warning fires too — different consequence, same fix. It
-    // names the feet as well: this catalog loads no TPU, so the feet fall back to
-    // the frame's spool, which the pin just moved to PETG. They really do print in
-    // PETG and really do share the split, and only a TPU foot is exempt from the
-    // bucketing (Gitea #23).
-    expect(warnOf('material-mix', catalog, overrides)?.roleKeys).toEqual(['frame', 'feet'])
-  })
-
-  it('marker-contrast: tracks the FINAL pair, so pinning a marker dark kills the warning-free state', () => {
-    expect(warnOf('marker-contrast', catalog)).toBeUndefined()
-    const w = warnOf('marker-contrast', catalog, { 'marker-white': 's-black' })
-    expect(w).toBeDefined()
-  })
-
-  it('stays silent when every used spool shares one family', () => {
-    expect(
-      warnOf(
-        'material-mix',
-        thh([
-          spool('s-black', 'Matte Black', '#000000', 'PLA'),
-          spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-          spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-          spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
-          spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
-        ])
-      )
-    ).toBeUndefined()
-  })
-
-  it('stays inert on the manual-params catalog (fabricated families never warn)', () => {
-    // same mixed spools, but the source gate must win — the params catalog's
-    // families are made up, so warning on them would be a lie.
-    const manual: FilamentCatalog = {
-      source: 'manual-params',
-      spools: [
-        spool('s-black', 'Matte Black', '#000000', 'PLA'),
-        spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-        spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-        spool('s-petg', 'Bambu PETG Basic', heavenHex, 'PETG'),
-        spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
-      ],
-    }
-    expect(warnOf('material-mix', manual)).toBeUndefined()
-    expect(warnOf('support-material', manual)).toBeUndefined()
-    expect(warnOf('material-interface', manual)).toBeUndefined()
-  })
-
-  it('names every group when pins leave no majority (a tie has no odd one out)', () => {
-    // pins split the plate PLA / PETG / TPU with no winner: markers stay PLA,
-    // frame + heaven pinned PETG, earth pinned TPU → 2 / 2 / 1.
-    const tied = thh([
-      spool('s-black', 'Matte Black', '#000000', 'PLA'),
-      spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-      spool('s-frame', 'PETG Oak', defaultParams.frame_color, 'PETG'),
-      spool('s-heaven', 'Bambu PETG Basic', heavenHex, 'PETG'),
-      spool('s-earth', 'Flex Blue', earthHex, 'TPU'),
-    ])
-    const w = warnOf('material-mix', tied, {
-      frame: 's-frame',
-      'bead-0': 's-heaven',
-      'bead-1': 's-earth',
-    })
-    expect(w).toBeDefined()
-    expect(w?.roleKeys).toEqual(['marker-black', 'marker-white', 'frame', 'bead-0', 'bead-1'])
-    expect(w?.message).toContain('This plate splits across PLA, PETG, and TPU temperatures')
-  })
-})
-
-describe('materialize — overrides + catalog source', () => {
-  it('honors a role override, flags it, and rescoring the distance to the pinned spool', () => {
-    const p = paramsFor('monochrome', 'default', 8)
-    const design = toAbacusDesign(p, '')
-    const catalog = catalogFromParams(p)
-    const baseline = materialize(design, catalog)
-    const frameBase = baseline.assignments.find((a) => a.role.kind === 'frame')
-    expect(frameBase?.overridden).toBe(false)
-
-    // pin the frame onto a deliberately different spool (filament-4 = #2E86AB).
-    const pinned = materialize(design, catalog, { overrides: { frame: 'filament-4' } })
-    const frame = pinned.assignments.find((a) => a.role.kind === 'frame')
-    expect(frame?.spoolId).toBe('filament-4')
-    expect(frame?.overridden).toBe(true)
-    expect(frame?.spoolIndex).toBe(3)
-  })
-
-  it('carries a thh-ams catalog source through to the plan', () => {
-    const p = paramsFor('monochrome', 'default', 8)
-    const thh: FilamentCatalog = {
-      source: 'thh-ams',
-      fetchedAt: '2026-01-01T00:00:00Z',
-      spools: [{ id: 's1', name: 'PLA White', hex: '#ffffff', material: 'PLA' }],
-    }
-    expect(materialize(toAbacusDesign(p, ''), thh).catalogSource).toBe('thh-ams')
-  })
-})
-
-describe('materialize — total on an empty catalog (regression: the provider crash)', () => {
-  // The studio crash: a live THH read that SUCCEEDS but reports zero loaded
-  // filaments yields a non-null, EMPTY thh-ams catalog. That reached materialize
-  // (in the provider, above every error boundary), the quantizer emitted an
-  // out-of-range slot, and `spools[idx].id` threw — blanking the whole page.
-  // materialize must be TOTAL: an empty catalog degrades to a valid plan, never a
-  // throw. (In the app the provider ALSO falls back to the params catalog so this
-  // degenerate plan isn't user-visible — but the pure function is the real
-  // boundary and must hold on its own.)
-  const empty: FilamentCatalog = {
-    source: 'thh-ams',
-    fetchedAt: '2026-01-01T00:00:00Z',
-    spools: [],
-  }
-  const design = toAbacusDesign(paramsFor('place-value', 'default', 8), '')
-
-  it('returns a valid degenerate plan instead of throwing', () => {
-    const plan = materialize(design, empty)
-    expect(plan.assignments).toEqual([])
-    expect(plan.warnings).toEqual([])
-    expect(plan.ok).toBe(true)
-    expect(plan.catalogSource).toBe('thh-ams')
-    expect(plan.schemaVersion).toBe(PRINT_PLAN_SCHEMA_VERSION)
-  })
-
-  it('projects to a FilamentMap without throwing (planToFilamentMap stays total)', () => {
-    const fm = planToFilamentMap(materialize(design, empty), [])
-    expect(fm.frame).toBe(0)
-    expect(fm.markerBlack).toBe(0)
-    expect(fm.markerWhite).toBe(0)
-    expect(fm.beadRoles).toEqual([])
-  })
-})
-
-describe('planToFilamentMap — the viewer preview seam', () => {
-  const slotsOf = (catalog: FilamentCatalog) => catalog.spools.map((s) => s.hex)
-
-  it('projects the no-override plan identically to the legacy computeFilamentMap', () => {
-    // the viewer colors through planToFilamentMap now; with no pins it MUST match
-    // the byte-parity adapter so the preview is unchanged until the user overrides.
-    for (const color_scheme of SCHEMES) {
-      for (const color_palette of PALETTES) {
-        for (const filament_count of COUNTS) {
-          const p = paramsFor(color_scheme, color_palette, filament_count)
-          const catalog = catalogFromParams(p)
-          const fm = planToFilamentMap(
-            materialize(toAbacusDesign(p, ''), catalog),
-            slotsOf(catalog)
-          )
-          expect(fm).toEqual(computeFilamentMap(p))
-        }
-      }
-    }
-  })
-
-  it('repoints the projected slot when a role is pinned (overrides reach the preview)', () => {
-    const p = paramsFor('monochrome', 'default', 8)
-    const catalog = catalogFromParams(p)
-    const slots = slotsOf(catalog)
-    const design = toAbacusDesign(p, '')
-
-    // auto-snap lands the frame on its exact match (filament-1 === frame_color).
-    const base = planToFilamentMap(materialize(design, catalog), slots)
-    expect(base.frame).toBe(0)
-
-    // pin it to filament-4 (#2E86AB, index 3) — the projected slot must follow.
-    const pinned = planToFilamentMap(
-      materialize(design, catalog, { overrides: { frame: 'filament-4' } }),
-      slots
-    )
-    expect(pinned.frame).toBe(3)
-    // pinning the frame does not disturb the ArUco pair the camera reads.
-    expect(pinned.markerBlack).toBe(base.markerBlack)
-    expect(pinned.markerWhite).toBe(base.markerWhite)
-  })
-})
-
-describe('materialize — printed TPU feet (Gitea #23)', () => {
-  const { design, heavenHex, earthHex, spool, thh } = materialFixtures()
-  // an all-PLA roster with an exact-match spool per historical role, so the
-  // feet role is the only thing under test.
-  const plaRoster = () => [
-    spool('s-black', 'Matte Black', '#000000', 'PLA'),
-    spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-    spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-    spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
-    spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
-  ]
-  const feetOf = (result: ReturnType<typeof materialize>) =>
-    result.assignments.find((a) => a.role.kind === 'feet')
-
-  it('mints the feet role only for printed mode, appended after the historical roles', () => {
-    // The invariant is that every HISTORICAL index is stable, so each new role
-    // kind appends. Feet went on the end first; inset text now appends after it,
-    // so feet is last among the pre-text roles rather than last outright.
-    const printed = materialize(design, thh(plaRoster()))
-    const preText = printed.assignments.filter((a) => a.role.kind !== 'text')
-    expect(preText[preText.length - 1]?.role.kind).toBe('feet')
-    // and nothing but text follows it in the real array
-    const feetAt = printed.assignments.findIndex((a) => a.role.kind === 'feet')
-    expect(printed.assignments.slice(feetAt + 1).every((a) => a.role.kind === 'text')).toBe(true)
-    for (const feet_mode of ['adhesive', 'none']) {
-      const d = toAbacusDesign({ ...design.params, feet_mode }, '')
-      expect(feetOf(materialize(d, thh(plaRoster())))).toBeUndefined()
-    }
-  })
-
-  it('lands feet on TPU by FAMILY (outside the anchor), and the deliberate mix never warns', () => {
-    // the TPU is hot pink — a color-driven pick would never choose it, and a
-    // naive temperature bucketing would warn about it. Both must not happen.
-    const result = materialize(
-      design,
-      thh([...plaRoster(), spool('s-tpu', 'SUNLU TPU 95A', '#ff69b4', 'TPU')])
-    )
-    expect(feetOf(result)?.spoolId).toBe('s-tpu')
-    expect(result.anchorGroup).toBe('PLA') // TPU never bids for the plate anchor
-    expect(result.warnings.find((w) => w.code === 'feet-material')).toBeUndefined()
-    expect(result.warnings.find((w) => w.code === 'material-mix')).toBeUndefined()
-    expect(result.warnings.find((w) => w.code === 'material-interface')).toBeUndefined()
-  })
-
-  it('prefers the spool literally named "TPU for AMS" over an earlier generic TPU', () => {
-    const result = materialize(
-      design,
-      thh([
-        ...plaRoster(),
-        spool('s-tpu-generic', 'SUNLU TPU 95A', '#222222', 'TPU'),
-        spool('s-tpu-ams', 'Bambu TPU for AMS Black', '#101010', 'TPU'),
-      ])
-    )
-    expect(feetOf(result)?.spoolId).toBe('s-tpu-ams')
-  })
-
-  it("recognizes Bambu's TPU-AMS wire family as flexible TPU for the feet", () => {
-    const result = materialize(
-      design,
-      thh([...plaRoster(), spool('s-tpu-ams', 'Bambu TPU for AMS Black', '#101010', 'TPU-AMS')])
-    )
-    expect(feetOf(result)?.spoolId).toBe('s-tpu-ams')
-    expect(result.warnings.find((w) => w.code === 'feet-material')).toBeUndefined()
-    expect(result.warnings.find((w) => w.code === 'material-mix')).toBeUndefined()
-    expect(result.warnings.find((w) => w.code === 'material-interface')).toBeUndefined()
-  })
-
-  it('no TPU on a real roster: feet fall back to the frame spool + feet-material warning', () => {
-    const result = materialize(design, thh(plaRoster()))
-    const feet = feetOf(result)
+  it('treats a spool the catalog no longer holds as unplaced (roster moved mid-flight)', () => {
+    // Only reachable if the roster changed between the plan and this render, which
+    // the cache key exists to prevent. It must not round to a neighbouring slot.
+    const staged = stubFilamentPlan(design, thh(plaRoster()), plaPicks)
+    const shrunk = thh([plaRoster()[0]]) // only s-black survives
+    const result = materialize(design, shrunk, { plan: staged })
     const frame = result.assignments.find((a) => a.role.kind === 'frame')
-    expect(feet?.spoolIndex).toBe(frame?.spoolIndex)
-    const w = result.warnings.find((x) => x.code === 'feet-material')
-    expect(w?.severity).toBe('warning')
-    expect(w?.roleKeys).toEqual(['feet'])
-    expect(result.ok).toBe(true) // advisory, never a block
+    expect(frame?.spoolIndex).toBe(NO_SPOOL)
+    expect(result.assignments.find((a) => a.role.key === 'marker-black')?.spoolId).toBe('s-black')
+  })
+})
+
+describe('materialize — pins', () => {
+  const catalog = thh([...plaRoster(), spool('s-pink', 'Hot Pink', '#ff69b4', 'PLA')])
+
+  it('repoints the role and flags it, overriding the service pick', () => {
+    const result = planned(catalog, plaPicks, { overrides: { frame: 's-pink' } })
+    const frame = result.assignments.find((a) => a.role.kind === 'frame')
+    expect(frame?.spoolId).toBe('s-pink')
+    expect(frame?.spoolIndex).toBe(5)
+    expect(frame?.overridden).toBe(true)
+    expect(result.assignments.filter((a) => a.overridden)).toHaveLength(1)
   })
 
-  it('stays silent on the params catalog (fabricated families have no TPU to miss)', () => {
-    const p = paramsFor('heaven-earth', 'default', 8)
-    const result = materialize(toAbacusDesign(p, ''), catalogFromParams(p))
-    expect(feetOf(result)).toBeDefined()
-    expect(result.warnings.find((w) => w.code === 'feet-material')).toBeUndefined()
+  it('drops the distance to null when the pin moves the role off the measured spool', () => {
+    // The ΔE00 in the plan describes the SERVICE's pick. Keeping it on a role the
+    // user just moved would attach a real-looking measurement to a different spool,
+    // and this file no longer owns a color metric to recompute one with.
+    const result = planned(
+      catalog,
+      { ...plaPicks, frame: ['s-frame', 4] },
+      { overrides: { frame: 's-pink' } }
+    )
+    expect(result.assignments.find((a) => a.role.kind === 'frame')?.distance).toBeNull()
   })
 
-  it('honors a feet pin, and the pin answers the fallback warning', () => {
-    const result = materialize(design, thh(plaRoster()), { overrides: { feet: 's-earth' } })
-    const feet = feetOf(result)
-    expect(feet?.spoolId).toBe('s-earth')
-    expect(feet?.overridden).toBe(true)
-    expect(result.warnings.find((w) => w.code === 'feet-material')).toBeUndefined()
+  it('keeps the distance when the pin agrees with the service', () => {
+    const result = planned(
+      catalog,
+      { ...plaPicks, frame: ['s-frame', 4] },
+      { overrides: { frame: 's-frame' } }
+    )
+    const frame = result.assignments.find((a) => a.role.kind === 'frame')
+    expect(frame?.distance).toBe(4)
+    expect(frame?.overridden).toBe(true)
   })
 
-  it("the fallback follows a PINNED frame, not the snapper's original pick", () => {
-    // "falls back to the frame's filament" is what the warning promises, so a
-    // frame pin has to carry the feet with it.
-    const roster = [...plaRoster(), spool('s-petg', 'Smoke PETG', '#8899aa', 'PETG')]
-    const result = materialize(design, thh(roster), { overrides: { frame: 's-petg' } })
-    expect(feetOf(result)?.spoolId).toBe('s-petg')
+  it('ignores a pin naming a spool this catalog does not hold', () => {
+    const result = planned(catalog, plaPicks, { overrides: { frame: 's-nonexistent' } })
+    const frame = result.assignments.find((a) => a.role.kind === 'frame')
+    expect(frame?.spoolId).toBe('s-frame')
+    expect(frame?.overridden).toBe(false)
   })
+})
 
-  it('the plate-temperature exemption belongs to TPU, not to the feet ROW', () => {
-    // A TPU foot on a PLA plate is the deliberate mix the feature is built on.
-    const roster = [...plaRoster(), spool('s-tpu', 'Bambu TPU for AMS', '#101010', 'TPU')]
-    expect(
-      materialize(design, thh(roster)).warnings.find((w) => w.code === 'material-mix')
-    ).toBeUndefined()
-    // Pin those same feet to ABS and it is just an ordinary plate-temp split —
-    // the picker offers it, so the guard has to still fire (gh#163).
-    const abs = [...roster, spool('s-abs', 'Structural ABS', '#333333', 'ABS')]
-    const pinned = materialize(design, thh(abs), { overrides: { feet: 's-abs' } })
-    const w = pinned.warnings.find((x) => x.code === 'material-mix')
+describe('materialize — the warnings the studio still owns', () => {
+  const catalog = thh(plaRoster())
+
+  it('marker-contrast: tracks the FINAL pair, so a pinned marker moves it', () => {
+    expect(planned(catalog).warnings.some((w) => w.code === 'marker-contrast')).toBe(false)
+    const w = planned(catalog, plaPicks, {
+      overrides: { 'marker-white': 's-black' },
+    }).warnings.find((x) => x.code === 'marker-contrast')
     expect(w).toBeDefined()
+    expect(w?.origin).toBe('studio')
+  })
+
+  it('budget-exceeded + role-collision: bead roles the service had to collapse', () => {
+    const pv = toAbacusDesign(paramsFor('place-value', 'default', 8), '')
+    const result = planned(
+      catalog,
+      { 'bead-0': 's-heaven', 'bead-1': 's-heaven', 'bead-2': 's-heaven' },
+      { d: pv }
+    )
+    expect(result.warnings.some((w) => w.code === 'budget-exceeded')).toBe(true)
+    const collision = result.warnings.find((w) => w.code === 'role-collision')
+    expect(collision?.roleKeys?.length ?? 0).toBeGreaterThan(1)
+  })
+
+  it('does not count UNPLACED beads as sharing a filament', () => {
+    // Two roles the service placed nowhere are not colliding — they have no
+    // filament to collide on, and plan-unresolved already names them.
+    const pv = toAbacusDesign(paramsFor('place-value', 'default', 8), '')
+    const result = planned(catalog, plaPicks, {
+      d: pv,
+      extra: { unplaced: ['bead-2', 'bead-3', 'bead-4'], status: 'degraded' },
+    })
+    expect(result.warnings.some((w) => w.code === 'role-collision')).toBe(false)
+    expect(result.warnings.some((w) => w.code === 'plan-unresolved')).toBe(true)
+  })
+
+  it('support-material: fires when a visible role lands on breakaway media', () => {
+    // The one material check THH structurally will not make: its planner filters
+    // support media TOWARD a support-interface role, never away from a model one.
+    const withSupport = thh([...plaRoster(), spool('s-sup', 'Support for PLA', '#fefefe', 'PLA-S')])
+    const w = planned(withSupport, { ...plaPicks, 'marker-white': 's-sup' }).warnings.find(
+      (x) => x.code === 'support-material'
+    )
+    expect(w?.roleKeys).toEqual(['marker-white'])
+    expect(w?.origin).toBe('studio')
+    expect(w?.message).toContain('breakaway support filament')
+  })
+
+  it("support-material: reads the SERVICE's supportKind, not the family name", () => {
+    // A spool whose family says nothing (`SomeBrand-Matte`) but which the service
+    // reports as support media must still warn — and the reverse: a PLA-S name the
+    // service explicitly grades as plain model material must not.
+    const oddName = thh([
+      ...plaRoster(),
+      { ...spool('s-odd', 'Breakaway Matte', '#fefefe', 'ACME'), supportKind: 'interface' as const },
+      { ...spool('s-plas', 'Actually Fine', '#eeeeee', 'PLA-S'), supportKind: null },
+    ])
+    expect(
+      planned(oddName, { ...plaPicks, 'marker-white': 's-odd' }).warnings.some(
+        (w) => w.code === 'support-material'
+      )
+    ).toBe(true)
+    expect(
+      planned(oddName, { ...plaPicks, 'marker-white': 's-plas' }).warnings.some(
+        (w) => w.code === 'support-material'
+      )
+    ).toBe(false)
+  })
+
+  it('feet-material: driven by the planner relaxing the TPU preference, not by a name test', () => {
+    // The feet ask for `preferred: [{family:'TPU'}]`. The service says it could not
+    // honour that by relaxing `preferred_identity_unavailable` — which is the whole
+    // signal, replacing the old `/tpu\s*for\s*ams/i` match on a product string.
+    const silent = planned(catalog)
+    expect(silent.warnings.some((w) => w.code === 'feet-material')).toBe(false)
+
+    const w = planned(catalog, plaPicks, {
+      extra: { relaxations: { feet: ['preferred_identity_unavailable'] } },
+    }).warnings.find((x) => x.code === 'feet-material')
     expect(w?.roleKeys).toEqual(['feet'])
+    expect(w?.severity).toBe('warning')
+    expect(w?.message).toContain('flexible (TPU)')
   })
 
-  it('never reports feet as a color shift (family-picked; the distance is decorative)', () => {
-    // near-white TPU vs the slate intrinsic: a huge redmean distance that would
-    // fleck any user-colored role — feet must stay clean.
-    const result = materialize(
-      design,
-      thh([...plaRoster(), spool('s-tpu', 'Generic TPU Natural', '#f8f8f8', 'TPU')])
-    )
-    const feet = feetOf(result)
-    expect(feet?.distance).toBeGreaterThan(SHIFT_DISTANCE_THRESHOLD)
-    expect(feet && roleShifted(feet)).toBe(false)
+  it('feet-material: a pin answers it (the user chose these feet deliberately)', () => {
+    expect(
+      planned(catalog, plaPicks, {
+        overrides: { feet: 's-earth' },
+        extra: { relaxations: { feet: ['preferred_identity_unavailable'] } },
+      }).warnings.some((w) => w.code === 'feet-material')
+    ).toBe(false)
   })
 
-  it('planToFilamentMap carries the feet slot iff the role exists', () => {
-    const roster = [...plaRoster(), spool('s-tpu', 'Bambu TPU for AMS', '#101010', 'TPU')]
-    const slots = roster.map((s) => s.hex)
-    const printed = planToFilamentMap(materialize(design, thh(roster)), slots)
-    expect(printed.feet).toBe(5)
-    const off = planToFilamentMap(
-      materialize(toAbacusDesign({ ...design.params, feet_mode: 'adhesive' }, ''), thh(roster)),
-      slots
-    )
-    expect('feet' in off).toBe(false)
+  it('never blocks: every studio warning is warning-severity and ok stays true', () => {
+    // The house rule. Rainbow text is the DEFAULT fill, so an error on a thin
+    // roster would ship a studio whose default design refuses to print.
+    const worst = planned(thh([spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA')]), {})
+    expect(worst.warnings.length).toBeGreaterThan(0)
+    expect(worst.warnings.every((w) => w.severity === 'warning')).toBe(true)
+    expect(worst.ok).toBe(true)
   })
 })
 
 describe('materialize — inset text inlay roles', () => {
-  const { design, heavenHex, earthHex, spool, thh } = materialFixtures()
-  const plaRoster = () => [
-    spool('s-black', 'Matte Black', '#000000', 'PLA'),
-    spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-    spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-    spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
-    spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
-  ]
+  const catalog = thh(plaRoster())
+  const withText = (over: Partial<Params> = {}) => toAbacusDesign({ ...p, ...over }, '')
   const textOf = (r: ReturnType<typeof materialize>) =>
     r.assignments.filter((a) => a.role.kind === 'text')
-  // the defaults write friends-of-10 (5 tokens) on the top rail and friends-of-5
-  // (4) on the bottom, so rainbow text spans all five palette inks.
-  const withText = (over: Partial<Params> = {}) => toAbacusDesign({ ...design.params, ...over }, '')
 
   it('mints one role per color group — this is what gives the plugs a slot to print in', () => {
-    const roles = textOf(materialize(withText(), thh(plaRoster())))
+    const roles = textOf(planned(catalog, {}, { d: withText() }))
     expect(roles.map((a) => a.role.key)).toEqual(['text-0', 'text-1', 'text-2', 'text-3', 'text-4'])
     // the intrinsic hex is the palette ink the scad would color that token
     expect(roles.map((a) => a.role.intrinsicHex)).toEqual(COLOR_PALETTES.default)
@@ -646,9 +365,8 @@ describe('materialize — inset text inlay roles', () => {
   })
 
   it('single fill is exactly one role, labelled for the whole inlay', () => {
-    const roles = textOf(
-      materialize(withText({ text_fill: 'single', text_color: '#00ff88' }), thh(plaRoster()))
-    )
+    const d = withText({ text_fill: 'single', text_color: '#00ff88' })
+    const roles = textOf(planned(catalog, {}, { d }))
     expect(roles).toHaveLength(1)
     expect(roles[0]?.role.key).toBe('text-0')
     expect(roles[0]?.role.intrinsicHex).toBe('#00ff88')
@@ -656,275 +374,269 @@ describe('materialize — inset text inlay roles', () => {
   })
 
   it('mints nothing when there is no inlay to ink (emboss mode, or no writing)', () => {
-    expect(textOf(materialize(withText({ text_mode: 'emboss' }), thh(plaRoster())))).toHaveLength(0)
-    const blank = withText({ aid_10: 'off', aid_5: 'off' })
-    expect(textOf(materialize(blank, thh(plaRoster())))).toHaveLength(0)
+    expect(textOf(planned(catalog, {}, { d: withText({ text_mode: 'emboss' }) }))).toHaveLength(0)
+    expect(
+      textOf(planned(catalog, {}, { d: withText({ aid_10: 'off', aid_5: 'off' }) }))
+    ).toHaveLength(0)
   })
 
-  it('stays inside the anchor group — the inlay is welded into the frame', () => {
-    // the palette's reds/greens have exact matches on PETG, which a color-blind
-    // pick would take; the weld rule says the ink must print in the frame's family.
-    const roster = [
-      ...plaRoster(),
-      ...COLOR_PALETTES.default.map((hex, i) => spool(`s-petg-${i}`, `PETG ${i}`, hex, 'PETG')),
-    ]
-    const result = materialize(withText(), thh(roster))
-    expect(result.anchorGroup).toBe('PLA')
-    for (const a of textOf(result)) expect(a.spoolId.startsWith('s-petg')).toBe(false)
-    // and the weld warning stays silent precisely because of that
-    expect(result.warnings.find((w) => w.code === 'material-interface')).toBeUndefined()
-  })
-
-  it('does NOT move the structural mapping — text is assigned after the anchor pass', () => {
-    // The regression this whole ordering exists for: text must not vote in
-    // snapWithin's distinct-first loop or its cost, or every existing design's
-    // beads would shift. Three spools = real contention.
-    const tight = [
-      spool('s-black', 'Matte Black', '#000000', 'PLA'),
-      spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-    ]
-    const structural = (r: ReturnType<typeof materialize>) =>
-      r.assignments.filter((a) => a.role.kind !== 'text').map((a) => [a.role.key, a.spoolId])
-    const withInk = materialize(withText(), thh(tight))
-    const noInk = materialize(withText({ text_mode: 'emboss' }), thh(tight))
-    expect(structural(withInk)).toEqual(structural(noInk))
-    expect(textOf(withInk).length).toBeGreaterThan(0)
-  })
-
-  it('shares a spool freely rather than being forced distinct (ink is not a bead)', () => {
-    // one spool: every group collapses onto it, and nothing throws or goes
-    // undefined. Distinct-first would have had nowhere to go.
-    const one = [spool('s-only', 'Solo PLA', '#cccccc', 'PLA')]
-    const roles = textOf(materialize(withText(), thh(one)))
-    expect(roles).toHaveLength(5)
-    for (const a of roles) expect(a.spoolId).toBe('s-only')
-  })
-
-  it('honors a per-group pin', () => {
-    const roster = [...plaRoster(), spool('s-pink', 'Hot Pink', '#ff69b4', 'PLA')]
-    const result = materialize(withText(), thh(roster), { overrides: { 'text-2': 's-pink' } })
-    const roles = textOf(result)
-    expect(roles[2]?.spoolId).toBe('s-pink')
-    expect(roles[2]?.overridden).toBe(true)
-    expect(roles.filter((a) => a.overridden)).toHaveLength(1)
-  })
-
-  it('planToFilamentMap carries textRoles iff the roles exist, dense over the groups', () => {
-    const roster = plaRoster()
-    const slots = roster.map((s) => s.hex)
-    const map = planToFilamentMap(materialize(withText(), thh(roster)), slots)
-    expect(map.textRoles).toHaveLength(5)
-    for (const idx of map.textRoles ?? []) {
-      expect(Number.isInteger(idx)).toBe(true)
-      expect(idx).toBeGreaterThanOrEqual(0)
-      expect(idx).toBeLessThan(slots.length)
-    }
-    const off = planToFilamentMap(
-      materialize(withText({ text_mode: 'emboss' }), thh(roster)),
-      slots
+  it('rainbow-unrealizable: reports the ink groups the service had to collapse', () => {
+    const d = withText()
+    const result = planned(
+      catalog,
+      { ...plaPicks, 'text-0': 's-black', 'text-1': 's-black', 'text-2': 's-black' },
+      { d }
     )
-    expect('textRoles' in off).toBe(false)
-  })
-
-  it('a text group on its own spool still counts as a plate material (pins can split it)', () => {
-    // The narrow rule: text that merely shares a structural spool doesn't vote in
-    // the temperature majority, but text pinned somewhere nothing else prints
-    // genuinely introduces a material and must still be reported.
-    const roster = [...plaRoster(), spool('s-abs', 'Structural ABS', '#333333', 'ABS')]
-    const result = materialize(withText(), thh(roster), { overrides: { 'text-1': 's-abs' } })
-    const w = result.warnings.find((x) => x.code === 'material-mix')
-    expect(w).toBeDefined()
-    expect(w?.roleKeys).toEqual(['text-1'])
-    // ...and the weld rule sees it too: the inlay is fused into the frame
-    const weld = result.warnings.find((x) => x.code === 'material-interface')
-    expect(weld?.roleKeys).toEqual(['text-1'])
-    expect(weld?.message).toContain('the inset text')
-  })
-})
-
-describe('materialize — inset text reductions are warnings, never gates', () => {
-  const { design, heavenHex, earthHex, spool, thh } = materialFixtures()
-  const withText = (over: Partial<Params> = {}) => toAbacusDesign({ ...design.params, ...over }, '')
-  const plaRoster = () => [
-    spool('s-black', 'Matte Black', '#000000', 'PLA'),
-    spool('s-white', 'Matte White', '#ffffff', 'PLA'),
-    spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-    spool('s-heaven', 'Heaven Orange', heavenHex, 'PLA'),
-    spool('s-earth', 'Earth Blue', earthHex, 'PLA'),
-  ]
-  const find = (r: ReturnType<typeof materialize>, code: string) =>
-    r.warnings.find((w) => w.code === code)
-
-  it('rainbow-unrealizable fires when the loaded spools cannot serve five inks', () => {
-    // two spools, five groups: at least three tokens print somebody else's color.
-    const thin = [
-      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-      spool('s-black', 'Matte Black', '#000000', 'PLA'),
-    ]
-    const result = materialize(withText(), thh(thin))
-    const w = find(result, 'rainbow-unrealizable')
-    expect(w).toBeDefined()
+    const w = result.warnings.find((x) => x.code === 'rainbow-unrealizable')
     expect(w?.severity).toBe('warning')
-    // concrete prose: how many were asked for, how many actually serve them
     expect(w?.message).toContain('5 ink colors')
-    expect(w?.message).toMatch(/only [12] distinct/)
+    expect(w?.message).toMatch(/only \d+ distinct/)
     expect(w?.roleKeys).toEqual(['text-0', 'text-1', 'text-2', 'text-3', 'text-4'])
   })
 
-  it('stays silent when every group lands on its own filament', () => {
-    // exact palette matches for all five groups (two already exist as bead spools)
-    const roster = [
-      ...plaRoster(),
-      ...COLOR_PALETTES.default.map((hex, i) => spool(`s-pal-${i}`, `Ink ${i}`, hex, 'PLA')),
-    ]
-    const result = materialize(withText(), thh(roster))
-    const text = result.assignments.filter((a) => a.role.kind === 'text')
-    expect(new Set(text.map((a) => a.spoolIndex)).size).toBe(5)
-    expect(find(result, 'rainbow-unrealizable')).toBeUndefined()
+  it('rainbow-unrealizable: silent when every group lands on its own filament', () => {
+    const d = withText()
+    const inks = COLOR_PALETTES.default.map((hex, i) => spool(`s-pal-${i}`, `Ink ${i}`, hex, 'PLA'))
+    const roster = thh([...plaRoster(), ...inks])
+    const picks: Record<string, StubPick> = { ...plaPicks }
+    inks.forEach((s, i) => {
+      picks[`text-${i}`] = s.id
+    })
+    expect(
+      planned(roster, picks, { d }).warnings.some((w) => w.code === 'rainbow-unrealizable')
+    ).toBe(false)
   })
 
-  it('single fill never trips the rainbow warning — one group cannot collapse', () => {
-    const result = materialize(
-      withText({ text_fill: 'single', text_color: '#00ff88' }),
-      thh([spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA')])
-    )
-    expect(find(result, 'rainbow-unrealizable')).toBeUndefined()
-  })
-
-  it('spreads the rainbow over every spool that is not the frame', () => {
-    // The bug as reported: four PLA spools loaded, three of them not the frame
-    // color, and the friends-of facts printed in TWO colors — the first one blue
-    // and every other one identical. Independent nearest-match sent four of the
-    // five groups to the same spool while two contrasting ones sat unused.
-    const roster = [
-      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-      spool('s-wood', 'PLA Wood', '#b5651d', 'PLA'),
-      spool('s-walnut', 'PLA Walnut', '#3b2a22', 'PLA'),
-      spool('s-blue', 'PLA Matte Blue', '#2e86ab', 'PLA'),
-    ]
-    const result = materialize(withText(), thh(roster))
-    const text = result.assignments.filter((a) => a.role.kind === 'text')
-    const frameIdx = result.assignments.find((a) => a.role.kind === 'frame')?.spoolIndex
-    expect(text).toHaveLength(5)
-    // all three usable spools get work — 3 distinct inks, not 2
-    expect(new Set(text.map((a) => a.spoolIndex)).size).toBe(3)
-    // ...and not one group vanishes into the frame to get there
-    expect(text.some((a) => a.spoolIndex === frameIdx)).toBe(false)
-    expect(find(result, 'text-invisible')).toBeUndefined()
-    // still honest about the shortfall it cannot fix: 5 groups, 3 usable spools
-    expect(find(result, 'rainbow-unrealizable')?.message).toContain('only 3 distinct')
-  })
-
-  // Every pair of tokens that TOUCH on the plate, as spool indices. Walks the
-  // real layout (slot by slot, k by k) rather than assuming which groups abut,
-  // so it stays honest if the wrap or the slot list ever changes.
-  const touchingPairs = (r: ReturnType<typeof materialize>, p: Params): [string, string][] => {
-    const ink = new Map(
-      r.assignments.filter((a) => a.role.kind === 'text').map((a) => [a.role.key, a.spoolIndex])
-    )
-    const clashes: [string, string][] = []
-    for (const toks of textSlots(p)) {
-      for (let k = 1; k < toks.length; k++) {
-        const a = ink.get(`text-${tokGroup(p, k - 1)}`)
-        const b = ink.get(`text-${tokGroup(p, k)}`)
-        if (a !== undefined && a === b) clashes.push([toks[k - 1][0], toks[k][0]])
-      }
-    }
-    return clashes
-  }
-
-  it('never inks two touching words the same, even when it has to share', () => {
-    // The reported bug, from the screenshot: four spools, three of them usable,
-    // and the top rail came out blue/brown/dark/brown/BROWN — "4+6 5+5" ran
-    // together into one blob. Sharing is unavoidable at 5 groups over 3 spools;
-    // sharing with your NEIGHBOUR is not (A B C A B exists, and A B C B C does).
-    const roster = [
-      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-      spool('s-wood', 'PLA Wood', '#a9713b', 'PLA'),
-      spool('s-walnut', 'PLA Walnut', '#3b2a20', 'PLA'),
-      spool('s-blue', 'PLA Matte Blue', '#2e5fa3', 'PLA'),
-    ]
-    const p = { ...design.params }
-    const result = materialize(withText(), thh(roster))
-    expect(touchingPairs(result, p)).toEqual([])
-    // and it did NOT buy that by spending a fourth ink it doesn't have, nor by
-    // letting a group vanish into the frame
-    const text = result.assignments.filter((a) => a.role.kind === 'text')
-    expect(new Set(text.map((a) => a.spoolIndex)).size).toBe(3)
-    const frameIdx = result.assignments.find((a) => a.role.kind === 'frame')?.spoolIndex
-    expect(text.some((a) => a.spoolIndex === frameIdx)).toBe(false)
-  })
-
-  it('separates neighbours down to two usable spools, and reports honestly below that', () => {
-    // three spools, two usable: 5 groups alternate A B A B A — still no clash,
-    // because the default rails are 5 and 4 tokens long (paths, not cycles).
-    const two = [
-      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-      spool('s-black', 'Matte Black', '#000000', 'PLA'),
-      spool('s-blue', 'PLA Matte Blue', '#2e5fa3', 'PLA'),
-    ]
-    const p = { ...design.params }
-    expect(touchingPairs(materialize(withText(), thh(two)), p)).toEqual([])
-
-    // one usable spool: adjacency is unsatisfiable. Readable-but-merged beats
-    // vanishing into the frame, so it shares and rainbow-unrealizable says so.
-    const one = [
-      spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA'),
-      spool('s-black', 'Matte Black', '#000000', 'PLA'),
-    ]
-    const scraped = materialize(withText(), thh(one))
-    expect(touchingPairs(scraped, p).length).toBeGreaterThan(0)
-    expect(find(scraped, 'rainbow-unrealizable')).toBeDefined()
-  })
-
-  it("auto steers the inlay OFF the frame's filament even when the ink asks for it", () => {
-    // The nearest color is the one answer that must lose here. A plug fills its
-    // pocket flush and level, so frame-colored text doesn't print a near-miss —
-    // it vanishes. Auto holds the frame's spool back until nothing else is left,
-    // which turns text-invisible into a report on PINS (covered below) and on a
-    // roster whose only candidate is the frame (covered by plan.ok, last test).
-    const result = materialize(
-      withText({ text_fill: 'single', text_color: defaultParams.frame_color }),
-      thh(plaRoster())
-    )
-    const text = result.assignments.filter((a) => a.role.kind === 'text')
-    const frameIdx = result.assignments.find((a) => a.role.kind === 'frame')?.spoolIndex
-    expect(text).toHaveLength(1)
-    expect(text[0].spoolIndex).not.toBe(frameIdx)
-    expect(find(result, 'text-invisible')).toBeUndefined()
-  })
-
-  it('names only the groups that vanished when some inks still read', () => {
-    const roster = [
-      ...plaRoster(),
-      ...COLOR_PALETTES.default.map((hex, i) => spool(`s-pal-${i}`, `Ink ${i}`, hex, 'PLA')),
-    ]
-    const result = materialize(withText(), thh(roster), { overrides: { 'text-2': 's-frame' } })
-    const w = find(result, 'text-invisible')
+  it('text-invisible: names the groups that landed on the frame filament', () => {
+    // The one text outcome a user is guaranteed to notice: a plug fills its pocket
+    // FLUSH and level, so frame-colored writing does not read as a near miss — it
+    // vanishes. The request declares this as a `different` pair; this is what the
+    // studio says when the planner had to shed it.
+    const d = withText()
+    // every other group named explicitly, so the one collision is the one asked for
+    const w = planned(
+      catalog,
+      {
+        ...plaPicks,
+        'text-0': 's-black',
+        'text-1': 's-white',
+        'text-2': 's-frame',
+        'text-3': 's-heaven',
+        'text-4': 's-earth',
+      },
+      { d }
+    ).warnings.find((x) => x.code === 'text-invisible')
     expect(w?.roleKeys).toEqual(['text-2'])
     expect(w?.message).toContain('1 of the inlay text colors print')
   })
 
-  it('stays silent when the inlay contrasts with the frame', () => {
-    const roster = [
-      ...plaRoster(),
-      ...COLOR_PALETTES.default.map((hex, i) => spool(`s-pal-${i}`, `Ink ${i}`, hex, 'PLA')),
-    ]
-    expect(find(materialize(withText(), thh(roster)), 'text-invisible')).toBeUndefined()
+  it('text-invisible: an unplaced frame cannot swallow anything', () => {
+    const d = withText()
+    const result = planned(catalog, plaPicks, { d, extra: { unplaced: ['frame'] } })
+    expect(result.warnings.some((x) => x.code === 'text-invisible')).toBe(false)
+  })
+})
+
+describe('materialize — relaying the service warnings', () => {
+  const catalog = thh(plaRoster())
+
+  it('relays a compatibility warning verbatim, tagged with its origin and severity', () => {
+    // Relayed rather than re-worded: the detail carries provenance the studio
+    // cannot reconstruct ("Orca reports 255 °C for this profile").
+    const detail = 'PETG HF slices at 255 °C while the rest of this plate slices at 220 °C.'
+    const w = planned(catalog, plaPicks, {
+      extra: {
+        status: 'degraded',
+        warnings: [stubCompatWarning('plate_temperature_mix', ['frame'], detail)],
+      },
+    }).warnings.find((x) => x.code === 'plate_temperature_mix')
+    expect(w?.origin).toBe('service')
+    expect(w?.message).toBe(detail)
+    expect(w?.roleKeys).toEqual(['frame'])
+    // graded as a prediction, preserved — but never promoted into an export gate
+    expect(w?.serviceSeverity).toBe('caution')
+    expect(w?.severity).toBe('warning')
   })
 
-  it('neither reduction blocks the export — plan.ok stays true', () => {
-    // The house rule this file states three times: warn, never gate. Rainbow is
-    // the DEFAULT text fill, so an error here would ship a studio whose default
-    // design refuses to print.
-    const worst = materialize(
-      withText(),
-      thh([spool('s-frame', 'Oak', defaultParams.frame_color, 'PLA')])
+  it('relays a code it has never heard of rather than dropping it', () => {
+    const w = planned(catalog, plaPicks, {
+      extra: { warnings: [stubCompatWarning('some_future_code', ['frame'], 'Something new.')] },
+    }).warnings.find((x) => x.code === 'some_future_code')
+    expect(w?.message).toBe('Something new.')
+  })
+
+  it('filters the two families the studio says better, and nothing else', () => {
+    const result = planned(catalog, plaPicks, {
+      extra: {
+        status: 'degraded',
+        unplaced: ['bead-1'],
+        relaxations: { feet: ['preferred_identity_unavailable'] },
+        warnings: [
+          stubCompatWarning('palette_unresolved', ['bead-1'], 'No filament matches #2E86AB.'),
+          {
+            ...stubCompatWarning('preferred_identity_unavailable', ['feet'], 'No TPU is loaded.'),
+            origin: 'planner' as const,
+          },
+          stubCompatWarning('poor_interlayer_adhesion', ['frame'], 'PLA does not bond to PETG.'),
+        ],
+      },
+    })
+    const codes = result.warnings.map((w) => w.code)
+    // covered by 'plan-unresolved' and 'feet-material', which name real roles
+    expect(codes).not.toContain('palette_unresolved')
+    expect(codes).not.toContain('preferred_identity_unavailable')
+    expect(codes).toContain('plan-unresolved')
+    expect(codes).toContain('feet-material')
+    // ...and the unrelated one still comes through
+    expect(codes).toContain('poor_interlayer_adhesion')
+  })
+
+  it('does NOT filter a preferred_identity_unavailable for some other role', () => {
+    const w = planned(catalog, plaPicks, {
+      extra: {
+        warnings: [
+          stubCompatWarning('preferred_identity_unavailable', ['frame'], 'Frame preference shed.'),
+        ],
+      },
+    }).warnings.find((x) => x.code === 'preferred_identity_unavailable')
+    expect(w?.message).toBe('Frame preference shed.')
+  })
+})
+
+describe('materialize — total on every degenerate input', () => {
+  // `materialize` runs inside the studio provider, ABOVE every React error
+  // boundary, so a throw here blanks the whole page instead of one pane. Each case
+  // below reached that code path at least once in the studio's history.
+  const d = toAbacusDesign(paramsFor('place-value', 'default', 8), '')
+
+  it('no plan at all: an empty, explicitly UNPLANNED plan — never a local match', () => {
+    // The params-catalog path and the still-loading path. Empty rather than
+    // locally matched is the whole point of the swap.
+    const plan = materialize(d, thh(plaRoster()))
+    expect(plan.planStatus).toBe('unplanned')
+    expect(plan.assignments).toEqual([])
+    expect(plan.warnings).toEqual([])
+    expect(plan.ok).toBe(true)
+    expect(plan.schemaVersion).toBe(PRINT_PLAN_SCHEMA_VERSION)
+  })
+
+  it('a live THH read reporting ZERO loaded filaments returns a degenerate plan', () => {
+    // The original studio crash: a successful read with no spools reached the
+    // quantizer, which emitted an out-of-range slot, and `spools[idx].id` threw.
+    const empty: FilamentCatalog = { source: 'thh-ams', fetchedAt: '2026-01-01T00:00:00Z', spools: [] }
+    const plan = materialize(d, empty, { plan: stubFilamentPlan(d, empty) })
+    expect(plan.planStatus).toBe('unresolved')
+    expect(plan.assignments).toEqual([])
+    expect(plan.catalogSource).toBe('thh-ams')
+  })
+
+  it('a degenerate plan never reads as "the markers are fine"', () => {
+    // 1 (no contrast at all), not 21. A degenerate plan must not claim the camera
+    // can read a marker pair that was never mapped.
+    expect(materialize(d, thh(plaRoster())).markerContrast).toBe(1)
+  })
+
+  it('projects a degenerate plan to a FilamentMap without throwing', () => {
+    const fm = planToFilamentMap(materialize(d, thh([])), [])
+    expect(fm.frame).toBe(0)
+    expect(fm.markerBlack).toBe(0)
+    expect(fm.markerWhite).toBe(0)
+    expect(fm.beadRoles).toEqual([])
+  })
+})
+
+describe('planToFilamentMap — the viewer preview seam', () => {
+  const roster = plaRoster()
+  const catalog = thh(roster)
+  const slots = roster.map((s) => s.hex)
+
+  it('projects each role onto the slot the plan assigned', () => {
+    const fm = planToFilamentMap(planned(catalog), slots)
+    expect(fm.frame).toBe(2)
+    expect(fm.markerBlack).toBe(0)
+    expect(fm.markerWhite).toBe(1)
+    expect(fm.beadRoles).toEqual([3, 4])
+    expect(fm.feet).toBe(2)
+    expect(fm.slots).toEqual(slots)
+  })
+
+  it('repoints the projected slot when a role is pinned (overrides reach the preview)', () => {
+    const pinned = planToFilamentMap(
+      planned(catalog, plaPicks, { overrides: { frame: 's-earth' } }),
+      slots
     )
-    expect(find(worst, 'rainbow-unrealizable')).toBeDefined()
-    expect(find(worst, 'text-invisible')).toBeDefined()
-    expect(worst.warnings.every((w) => w.severity !== 'error')).toBe(true)
-    expect(worst.ok).toBe(true)
+    expect(pinned.frame).toBe(4)
+    // pinning the frame does not disturb the ArUco pair the camera reads
+    expect(pinned.markerBlack).toBe(0)
+    expect(pinned.markerWhite).toBe(1)
+  })
+
+  it('mints a DESIGN-COLOR slot for an unplaced role rather than pointing it at slot 0', () => {
+    // Slot 0 would paint the role in whatever happens to be loaded first and look
+    // exactly like a plan that worked.
+    const fm = planToFilamentMap(
+      planned(catalog, plaPicks, { extra: { unplaced: ['bead-1'], status: 'degraded' } }),
+      slots
+    )
+    expect(fm.beadRoles[0]).toBe(3) // s-heaven, as planned
+    expect(fm.beadRoles[1]).toBe(slots.length) // appended
+    expect(fm.slots[fm.beadRoles[1]]).toBe('#2E86AB') // the color the user designed
+  })
+
+  it('carries feet and textRoles iff those roles exist', () => {
+    const withFeet = planToFilamentMap(planned(catalog), slots)
+    expect(withFeet.feet).toBe(2)
+    const off = planToFilamentMap(
+      planned(catalog, plaPicks, { d: toAbacusDesign({ ...p, feet_mode: 'adhesive' }, '') }),
+      slots
+    )
+    expect('feet' in off).toBe(false)
+    const noText = planToFilamentMap(
+      planned(catalog, plaPicks, { d: toAbacusDesign({ ...p, text_mode: 'emboss' }, '') }),
+      slots
+    )
+    expect('textRoles' in noText).toBe(false)
+  })
+})
+
+describe('designFilamentMap — the unplanned preview', () => {
+  it('gives every role its own slot holding exactly the designed color', () => {
+    const fm = designFilamentMap(design)
+    expect(fm.slots[fm.markerBlack]).toBe('#000000')
+    expect(fm.slots[fm.markerWhite]).toBe('#ffffff')
+    expect(fm.slots[fm.frame]).toBe(p.frame_color)
+    expect(fm.beadRoles.map((i) => fm.slots[i])).toEqual(['#F18F01', '#2E86AB'])
+    expect(fm.textRoles?.map((i) => fm.slots[i])).toEqual(COLOR_PALETTES.default)
+  })
+
+  it('claims perfect marker contrast — the DESIGN is pure black on pure white', () => {
+    // And says nothing about what a printer would manage; that only becomes
+    // knowable once a plan exists.
+    expect(designFilamentMap(design).markerContrast).toBeCloseTo(21, 5)
+  })
+
+  it('omits feet and textRoles exactly when the design has no such role', () => {
+    const bare = designFilamentMap(toAbacusDesign({ ...p, feet_mode: 'none', text_mode: 'emboss' }, ''))
+    expect('feet' in bare).toBe(false)
+    expect('textRoles' in bare).toBe(false)
+  })
+
+  it('never consults the catalog — it is a function of the design alone', () => {
+    // The regression it exists to prevent: `computeFilamentMap` quantized onto the
+    // eight `filament_N` params, approximating the design against a roster that
+    // describes no real spools. `catalogFromParams` is now unrelated to it.
+    const paramsCatalog = catalogFromParams(p)
+    const fm = designFilamentMap(design)
+    expect(fm.slots).not.toEqual(paramsCatalog.spools.map((s) => s.hex))
+  })
+})
+
+describe('exactMatchPlan — the fixture itself holds', () => {
+  it('serves every role at distance 0 on a roster built from the design', () => {
+    const { catalog, plan: staged } = exactMatchPlan(design)
+    const result = materialize(design, catalog, { plan: staged })
+    expect(result.assignments.length).toBeGreaterThan(0)
+    expect(result.assignments.every((a) => a.spoolIndex !== NO_SPOOL)).toBe(true)
+    expect(result.assignments.every((a) => a.distance === 0)).toBe(true)
   })
 })

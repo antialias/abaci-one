@@ -12,8 +12,15 @@
 // global Storybook preview wraps stories in AbacusDisplayProvider, so the bead
 // thumbnails render in the configured shape with no story-level provider.
 
+import type { FilamentPlanResponseV1 } from '@eink/print-dialog'
 import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
+import {
+  stubCompatWarning,
+  stubFilamentPlan,
+  type StubPick,
+  type StubPlanExtra,
+} from './__fixtures__/filament-plan-stub'
 import type { FilamentCatalog, FilamentSpool } from './abacus-catalog'
 import { catalogFromParams } from './abacus-catalog'
 import { toAbacusDesign } from './abacus-design'
@@ -78,28 +85,66 @@ const tpuCatalog = thh([
   spool('s-tpu', 'Bambu Lab TPU for AMS Black', '#141414', 'TPU'),
 ])
 
+// ---- the service's answer, staged ----------------------------------------------
+// The panel no longer matches anything: THH's `filament-plan/v1` decides which
+// spool serves which role (Gitea #37), and the panel projects that answer. So a
+// story stages a RESPONSE rather than staging a roster and hoping a local snapper
+// agrees with it — which is the honest shape for a presentational component, and
+// the reason the prose below now describes what the service returned.
+
+const stubPlan = (
+  catalog: FilamentCatalog,
+  picks?: Record<string, StubPick>,
+  extra?: StubPlanExtra
+) => stubFilamentPlan(design, catalog, picks, extra)
+const compat = stubCompatWarning
+
 // ---- harness -------------------------------------------------------------------
 // The panel is controlled (the studio owns `overrides` so its recolor pipeline
 // sees the same pins); stories own that state with a plain useState.
 
 type HarnessProps = {
   catalog: FilamentCatalog
+  plan?: FilamentPlanResponseV1
   initialOverrides?: Record<string, string>
   defaultOpenRole?: string | null
 }
 
-function Harness({ catalog, initialOverrides, defaultOpenRole }: HarnessProps) {
+function Harness({ catalog, plan, initialOverrides, defaultOpenRole }: HarnessProps) {
   const [overrides, setOverrides] = useState<Record<string, string>>(initialOverrides ?? {})
+  const staged = plan ?? stubPlan(catalog)
   return (
     <FilamentPlanPanel
       design={design}
       catalog={catalog}
       overrides={overrides}
+      // Both props take the same staged answer: with no `required` selectors in
+      // play the pinned and unpinned questions are the same question, so the
+      // service returns one answer and the picker's ✓ recommendation is it.
+      servicePlan={staged}
+      unpinnedServicePlan={staged}
       onOverridesChange={setOverrides}
       defaultOpenRole={defaultOpenRole}
     />
   )
 }
+
+// The auto answer on the production-failure roster: every role on the PLA plate,
+// the PETG simply not chosen. Shared by the stories that pin ON TOP of it.
+const prodEchoPicks: Record<string, StubPick> = {
+  'marker-black': 's-black',
+  'marker-white': 's-white',
+  frame: 's-black',
+  'bead-0': 's-heaven',
+  'bead-1': 's-earth',
+  // No TPU loaded here; the feet-specific stories say what that costs.
+  feet: 's-black',
+}
+const prodEchoPlan = stubPlan(prodEchoCatalog, prodEchoPicks)
+
+// The offline catalog gets its own binding so the plan and the panel see the
+// same object identity — `catalogFromParams` mints a fresh one on every call.
+const paramsCatalog = catalogFromParams(params)
 
 const meta: Meta<typeof FilamentPlanPanel> = {
   title: 'AbacusStudio/FilamentPlanPanel',
@@ -135,7 +180,7 @@ type Story = StoryObj<typeof FilamentPlanPanel>
  * match, so no tile carries a fleck and the footer reads "prints true".
  */
 export const PitOfSuccess: Story = {
-  render: () => <Harness catalog={prodEchoCatalog} />,
+  render: () => <Harness catalog={prodEchoCatalog} plan={prodEchoPlan} />,
 }
 
 /**
@@ -149,7 +194,21 @@ export const PitOfSuccess: Story = {
  * colors on the 3D hero; hovering the row highlights that part.
  */
 export const ColorsShiftFleck: Story = {
-  render: () => <Harness catalog={limitedCatalog} />,
+  render: () => (
+    <Harness
+      catalog={limitedCatalog}
+      plan={stubPlan(limitedCatalog, {
+        'marker-black': 's-black',
+        'marker-white': 's-white',
+        frame: 's-black',
+        // Nowhere true to land: the service reports the shift it had to accept,
+        // and ΔE00 past the fleck threshold is what lights the corner fleck.
+        'bead-0': ['s-white', 34],
+        'bead-1': ['s-black', 41],
+        feet: 's-black',
+      })}
+    />
+  ),
 }
 
 /**
@@ -160,7 +219,29 @@ export const ColorsShiftFleck: Story = {
  * auto" drops the pin in one click. Try it — the warning disappears.
  */
 export const TempMixPin: Story = {
-  render: () => <Harness catalog={prodEchoCatalog} initialOverrides={{ 'bead-0': 's-petg' }} />,
+  render: () => (
+    <Harness
+      catalog={prodEchoCatalog}
+      initialOverrides={{ 'bead-0': 's-petg' }}
+      // The pin rides into the request as a `required` identity, so this is the
+      // answer THH gives BACK for the pinned design — including the temperature
+      // warning, which is now the service's call and not a local family compare.
+      plan={stubPlan(
+        prodEchoCatalog,
+        { ...prodEchoPicks, 'bead-0': 's-petg' },
+        {
+          status: 'degraded',
+          warnings: [
+            compat(
+              'plate_temperature_mix',
+              ['bead-0'],
+              'PETG HF Translucent slices at 255 °C while the rest of this plate slices at 220 °C. One plate cannot hold both — the slicer will refuse the mix or under-extrude the cooler filament.'
+            ),
+          ],
+        }
+      )}
+    />
+  ),
 }
 
 /**
@@ -171,7 +252,13 @@ export const TempMixPin: Story = {
  * warning says so. Note the amber PLA-S tag on the chip and the marker row.
  */
 export const SupportMediaPin: Story = {
-  render: () => <Harness catalog={supportCatalog} initialOverrides={{ 'marker-white': 's-sup' }} />,
+  render: () => (
+    <Harness
+      catalog={supportCatalog}
+      initialOverrides={{ 'marker-white': 's-sup' }}
+      plan={stubPlan(supportCatalog, { ...prodEchoPicks, 'marker-white': 's-sup' })}
+    />
+  ),
 }
 
 /**
@@ -181,7 +268,32 @@ export const SupportMediaPin: Story = {
  * warning — each with its own chips and its own one-click fix.
  */
 export const WeldSplitPin: Story = {
-  render: () => <Harness catalog={prodEchoCatalog} initialOverrides={{ frame: 's-petg' }} />,
+  render: () => (
+    <Harness
+      catalog={prodEchoCatalog}
+      initialOverrides={{ frame: 's-petg' }}
+      plan={stubPlan(
+        prodEchoCatalog,
+        { ...prodEchoPicks, frame: 's-petg' },
+        {
+          status: 'degraded',
+          warnings: [
+            compat(
+              'poor_interlayer_adhesion',
+              ['frame', 'marker-black', 'marker-white'],
+              'The frame prints in PETG while the ArUco fields print in PLA. These are welded into one piece, and PLA does not bond to PETG — the markers will delaminate.',
+              'frame+markers'
+            ),
+            compat(
+              'plate_temperature_mix',
+              ['frame'],
+              'PETG HF Translucent slices at 255 °C while the rest of this plate slices at 220 °C. One plate cannot hold both.'
+            ),
+          ],
+        }
+      )}
+    />
+  ),
 }
 
 /**
@@ -194,7 +306,13 @@ export const WeldSplitPin: Story = {
  * blocked.
  */
 export const GroupedPicker: Story = {
-  render: () => <Harness catalog={supportCatalog} defaultOpenRole="bead-0" />,
+  render: () => (
+    <Harness
+      catalog={supportCatalog}
+      plan={stubPlan(supportCatalog, prodEchoPicks)}
+      defaultOpenRole="bead-0"
+    />
+  ),
 }
 
 /**
@@ -205,7 +323,7 @@ export const GroupedPicker: Story = {
  * the shift status.
  */
 export const BrandPrefixAndMapping: Story = {
-  render: () => <Harness catalog={supportCatalog} />,
+  render: () => <Harness catalog={supportCatalog} plan={stubPlan(supportCatalog, prodEchoPicks)} />,
 }
 
 /**
@@ -215,7 +333,7 @@ export const BrandPrefixAndMapping: Story = {
  * material warnings. Only the THH AMS snapshot activates the material layers.
  */
 export const ColorOnlyCatalog: Story = {
-  render: () => <Harness catalog={catalogFromParams(params)} defaultOpenRole="bead-0" />,
+  render: () => <Harness catalog={paramsCatalog} defaultOpenRole="bead-0" />,
 }
 
 /**
@@ -228,7 +346,14 @@ export const ColorOnlyCatalog: Story = {
  * role.
  */
 export const FeetOnTpu: Story = {
-  render: () => <Harness catalog={tpuCatalog} defaultOpenRole="feet" />,
+  render: () => (
+    <Harness
+      catalog={tpuCatalog}
+      // `preferred: [{family:'TPU'}]` honoured — no relaxation, so no warning.
+      plan={stubPlan(tpuCatalog, { ...prodEchoPicks, feet: 's-tpu' })}
+      defaultOpenRole="feet"
+    />
+  ),
 }
 
 /**
@@ -239,5 +364,16 @@ export const FeetOnTpu: Story = {
  * there's simply no TPU section to lead it.
  */
 export const FeetNoTpuFallback: Story = {
-  render: () => <Harness catalog={prodEchoCatalog} />,
+  render: () => (
+    <Harness
+      catalog={prodEchoCatalog}
+      // No TPU on the roster, so the planner sheds the `preferred` selector and
+      // says so. That relaxation — not a name test on the spool's product string —
+      // is what raises the studio's friendlier feet-material chip.
+      plan={stubPlan(prodEchoCatalog, prodEchoPicks, {
+        status: 'degraded',
+        relaxations: { feet: ['preferred_identity_unavailable'] },
+      })}
+    />
+  ),
 }

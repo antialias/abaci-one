@@ -79,6 +79,39 @@ export interface ThhFilamentRow {
    *  support-body material, null for a plain model material. Absent when talking
    *  to a pre-#367 service — consumers fall back to the local heuristic then. */
   supportKind?: 'interface' | 'body' | null
+  /**
+   * Is the printer live-reporting a loaded spool in this slot RIGHT NOW
+   * (things-haunt-house#343)?
+   *
+   * A mapping row can OUTLIVE the physical spool — THH's seeder never expires
+   * rows — so the roster deliberately keeps stale rows and marks them instead of
+   * dropping them, letting a wake/RFID-reread blip stay a cosmetic toggle rather
+   * than a spool that vanishes and reappears. `false` means the mapping is stale:
+   * render it grayed and never assign it. Absent on a pre-#343 service.
+   */
+  livePresent?: boolean
+  /**
+   * The slice profile of the spool loaded in this slot.
+   *
+   * This is the DURABLE handle. `slotId` names a tray and goes stale the moment
+   * the spool is moved; `profileKey` follows the material itself, so a saved
+   * design's requirement survives a spool changing slots. `null` for an unmapped
+   * or unprofiled slot.
+   */
+  profileKey?: string | null
+  /**
+   * Temperature window of the profile the slot would actually SLICE with
+   * (things-haunt-house#365) — the generic family profile, not the RFID tray
+   * profile. Service truth, so compatibility can be read rather than inferred
+   * from family names. `null` when it cannot be answered honestly: no family, an
+   * unmapped family, or the slicer sidecar unreachable.
+   */
+  nozzleTempC?: { value?: number; min?: number; max?: number } | null
+  /** True when a human explicitly attached this spool to the slot, rather than it
+   *  being seeded from an RFID read. */
+  userAttached?: boolean
+  /** Live drying state, when the service tracks it for this slot. */
+  moisture?: { state?: string; rh?: number | null } | null
 }
 
 export interface ThhFilamentsResponse {

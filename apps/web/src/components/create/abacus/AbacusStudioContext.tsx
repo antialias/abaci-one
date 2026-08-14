@@ -34,6 +34,7 @@ import {
   useSavePlayerAbacusIdentity,
 } from '@/hooks/usePlayerAbacusIdentity'
 import { usePlayerAccess } from '@/hooks/usePlayerAccess'
+import { useFilamentPlan } from '@/hooks/useFilamentPlan'
 import { useThhFilamentCatalog } from '@/hooks/useThhFilamentCatalog'
 import { useUserPlayers } from '@/hooks/useUserPlayers'
 import { type AbacusDesignSnapshot, canonicalDesignSnapshot } from '@/lib/abacus/design-snapshot'
@@ -55,7 +56,13 @@ import {
   type RenderPass,
 } from './abacus-model'
 import type { ModuleExportParts } from './abacus-module-kit'
-import { materialize, planToFilamentMap } from './abacus-plan'
+import {
+  designFilamentMap,
+  materialize,
+  planToFilamentMap,
+  unplacedRoleLabels,
+} from './abacus-plan'
+import { buildFilamentPlanRequest } from './abacus-plan-request'
 import { DEFAULT_PROFILE_ID, profileById, solve } from './abacus-solver'
 
 // Per-browser memory of which paired print service the studio prints to, so a
@@ -181,19 +188,68 @@ function useStudioController(playerId: string | null, designId: string | null) {
     const live = thhFilaments.catalog
     return live && live.spools.length > 0 ? live : catalogFromParams(params)
   }, [thhFilaments.catalog, params])
-  const plan = useMemo(
-    () => materialize(design, catalog, { overrides }),
+  // The design's colour/constraint intent, as the planner's request. Built only
+  // for a LIVE roster: a params catalog describes no real spools, so asking which
+  // of them to use would be asking the service to plan a fiction. Pins ride along
+  // as `required` selectors, which is what makes the service judge compatibility
+  // around the user's actual choice.
+  const planRequest = useMemo(
+    () =>
+      catalog.source === 'thh-ams'
+        ? buildFilamentPlanRequest(design, { catalog, overrides })
+        : null,
     [design, catalog, overrides]
   )
-  // the legacy FilamentMap the recolor passes color through, derived FROM the
-  // plan so overrides flow into the live preview for free.
+  const filamentPlan = useFilamentPlan({
+    printerId: thhFilaments.printerId,
+    request: planRequest,
+    rosterSignature: thhFilaments.rosterSignature,
+    connectionId: selectedConnectionId,
+    enabled: fabrication.kind === 'fdm',
+  })
+
+  // The same question asked WITHOUT the user's pins — "what would the service pick
+  // if you hadn't chosen?" The picker badges it as the recommendation, and the
+  // warning strip's Fix button restores it.
+  //
+  // Costs nothing until it differs: with no pins the two requests are byte-equal,
+  // so they share a cache key and there is exactly one fetch. Only once the user
+  // has pinned something does this become a second (then permanently cached) read.
+  const unpinnedRequest = useMemo(
+    () => (catalog.source === 'thh-ams' ? buildFilamentPlanRequest(design, { catalog }) : null),
+    [design, catalog]
+  )
+  const unpinnedPlan = useFilamentPlan({
+    printerId: thhFilaments.printerId,
+    request: unpinnedRequest,
+    rosterSignature: thhFilaments.rosterSignature,
+    connectionId: selectedConnectionId,
+    enabled: fabrication.kind === 'fdm',
+  })
+  const plan = useMemo(
+    () => materialize(design, catalog, { overrides, plan: filamentPlan.plan }),
+    [design, catalog, overrides, filamentPlan.plan]
+  )
+  const unplacedRoles = useMemo(() => unplacedRoleLabels(plan), [plan])
+
+  // The legacy FilamentMap the recolor passes color through.
+  //
+  // Two sources, and the split is the point. With a plan, it derives FROM the plan
+  // — so a pin flows into the live preview for free and the pixels and the
+  // warnings can't disagree. WITHOUT one ('unplanned': no printer, roster still
+  // loading, or a params catalog), it renders the DESIGNED colors instead of
+  // quantizing onto spools nobody can print. That case used to run the full local
+  // matcher against the eight `filament_N` params and present the result as if it
+  // meant something.
   const filamentMap = useMemo(
     () =>
-      planToFilamentMap(
-        plan,
-        catalog.spools.map((s) => s.hex)
-      ),
-    [plan, catalog]
+      plan.planStatus === 'unplanned'
+        ? designFilamentMap(design)
+        : planToFilamentMap(
+            plan,
+            catalog.spools.map((s) => s.hex)
+          ),
+    [plan, catalog, design]
   )
 
   // follow the identity source while synced. Re-seeds when the provider hydrates
@@ -437,6 +493,24 @@ function useStudioController(playerId: string | null, designId: string | null) {
     selectConnection,
     catalog,
     plan,
+    // The service's raw answers, forwarded so a child can re-project them through
+    // `materialize` without re-fetching. Passing the RESPONSE rather than the
+    // finished PrintPlan keeps `materialize` the one place that turns a plan into
+    // roles and warnings — two call sites projecting the same response cannot
+    // disagree, which is the property the panel has always relied on.
+    servicePlan: filamentPlan.plan,
+    unpinnedServicePlan: unpinnedPlan.plan,
+    // "no settled answer for the CURRENT question" — which covers both the first
+    // load and the window where `keepPreviousData` is holding the previous key's
+    // answer on screen. A consumer that only watched `isLoading` would read a
+    // held-over plan as final.
+    planPending: filamentPlan.isLoading || filamentPlan.isPlaceholder,
+    // The print gate (#37). Roles the planner answered and could not place render
+    // in their DESIGNED color, which is right for the viewer and unprintable — so
+    // the same `plan` that feeds the pixels also names what blocks the submit.
+    // Derived here rather than in the panel so the gate and the preview can never
+    // be computed from two different projections of the same response.
+    unplacedRoles,
     filamentMap,
     solveResult,
     errors,

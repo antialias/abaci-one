@@ -54,6 +54,9 @@ export function FabricationRail() {
     selectedConnectionId,
     selectConnection,
     catalog,
+    servicePlan,
+    unpinnedServicePlan,
+    unplacedRoles,
     filamentMap,
     solveResult,
     errors,
@@ -150,6 +153,8 @@ export function FabricationRail() {
         design={design}
         catalog={catalog}
         overrides={overrides}
+        servicePlan={servicePlan}
+        unpinnedServicePlan={unpinnedServicePlan}
         onOverridesChange={setOverrides}
         onRevealIntrinsic={setRevealIntrinsic}
         onHighlightRole={setHighlightRole}
@@ -364,6 +369,7 @@ export function FabricationRail() {
         connectionId={selectedConnectionId}
         unavailable={thhFilaments.unavailable}
         exportBlocked={exportBlocked}
+        unplacedRoles={unplacedRoles}
         requestExportParts={requestExportParts}
         playerId={playerId}
         kit={modular ? kitPrint : undefined}

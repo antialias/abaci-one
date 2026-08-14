@@ -93,6 +93,19 @@ export type FilamentSpool = {
   // the name heuristic; absent (pre-#367 service, params catalog) falls back to
   // `isSupportMaterial`.
   supportKind?: 'interface' | 'body' | null
+  // The loaded spool's slice profile — durable identity, unlike `id`, which for
+  // an AMS row is the SLOT and stops meaning this spool the moment it is moved.
+  // Absent on params catalogs and on rows THH could not profile.
+  profileKey?: string
+  // The temperature window the slot would actually slice with (#365). Service
+  // truth; absent when THH could not answer it honestly.
+  nozzleTempC?: { value?: number; min?: number; max?: number }
+  // Kept as fields, not just folded into `name`: they are the fallback IDENTITY a
+  // pin is expressed with when the service reports no `profileKey`, and a pin
+  // parsed back out of a display string would break the first time the naming
+  // changed. See `pinSelector` in abacus-plan-request.ts.
+  brand?: string
+  product?: string
 }
 
 export type FilamentCatalog = {
@@ -142,15 +155,16 @@ function normalizeThhHex(raw: string | undefined): string {
 }
 
 // Human-readable spool name from the identifying fields THH reports, in the
-// order that reads best: brand+product, else family, else the slot label, else a
-// positional stand-in. Shared by both row kinds so the naming stays identical.
-function spoolName(row: ThhFilamentRow, i: number): string {
-  return (
-    [row.brand, row.product].filter(Boolean).join(' ').trim() ||
-    row.family ||
-    row.slotId ||
-    `Slot ${i + 1}`
-  )
+// order that reads best: brand+product, else the family. Shared by both row kinds
+// so the naming stays identical.
+//
+// There used to be two more fallbacks — the slot label, then a positional "Slot
+// N". Both became unreachable when the honest-unknown rule started dropping
+// family-less rows (see below): every row that reaches here has a family, so the
+// result is always non-empty. Kept as dead branches they would read as live
+// behaviour that no test can reach.
+function spoolName(row: ThhFilamentRow): string {
+  return [row.brand, row.product].filter(Boolean).join(' ').trim() || (row.family as string)
 }
 
 // Project the proxy's filaments read onto the studio's FilamentCatalog. Spools
@@ -163,37 +177,62 @@ function spoolName(row: ThhFilamentRow, i: number): string {
 // Post things-haunt-house#382 the read can also carry ONE external (no-slot)
 // spool — a no-AMS printer running off its direct spool holder (`external:true`,
 // `slotId:null`). We fold it in as an `external` spool ONLY when its `family` is
-// resolved; an external row with a null/empty family is the printer saying "a
-// spool is loaded but I can't identify its material" — we DROP it rather than
-// invent a PLA default (the honest-unknown rule, #19). So the `|| 'PLA'` default
-// below is scoped to AMS-slot rows, whose family THH always resolves.
+// resolved; a row with a null/empty family is the printer saying "a spool is
+// loaded but I can't identify its material" — we DROP it rather than invent a
+// PLA default (the honest-unknown rule, #19).
+//
+// That rule now covers AMS-slot rows too. It previously did not: the AMS path
+// defaulted an unresolved family to `'PLA'`, on the stated grounds that THH
+// "always resolves" it. THH does not — `gateway/print_api.py` derives family
+// from the slot's PROFILE (`prof.material`) and emits `null` for a slot that is
+// unmapped or whose profile carries no material. So an unidentified spool could
+// be assigned to a visible role, and every downstream material check would then
+// reason about a PLA that was never there.
+//
+// A stale mapping is dropped for the same reason. THH keeps rows whose physical
+// spool is gone and marks them `livePresent:false` (#343) rather than deleting
+// them, so that an AMS wake blip is cosmetic; but the catalog's contract is
+// "spools the printer can actually lay down", and a spool that is not loaded
+// cannot be one. Only an explicit `false` drops — the field is absent on a
+// pre-#343 service, which is unknown, not stale.
 export function thhFilamentsToCatalog(rows: ThhFilamentRow[], fetchedAt: string): FilamentCatalog {
   const spools: FilamentSpool[] = []
   rows.forEach((row, i) => {
+    // Not loaded right now ⇒ not printable, whatever the mapping still says.
+    if (row.livePresent === false) return
+    // No identifiable material ⇒ not printable. Never a defaulted family.
+    if (!row.family) return
+    const common = {
+      name: spoolName(row),
+      hex: normalizeThhHex(row.colorHex),
+      material: row.family as FilamentMaterial,
+      // Durable identity and service-resolved temperature window, projected so
+      // downstream code can reference a spool by what it IS rather than by which
+      // tray it currently sits in, and read compatibility instead of guessing it.
+      ...(row.profileKey ? { profileKey: row.profileKey } : {}),
+      ...(row.nozzleTempC ? { nozzleTempC: row.nozzleTempC } : {}),
+      // The brand/product identity, kept separate from the display `name` so a pin
+      // can be expressed as an identity selector when there is no profileKey.
+      ...(row.brand ? { brand: row.brand } : {}),
+      ...(row.product ? { product: row.product } : {}),
+    }
+    // An external row deliberately carries NO supportKind: it is the only spool on
+    // a no-AMS printer, so the print is single-filament by construction and there
+    // is no second material for it to be the interface TO. The support-roster
+    // consumer reads this projection directly, and offering it a support interface
+    // that cannot exist is worse than offering none.
     if (row.external) {
-      // A loaded external spool with no identifiable material is not printable —
-      // skip it (never a PLA-defaulted spool). The hook surfaces this to the UI
-      // separately, from the raw rows, since the catalog drops the evidence here.
-      if (!row.family) return
-      spools.push({
-        id: `external-${i}`,
-        name: spoolName(row, i),
-        hex: normalizeThhHex(row.colorHex),
-        material: row.family as FilamentMaterial,
-        external: true,
-      })
+      spools.push({ ...common, id: `external-${i}`, external: true })
       return
     }
     spools.push({
-      // slotId is how a print ticket references the spool; the positional
-      // fallback only guards against a degenerate row within this snapshot.
-      id: row.slotId ?? `slot-${i}`,
-      name: spoolName(row, i),
-      hex: normalizeThhHex(row.colorHex),
-      material: (row.family as FilamentMaterial) || 'PLA',
+      ...common,
       // supportKind projects verbatim (including an explicit null); omitted
       // entirely when the service predates #367 so isSupportSpool falls back.
       ...(row.supportKind !== undefined ? { supportKind: row.supportKind } : {}),
+      // slotId is how a print ticket references the spool; the positional
+      // fallback only guards against a degenerate row within this snapshot.
+      id: row.slotId ?? `slot-${i}`,
     })
   })
   return { source: 'thh-ams', spools, fetchedAt }

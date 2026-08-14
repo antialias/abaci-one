@@ -111,6 +111,21 @@ export function useThhFilamentCatalog({
     )
   }, [filaments.data, filaments.dataUpdatedAt])
 
+  // Identity of the roster the SERVICE would plan against — taken from the raw
+  // rows, deliberately not from `catalog`. The catalog is a lossy projection: it
+  // drops unidentifiable spools and ignores fields we don't render (brand,
+  // product, remainingPct), any of which the planner may weigh. Signing the
+  // projection would make two upstream-different rosters look identical and serve
+  // a cached plan for spools the planner never saw.
+  //
+  // `fetchedAt` is excluded for the same reason it isn't in here: a poll that
+  // returns byte-identical rows must NOT invalidate a plan, or the plan refetches
+  // every minute forever.
+  const rosterSignature = useMemo(
+    () => (filaments.data?.ok ? JSON.stringify(filaments.data.value.filaments ?? []) : ''),
+    [filaments.data]
+  )
+
   const unavailable: PrintUnavailableReason | null =
     printers.data && !printers.data.ok
       ? printers.data.reason
@@ -149,6 +164,7 @@ export function useThhFilamentCatalog({
 
   return {
     catalog,
+    rosterSignature,
     printerId,
     printerMultiMaterial: chosenPrinter?.multiMaterial ?? false,
     printerBed: chosenPrinter?.bed,

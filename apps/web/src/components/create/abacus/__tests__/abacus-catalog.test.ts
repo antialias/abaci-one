@@ -55,13 +55,25 @@ describe('thhFilamentsToCatalog', () => {
     expect(cat.source).toBe('thh-ams')
     expect(cat.fetchedAt).toBe(FETCHED)
     expect(cat.spools).toEqual([
-      { id: '0.1', name: 'Bambu Lab PLA Basic', hex: '#A0A0A0', material: 'PLA' },
+      {
+        id: '0.1',
+        name: 'Bambu Lab PLA Basic',
+        hex: '#A0A0A0',
+        material: 'PLA',
+        // brand/product survive as FIELDS, not only folded into `name`: they are
+        // the identity a pin is expressed with when there is no profileKey, and a
+        // pin parsed back out of a display string would break the first time the
+        // naming changed (Gitea #37).
+        brand: 'Bambu Lab',
+        product: 'PLA Basic',
+      },
     ])
   })
 
   it('normalizes the 8-digit RGBA hex to #RRGGBB (drops alpha, uppercases, adds #)', () => {
+    // every row carries a family — a family-less row is dropped entirely now
     const hex = (colorHex: string | undefined) =>
-      thhFilamentsToCatalog([{ slotId: '0.1', colorHex }], FETCHED).spools[0].hex
+      thhFilamentsToCatalog([{ slotId: '0.1', family: 'PLA', colorHex }], FETCHED).spools[0].hex
     expect(hex('a0a0a0ff')).toBe('#A0A0A0') // lowercase + alpha
     expect(hex('#A0A0A0FF')).toBe('#A0A0A0') // tolerates a leading '#'
     expect(hex('1E88E5')).toBe('#1E88E5') // already 6-digit
@@ -70,30 +82,67 @@ describe('thhFilamentsToCatalog', () => {
     expect(hex('12345')).toBe('#808080') // too short → neutral grey
   })
 
-  it('carries the material family through, defaulting a missing family to PLA', () => {
-    const material = (family: string | undefined) =>
+  it('carries the material family through', () => {
+    const material = (family: string) =>
       thhFilamentsToCatalog([{ slotId: '0.1', family }], FETCHED).spools[0].material
     expect(material('PETG')).toBe('PETG')
     expect(material('TPU')).toBe('TPU')
-    expect(material(undefined)).toBe('PLA')
   })
 
-  it('falls back through family → slotId → slot number for the display name', () => {
+  it('DROPS an AMS row with no identifiable family — never a PLA default (Gitea #37)', () => {
+    // This path used to default to 'PLA', on the stated grounds that THH "always
+    // resolves" the family for a slot. It does not: `gateway/print_api.py` derives
+    // family from the slot's PROFILE and emits null for an unmapped slot. So an
+    // unidentified spool could be assigned to a visible role, and every downstream
+    // material check would then reason about a PLA that was never there.
+    for (const family of [null, '', undefined]) {
+      const cat = thhFilamentsToCatalog([{ slotId: '0.1', family, colorHex: 'A0A0A0FF' }], FETCHED)
+      expect(cat.spools).toHaveLength(0)
+    }
+  })
+
+  it('DROPS a row THH marks as not physically loaded (livePresent:false, THH#343)', () => {
+    // THH keeps rows whose spool is gone and marks them rather than deleting them,
+    // so an AMS wake blip stays cosmetic. But the catalog's contract is "spools the
+    // printer can actually lay down", and a spool that is not loaded is not one.
     const rows: ThhFilamentRow[] = [
-      { slotId: '0.1', brand: 'Bambu Lab' }, // brand only
-      { slotId: '0.2', family: 'PLA' }, // family only
-      { slotId: '0.3' }, // slotId only
-      {}, // nothing → positional "Slot N"
+      { slotId: '0.1', family: 'PLA', livePresent: true },
+      { slotId: '0.2', family: 'PETG', livePresent: false },
+      { slotId: '0.3', family: 'TPU' }, // absent ⇒ unknown, not stale: kept
+    ]
+    expect(thhFilamentsToCatalog(rows, FETCHED).spools.map((s) => s.id)).toEqual(['0.1', '0.3'])
+  })
+
+  it('names a spool brand+product, else the family', () => {
+    const rows: ThhFilamentRow[] = [
+      { slotId: '0.1', family: 'PLA', brand: 'Bambu Lab', product: 'PLA Basic' },
+      { slotId: '0.2', family: 'PLA', brand: 'Bambu Lab' }, // brand only
+      { slotId: '0.3', family: 'PETG' }, // neither → the family
     ]
     const names = thhFilamentsToCatalog(rows, FETCHED).spools.map((s) => s.name)
-    expect(names).toEqual(['Bambu Lab', 'PLA', '0.3', 'Slot 4'])
+    expect(names).toEqual(['Bambu Lab PLA Basic', 'Bambu Lab', 'PETG'])
+  })
+
+  it('projects profileKey and nozzleTempC when the service reports them', () => {
+    // Durable identity (a slot id stops meaning this spool the moment it moves)
+    // and the temperature window the slot would actually slice with (THH#365).
+    const rows: ThhFilamentRow[] = [
+      { slotId: '0.1', family: 'PLA', profileKey: 'GFL99', nozzleTempC: { value: 220, min: 190 } },
+      { slotId: '0.2', family: 'PLA' },
+    ]
+    const cat = thhFilamentsToCatalog(rows, FETCHED)
+    expect(cat.spools[0].profileKey).toBe('GFL99')
+    expect(cat.spools[0].nozzleTempC).toEqual({ value: 220, min: 190 })
+    // absent on the wire stays absent — never a fabricated default
+    expect('profileKey' in cat.spools[1]).toBe(false)
+    expect('nozzleTempC' in cat.spools[1]).toBe(false)
   })
 
   it('preserves the AMS order THH reports', () => {
     const rows: ThhFilamentRow[] = [
-      { slotId: '0.1', colorHex: '111111FF' },
-      { slotId: '0.2', colorHex: '222222FF' },
-      { slotId: '1.1', colorHex: '333333FF' },
+      { slotId: '0.1', family: 'PLA', colorHex: '111111FF' },
+      { slotId: '0.2', family: 'PLA', colorHex: '222222FF' },
+      { slotId: '1.1', family: 'PLA', colorHex: '333333FF' },
     ]
     expect(thhFilamentsToCatalog(rows, FETCHED).spools.map((s) => s.id)).toEqual([
       '0.1',
@@ -125,7 +174,15 @@ describe('thhFilamentsToCatalog — external (no-AMS) spool', () => {
     const cat = thhFilamentsToCatalog(rows, FETCHED)
     expect(cat.source).toBe('thh-ams')
     expect(cat.spools).toEqual([
-      { id: 'external-0', name: 'Sunlu PLA+', hex: '#112233', material: 'PLA', external: true },
+      {
+        id: 'external-0',
+        name: 'Sunlu PLA+',
+        hex: '#112233',
+        material: 'PLA',
+        brand: 'Sunlu',
+        product: 'PLA+',
+        external: true,
+      },
     ])
   })
 
@@ -149,7 +206,9 @@ describe('thhFilamentsToCatalog — external (no-AMS) spool', () => {
     ]
     const cat = thhFilamentsToCatalog(rows, FETCHED)
     // only the slot spool survives; the PLA default never touches the external row
-    expect(cat.spools).toEqual([{ id: '0.1', name: 'Bambu Lab', hex: '#AABBCC', material: 'PETG' }])
+    expect(cat.spools).toEqual([
+      { id: '0.1', name: 'Bambu Lab', hex: '#AABBCC', material: 'PETG', brand: 'Bambu Lab' },
+    ])
   })
 })
 
