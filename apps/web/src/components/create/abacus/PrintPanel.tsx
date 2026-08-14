@@ -130,6 +130,12 @@ export interface PrintPanelProps {
   unavailable: PrintUnavailableReason | null
   /** Solver gate — a design that won't print can't be submitted either. */
   exportBlocked: boolean
+  /** Role labels the filament planner could not serve from the loaded roster
+   *  (Gitea #37). Non-empty blocks the submit: those roles render in the color the
+   *  user DESIGNED, which no loaded spool can lay down, so the plate would carry a
+   *  body pointing at an extruder that is never loaded. Empty on an unplanned
+   *  design — nothing has been judged yet, and `isLoading` describes that. */
+  unplacedRoles?: readonly string[]
   /** One-shot high-quality export renders (whole abacus + the ArUco marker part
    *  passes), all from a single params snapshot taken inside the viewer. */
   requestExportParts: () => Promise<AbacusExportParts>
@@ -153,6 +159,23 @@ export interface AbacusKitPrint {
 
 /** How long the export render may take before the submit gives up. */
 const EXPORT_TIMEOUT_MS = 180_000
+
+/** Stable identity for the default `unplacedRoles`, so the prop doesn't re-key
+ *  memos on every render of a design that has nothing unplaced (the common case). */
+const EMPTY_ROLES: readonly string[] = []
+
+/** "the frame", "the frame and the beads", "the frame, the beads and the feet".
+ *  Truncated past four so a design that lost its whole palette to an empty AMS
+ *  reads as a sentence rather than a wall of role names. */
+function listRoles(labels: readonly string[]): string {
+  const shown = labels.slice(0, 4)
+  const rest = labels.length - shown.length
+  const joined =
+    shown.length <= 1
+      ? (shown[0] ?? '')
+      : `${shown.slice(0, -1).join(', ')} and ${shown[shown.length - 1]}`
+  return rest > 0 ? `${joined} (+${rest} more)` : joined
+}
 
 /** Host-named first-screen keys (#535) — the handful an abacus print actually
  *  tweaks. Keys the capability document doesn't declare are dropped by the kit. */
@@ -216,6 +239,7 @@ export function PrintPanel(props: PrintPanelProps) {
     connectionId,
     unavailable,
     exportBlocked,
+    unplacedRoles = EMPTY_ROLES,
     requestExportParts,
     playerId = null,
     kit,
@@ -680,6 +704,7 @@ export function PrintPanel(props: PrintPanelProps) {
     !serviceReady ||
     !style ||
     catalog.source !== 'thh-ams' ||
+    unplacedRoles.length > 0 ||
     submit.isPending ||
     feetGate.blocked
 
@@ -895,6 +920,36 @@ export function PrintPanel(props: PrintPanelProps) {
               <span>
                 No AMS — this prints in a single color ({catalog.spools[0]?.name}). Your multi-color
                 design collapses to one filament.
+              </span>
+            </div>
+          )}
+          {/* Unplaced roles (Gitea #37). The planner answered and could not serve
+              these from the loaded roster — no compatible spool is close enough in
+              color — so the studio paints them in the color the user DESIGNED. That
+              is right for the viewer and wrong for a printer: the plate would carry
+              a body pointing at an extruder that is never loaded. Blocking, and
+              phrased as a roster problem with a roster fix, because that is what it
+              is — nothing about the design is invalid. */}
+          {unplacedRoles.length > 0 && (
+            <div
+              data-element="print-unplaced-roles-gate"
+              style={{
+                display: 'flex',
+                gap: 8,
+                padding: '8px 10px',
+                borderRadius: 8,
+                background: 'rgba(120,53,15,0.30)',
+                border: '1px solid rgba(251,191,36,0.45)',
+                color: 'rgba(254,243,199,0.96)',
+                lineHeight: 1.45,
+              }}
+            >
+              <span aria-hidden="true">🎯</span>
+              <span>
+                No loaded filament can print {listRoles(unplacedRoles)} —{' '}
+                {unplacedRoles.length === 1 ? 'it shows' : 'they show'} here in the color you chose,
+                which nothing on the printer can lay down. Load a closer spool, or recolor{' '}
+                {unplacedRoles.length === 1 ? 'it' : 'them'} to something you have.
               </span>
             </div>
           )}

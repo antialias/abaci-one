@@ -37,7 +37,8 @@ import {
 } from './abacus-catalog'
 import type { AbacusDesign } from './abacus-design'
 import { pickerInk } from './abacus-model'
-import { materialize, type PrintRoleKind, type RoleAssignment, roleShifted } from './abacus-plan'
+import type { FilamentPlanResponseV1 } from '@eink/print-dialog'
+import { materialize, NO_SPOOL, type PrintRoleKind, type RoleAssignment, roleShifted } from './abacus-plan'
 
 // gh#163 UX: mapping rows truncate spool names, and every spool from one brand
 // starts with the same words ("Bambu Lab …") — the ellipsis was eating exactly
@@ -203,6 +204,13 @@ export interface FilamentPlanPanelProps {
   catalog: FilamentCatalog
   /** manual pins, roleKey → spoolId — parent-owned so its recolor sees them too */
   overrides: Record<string, string>
+  /** THH's plan for this design INCLUDING the pins, fetched by the parent. Null
+   *  while it loads, or when no printer is paired — the panel then shows the
+   *  designed colors with nothing assigned, rather than a locally-invented match. */
+  servicePlan?: FilamentPlanResponseV1 | null
+  /** the same plan asked WITHOUT the pins — "what would the service pick?", which
+   *  the picker badges as the recommendation and the Fix button restores. */
+  unpinnedServicePlan?: FilamentPlanResponseV1 | null
   onOverridesChange: Dispatch<SetStateAction<Record<string, string>>>
   /** deep link: open a specific role's picker on mount (stories, warning chips) */
   defaultOpenRole?: string | null
@@ -220,6 +228,8 @@ export function FilamentPlanPanel({
   design,
   catalog,
   overrides,
+  servicePlan = null,
+  unpinnedServicePlan = null,
   onOverridesChange: setOverrides,
   defaultOpenRole = null,
   onRevealIntrinsic,
@@ -229,20 +239,24 @@ export function FilamentPlanPanel({
   // the design projected onto the loaded filaments, honoring the user's pins —
   // the source of truth for every warning and row below
   const plan = useMemo(
-    () => materialize(design, catalog, { overrides }),
-    [design, catalog, overrides]
+    () => materialize(design, catalog, { overrides, plan: servicePlan }),
+    [design, catalog, overrides, servicePlan]
   )
-  // roleKey → the spool auto-snap PREFERS, ignoring the user's pins: the
-  // closest color inside the plate's co-print anchor group (gh#163). The picker
-  // badges this so someone who has pinned a worse-matching filament still sees
-  // the recommendation, and the warning strip's Fix button restores it (the
-  // solver is pin-blind, so un-pinned roles always sit on this pick already).
-  // Depends only on design + catalog, so a pin doesn't recompute it.
+  // roleKey → the spool THE SERVICE prefers, ignoring the user's pins. The picker
+  // badges this so someone who has pinned a worse-matching filament still sees the
+  // recommendation, and the warning strip's Fix button restores it.
+  //
+  // It is the service's pick now, not a local one: the parent asks the same
+  // question with no `required` selectors, and this projects that answer through
+  // the same `materialize`. Roles the service could not place are omitted rather
+  // than badged with slot 0 — there is no recommendation to make.
   const preferredByRole = useMemo(() => {
     const m = new Map<string, number>()
-    for (const a of materialize(design, catalog).assignments) m.set(a.role.key, a.spoolIndex)
+    for (const a of materialize(design, catalog, { plan: unpinnedServicePlan }).assignments) {
+      if (a.spoolIndex !== NO_SPOOL) m.set(a.role.key, a.spoolIndex)
+    }
     return m
-  }, [design, catalog])
+  }, [design, catalog, unpinnedServicePlan])
   // the lossy-reduction heads-up shown in print mode: contrast the camera can't
   // read, a palette that outruns the loaded spools, the material trio a pin can
   // raise (gh#163) — a plate split across temperature families, a visible part on
