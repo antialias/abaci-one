@@ -1,5 +1,7 @@
 # Infrastructure - Claude Code Instructions
 
+Covers the k3s/Terraform infrastructure and the deploy pipeline for the app. App-code rules live in `apps/web/.claude/CLAUDE.md`.
+
 ## CRITICAL: Always Use Terraform for Infrastructure
 
 **ALWAYS use Terraform to manage Kubernetes infrastructure. Never use kubectl directly for creating/modifying resources unless there are extenuating circumstances (e.g., emergency debugging).**
@@ -22,43 +24,97 @@ Why:
 - Create a follow-up task to codify the change in Terraform
 - Expect the change to be reverted on next `terraform apply`
 
-## CRITICAL: Production Database Access
+### Applying terraform changes
 
-**The MCP sqlite tools query the LOCAL dev database, NOT production.**
-
-To query the production database via libSQL:
 ```bash
-# Port-forward to libSQL server
-kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n abaci port-forward svc/libsql 8080:8080
-
-# Then use curl or any HTTP client
-curl -X POST http://localhost:8080/v2/pipeline -d '{"requests":[{"type":"execute","stmt":{"sql":"SELECT * FROM users LIMIT 5"}}]}'
+cd infra/terraform
+terraform plan    # uses terraform.tfvars automatically
+terraform apply
 ```
 
-Or exec into an app pod and use sqlite3 tools if needed for debugging.
+- State is **local** (`terraform.tfstate`), no remote backend
+- Vars in `terraform.tfvars` (contains secrets — don't cat unnecessarily)
+- Run from this machine, not from the NAS
 
-NEVER use `mcp__sqlite__read_query` or similar when you need production data.
+## Shared Infrastructure — CRITICAL
 
-## Kubernetes Access
+`infra/terraform/gitea.tf` manages **shared k8s infrastructure** used by multiple projects (weather-display, abaci.one, etc.) — not just this flashcard app. This is known organizational debt (tracked in weather-display#235).
 
+### What gitea.tf manages
+- **Gitea server**: deployment (`gitea/gitea:1.25-rootless`), service, ingress (`git.dev.abaci.one`, `firmware.dev.abaci.one`), config (app.ini via ConfigMap)
+- **Act runner**: deployment with DinD sidecar, runner config
+- **Local Docker registry**: deployment (`registry:2`), service, PVC
+- **Init containers**: `init-config` (copies app.ini), `fix-dbfs-logs` (workaround for go-gitea/gitea#35110 — remove after Gitea >= 1.26, tracked in weather-display#234)
+- **Setup jobs**: admin user creation, repo migration from GitHub
+- **Namespace**: `gitea` on k3s at `192.168.86.37`
+- **DB**: SQLite at `/data/gitea/gitea.db` (NFS PVC from NAS)
+
+## Access
+
+### Kubernetes (local kubeconfig)
 kubeconfig location: `~/.kube/k3s-config`
-
 ```bash
 kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n abaci get pods
 ```
 
+### k3s node (SSH)
+```bash
+ssh antialias@192.168.86.37
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl ...
+```
+
+### NAS
+```bash
+ssh nas.home.network    # use this hostname, not the IP
+```
+NAS projects live at `~/projects/`. The NAS runs Docker containers (abaci.one, etc.) but Gitea is on k3s, not Docker.
+
 ## Database Architecture
 
-**libSQL Server** - All app pods connect to a single libSQL server for database access.
-
+**libSQL Server** — all app pods connect to a single in-cluster libSQL server.
 - **Dev**: `DATABASE_URL=file:./data/sqlite.db` (local SQLite file, no server needed)
 - **Prod**: `DATABASE_URL=http://libsql.abaci.svc.cluster.local:8080`
 
-This replaces the previous LiteFS setup. Benefits:
-- Any pod can handle reads AND writes
-- No write routing complexity
-- No primary/replica distinction for the app
-- Simple client-server model
+Any pod can handle both reads and writes — no primary/replica distinction and no write-routing complexity for the app.
+
+### CRITICAL: Production Database Access
+
+**The MCP sqlite tools query the LOCAL dev database, NOT production.** The local dev DB (`apps/web/data/sqlite.db`) is a separate SQLite file — changes there do NOT affect production. NEVER use `mcp__sqlite__read_query` or similar when you need production data.
+
+**Preferred — convenience script (works from local terminal):**
+```bash
+./scripts/prod-query.sh "SELECT id, email, upgraded_at FROM users WHERE email IS NOT NULL LIMIT 5"
+```
+
+**Via an app pod** (Node.js + libsql HTTP pipeline API — no `curl`/`sqlite3` in the container):
+```bash
+kubectl get pods -n abaci -l app=abaci-app          # 1. get a pod name
+kubectl exec -n abaci <pod-name> -- node -e "
+  fetch('http://libsql.abaci.svc.cluster.local:8080/v2/pipeline', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      requests: [{
+        type: 'execute',
+        stmt: { sql: 'SELECT * FROM users LIMIT 5' }
+      }]
+    })
+  }).then(r => r.json()).then(d => console.log(JSON.stringify(d, null, 2)))
+"
+```
+
+**Via port-forward + HTTP client:**
+```bash
+kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n abaci port-forward svc/libsql 8080:8080
+curl -X POST http://localhost:8080/v2/pipeline -d '{"requests":[{"type":"execute","stmt":{"sql":"SELECT * FROM users LIMIT 5"}}]}'
+```
+
+From Claude Code, use `mcp__kubernetes__exec_in_pod` or run the script via the Bash tool.
+
+**Notes:**
+- Column names use `snake_case` in SQL (e.g., `user_id`, `is_practice_student`), NOT camelCase
+- Use parameterized queries for safety with the raw API: `{ sql: 'SELECT * FROM users WHERE id = ?', args: [{ type: 'text', value: 'some-id' }] }`
+- Multiple queries can be batched in a single `requests` array
 
 ## Network Architecture
 
@@ -85,38 +141,74 @@ GitHub Actions → ghcr.io → Argo CD Image Updater → k3s Deployment
 
 1. Push to GitHub (main branch)
 2. GitHub Actions builds image → pushes to ghcr.io
-3. **Argo CD image updater detects new image**
-4. Argo CD triggers rolling restart of pods
+3. **Argo CD image updater detects the new image** (every 2 min, via anonymous access) and patches the Application's kustomize image override
+4. Argo CD auto-sync: runs the PreSync migration job, then rolls the deployment
 5. No manual intervention required!
 
-**Registry**: `ghcr.io/antialias/soroban-abacus-flashcards:latest`
+- **Manifests**: `infra/k8s/abaci-app/` (Kustomize — deployment.yaml, migration-job.yaml)
+- **PreSync hook**: `migration-job.yaml` runs DB migrations before pods roll (Argo CD waits for it)
+- **Registry**: `ghcr.io/antialias/soroban-abacus-flashcards:latest`
+- Argo CD runs in the `argocd` namespace
 
-To verify Argo CD image updater is working:
+### Container Registry (ghcr.io) — Public Package, No Auth Needed
+
+**The `ghcr.io/antialias/abaci-one` package is PUBLIC.** Anonymous pulls work. Do NOT add credentials for pulling.
+
+**Critical rules:**
+- **Do NOT add `imagePullSecrets`** to k8s manifests. The package is public and anonymous pulls work. If a pod has `imagePullSecrets` referencing a secret with expired/invalid credentials, ghcr.io returns 403 Forbidden instead of falling back to anonymous access — causing ImagePullBackOff.
+- **Image updater `registries.conf`** (ConfigMap `argocd-image-updater-config` in `argocd` namespace) must NOT have a `credentials:` line for ghcr.io. Anonymous access works for reading tags from public packages. Expired credentials cause "denied: denied" errors.
+- **Legacy `ghcr-registry` secrets** exist in both `argocd` and `abaci` namespaces with expired PATs. These secrets are NOT used and should NOT be referenced. They remain as artifacts from when the package was private.
+
+**Debugging image pull failures:**
+- Check if `imagePullSecrets` is set on the pod spec — remove it
+- Check `argocd-image-updater-config` ConfigMap for `credentials:` line — remove it
+- Test anonymous pull: `kubectl run test --image=ghcr.io/antialias/abaci-one:main --restart=Never` (no imagePullSecrets = anonymous = works)
+
+### Verify / debug Argo CD
+
 ```bash
+# Image updater logs
 kubectl --kubeconfig=/Users/antialias/.kube/k3s-config -n argocd logs -l app.kubernetes.io/name=argocd-image-updater --tail=50
+
+# App status
+kubectl get applications -n argocd
 ```
 
-### Manual Rollout (quick restart)
+### Stuck Argo CD Sync (PreSync Hook)
+If the migration job (PreSync hook) fails or is deleted mid-sync, Argo CD gets stuck "waiting for completion of hook batch/Job/db-migrations". To fix:
+1. Patch the application to clear the stuck operation: `kubectl patch applications.argoproj.io abaci-app -n argocd --type merge -p '{"operation": null}'`
+2. This allows auto-sync to trigger a fresh sync cycle
 
-To force pods to pull the latest image:
+### Manual Rollout (quick restart)
+Argo CD normally handles rollouts automatically; do NOT manually restart unless debugging. To force pods to pull the latest image:
 ```bash
 kubectl --kubeconfig=~/.kube/k3s-config -n abaci rollout restart deployment abaci-app
 ```
+
+## Fixbot (Automated CI Fix System)
+
+Fixbot automatically detects CI failures on main, diagnoses them, and opens fix PRs.
+
+- **Issues** are prefixed `[fixbot]` and labeled `fixbot`
+- **PRs** are on `fixbot/` branches
+- **Implementation** lives in `.github/fixbot/` (workflows + prompts)
+- **Full reference**: See `.claude/FIXBOT.md` for how to interact with fixbot, the "ensure main is on prod" procedure, and what NOT to do
 
 ## Key Resources
 
-- **Deployment**: `abaci-app` (app pods)
-- **Deployment**: `libsql` (database server)
-- **Service**: `abaci-app` (load balancer across all app pods)
-- **Service**: `libsql` (internal access to database)
-- **Ingress**: Routes `abaci.one` to app service
+Application topology on k3s:
+- **Deployment**: `abaci-app` — app pods, 3 replicas for HA. StatefulSet-style services: `abaci-app` (ClusterIP, load-balances across app pods), `abaci-app-headless` (StatefulSet DNS), `abaci-app-primary` (routes to the primary instance)
+- **Deployment**: `libsql` — database server; **Service**: `libsql` (internal DB access)
+- **Redis**: session/cache store
+- **Ingress**: routes `abaci.one` to the app service
 - **IngressRoute**: Socket.IO sticky sessions for `/api/socket`
+- **Key namespaces**: `abaci` (app, Redis, Gatus uptime, dev-artifacts), `monitoring` (Prometheus, Grafana, node-exporter, Tempo tracing), `kube-system` (Traefik, CoreDNS, metrics-server), `cert-manager` (letsencrypt-staging issuer), `argocd` (Argo CD + image updater)
 
 ## Common Operations
 
-### Restart app pods (rolling)
+### Check app logs
 ```bash
-kubectl --kubeconfig=~/.kube/k3s-config -n abaci rollout restart deployment abaci-app
+kubectl logs -n abaci -l app=abaci-app --tail=100
 ```
 
 ### Check libSQL server status
@@ -126,44 +218,9 @@ kubectl --kubeconfig=~/.kube/k3s-config -n abaci logs -l app=libsql --tail=50
 
 ### Run migrations manually
 ```bash
-# Exec into an app pod
 kubectl --kubeconfig=~/.kube/k3s-config -n abaci exec -it deployment/abaci-app -- node dist/db/migrate.js
 ```
 
-## Debugging Gitea Actions Runner Performance
+## Monitoring & CI Debugging
 
-**Grafana Dashboards:**
-- **Ops Metrics** (uid: `ops-metrics`) - Infrastructure monitoring for CI/CD debugging
-- **Product Metrics** (uid: `product-metrics`) - Application traffic and health
-
-Access via: https://grafana.abaci.one (or use port-forward to localhost)
-
-**Key panels for Gitea runner debugging (Ops Metrics dashboard):**
-
-| Panel | Metric | What to Look For |
-|-------|--------|------------------|
-| Runner Memory Usage | `container_memory_working_set_bytes{namespace="gitea-runner"}` | Memory spikes during builds |
-| Runner CPU Usage | `rate(container_cpu_usage_seconds_total{namespace="gitea-runner"}[5m])` | CPU saturation |
-| Runner Network I/O | `rate(container_network_receive_bytes_total{namespace="gitea-runner"}[5m])` | Network bottlenecks |
-| Node Memory % | `1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)` | System-wide memory pressure |
-| Node CPU Usage | `1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))` | Total CPU with I/O wait |
-| Disk Throughput | `rate(node_disk_read_bytes_total[5m])` | Disk read/write rates |
-| Disk I/O Utilization | `rate(node_disk_io_time_seconds_total[5m])` | Disk saturation (>90% = bottleneck) |
-
-**Quick Prometheus queries for debugging:**
-```promql
-# Runner memory during build
-container_memory_working_set_bytes{namespace="gitea-runner", container="gitea-runner"}
-
-# Node I/O wait (high = disk bottleneck)
-avg(rate(node_cpu_seconds_total{mode="iowait"}[5m])) * 100
-
-# Disk device utilization (>90% is bad)
-rate(node_disk_io_time_seconds_total{device=~"sd.*|nvme.*"}[5m]) * 100
-```
-
-**If builds are slow, check in order:**
-1. Disk I/O Utilization - if >90%, disk is the bottleneck
-2. Node Memory % - if >85%, memory pressure causes swapping
-3. I/O Wait - high I/O wait with low CPU = disk-bound
-4. Runner Memory - spikes may indicate build is memory-heavy
+Grafana dashboards and Gitea Actions runner performance debugging (Ops/Product metrics panels, Prometheus queries, "builds are slow" triage): see `docs/monitoring.md`.

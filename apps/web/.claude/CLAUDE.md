@@ -1,21 +1,5 @@
 # Claude Code Instructions for apps/web
 
-## Critical Behavioral Rules
-
-### React Hook Imports
-Before using ANY React hook, verify it's imported. Read imports first (lines 1-20), add missing hooks IN THE SAME EDIT as your code. Missing imports break the app.
-
-### Implement Everywhere
-When agreeing on a technical approach, implement it in ALL affected code paths. When fixes don't work, first verify you actually implemented the agreed approach everywhere.
-
-### Documentation Graph
-All documentation must be reachable from root README via linked path. Unlinked docs are invisible.
-
-### Code Factoring
-**Never fork, always factor.** When sharing code between files, extract to shared utility - never copy/paste.
-
----
-
 ## Workflow
 
 1. Make changes → 2. Run `npm run pre-commit` → 3. Tell user ready for testing → 4. Wait for approval → 5. Commit only when approved
@@ -114,32 +98,45 @@ Global decorators are in `.storybook/preview.tsx`. It wraps all stories with: `S
 
 **Local dev:** SQLite + Drizzle ORM at `./data/sqlite.db`. Use MCP tools: `mcp__sqlite__read_query`, `mcp__sqlite__write_query`, `mcp__sqlite__describe_table`. Do NOT use bash `sqlite3` commands.
 
-**Production:** libsql server in-cluster (NOT a local file). Use `./scripts/prod-query.sh "SQL"` or see root `CLAUDE.md` → "Production Database (libsql)" for programmatic access via Kubernetes MCP.
+**Production:** libsql server in-cluster (NOT a local file). Use `./scripts/prod-query.sh "SQL"` or see `infra/terraform/CLAUDE.md` → "Production Database Access" for programmatic access via Kubernetes MCP.
 
 ---
 
-## Kubernetes Deployment (Argo CD Auto-Updates)
+## Kubernetes Deployment
 
-**Production runs on k3s with Argo CD + argocd-image-updater for automatic image deployments.**
+Production runs on k3s with Argo CD + argocd-image-updater — new images pushed to ghcr.io deploy automatically. **Do NOT manually `kubectl rollout restart`** (Argo CD handles it) and **never add `imagePullSecrets`/registry credentials** (the package is public; expired creds cause a 403 instead of anonymous fallback). Full details — CI/CD flow, ghcr registry rules, Argo CD debugging, PreSync stuck-sync fix — live in `infra/terraform/CLAUDE.md` → Deployment Workflow.
 
-- When a new image is pushed to ghcr.io, argocd-image-updater detects it and triggers a rollout
-- Do NOT manually trigger `kubectl rollout restart` - Argo CD handles this automatically
-- Argo CD runs in the `argocd` namespace
-- **ghcr.io package is PUBLIC — no auth credentials needed.** See root `CLAUDE.md` → "Container Registry (ghcr.io)" for critical rules about imagePullSecrets and registry auth. TL;DR: never add `imagePullSecrets` or registry credentials — expired creds cause 403 instead of falling back to anonymous.
+---
 
-### Debugging Argo CD
-```bash
-# Check Argo CD image updater logs
-kubectl logs -n argocd -l app.kubernetes.io/name=argocd-image-updater --tail=50
+## Blog System
 
-# Check Argo CD app status
-kubectl get applications -n argocd
-```
+Posts live at `apps/web/content/blog/{slug}.md` with YAML frontmatter.
 
-### Stuck Argo CD Sync (PreSync Hook)
-If the migration job (PreSync hook) fails or is deleted mid-sync, Argo CD gets stuck "waiting for completion of hook batch/Job/db-migrations". To fix:
-1. Patch the application to clear the stuck operation: `kubectl patch applications.argoproj.io abaci-app -n argocd --type merge -p '{"operation": null}'`
-2. This allows auto-sync to trigger a fresh sync cycle
+**To write a post:** use `/write-blog-post` — it covers the full workflow.
+
+**Quick reference:**
+- Required frontmatter: `title`, `description`, `author`, `publishedAt`, `updatedAt`, `tags`
+- Hero types: `component` (pre-built React), `generated` (AI image), `storybook` (screenshot), `html` (raw HTML file)
+- Hero components: `ten-frames`, `multi-digit`, `subtraction-scaffolding`, `blame-distribution`, `difficulty-plot-mastery`, `readiness-all-variants`, `vision-before-after`, `vision-showcase`
+- Inline embeds: `<!-- EMBED: id "desc" -->` marker in markdown + `content/blog/embeds/{slug}.json` config
+- Embed types: `component` (from inline registry) or `html` (file at `content/blog/embed-html/{slug}/{id}.html`)
+- HTML embed files (especially worksheet previews) are populated via the admin snapshot capture tool, NOT by hand
+- Admin panel: `/admin/blog-images` — manages hero images, prompts, crop, Storybook capture, HTML editors, embed configs
+- Registries: `src/lib/blog/heroComponentRegistry.tsx`, `src/lib/blog/inlineComponentRegistry.tsx`
+
+## Euclid's Elements Interactive (Toys)
+
+Interactive compass-and-straightedge exploration of Euclid's Elements Book I. Inspired by Byrne's 1847 color-coded edition.
+
+**Reference files** (READ THESE before working on the Euclid toy — they contain the full text of Book I so you don't need to re-fetch it):
+- `apps/web/src/components/toys/euclid/reference/book1-foundations.md` — All 23 definitions, 5 postulates, 5 common notions with commentary
+- `apps/web/src/components/toys/euclid/reference/book1-propositions.md` — All 48 propositions: statements, types (construction/theorem), proof summaries, dependencies
+- `apps/web/src/components/toys/euclid/reference/book1-dependency-graph.md` — Machine-readable DAG of proposition dependencies, thematic groupings, parallel postulate boundary
+- `apps/web/src/components/toys/euclid/reference/pedagogy-and-design.md` — Byrne-inspired design notes, color palette, interaction model, data structures, progression tracks
+- `apps/web/src/components/toys/euclid/reference/authoring-guide.md` — Step-by-step guide for implementing new propositions: geometry, tutorials, exploration narration, draggable points, testing
+- `apps/web/src/components/toys/euclid/reference/architecture.md` — Recipe system, adapters, ghost/ceremony pipeline, rendering architecture, dual authoring patterns
+
+**Architecture decision:** New toy at `toys/euclid/`, NOT an extension of the coordinate plane. Reuses shared infrastructure (Canvas 2D + RAF loop, coordinate conversions, collision detection, hit testing) but has its own construction-oriented interaction model. Uses `@flatten-js/core` for intersection computation.
 
 ---
 

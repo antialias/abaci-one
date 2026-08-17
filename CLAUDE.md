@@ -1,42 +1,22 @@
 # Soroban Abacus Flashcards — Project Instructions
 
-## Shared Infrastructure — CRITICAL
+The soroban abacus flashcards web app (Next.js, in `apps/web`) plus the Terraform/k8s infra that runs it (`infra/terraform`). Production runs on a k3s cluster at `192.168.86.37`; the NAS Traefik fronts it.
 
-This repo contains `infra/terraform/gitea.tf`, which manages **shared k8s infrastructure** used by multiple projects (weather-display, abaci.one, etc.) — not just this flashcard app. This is known organizational debt (tracked in weather-display#235).
+- **Working in `apps/web`?** App rules live in `apps/web/.claude/CLAUDE.md`.
+- **Deploy, prod DB, registry, k3s, terraform?** See `infra/terraform/CLAUDE.md`.
+- **Shared-infra note:** `infra/terraform/gitea.tf` manages k8s infrastructure shared by other projects (weather-display, abaci.one) — read `infra/terraform/CLAUDE.md` before touching it.
 
-### What gitea.tf manages
+## Source Control
 
-- **Gitea server**: deployment (`gitea/gitea:1.25-rootless`), service, ingress (`git.dev.abaci.one`, `firmware.dev.abaci.one`), config (app.ini via ConfigMap)
-- **Act runner**: deployment with DinD sidecar, runner config
-- **Local Docker registry**: deployment (`registry:2`), service, PVC
-- **Init containers**: `init-config` (copies app.ini), `fix-dbfs-logs` (workaround for go-gitea/gitea#35110 — remove after Gitea >= 1.26, tracked in weather-display#234)
-- **Setup jobs**: admin user creation, repo migration from GitHub
-- **Namespace**: `gitea` on k3s at `192.168.86.37`
-- **DB**: SQLite at `/data/gitea/gitea.db` (NFS PVC from NAS)
+- **GitHub**: https://github.com/antialias/abaci-one
+- Use the `gh` CLI for issues, PRs, and other GitHub operations.
 
-### Applying terraform changes
+## Deployment
 
-```bash
-cd infra/terraform
-terraform plan    # uses terraform.tfvars automatically
-terraform apply
-```
+CI builds and pushes images; deploys are automatic (Argo CD in k3s; the NAS runs **Watchtower** for its Docker containers, checking every few minutes). Wait a few minutes after a build rather than deploying by hand. Full pipeline: `infra/terraform/CLAUDE.md` → Deployment Workflow.
 
-- State is **local** (`terraform.tfstate`), no remote backend
-- Vars in `terraform.tfvars` (contains secrets — don't cat unnecessarily)
-- Run from this machine, not from the NAS
-
-### k3s access
+Check this app's deployed revision on the NAS, then compare with `git rev-parse HEAD` (if the NAS is behind after 5–10 minutes, Watchtower or the image pull may have a problem):
 
 ```bash
-ssh antialias@192.168.86.37
-sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl ...
+ssh nas.home.network '/usr/local/bin/docker inspect soroban-abacus-flashcards --format="{{index .Config.Labels \"org.opencontainers.image.revision\"}}"'
 ```
-
-### NAS access
-
-```bash
-ssh nas.home.network    # use this hostname, not the IP
-```
-
-NAS projects live at `~/projects/`. The NAS runs Docker containers (abaci.one, etc.) but Gitea is on k3s, not Docker.
