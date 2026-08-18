@@ -765,7 +765,10 @@ export function AbacusStudioViewer() {
   // the store's exporterReady flips back to false on the paper lane.
   useEffect(() => {
     registerExporter({
-      exportStl: () => scadRef.current.exportStl(paramsRef.current),
+      // The plain colorless STL ships without plugs, so retention pockets
+      // would only be dirt-trap recesses under every letter — force them off.
+      // exportParts (the 3MF path, below) keeps the user's params untouched.
+      exportStl: () => scadRef.current.exportStl({ ...paramsRef.current, text_retention: false }),
       exportParts: async () => {
         const p = paramsRef.current
         const withMarkers = p.show_markers && p.show_frame

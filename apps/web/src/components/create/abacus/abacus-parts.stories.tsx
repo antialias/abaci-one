@@ -81,6 +81,20 @@ export const SeamCoupon: Story = part({ pass: { only: 'seam_coupon' } })
  *  proof is that this pass's volume is exactly 2× `SeamCoupon`'s. */
 export const SeamCouponPair: Story = part({ pass: { only: 'seam_coupon_pair' } })
 
+// ── text-retention coupon (GitHub #180) ─────────────────────────────────────
+
+/** The stepped-retention proof plate: two rows of pocketed glyphs ("0"/"8" for
+ *  counters at two sizes, "%", "=", ".") with the hidden neck + foot carved
+ *  under each. Retention is forced ON in the scad regardless of the toggle —
+ *  this part exists to test it. Print with `RetentionCouponPlugs` in TPU and
+ *  pry at the letters. */
+export const RetentionCoupon: Story = part({ pass: { only: 'retention_coupon' } })
+
+/** The matching plug set — the same `rc_insets()` at thru=0, so plate and plugs
+ *  can never drift. Bottom vantage shows the outset feet and the counter-safe
+ *  closing bites around the "0"/"8" islands. */
+export const RetentionCouponPlugs: Story = part({ pass: { only: 'retention_coupon_plugs' } })
+
 // ── module columns (Gitea #30): the pieces the modular kit prints ────────────
 // Unlike the coupon these are the REAL deliverables: rim chamfers that run
 // continuously across seams, per-module TPU feet (every module carries its own,
