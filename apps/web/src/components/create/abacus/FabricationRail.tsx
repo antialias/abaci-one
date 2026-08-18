@@ -56,6 +56,8 @@ export function FabricationRail() {
     catalog,
     servicePlan,
     unpinnedServicePlan,
+    servicePlanUnavailable,
+    servicePlanUnavailableDetail,
     unplacedRoles,
     filamentMap,
     solveResult,
@@ -367,7 +369,14 @@ export function FabricationRail() {
         isLoading={thhFilaments.isLoading}
         isFetching={thhFilaments.isFetching}
         connectionId={selectedConnectionId}
-        unavailable={thhFilaments.unavailable}
+        // The roster read wins: when it fails the plan read never fires (an empty
+        // rosterSignature disables it), so this `??` is belt-and-braces, not a
+        // precedence rule anyone should rely on. The detail rides unconditionally
+        // because only the PLAN hook can produce 'refused', and the panel shows
+        // the detail only under that reason — so a catalog failure can never wear
+        // the planner's words.
+        unavailable={thhFilaments.unavailable ?? servicePlanUnavailable}
+        unavailableDetail={servicePlanUnavailableDetail}
         exportBlocked={exportBlocked}
         unplacedRoles={unplacedRoles}
         requestExportParts={requestExportParts}

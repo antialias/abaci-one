@@ -128,6 +128,10 @@ export interface PrintPanelProps {
    *  connection fallback; required once the user has paired more than one. */
   connectionId?: string
   unavailable: PrintUnavailableReason | null
+  /** The service's own sentence for a `refused` plan — quoted verbatim, because
+   *  it names WHICH constraint it refused ("palette supports at most 8 entries")
+   *  and nothing client-side can reconstruct that. Only rendered for 'refused'. */
+  unavailableDetail?: string | null
   /** Solver gate — a design that won't print can't be submitted either. */
   exportBlocked: boolean
   /** Role labels the filament planner could not serve from the loaded roster
@@ -198,6 +202,8 @@ const UNAVAILABLE_COPY: Record<PrintUnavailableReason, string> = {
   unreachable: 'Print service unreachable right now.',
   unauthorized: 'The print service rejected our credentials — re-pair to reconnect.',
   'no-printer': 'The print service has no printers.',
+  refused:
+    'The print service read this design and refused to plan it — its answer is below. This isn’t a hiccup: the same design gets the same answer, so change the design (fewer colors, fewer text groups) — or download the 3MF above and pick the filaments yourself.',
   error:
     'The print service hit an unexpected error reading your filaments — retry, or check the connection in Settings.',
 }
@@ -238,6 +244,7 @@ export function PrintPanel(props: PrintPanelProps) {
     isFetching = false,
     connectionId,
     unavailable,
+    unavailableDetail = null,
     exportBlocked,
     unplacedRoles = EMPTY_ROLES,
     requestExportParts,
@@ -746,12 +753,26 @@ export function PrintPanel(props: PrintPanelProps) {
       {unavailable !== null ? (
         <div data-element="print-service-unavailable" style={{ color: 'rgba(148,163,184,0.95)' }}>
           {UNAVAILABLE_COPY[unavailable]}
+          {unavailable === 'refused' && unavailableDetail && (
+            // The service's own words, marked as a quotation so it reads as the
+            // printer talking rather than as our copy.
+            <div
+              data-element="print-plan-refusal-detail"
+              style={{ marginTop: 6, fontStyle: 'italic', color: 'rgba(203,213,225,0.92)' }}
+            >
+              “{unavailableDetail}”
+            </div>
+          )}
           {/* Remediation is per-reason: not-configured (zero connections) gets an
               inline quick-pair (0 → 1, keeps the sole-connection fallback);
               unreachable/error get a retry that re-runs the reads; unauthorized/
               error also link to Settings › Printing (a dead or ambiguous
               connection must be fixed there, not re-paired inline). no-printer is
-              service-side with no client action, so it stays copy-only. */}
+              service-side with no client action, so it stays copy-only — and so
+              does refused: retrying re-asks a question the planner already
+              answered (staleTime Infinity plus a request-bytes key means the
+              answer only changes when the design does), so a control here would
+              be a lie. */}
           {unavailable === 'not-configured' ? (
             <PairPrinterPrompt />
           ) : (

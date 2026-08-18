@@ -123,15 +123,22 @@ export interface ThhFilamentsResponse {
 }
 
 /**
- * Why the live roster isn't available. The studio silently falls back to the
- * params-derived catalog on any of these — a missing print service is a
- * degraded state, never an error page.
+ * Why a live service read isn't available — shared by the roster read
+ * (`useThhFilamentCatalog`) and the plan read (`useFilamentPlan`). The studio
+ * silently falls back to the params-derived catalog on any of these — a missing
+ * print service is a degraded state, never an error page.
  */
 export type PrintUnavailableReason =
   | 'not-configured' // no paired connection
   | 'unreachable' // proxy could not reach the service
   | 'unauthorized' // service rejected the connection's token
   | 'no-printer' // service reachable but reports no printers
+  // the PLANNER read the request and refused it (a 4xx carrying the service's
+  // own {code, message}) — e.g. a palette past its cap. Deterministic: the same
+  // design gets the same answer, so there is nothing to retry. Only
+  // `useFilamentPlan` produces this; the roster read's own 400 (an ambiguous
+  // connection, minted by our proxy in a different shape) stays 'error'.
+  | 'refused'
   // any other failure (ambiguous-connection 400, 5xx, malformed response):
   // surfaced with remediation, never masked as success
   | 'error'
