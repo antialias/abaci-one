@@ -382,6 +382,23 @@ text_size      = 6;  // top-face glyph size (mm; must fit strip_y — see rails)
 edge_text_size = 5;  // side-wall glyph size (mm; ≤ frame_h − 2·chamfer flat band)
 emboss_h    = 0.6;   // raised height (kept ≤0.6: wall glyphs are tiny cantilevers)
 bevel       = 0.25;  // emboss edge-break (one offset step ≈ a print layer)
+/* Stepped mechanical retention for inset letters (GitHub #180). The visible
+   inlay stays the CV-locked 0.6 mm (`inlay_d`); below it every plug grows a
+   hidden stepped base — a straight NECK (`ret_shoulder` deep) and a FOOT
+   outset `ret_step` past the glyph outline for `ret_band` more — and the
+   pocket is carved with the same two prisms. The frame's shoulder ring
+   bridges `ret_step` onto the plug foot and holds the letter mechanically,
+   so letter filaments no longer need to certify-weld to the frame (the ArUco
+   markers keep their weld requirement; TPU feet are out of scope). Default
+   OFF so legacy CLI renders stay fingerprint-identical — the app turns it on
+   for EVERY render, so pocket and plug passes share one define and can never
+   disagree. Geometry lives in ret_foot_2d()/inset_tok_3d() below the text
+   modules. */
+text_retention = false;
+ret_shoulder = 1.0;   // straight neck below the visible inlay (mm)
+ret_band     = 0.8;   // foot height (mm)
+ret_step     = 0.6;   // foot outset past the glyph outline (mm)
+ret_eps      = 0.01;  // overlap-never-abut fuse (two-engine doctrine)
 FONTS = ["DejaVu Sans:style=Bold", "Noto Emoji"];
 
 /* ===== toggles / quality ===== */
@@ -400,8 +417,9 @@ only         = "";     // part passes: "" | "marker_black" | "marker_white" | "t
                        // module-local, for the kit 3MFs (plug_group applies to all three
                        // text passes). Plus the INSPECTION slices — "bead" | "bead_capture"
                        // | "bead_cap" | "bead_exposed" | "channel" | "frame" | "seam_coupon"
-                       // | "seam_coupon_pair" | "module_pair" — not filament bodies, just
-                       // one piece rendered alone for the Storybook bench — and the six
+                       // | "seam_coupon_pair" | "module_pair" | "retention_coupon"
+                       // | "retention_coupon_plugs" — not filament bodies, just one
+                       // piece rendered alone for the Storybook bench — and the six
                        // MODULE passes ("module_{left,mid,right}[_feet]") the kit renders.
                        // All sets are dispatched at the bottom of this file; the full
                        // vocabulary is pinned against the TS side by export-defines.test.ts.
@@ -529,6 +547,13 @@ assert(!feet || feet_c + feet_half + 0.8 <= strip_y,
        "feet pockets would cut the bead channels — smaller feet_w or bigger border_w");
 assert(!feet || feet_depth_eff + 2 <= s_fh,
        "feet pocket leaves too thin a web above — shrink feet_depth, grow frame_h/size, or feet_retention=dovetail");
+/* Text-retention feet carve down from the top face (foot bottom at
+   s_fh − inlay_d − ret_shoulder − ret_band); TPU feet pockets rise from z=0.
+   The two can share XY (feet sit on the same border strips the rails run
+   along), so keep ≥0.5 mm of solid web between them. */
+assert(!(text_retention && text_mode == "inset") ||
+       s_fh >= inlay_d + ret_shoulder + ret_band + (feet ? feet_depth_eff : 0) + 0.5,
+       "frame too thin for the text-retention feet — grow frame_h/size, or text_retention=false");
 /* anti-bend intermediate feet (napkin): at any column the channels open through
    BOTH faces, so only the two solid border strips carry long-axis bending —
    I ≈ 2·strip_y·s_fh³/12 ≈ 1.1e3 mm⁴ at defaults. A mid-span hand press
@@ -906,12 +931,16 @@ function fit_sz(toks, req, pitch, band) =
   req * min(1, min(concat(
     [for (t = toks) ink_frac(t[0]) * pitch / max(0.001, ink(t[0], FONTS[t[1]], req)[0])],
     [for (t = toks) (band / 2 - 0.3)       / max(0.001, ink(t[0], FONTS[t[1]], req)[1])])));
-function rail_sz(r) = fit_sz(r[0], text_size,
-  norm([r[3] - r[1], r[4] - r[2]]) / max(1, len(r[0])),
-  (r[5] == 0 ? strip_y : strip_x) - 2 * chamf);
-function wall_sz(r) = fit_sz(r[0], edge_text_size,
-  norm([r[4] - r[2], r[5] - r[3]]) / max(1, len(r[0])),
-  s_fh - 2 * chamf);
+/* Cell geometry, shared by the fitter and the retention-foot clips: pitch is
+   the along-run cell width (cells partition [A,B], so per-cell clipping also
+   guarantees neighboring feet can never merge), band the cross-run extent that
+   leaves `chamf` of untouched skin to the strip edges / wall rim. */
+function rail_pitch(r) = norm([r[3] - r[1], r[4] - r[2]]) / max(1, len(r[0]));
+function rail_band(r)  = (r[5] == 0 ? strip_y : strip_x) - 2 * chamf;
+function wall_pitch(r) = norm([r[4] - r[2], r[5] - r[3]]) / max(1, len(r[0]));
+function wall_band(r)  = s_fh - 2 * chamf;
+function rail_sz(r) = fit_sz(r[0], text_size,      rail_pitch(r), rail_band(r));
+function wall_sz(r) = fit_sz(r[0], edge_text_size, wall_pitch(r), wall_band(r));
 
 module tok2d(tokens, k, sz)
   text(tokens[k][0], size = sz, font = FONTS[tokens[k][1]],
@@ -924,15 +953,57 @@ function tok_color(k) =
   text_fill == "rainbow" ? _palette(color_palette)[tok_group(k)] : text_color;
 function tok_wanted(k) = plug_group < 0 || tok_group(k) == plug_group;
 
-module rail_tok_2d(r, k) {   // one top-face token, positioned in the XY plane
+module rail_tok_at(r, k) {   // token k's cell transform; children in the cell frame
   f = (k + 0.5) / len(r[0]);
   translate([r[1] + (r[3] - r[1]) * f, r[2] + (r[4] - r[2]) * f])
-    rotate(r[5]) tok2d(r[0], k, rail_sz(r));
+    rotate(r[5]) children();
 }
+module rail_tok_2d(r, k)     // one top-face token, positioned in the XY plane
+  rail_tok_at(r, k) tok2d(r[0], k, rail_sz(r));
 module wall_tok_at(r, k) {   // wall transform for token k; children in local frame
   f = (k + 0.5) / len(r[0]);
   translate([r[2] + (r[4] - r[2]) * f, r[3] + (r[5] - r[3]) * f, z_edge])
     rotate([90, 0, r[1]]) children();
+}
+
+/* ===== stepped retention feet (GitHub #180) =================================
+   Counter safety (the "0" problem): naively outsetting the ink would also
+   outset a counter's inner rim INWARD and strand the counter island on the
+   plug. The foot is therefore  dilate(ink, ret_step) − (closing(ink) − ink)
+   where closing = offset(−R) ∘ offset(+R) — morphological closing, identical
+   on BOTH engines (the 2021.01 CLI predates fill(), which is why fill() is
+   banned here). A point survives closing iff its R-ball fits inside
+   dilate(ink, R): counters narrower than ~2R close solid, so their rims are
+   never outset and no island is ever trapped; wider counters lose a
+   ret_step-deep bite from the rim but keep a printable core ≥ 2·(R − ret_step).
+   R = ret_step + 0.4 makes that core ≥ 0.8 mm = two 0.4 mm perimeters. Side
+   effect: glyphs closer than 2R share closed gaps and lose the feet BETWEEN
+   them — conservative (less foot), never unsafe. */
+module ret_foot_2d(clip_w, clip_h) {  // 2D foot ring around the ink (children)
+  R = ret_step + 0.4;
+  intersection() {
+    difference() {
+      offset(r = ret_step) children();
+      difference() {
+        offset(r = -R) offset(r = R) children();  // morphological closing
+        offset(r = ret_eps) children();           // keep a lateral fuse to the neck
+      }
+    }
+    square([clip_w, clip_h], center = true);      // stay inside the token's cell
+  }
+}
+/* One inset token's solid: face at z=0, material below (−z), pockets poke
+   `thru` above. With retention OFF this composes to EXACTLY the legacy prism —
+   pocket = extrude(inlay_d + thru) from −inlay_d, plug (thru=0) = the flush
+   inlay_d slab — so legacy renders stay fingerprint-identical (pinned by the
+   sidecar --same harness). With retention ON, pocket and plug both grow the
+   same neck + foot, overlapping the neck bottom by ret_eps (never abutting). */
+module inset_tok_3d(thru, clip_w, clip_h, retention = text_retention) {
+  neck = inlay_d + (retention ? ret_shoulder : 0);
+  translate([0, 0, -neck]) linear_extrude(neck + thru) children();
+  if (retention)
+    translate([0, 0, -(neck + ret_band)]) linear_extrude(ret_band + ret_eps)
+      ret_foot_2d(clip_w, clip_h) children();
 }
 
 /* rs/ws select WHICH rails()/walls() entries to emit (index lists; defaults =
@@ -944,18 +1015,19 @@ module wall_tok_at(r, k) {   // wall transform for token k; children in local fr
    makes that unrepresentable; the seam-crossing slots stay mono-only. */
 module text_pockets(rs = [0, 1, 2, 3], ws = [0, 1, 2, 3]) { // inset: carved from the frame
   for (si = rs) let (r = rails()[si]) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
-    translate([0, 0, s_fh - inlay_d]) linear_extrude(inlay_d + s_fh) rail_tok_2d(r, k);
+    translate([0, 0, s_fh]) rail_tok_at(r, k)
+      inset_tok_3d(s_fh, rail_pitch(r), rail_band(r)) tok2d(r[0], k, rail_sz(r));
   for (si = ws) let (r = walls()[si]) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
-    wall_tok_at(r, k) translate([0, 0, -inlay_d])
-      linear_extrude(inlay_d + 1) tok2d(r[0], k, wall_sz(r));
+    wall_tok_at(r, k)
+      inset_tok_3d(1, wall_pitch(r), wall_band(r)) tok2d(r[0], k, wall_sz(r));
 }
 module text_plugs(rs = [0, 1, 2, 3], ws = [0, 1, 2, 3]) { // inset: flush colored inlays (3MF path)
   for (si = rs) let (r = rails()[si]) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1]) if (tok_wanted(k))
-    color(tok_color(k)) translate([0, 0, s_fh - inlay_d])
-      linear_extrude(inlay_d) rail_tok_2d(r, k);
+    color(tok_color(k)) translate([0, 0, s_fh]) rail_tok_at(r, k)
+      inset_tok_3d(0, rail_pitch(r), rail_band(r)) tok2d(r[0], k, rail_sz(r));
   for (si = ws) let (r = walls()[si]) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1]) if (tok_wanted(k))
-    color(tok_color(k)) wall_tok_at(r, k) translate([0, 0, -inlay_d])
-      linear_extrude(inlay_d) tok2d(r[0], k, wall_sz(r));
+    color(tok_color(k)) wall_tok_at(r, k)
+      inset_tok_3d(0, wall_pitch(r), wall_band(r)) tok2d(r[0], k, wall_sz(r));
 }
 module text_emboss(rs = [0, 1, 2, 3], ws = [0, 1, 2, 3]) { // emboss: raised + beveled, welds to the frame
   for (si = rs) let (r = rails()[si]) if (len(r[0]) > 0) for (k = [0 : len(r[0]) - 1])
@@ -1954,6 +2026,33 @@ module module_feet(kind) {     // the TPU pass per module kind (renders empty
   }
 }
 
+/* ===== retention coupon (GitHub #180) ======================================
+   The printable proof for the stepped feet: a small plate carrying two rows of
+   pocketed glyphs — "0"/"8" for counters at two sizes, "%" for small counters,
+   "=" for disjoint strokes, "." for a tiny blob — plus the matching plug set
+   to print in place in TPU and pry at. FIXED glyph sizes on purpose: the CLI
+   (2021.01, no textmetrics) and the shipped WASM engine disagree on fitted
+   sizes, and the coupon must be the same solid on both. Retention is FORCED ON
+   here regardless of text_retention — the coupon exists to test it. */
+rc_glyphs = ["0", "8", "%", "=", "."];
+rc_sizes  = [5, 3.5];   // per-row glyph size (mm)
+rc_pitch  = 6.5;        // cell width; rows at y = ±6, cell height 11
+rc_w = 36; rc_d = 24;
+rc_h = inlay_d + ret_shoulder + ret_band + 1;   // 1 mm floor under the feet
+module rc_tok(g, sz)
+  text(g, size = sz, font = FONTS[0], halign = "center", valign = "center");
+module rc_insets(thru)
+  for (row = [0, 1], i = [0 : len(rc_glyphs) - 1])
+    translate([(i - (len(rc_glyphs) - 1) / 2) * rc_pitch, row == 0 ? 6 : -6, 0])
+      inset_tok_3d(thru, rc_pitch, 11, retention = true)
+        rc_tok(rc_glyphs[i], rc_sizes[row]);
+module retention_coupon()          // face at z=0, plate below — same convention
+  difference() {                   // as inset_tok_3d, so no re-basing anywhere
+    translate([-rc_w / 2, -rc_d / 2, -rc_h]) cube([rc_w, rc_d, rc_h]);
+    rc_insets(1);
+  }
+module retention_coupon_plugs() rc_insets(0);
+
 /* ===== assemble ===== (color() is preview/3MF only — ignored by binstl, no geom change) */
 if (only == "marker_black")      for (k = [0 : 3]) color("black") marker_plug(k, true);
 else if (only == "marker_white") for (k = [0 : 3]) color("white") marker_plug(k, false);
@@ -2013,6 +2112,11 @@ else if (only == "seam_coupon")      seam_coupon();
 else if (only == "seam_coupon_pair") {
   seam_coupon_one(); translate([sc_w, 0, 0]) seam_coupon_one();
 }
+/* The text-retention coupon pair (GitHub #180): plate and plugs are separate
+   passes (different filaments — the plate previews in frame color, the plugs
+   in the inlay white) but share rc_insets(), so they can never drift. */
+else if (only == "retention_coupon")       color(frame_color) retention_coupon();
+else if (only == "retention_coupon_plugs") color("#f5f5f5")   retention_coupon_plugs();
 /* Module columns (Gitea #30 CP3): the six per-module passes the kit exporter
    renders — three PLA bodies, three TPU feet sets — plus `module_pair`, the
    inspection/harness twin of seam_coupon_pair (two seated mids; volume must be

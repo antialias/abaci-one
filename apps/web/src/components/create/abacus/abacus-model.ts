@@ -95,6 +95,16 @@ export const defaultParams = {
   text_color: '#f5f5f5',
   text_size: 6,
   edge_text_size: 5,
+  // Stepped mechanical retention for inset letters (GitHub #180): a hidden
+  // neck + outset foot below the CV-locked 0.6 mm visible inlay, so letter
+  // filaments no longer need to certify-weld to the frame (markers still do).
+  // The app keeps this ON for every render — scad's own default is false so
+  // legacy CLI renders stay fingerprint-identical (text-retention.test.ts
+  // pins that asymmetry as intentional). ret_eps stays scad-only.
+  text_retention: true,
+  ret_shoulder: 1.0, // straight neck below the visible inlay (mm)
+  ret_band: 0.8, // foot height (mm)
+  ret_step: 0.6, // foot outset past the glyph outline (mm)
   // feet (bottom face; absolute — real feet don't scale). feet_mode:
   // 'printed' = in-place TPU feet (the default: the print stands on them,
   // frame bottom on supports); 'adhesive' = empty pockets for stick-on feet;
@@ -357,6 +367,10 @@ export const DEFINE_KEYS: (keyof Params)[] = [
   'text_color',
   'text_size',
   'edge_text_size',
+  'text_retention',
+  'ret_shoulder',
+  'ret_band',
+  'ret_step',
   'feet_mode',
   'feet_shape',
   'feet_w',
@@ -453,6 +467,8 @@ export const INSPECT_PARTS = [
   'seam_coupon',
   'seam_coupon_pair',
   'module_pair',
+  'retention_coupon',
+  'retention_coupon_plugs',
 ] as const
 export type InspectPart = (typeof INSPECT_PARTS)[number]
 
