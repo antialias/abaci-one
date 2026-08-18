@@ -187,12 +187,15 @@ const MAPPING_CSS = `
 .abx-map-row:focus-visible { outline: 2px solid rgba(103,232,249,0.9); outline-offset: -2px; }
 .abx-swatch:focus-visible { outline: 2px solid rgba(103,232,249,0.9); outline-offset: 2px; }
 .abx-chevron { transition: transform 200ms ease; }
+.abx-plan-pending { animation: abxPlanPulse 1.4s ease-in-out infinite; }
+@keyframes abxPlanPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 .abx-picker-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 400ms cubic-bezier(0.22,1,0.36,1); }
 .abx-picker-wrap[data-open="true"] { grid-template-rows: 1fr; }
 .abx-picker-inner { overflow: hidden; min-height: 0; opacity: 0; transform: translateY(-4px); transition: opacity 300ms ease-out, transform 300ms ease-out; }
 .abx-picker-wrap[data-open="true"] .abx-picker-inner { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .abx-map-row, .abx-chevron { transition: none; }
+  .abx-plan-pending { animation: none; }
   .abx-picker-wrap, .abx-picker-inner { transition-duration: 0.001ms; }
 }
 `
@@ -211,6 +214,11 @@ export interface FilamentPlanPanelProps {
   /** the same plan asked WITHOUT the pins — "what would the service pick?", which
    *  the picker badges as the recommendation and the Fix button restores. */
   unpinnedServicePlan?: FilamentPlanResponseV1 | null
+  /** True while the service is (re)answering — first fetch, or a stale answer held
+   *  by keepPreviousData while inputs changed. The mapping went async (Gitea #37):
+   *  without this the seconds between a design change and the plan landing look
+   *  like the studio ignoring the user. */
+  planPending?: boolean
   onOverridesChange: Dispatch<SetStateAction<Record<string, string>>>
   /** deep link: open a specific role's picker on mount (stories, warning chips) */
   defaultOpenRole?: string | null
@@ -230,6 +238,7 @@ export function FilamentPlanPanel({
   overrides,
   servicePlan = null,
   unpinnedServicePlan = null,
+  planPending = false,
   onOverridesChange: setOverrides,
   defaultOpenRole = null,
   onRevealIntrinsic,
@@ -486,7 +495,14 @@ export function FilamentPlanPanel({
   // earns the panel's only accent (cyan rail + ring).
   const renderMappingRow = (a: RoleAssignment) => {
     const interactive = catalog.spools.length > 1
-    const assigned = catalog.spools[a.spoolIndex]
+    // TOTAL over materialize's contract: `spoolIndex` is NO_SPOOL for a role the
+    // service could not place, and for a plan that names a spool this catalog no
+    // longer holds (a roster move under a keepPreviousData placeholder). The
+    // first live plans crashed right here — an unguarded [-1].name took the
+    // whole panel down into the error boundary. An unplaced row renders the
+    // DESIGNED color and says so; the picker still opens, because pinning a
+    // spool by hand is exactly the remedy.
+    const assigned: FilamentSpool | undefined = catalog.spools[a.spoolIndex]
     const preferred = preferredByRole.get(a.role.key)
     const isOpen = interactive && openRole === a.role.key
     const shifted = roleShifted(a)
@@ -517,12 +533,15 @@ export function FilamentPlanPanel({
         data-element="abacus-studio-role-tile"
         data-role={a.role.key}
         data-shifted={shifted}
+        data-unplaced={assigned === undefined}
         onMouseEnter={() => onRevealIntrinsic?.(true)}
         onMouseLeave={() => onRevealIntrinsic?.(false)}
         title={
-          shifted
-            ? `prints ${assigned.name} — your color ${a.role.intrinsicHex} (hover to preview)`
-            : `prints true (${assigned.name})`
+          assigned === undefined
+            ? `no loaded spool can serve this — your color ${a.role.intrinsicHex}. Load a matching filament, or pick one here to force it.`
+            : shifted
+              ? `prints ${assigned.name} — your color ${a.role.intrinsicHex} (hover to preview)`
+              : `prints true (${assigned.name})`
         }
         style={{
           position: 'relative',
@@ -531,8 +550,10 @@ export function FilamentPlanPanel({
           borderRadius: 4,
           flex: '0 0 auto',
           overflow: 'hidden',
-          background: assigned.hex,
-          border: '1px solid rgba(255,255,255,0.25)',
+          // an unplaced role's tile shows the color the user DESIGNED — the thing
+          // nothing loaded can print — behind a dashed alarm border, not a blank.
+          background: assigned ? assigned.hex : a.role.intrinsicHex,
+          border: assigned ? '1px solid rgba(255,255,255,0.25)' : '1px dashed rgba(248,113,113,0.95)',
           boxShadow: a.overridden ? '0 0 0 1px #111827, 0 0 0 2px rgba(103,232,249,0.95)' : 'none',
         }}
       >
@@ -576,7 +597,13 @@ export function FilamentPlanPanel({
         </span>
         {tile}
         <span
-          title={showMaterial ? `${assigned.name} · ${assigned.material}` : assigned.name}
+          title={
+            assigned === undefined
+              ? 'no loaded spool can serve this role'
+              : showMaterial
+                ? `${assigned.name} · ${assigned.material}`
+                : assigned.name
+          }
           style={{
             flex: '0 1 auto',
             minWidth: 0,
@@ -585,12 +612,12 @@ export function FilamentPlanPanel({
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
             fontSize: 10.5,
-            color: 'rgba(148,163,184,0.95)',
+            color: assigned ? 'rgba(148,163,184,0.95)' : 'rgba(248,113,113,0.92)',
           }}
         >
-          {shortName(assigned)}
+          {assigned ? shortName(assigned) : 'no spool'}
         </span>
-        {materialTag(assigned)}
+        {assigned !== undefined && materialTag(assigned)}
         {interactive && (
           <span
             aria-hidden="true"
@@ -1006,6 +1033,18 @@ export function FilamentPlanPanel({
         >
           <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(203,213,225,0.9)' }}>
             Filament mapping
+            {planPending && (
+              // the one visible cost of the matching authority moving to the
+              // printer (Gitea #37): the answer arrives over the wire. Say so —
+              // a silent multi-second hold on stale colors reads as a hang.
+              <span
+                data-element="abacus-studio-plan-pending"
+                className="abx-plan-pending"
+                style={{ marginLeft: 6, fontWeight: 400, color: 'rgba(148,163,184,0.95)' }}
+              >
+                · asking your printer…
+              </span>
+            )}
             {activeOverrides > 0 && (
               <span style={{ marginLeft: 6, color: 'rgba(103,232,249,0.95)' }}>
                 · {activeOverrides} pinned

@@ -58,6 +58,7 @@ export function FabricationRail() {
     unpinnedServicePlan,
     servicePlanUnavailable,
     servicePlanUnavailableDetail,
+    planPending,
     unplacedRoles,
     filamentMap,
     solveResult,
@@ -157,6 +158,7 @@ export function FabricationRail() {
         overrides={overrides}
         servicePlan={servicePlan}
         unpinnedServicePlan={unpinnedServicePlan}
+        planPending={planPending}
         onOverridesChange={setOverrides}
         onRevealIntrinsic={setRevealIntrinsic}
         onHighlightRole={setHighlightRole}
