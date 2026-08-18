@@ -8,6 +8,7 @@
  * Returns: SSE stream of { text } deltas and { toolCall } events, ending with [DONE]
  */
 
+import { openAiTextBaseUrl } from '@/lib/openai-base'
 import { withAuth } from '@/lib/auth/withAuth'
 import { recordOpenAiResponsesStreamUsage } from '@/lib/ai-usage/helpers'
 import { AiFeature } from '@/lib/ai-usage/features'
@@ -198,7 +199,7 @@ export const POST = withAuth(async (request, { userId }) => {
     attitudeId ?? 'default',
     clientTools?.length ?? 0
   )
-  const response = await fetch('https://api.openai.com/v1/responses', {
+  const response = await fetch(`${openAiTextBaseUrl()}/responses`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,

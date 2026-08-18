@@ -5,6 +5,7 @@
  * API routes can share the same error classification and response parsing.
  */
 
+import { openAiMediaBaseUrl } from '@/lib/openai-base'
 import type { RealtimeTool } from './types'
 
 export interface CreateRealtimeSessionOptions {
@@ -55,7 +56,7 @@ export async function createRealtimeSession(
     },
   } = options
 
-  const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
+  const response = await fetch(`${openAiMediaBaseUrl()}/realtime/sessions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,

@@ -9,6 +9,7 @@
  * If the clip already exists on disk, returns the cached version.
  */
 
+import { openAiMediaBaseUrl } from '@/lib/openai-base'
 import { createHash } from 'crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { NextResponse } from 'next/server'
@@ -74,7 +75,7 @@ export const POST = withAuth(async (request, { userId }) => {
     }
 
     // Call OpenAI TTS
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+    const response = await fetch(`${openAiMediaBaseUrl()}/audio/speech`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,

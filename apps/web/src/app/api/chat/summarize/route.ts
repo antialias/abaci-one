@@ -8,6 +8,7 @@
  * Uses the OpenAI Responses API in auto mode (no reasoning effort specified).
  */
 
+import { openAiTextBaseUrl } from '@/lib/openai-base'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { recordOpenAiResponsesUsage } from '@/lib/ai-usage/helpers'
@@ -56,7 +57,7 @@ export const POST = withAuth(async (request, { userId }) => {
       userPrompt = `Summarize the following conversation:\n\n${conversationText}`
     }
 
-    const response = await fetch('https://api.openai.com/v1/responses', {
+    const response = await fetch(`${openAiTextBaseUrl()}/responses`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,

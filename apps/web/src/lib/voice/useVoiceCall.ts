@@ -939,6 +939,9 @@ export function useVoiceCall<TContext>(config: VoiceSessionConfig<TContext>): Us
       // SDP exchange
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
+      // Direct browser->OpenAI on purpose: this WebRTC SDP exchange runs client-side
+      // with an ephemeral token, so it can't follow the server-side base-URL overrides
+      // in @/lib/openai-base.
       const sdpResponse = await fetch('https://api.openai.com/v1/realtime?model=gpt-realtime-1.5', {
         method: 'POST',
         headers: {

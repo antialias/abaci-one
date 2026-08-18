@@ -62,6 +62,12 @@ variable "openai_api_key" {
   default     = ""
 }
 
+variable "llm_openai_base_url" {
+  description = "Base URL for OpenAI-wire text-generation LLM calls (LLM_OPENAI_BASE_URL). Point at an OpenAI-compatible proxy to reroute all text LLM traffic; media/TTS/realtime calls are unaffected."
+  type        = string
+  default     = "https://api.openai.com/v1"
+}
+
 variable "gemini_api_key" {
   description = "Google Gemini API key for image generation (postcards, blog images, etc.)"
   type        = string

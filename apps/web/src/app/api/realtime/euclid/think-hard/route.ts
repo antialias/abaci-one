@@ -8,6 +8,7 @@
  * Uses the OpenAI Responses API with configurable reasoning effort.
  */
 
+import { openAiTextBaseUrl } from '@/lib/openai-base'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { recordOpenAiResponsesUsage } from '@/lib/ai-usage/helpers'
@@ -83,7 +84,7 @@ Keep your answer concise but thorough — it will be spoken aloud by an AI chara
     }
 
     // Call the Responses API
-    const response = await fetch('https://api.openai.com/v1/responses', {
+    const response = await fetch(`${openAiTextBaseUrl()}/responses`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
