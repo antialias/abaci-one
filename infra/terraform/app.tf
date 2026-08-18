@@ -78,6 +78,9 @@ resource "kubernetes_config_map" "app_config" {
     OTEL_SERVICE_NAME           = "abaci-app"
     # Web Push VAPID public key (served to clients at runtime via API)
     VAPID_PUBLIC_KEY = var.vapid_public_key
+    # OpenAI-wire base URL for text-generation LLM calls. Honored by
+    # @soroban/llm-client and the raw-fetch sites via apps/web/src/lib/openai-base.ts.
+    LLM_OPENAI_BASE_URL = var.llm_openai_base_url
   }
 }
 

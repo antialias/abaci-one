@@ -1,3 +1,4 @@
+import { openAiMediaBaseUrl } from '@/lib/openai-base'
 import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { db } from '@/db'
@@ -166,7 +167,7 @@ export async function startCollectedClipGeneration(
       const inputText = resolveSayText(sayByClipId, clip.id) ?? clip.id
 
       try {
-        const response = await fetch('https://api.openai.com/v1/audio/speech', {
+        const response = await fetch(`${openAiMediaBaseUrl()}/audio/speech`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${apiKey}`,

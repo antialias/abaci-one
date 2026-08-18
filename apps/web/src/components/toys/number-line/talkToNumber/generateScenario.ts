@@ -5,6 +5,7 @@
  * evolutions that keep the conversation engaging.
  */
 
+import { openAiTextBaseUrl } from '@/lib/openai-base'
 import type { ExplorationDescriptor } from './explorationRegistry'
 import type { ChildProfile } from './childProfile'
 import { recordOpenAiChatUsage } from '@/lib/ai-usage/helpers'
@@ -133,7 +134,7 @@ export async function generateScenario(
 
     const prompt = buildScenarioPrompt(availableExplorations, recommendedExplorations, childProfile)
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`${openAiTextBaseUrl()}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -207,7 +208,7 @@ export async function evolveScenario(
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 30000)
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`${openAiTextBaseUrl()}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,

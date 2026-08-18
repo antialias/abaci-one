@@ -1,3 +1,4 @@
+import { openAiMediaBaseUrl } from '@/lib/openai-base'
 import { type NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { recordTtsUsage } from '@/lib/ai-usage/helpers'
@@ -29,7 +30,7 @@ export const POST = withAuth(
     }
 
     try {
-      const response = await fetch('https://api.openai.com/v1/audio/speech', {
+      const response = await fetch(`${openAiMediaBaseUrl()}/audio/speech`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,

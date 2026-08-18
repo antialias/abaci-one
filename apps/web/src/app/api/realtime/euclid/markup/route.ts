@@ -17,6 +17,7 @@
  *    every word exactly.
  */
 
+import { openAiTextBaseUrl } from '@/lib/openai-base'
 import { withAuth } from '@/lib/auth/withAuth'
 import { recordOpenAiChatUsage } from '@/lib/ai-usage/helpers'
 import { AiFeature } from '@/lib/ai-usage/features'
@@ -144,7 +145,7 @@ CRITICAL RULES — read carefully:
 - NEVER correct spelling, grammar, or punctuation errors. The input is speech-to-text and errors are expected. Preserve them exactly.`
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`${openAiTextBaseUrl()}/chat/completions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,

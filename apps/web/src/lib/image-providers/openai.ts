@@ -1,3 +1,4 @@
+import { openAiMediaBaseUrl } from '@/lib/openai-base'
 import type { ImageOptions, ImageProvider } from './types'
 
 function parseOpenAIError(status: number, body: string): string {
@@ -64,7 +65,7 @@ export const openaiProvider: ImageProvider = {
         'reference.png'
       )
 
-      const response = await fetch('https://api.openai.com/v1/images/edits', {
+      const response = await fetch(`${openAiMediaBaseUrl()}/images/edits`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${apiKey}` },
         body: formData,
@@ -82,7 +83,7 @@ export const openaiProvider: ImageProvider = {
       return { imageBuffer: Buffer.from(data.data[0].b64_json, 'base64') }
     }
 
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
+    const response = await fetch(`${openAiMediaBaseUrl()}/images/generations`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,

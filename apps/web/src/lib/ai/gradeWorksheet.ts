@@ -1,3 +1,4 @@
+import { openAiApiKey, openAiTextBaseUrl } from '@/lib/openai-base'
 import { readFile } from 'fs/promises'
 import { SINGLE_CARRY_PATH } from '@/app/create/worksheets/progressionPath'
 import { recordOpenAiResponsesUsage } from '@/lib/ai-usage/helpers'
@@ -152,10 +153,10 @@ async function callGPT5Vision(
   prompt: string,
   userId?: string
 ): Promise<GradingResult> {
-  const response = await fetch('https://api.openai.com/v1/responses', {
+  const response = await fetch(`${openAiTextBaseUrl()}/responses`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      Authorization: `Bearer ${openAiApiKey()}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

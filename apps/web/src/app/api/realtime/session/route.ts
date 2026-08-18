@@ -6,6 +6,7 @@
  * Returns: { clientSecret: string, expiresAt: number, scenario: GeneratedScenario | null, childProfile, profileFailed? }
  */
 
+import { openAiMediaBaseUrl } from '@/lib/openai-base'
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import {
@@ -136,7 +137,7 @@ export const POST = withAuth(async (request, { userId }) => {
     const instructions = answeringMode.getInstructions(answeringCtx)
     const tools = getAnsweringTools()
 
-    const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
+    const response = await fetch(`${openAiMediaBaseUrl()}/realtime/sessions`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,

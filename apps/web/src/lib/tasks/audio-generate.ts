@@ -1,3 +1,4 @@
+import { openAiMediaBaseUrl } from '@/lib/openai-base'
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { AUDIO_MANIFEST } from '@/lib/audio/audioManifest'
@@ -100,7 +101,7 @@ export async function startAudioGeneration(input: AudioGenerateInput): Promise<s
         const clip = missing[i]
 
         try {
-          const response = await fetch('https://api.openai.com/v1/audio/speech', {
+          const response = await fetch(`${openAiMediaBaseUrl()}/audio/speech`, {
             method: 'POST',
             headers: {
               Authorization: `Bearer ${apiKey}`,
