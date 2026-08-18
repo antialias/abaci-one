@@ -70,8 +70,8 @@ importers:
         specifier: ^3.2.2
         version: 3.2.2(react@18.3.1)
       '@eink/print-dialog':
-        specifier: 1.1157.0
-        version: 1.1157.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 1.1159.0
+        version: 1.1159.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@flatten-js/core':
         specifier: ^1.6.8
         version: 1.6.8
@@ -1571,8 +1571,8 @@ packages:
   '@eink/plate-packing@1.0.0':
     resolution: {integrity: sha512-6leh4Tnp04RIqCLqhYMTbRoQsPJBT7P1RNI8+85Nsk0RaWUfqZUpLe6SznnpEGedUtLr6CUz0gvmDVfRKgGwag==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40eink%2Fplate-packing/-/1.0.0/plate-packing-1.0.0.tgz}
 
-  '@eink/print-dialog@1.1157.0':
-    resolution: {integrity: sha512-uW5NYbq5QkOSaTny5psqKRynut9QJo4RvIIm10HKM+lK3O3dqNBm5WOBCIzdxyQBzBQqh/MAxONj26Wt2HZz9w==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40eink%2Fprint-dialog/-/1.1157.0/print-dialog-1.1157.0.tgz}
+  '@eink/print-dialog@1.1159.0':
+    resolution: {integrity: sha512-2mkgaOZgexjo4E+VRSwqIhG/xPxcVoFmNPdVv8+n+b7rbNJAZ3i58fLlV2b9Ni8BSikg9AePZZVw6pvqs8qiKg==, tarball: https://git.dev.abaci.one/api/packages/antialias/npm/%40eink%2Fprint-dialog/-/1.1159.0/print-dialog-1.1159.0.tgz}
     peerDependencies:
       react: ^18.3 || ^19
       react-dom: ^18.3 || ^19
@@ -14707,7 +14707,7 @@ snapshots:
 
   '@eink/plate-packing@1.0.0': {}
 
-  '@eink/print-dialog@1.1157.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@eink/print-dialog@1.1159.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
