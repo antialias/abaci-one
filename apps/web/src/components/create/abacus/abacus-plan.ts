@@ -99,7 +99,7 @@ export type PlanWarningCode =
   | 'role-collision'
   | 'budget-exceeded'
   | 'support-material' // a visible role sitting on breakaway support filament
-  | 'feet-material' // printed feet found no flexible (TPU) spool — they fall back to the frame's
+  | 'feet-material' // the plan put no flexible (TPU) spool on the feet — they print rigid
   | 'rainbow-unrealizable' // rainbow inset text asks for more inks than the loaded spools can give
   | 'text-invisible' // an inlay group landed on the frame's own filament — unreadable writing
   | 'plan-unresolved' // the service found no live filament that can serve a role
@@ -333,22 +333,29 @@ export function materialize(
   const support = supportMaterialWarning(assignments, spools, catalog.source)
   if (support) warnings.push(support)
 
-  // Printed feet want a FLEXIBLE material, and that preference now travels as a
-  // `preferred: [{family:'TPU'}]` selector. The service says it couldn't honour it
-  // by relaxing `preferred_identity_unavailable` — so the studio's friendlier
-  // prose is driven by the service's own relaxation instead of by a name regex
-  // over the spool's product string.
+  // Printed feet want a FLEXIBLE material, and that preference travels as a
+  // `preferred` family selector. The service says it couldn't honour it by
+  // relaxing `preferred_identity_unavailable` — so the studio's friendlier prose
+  // is driven by the service's own relaxation instead of by a name regex over
+  // the spool's product string. But that relaxation is a claim about the PLAN
+  // ("no spool satisfied the preference selector"), not about the printer's
+  // inventory — the roster in hand is what knows whether TPU is physically
+  // loaded, and the message must not claim more than its evidence: saying "no
+  // TPU is loaded" off the relaxation alone lied to the user the day a Bambu
+  // spool reported the wire family TPU-AMS and the selector missed it.
   const feet = at('feet')
   const feetRelaxed = byPaletteId
     .get('feet')
     ?.relaxations.includes('preferred_identity_unavailable')
   if (feet && feetRelaxed && !feet.overridden) {
+    const tpuLoaded = spools.some((s) => coPrintGroup(s.material) === 'TPU')
     warnings.push({
       code: 'feet-material',
       origin: 'studio',
       severity: 'warning',
-      message:
-        'No flexible (TPU) filament is loaded, so the printed feet fall back to a rigid one — rigid feet slide and scuff. Load Bambu "TPU for AMS" for feet that grip.',
+      message: tpuLoaded
+        ? 'A flexible (TPU) filament is loaded, but the plan could not put it on the feet, so they fall back to a rigid one — rigid feet slide and scuff.'
+        : 'No flexible (TPU) filament is loaded, so the printed feet fall back to a rigid one — rigid feet slide and scuff. Load Bambu "TPU for AMS" for feet that grip.',
       roleKeys: ['feet'],
     })
   }

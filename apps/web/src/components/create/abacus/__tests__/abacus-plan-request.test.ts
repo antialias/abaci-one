@@ -153,10 +153,12 @@ describe('buildFilamentPlanRequest — the palette', () => {
   })
 
   it('asks for a FLEXIBLE material for the feet, as an identity rather than a name', () => {
-    // Replaces the old `/tpu\s*for\s*ams/i` match on a product string: the planner
-    // knows which of its spools are TPU, and Bambu's AMS-safe Shore-68D reports as
-    // its own family variant that a name test only caught by luck.
-    expect(entry(req, 'feet')?.preferred).toEqual([{ family: 'TPU' }])
+    // Replaces the old `/tpu\s*for\s*ams/i` match on a product string. Bambu's
+    // AMS-safe Shore-68D reports the wire family "TPU-AMS" and the service's
+    // selector match is strict string equality, so the variant is named
+    // explicitly alongside the generic family — otherwise the preference never
+    // fires against a Bambu roster and the feet silently print rigid.
+    expect(entry(req, 'feet')?.preferred).toEqual([{ family: 'TPU' }, { family: 'TPU-AMS' }])
     // preferred, not required — rigid feet still print, and the studio warns.
     expect(entry(req, 'feet')?.required).toBeUndefined()
   })
@@ -301,7 +303,7 @@ describe('buildFilamentPlanRequest — pins travel as `required` identities', ()
     const cat = catalog([spool({ id: '0.2', profileKey: 'GFL99' })])
     const req = buildFilamentPlanRequest(design, { catalog: cat, overrides: { feet: '0.2' } })
     expect(entry(req, 'feet')?.required).toEqual({ profileKey: 'GFL99' })
-    expect(entry(req, 'feet')?.preferred).toEqual([{ family: 'TPU' }])
+    expect(entry(req, 'feet')?.preferred).toEqual([{ family: 'TPU' }, { family: 'TPU-AMS' }])
     expect(entry(req, 'feet')?.roleSignals).toEqual(['model'])
   })
 })

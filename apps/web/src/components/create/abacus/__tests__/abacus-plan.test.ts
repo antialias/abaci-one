@@ -316,7 +316,7 @@ describe('materialize — the warnings the studio still owns', () => {
   })
 
   it('feet-material: driven by the planner relaxing the TPU preference, not by a name test', () => {
-    // The feet ask for `preferred: [{family:'TPU'}]`. The service says it could not
+    // The feet ask for a preferred TPU identity. The service says it could not
     // honour that by relaxing `preferred_identity_unavailable` — which is the whole
     // signal, replacing the old `/tpu\s*for\s*ams/i` match on a product string.
     const silent = planned(catalog)
@@ -328,6 +328,24 @@ describe('materialize — the warnings the studio still owns', () => {
     expect(w?.roleKeys).toEqual(['feet'])
     expect(w?.severity).toBe('warning')
     expect(w?.message).toContain('flexible (TPU)')
+    // An all-PLA roster genuinely holds no TPU, so the inventory claim is true.
+    expect(w?.message).toContain('No flexible (TPU) filament is loaded')
+  })
+
+  it('feet-material: never claims "no TPU is loaded" while the roster holds one', () => {
+    // The relaxation is a claim about the PLAN — "no spool satisfied the
+    // preference selector" — not about the printer. With Bambu's "TPU for AMS"
+    // physically loaded (wire family TPU-AMS) and the preference still relaxed
+    // (a selector miss, a conflict — the service's reasons are its own), the
+    // banner must report plan-could-not-use-it, not inventory-absence. The old
+    // wording lied here in production: TPU sat in slot 1.1 while the studio
+    // said none was loaded.
+    const withTpu = thh([...plaRoster(), spool('s-tpu', 'TPU for AMS', '#90ff1a', 'TPU-AMS')])
+    const w = planned(withTpu, plaPicks, {
+      extra: { relaxations: { feet: ['preferred_identity_unavailable'] } },
+    }).warnings.find((x) => x.code === 'feet-material')
+    expect(w?.message).toContain('flexible (TPU) filament is loaded, but the plan could not put it on the feet')
+    expect(w?.message).not.toContain('No flexible (TPU) filament is loaded')
   })
 
   it('feet-material: a pin answers it (the user chose these feet deliberately)', () => {
