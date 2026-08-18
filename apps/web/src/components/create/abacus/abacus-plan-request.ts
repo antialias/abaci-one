@@ -28,7 +28,7 @@ import type {
 import type { FilamentCatalog, FilamentSpool } from './abacus-catalog'
 
 import type { AbacusDesign } from './abacus-design'
-import { beadRoleColors, beadRoleNames, textGroups } from './abacus-model'
+import { beadRoleColors, beadRoleIndex, beadRoleNames, textGroups } from './abacus-model'
 
 export type PrintRoleKind = 'frame' | 'markerBlack' | 'markerWhite' | 'bead' | 'text' | 'feet'
 
@@ -52,23 +52,53 @@ export type PrintRole = {
  * Roles are minted from design INTENT, not from what a given render emits —
  * deliberately not gated on `show_frame` / `show_markers`, because the plan
  * answers "which spool would this role use", and the 3MF re-checks visibility
- * before consuming a slot. An unused role index here is inert.
+ * before consuming a slot. A visibility-gated role index here is inert.
+ *
+ * Bead roles are the exception to "mint from intent": a role NO bead can ever
+ * resolve to is not inert, it is harmful. `beadRoleIndex` maps column `i` to
+ * `(cols-1-i) % paletteLen` for place-value schemes, so a 3-column design never
+ * references role 3 or 4 — yet those phantom entries used to join the palette
+ * anyway, where they consumed slots in the all-bead-pairs `different`
+ * constraints (crowding real roles off spools) and could push the request past
+ * the planner's palette cap, a hard 400 (`palette_too_large`) for a distinction
+ * the design itself never draws. So bead roles are trimmed to the reachable
+ * set, enumerated through `beadRoleIndex` itself — the same function the
+ * render-side mapping consults, which is what keeps the trim and the render
+ * from ever disagreeing about which roles exist. (Every column renders exactly
+ * one heaven bead and `earth` earth beads, so columns × types is the exact
+ * domain.) The surviving keys stay a dense prefix — `bead-0 … bead-n` in order —
+ * so the index-based FilamentMap projection is undisturbed.
  */
 export function designRoles(design: AbacusDesign): PrintRole[] {
   const p = design.params
   const roleHexes = beadRoleColors(p.color_scheme, p.color_palette)
   const roleNames = beadRoleNames(p.color_scheme)
 
+  const reachableBeadRoles = new Set<number>()
+  for (let i = 0; i < p.cols; i += 1) {
+    reachableBeadRoles.add(beadRoleIndex(i, true, p.color_scheme, p.cols, p.color_palette))
+    reachableBeadRoles.add(beadRoleIndex(i, false, p.color_scheme, p.cols, p.color_palette))
+  }
+
   const roles: PrintRole[] = [
     { kind: 'markerBlack', key: 'marker-black', label: 'ArUco black', intrinsicHex: '#000000' },
     { kind: 'markerWhite', key: 'marker-white', label: 'ArUco white', intrinsicHex: '#ffffff' },
     { kind: 'frame', key: 'frame', label: 'Frame', intrinsicHex: design.resolvedColors.frame },
-    ...roleHexes.map((intrinsicHex, r) => ({
-      kind: 'bead' as const,
-      key: `bead-${r}`,
-      label: roleNames[r] ?? `bead ${r}`,
-      intrinsicHex,
-    })),
+    ...roleHexes.flatMap((intrinsicHex, r) =>
+      // `r` must stay the ORIGINAL role index — `beadRoleIndex` resolves to it on
+      // the render side. A filter-then-map would silently renumber the keys if a
+      // future scheme's reachable set ever stopped being a dense prefix.
+      reachableBeadRoles.has(r)
+        ? [
+            {
+              kind: 'bead' as const,
+              key: `bead-${r}`,
+              label: roleNames[r] ?? `bead ${r}`,
+              intrinsicHex,
+            },
+          ]
+        : []
+    ),
   ]
 
   // Printed feet (Gitea #23). The intrinsic hex is a fixed dark slate and is
