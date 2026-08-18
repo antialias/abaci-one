@@ -228,6 +228,17 @@ describe('buildFilamentPlanRequest — the welded interfaces', () => {
     expect(req.interfaces?.every((i) => i.kind === 'bonded')).toBe(true)
   })
 
+  it('names the frame as the substrate of every bond — weld is the ONLY retention', () => {
+    // Inset text and marker fields have no mechanical lock: the weld alone holds
+    // them in the frame. `substrate` turns each bond from advisory into a hard
+    // constraint (things-haunt-house#448) so an unweldable spool (TPU into a PLA
+    // pocket) comes back unresolved instead of placed as a plug that falls out.
+    expect(req.interfaces?.length).toBeGreaterThan(0)
+    for (const i of req.interfaces ?? []) {
+      expect((i as { substrate?: string }).substrate).toBe('frame')
+    }
+  })
+
   it('declares NO bead interface — beads are captive on a clearance gap, never welded', () => {
     expect(
       (req.interfaces ?? []).some((i) => i.paletteIds.some((id) => id.startsWith('bead-')))

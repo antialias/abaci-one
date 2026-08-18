@@ -281,10 +281,18 @@ export function buildFilamentPlanRequest(
   // question about two specific filaments, which is exactly what an interface
   // declares. Beads are deliberately absent: they are captive on a print
   // clearance gap, never welded, so they carry no bond requirement.
-  const interfaces: FilamentPaletteInterface[] = []
+  //
+  // `substrate: frameKey` makes each bond a HARD retention constraint
+  // (things-haunt-house#448): inset text and marker fields are held in the frame
+  // by the weld ALONE — the design has no mechanical lock — so a spool the
+  // planner cannot certify to fuse (e.g. TPU into a PLA pocket) must come back
+  // `unresolved`, never placed as a plug that falls out of the print. If the
+  // design ever gains a mechanical retention feature, drop `substrate` to return
+  // these bonds to advisory.
+  const interfaces: (FilamentPaletteInterface & { substrate?: string })[] = []
   if (frameKey) {
     for (const key of [...keyOf('markerBlack'), ...keyOf('markerWhite'), ...textKeys]) {
-      interfaces.push({ paletteIds: [frameKey, key], kind: 'bonded', label: `frame+${key}` })
+      interfaces.push({ paletteIds: [frameKey, key], kind: 'bonded', label: `frame+${key}`, substrate: frameKey })
     }
   }
 
