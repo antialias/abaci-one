@@ -214,15 +214,19 @@ export function buildFilamentPlanRequest(
     }
     // Feet want a FLEXIBLE material; their color is decorative. `preferred` says
     // that as an identity rather than as the old `/tpu\s*for\s*ams/i` match on a
-    // product NAME — the planner knows which of its spools are TPU, and Bambu's
-    // AMS-safe Shore-68D reports as its own family variant that a name test only
-    // caught by luck.
+    // product NAME — the planner knows which of its spools are TPU. Bambu's
+    // AMS-safe Shore-68D reports the wire family "TPU-AMS", and the planner's
+    // selector match is (today) strict string equality, so name that variant
+    // explicitly alongside the generic family. The service is growing the same
+    // fold on its side (TPU-AMS ≡ TPU at selector matching); once that deploys
+    // the second selector is redundant but harmless — kept so this client works
+    // against any service version.
     if (role.kind === 'feet') {
       return {
         id: role.key,
         colorHex: role.intrinsicHex,
         ...pin,
-        preferred: [{ family: 'TPU' }],
+        preferred: [{ family: 'TPU' }, { family: 'TPU-AMS' }],
         roleSignals: ['model'],
       }
     }
