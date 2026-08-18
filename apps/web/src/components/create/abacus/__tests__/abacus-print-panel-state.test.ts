@@ -63,6 +63,12 @@ describe('abacusPrintPanelState — branch order', () => {
   it('loading wins over the degrade/printable states (once service is available)', () => {
     expect(st({ isLoading: true, catalog: manual(), rosterEmpty: true }).kind).toBe('loading')
   })
+
+  it('a planner refusal takes the panel over too — it is not a milder state', () => {
+    // Deliberately with a printable live catalog: the roster is fine and the
+    // design still can't be planned, which is exactly what must not look healthy.
+    expect(st({ unavailable: 'refused', catalog: thh([spool()]) }).kind).toBe('unavailable')
+  })
 })
 
 describe('abacusPrintPanelState — degrade priority chain (source !== thh-ams)', () => {

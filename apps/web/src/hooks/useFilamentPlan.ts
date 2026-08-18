@@ -28,13 +28,37 @@ import { abacusPrintKeys } from '@/lib/queryKeys'
 
 type PlanResult =
   | { ok: true; value: FilamentPlanResponseV1 }
-  | { ok: false; reason: PrintUnavailableReason }
+  | { ok: false; reason: PrintUnavailableReason; detail?: string }
 
 function degradeReason(status: number): PrintUnavailableReason {
   if (status === 404) return 'not-configured'
   if (status === 502) return 'unreachable'
   if (status === 401 || status === 403) return 'unauthorized'
   return 'error'
+}
+
+/**
+ * The planner's REFUSAL, told apart from every other 4xx by SHAPE, not status.
+ *
+ * abaci's own proxy emits `{error: string}` for its failures (an ambiguous
+ * connection is a 400), while THH's are relayed byte-faithfully as
+ * `{detail: {code, message}}` — so the envelope, not the number, is what says
+ * "the planner read this request and said no".
+ *
+ * Statuses `degradeReason` already answers precisely are left to it: THH relays
+ * its auth 4xx in this same envelope, and an expired token must stay
+ * `unauthorized` (which has a real remediation) rather than becoming a refusal
+ * with none. 5xx never refuses — a 500 with a detail is a fault, not a verdict,
+ * and retrying may help.
+ */
+function refusalMessage(status: number, body: unknown): string | null {
+  if (status < 400 || status >= 500) return null
+  if (status === 404 || status === 401 || status === 403) return null
+  const detail = (body as { detail?: unknown } | null)?.detail
+  if (typeof detail !== 'object' || detail === null) return null
+  const { code, message } = detail as { code?: unknown; message?: unknown }
+  if (typeof code !== 'string' || typeof message !== 'string' || message === '') return null
+  return message
 }
 
 async function fetchPlan(path: string, request: FilamentPlanRequestV1): Promise<PlanResult> {
@@ -45,9 +69,17 @@ async function fetchPlan(path: string, request: FilamentPlanRequestV1): Promise<
       body: JSON.stringify(request),
     })
     // A plan the printer can't fully satisfy is a 200 carrying `degraded` /
-    // `unresolved` — the studio renders those as warnings. Only transport and
-    // validation failures land here.
-    if (!res.ok) return { ok: false, reason: degradeReason(res.status) }
+    // `unresolved` — the studio renders those as warnings. What lands here is
+    // transport failures, and the planner's own refusal of a request it read.
+    if (!res.ok) {
+      // Guarded separately: a 502 whose body is an HTML error page must still
+      // degrade to `unreachable`, not fall into the outer catch as `error`.
+      const body = await res.json().catch(() => null)
+      const message = refusalMessage(res.status, body)
+      return message !== null
+        ? { ok: false, reason: 'refused', detail: message }
+        : { ok: false, reason: degradeReason(res.status) }
+    }
     // Guard the boundary: `readFilamentPlanResponse` throws on anything that
     // isn't a plan, which is what keeps a proxy error page or a stray HTML body
     // from being consumed as assignments. It becomes a degrade, not a crash.
@@ -126,6 +158,10 @@ export function useFilamentPlan({
   return {
     plan: query.data?.ok ? query.data.value : null,
     unavailable: query.data && !query.data.ok ? query.data.reason : null,
+    /** The service's own sentence for a `refused`; null for every other reason.
+     *  Read from the same `query.data` as `unavailable`, so the pair can never
+     *  disagree and a resolved success replaces both atomically. */
+    unavailableDetail: query.data && !query.data.ok ? (query.data.detail ?? null) : null,
     isLoading: ready && query.isLoading,
     isFetching: query.isFetching,
     /** True while `plan` is the PREVIOUS key's answer and a fresh one is in flight. */

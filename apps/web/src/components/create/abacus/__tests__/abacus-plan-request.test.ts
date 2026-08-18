@@ -65,11 +65,54 @@ describe('designRoles', () => {
   it('mints roles from design INTENT, not from what a given render emits', () => {
     // Deliberately not gated on show_frame / show_markers: the plan answers "which
     // spool would this role use", and the 3MF re-checks visibility before consuming
-    // a slot. An unused role here is inert.
+    // a slot. A visibility-gated role here is inert (unlike an unreachable BEAD
+    // role, which the trim below refuses to mint at all).
     const hidden = designFor({ show_frame: false, show_markers: false })
     const keys = designRoles(hidden).map((r) => r.key)
     expect(keys).toContain('frame')
     expect(keys).toContain('marker-black')
+  })
+
+  it('mints only the bead roles a column can actually resolve to', () => {
+    // place-value maps column i to role (cols-1-i) % paletteLen, so a 3-column
+    // design never touches roles 3/4 ('1k', '10k'). Those phantom entries used to
+    // ride the palette anyway — joining every bead `different` pair and counting
+    // against the planner's palette cap, a hard 400 for a distinction the design
+    // never draws.
+    const keys = designRoles(designFor({ color_scheme: 'place-value', cols: 3 })).map((r) => r.key)
+    expect(keys.filter((k) => k.startsWith('bead-'))).toEqual(['bead-0', 'bead-1', 'bead-2'])
+
+    // enough columns to reach the whole palette: nothing is trimmed
+    const full = designRoles(designFor({ color_scheme: 'place-value', cols: 13 })).map((r) => r.key)
+    expect(full.filter((k) => k.startsWith('bead-'))).toEqual([
+      'bead-0',
+      'bead-1',
+      'bead-2',
+      'bead-3',
+      'bead-4',
+    ])
+
+    // alternating with ONE column never renders an odd column — role 1 is phantom
+    const single = designRoles(designFor({ color_scheme: 'alternating', cols: 1 })).map(
+      (r) => r.key
+    )
+    expect(single.filter((k) => k.startsWith('bead-'))).toEqual(['bead-0'])
+
+    // heaven-earth indexes by bead TYPE, not column — both roles survive one column
+    const he = designRoles(designFor({ color_scheme: 'heaven-earth', cols: 1 })).map((r) => r.key)
+    expect(he.filter((k) => k.startsWith('bead-'))).toEqual(['bead-0', 'bead-1'])
+  })
+
+  it('constrains only the SURVIVING bead roles to differ', () => {
+    // The trim's real payoff: no `different` pair may name a role that no bead can
+    // resolve to — such a pair spends a distinct spool on a phantom.
+    const req = buildFilamentPlanRequest(designFor({ color_scheme: 'place-value', cols: 3 }))
+    const different = req.constraints?.different ?? []
+    const beadPairs = different.filter((p) => p.paletteIds.some((id) => id.startsWith('bead-')))
+    expect(beadPairs.length).toBe(3) // C(3,2) — not C(5,2)
+    for (const p of beadPairs) {
+      for (const id of p.paletteIds) expect(['bead-0', 'bead-1', 'bead-2']).toContain(id)
+    }
   })
 
   it('omits feet unless they are printed, and text unless the inlay is inset', () => {

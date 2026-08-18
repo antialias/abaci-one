@@ -500,6 +500,13 @@ function useStudioController(playerId: string | null, designId: string | null) {
     // disagree, which is the property the panel has always relied on.
     servicePlan: filamentPlan.plan,
     unpinnedServicePlan: unpinnedPlan.plan,
+    // The PINNED plan's refusal — that read is the one that drives `materialize`,
+    // the ticket and the submit, so it is the one whose absence would otherwise
+    // let the panel paint designed colors as if they were printable. The unpinned
+    // read only badges the picker's recommendation; a refusal there costs a badge,
+    // not a correct print, and must not take over the panel.
+    servicePlanUnavailable: filamentPlan.unavailable,
+    servicePlanUnavailableDetail: filamentPlan.unavailableDetail,
     // "no settled answer for the CURRENT question" — which covers both the first
     // load and the window where `keepPreviousData` is holding the previous key's
     // answer on screen. A consumer that only watched `isLoading` would read a

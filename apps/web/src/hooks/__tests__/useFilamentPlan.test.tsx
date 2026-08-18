@@ -13,6 +13,9 @@
  *   • the read never fires against a roster we haven't seen
  *   • failures degrade to a reason, never to a throw or an endless spinner
  *   • a key change holds the previous answer rather than blanking the studio
+ *   • a coded refusal ({detail:{code,message}}) is carried with the service's
+ *     own words, not collapsed into a status — told apart by SHAPE, because the
+ *     proxy's own 4xx wear a different envelope
  */
 import type { FilamentPlanRequestV1 } from '@eink/print-dialog'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -65,6 +68,10 @@ function ok(body: unknown): Response {
 }
 function err(status: number): Response {
   return { ok: false, status, json: async () => ({}) } as unknown as Response
+}
+/** A THH-minted refusal, relayed byte-faithfully by the proxy. */
+function refusal(status: number, code: string, message: string): Response {
+  return { ok: false, status, json: async () => ({ detail: { code, message } }) } as unknown as Response
 }
 
 let queryClient: QueryClient
@@ -225,6 +232,7 @@ describe('useFilamentPlan — degrading', () => {
     [502, 'unreachable'],
     [401, 'unauthorized'],
     [403, 'unauthorized'],
+    [400, 'error'], // an UNSTRUCTURED 400 — no {detail} envelope, so no refusal
     [500, 'error'],
   ])('turns HTTP %i into the %s reason, never a throw', async (status, reason) => {
     mockApi.mockResolvedValue(err(status as number))
@@ -256,5 +264,74 @@ describe('useFilamentPlan — degrading', () => {
     await waitFor(() => expect(result.current.plan).not.toBeNull())
     expect(result.current.plan?.status).toBe('degraded')
     expect(result.current.unavailable).toBeNull()
+  })
+})
+
+describe('useFilamentPlan — a refusal is not a failure', () => {
+  it("a coded 4xx becomes 'refused' and carries the service's words", async () => {
+    mockApi.mockResolvedValue(
+      refusal(400, 'palette_too_large', 'palette supports at most 8 entries')
+    )
+    const { result } = renderHook(() => useFilamentPlan(base), { wrapper })
+    await waitFor(() => expect(result.current.unavailable).toBe('refused'))
+    expect(result.current.unavailableDetail).toBe('palette supports at most 8 entries')
+    expect(result.current.plan).toBeNull()
+    expect(result.current.isLoading).toBe(false)
+  })
+
+  it("a 400 the PROXY emitted (ambiguous connection) stays 'error'", async () => {
+    // Shape, not status: the proxy's own failures are {error: string}, and an
+    // ambiguous connection needs the Settings remediation, not refusal copy.
+    mockApi.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: 'Multiple connections — pass ?connectionId=' }),
+    } as unknown as Response)
+    const { result } = renderHook(() => useFilamentPlan(base), { wrapper })
+    await waitFor(() => expect(result.current.unavailable).toBe('error'))
+    expect(result.current.unavailableDetail).toBeNull()
+  })
+
+  it("a coded 401 is still 'unauthorized' — an expired token is not a refusal", async () => {
+    // THH relays its auth failures in the SAME {detail:{code,message}} envelope.
+    // Classifying by shape alone would eat the re-pair remediation.
+    mockApi.mockResolvedValue(refusal(401, 'unauthorized', 'token expired'))
+    const { result } = renderHook(() => useFilamentPlan(base), { wrapper })
+    await waitFor(() => expect(result.current.unavailable).toBe('unauthorized'))
+    expect(result.current.unavailableDetail).toBeNull()
+  })
+
+  it('a non-JSON error body still degrades by status', async () => {
+    // A 502 whose body is an HTML error page must stay 'unreachable' — the body
+    // read is guarded on its own, not left to the outer catch.
+    mockApi.mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => {
+        throw new SyntaxError('Unexpected token <')
+      },
+    } as unknown as Response)
+    const { result } = renderHook(() => useFilamentPlan(base), { wrapper })
+    await waitFor(() => expect(result.current.unavailable).toBe('unreachable'))
+  })
+
+  it('a refusal clears when a new question is answered', async () => {
+    mockApi.mockResolvedValue(
+      refusal(400, 'palette_too_large', 'palette supports at most 8 entries')
+    )
+    const { result, rerender } = renderHook((props: { sig: string }) =>
+      useFilamentPlan({ ...base, rosterSignature: props.sig }), {
+      wrapper,
+      initialProps: { sig: 'roster-a' },
+    })
+    await waitFor(() => expect(result.current.unavailable).toBe('refused'))
+
+    mockApi.mockResolvedValue(ok(planBody('0.1')))
+    rerender({ sig: 'roster-b' })
+    await waitFor(() => expect(result.current.plan).not.toBeNull())
+    // reason and detail come off the same query.data, so both clear together —
+    // no stale sentence can survive a success
+    expect(result.current.unavailable).toBeNull()
+    expect(result.current.unavailableDetail).toBeNull()
   })
 })
