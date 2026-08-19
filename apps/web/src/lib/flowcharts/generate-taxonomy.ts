@@ -263,6 +263,9 @@ Return approximately 200 labels total across all tiers.`,
     schema: z.object({
       labels: z.array(z.string()).min(150).max(250),
     }),
+    // Pinned to OpenAI: 'gpt-4o-mini' is a real OpenAI model. The switch
+    // wire only accepts the abaci/claude-abaci class aliases and would 404.
+    provider: 'openai',
     model: 'gpt-4o-mini',
   })
 

@@ -19,6 +19,7 @@ resource "kubernetes_secret" "app_env" {
     EMAIL_SERVER                   = var.email_server
     EMAIL_FROM                     = var.email_from
     LLM_OPENAI_API_KEY             = var.openai_api_key
+    LLM_SWITCH_API_KEY             = var.llm_switch_api_key
     GEMINI_API_KEY                 = var.gemini_api_key
     ELEVENLABS_MUSIC_API_KEY       = var.elevenlabs_music_api_key
     COVERAGE_API_TOKEN             = var.coverage_api_token
@@ -81,6 +82,11 @@ resource "kubernetes_config_map" "app_config" {
     # OpenAI-wire base URL for text-generation LLM calls. Honored by
     # @soroban/llm-client and the raw-fetch sites via apps/web/src/lib/openai-base.ts.
     LLM_OPENAI_BASE_URL = var.llm_openai_base_url
+    # claude-switch-proxy wire: default text provider for @soroban/llm-client.
+    # Kill switch = flip llm_default_provider back to "openai" and apply.
+    LLM_SWITCH_BASE_URL      = var.llm_switch_base_url
+    LLM_SWITCH_DEFAULT_MODEL = "abaci"
+    LLM_DEFAULT_PROVIDER     = var.llm_default_provider
   }
 }
 

@@ -68,6 +68,25 @@ variable "llm_openai_base_url" {
   default     = "https://api.openai.com/v1"
 }
 
+variable "llm_switch_api_key" {
+  description = "Client secret for the claude-switch-proxy OpenAI wire (LLM_SWITCH_API_KEY). Deliberately its own variable — never reuse openai_api_key: the proxy secret must never reach api.openai.com, and the OpenAI key must never reach the proxy."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "llm_switch_base_url" {
+  description = "Base URL of the claude-switch-proxy OpenAI-compatible wire (LLM_SWITCH_BASE_URL). The llm-client switch provider requires an explicit value and refuses the auto-derived fallback."
+  type        = string
+  default     = "http://192.168.86.51:8787/v1"
+}
+
+variable "llm_default_provider" {
+  description = "Default @soroban/llm-client text provider (LLM_DEFAULT_PROVIDER). \"switch\" routes default text calls through the claude-switch-proxy; kill switch = set back to \"openai\" and apply (streaming/reasoning and media calls stay pinned to openai regardless). Deliberately defaults to \"openai\": set llm_default_provider = \"switch\" in terraform.tfvars only once the app image containing the switch provider factory is deployed, so an unrelated scoped apply can never flip the provider ahead of the code."
+  type        = string
+  default     = "openai"
+}
+
 variable "gemini_api_key" {
   description = "Google Gemini API key for image generation (postcards, blog images, etc.)"
   type        = string

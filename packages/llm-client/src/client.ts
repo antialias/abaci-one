@@ -48,6 +48,26 @@ const providerFactories: Record<string, ProviderFactory> = {
 		if (!providerConfig) throw new ProviderNotConfiguredError(name);
 		return new AnthropicProvider(providerConfig);
 	},
+	// The house claude-switch-proxy: an OpenAI-compatible chat-completions
+	// wire that routes workload classes (model "abaci"), so it reuses
+	// OpenAIProvider verbatim. Configured via LLM_SWITCH_API_KEY /
+	// LLM_SWITCH_BASE_URL; kill switch = flip LLM_DEFAULT_PROVIDER back to
+	// "openai" (no LLM_OPENAI_* variable is ever repointed).
+	switch: (config, name) => {
+		const providerConfig = getProviderConfig(config, name);
+		if (!providerConfig) throw new ProviderNotConfiguredError(name);
+		// Without LLM_SWITCH_BASE_URL the generic env fallback invents
+		// https://api.switch.com/v1 — a real third-party host that must never
+		// receive the proxy client secret. Require an explicit base URL.
+		if (providerConfig.baseUrl === "https://api.switch.com/v1") {
+			throw new Error(
+				"switch provider requires an explicit LLM_SWITCH_BASE_URL " +
+					"(refusing the auto-derived https://api.switch.com/v1 — " +
+					"that is not the switch proxy)",
+			);
+		}
+		return new OpenAIProvider(providerConfig);
+	},
 };
 
 /**
