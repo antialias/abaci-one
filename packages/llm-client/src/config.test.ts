@@ -1,207 +1,264 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  loadConfigFromEnv,
-  getProviderConfig,
-  getConfiguredProviders,
-  isProviderConfigured,
+	getConfiguredProviders,
+	getProviderConfig,
+	isProviderConfigured,
+	loadConfigFromEnv,
 } from "./config";
 
 describe("config", () => {
-  describe("loadConfigFromEnv", () => {
-    it("should load default configuration when no env vars set", () => {
-      const config = loadConfigFromEnv({});
+	describe("loadConfigFromEnv", () => {
+		it("should load default configuration when no env vars set", () => {
+			const config = loadConfigFromEnv({});
 
-      expect(config.defaultProvider).toBe("openai");
-      expect(config.defaultMaxRetries).toBe(2);
-      expect(Object.keys(config.providers)).toHaveLength(0);
-    });
+			expect(config.defaultProvider).toBe("openai");
+			expect(config.defaultMaxRetries).toBe(2);
+			expect(Object.keys(config.providers)).toHaveLength(0);
+		});
 
-    it("should load default provider from env", () => {
-      const config = loadConfigFromEnv({
-        LLM_DEFAULT_PROVIDER: "anthropic",
-      });
+		it("should load default provider from env", () => {
+			const config = loadConfigFromEnv({
+				LLM_DEFAULT_PROVIDER: "anthropic",
+			});
 
-      expect(config.defaultProvider).toBe("anthropic");
-    });
+			expect(config.defaultProvider).toBe("anthropic");
+		});
 
-    it("should load default model from env", () => {
-      const config = loadConfigFromEnv({
-        LLM_DEFAULT_MODEL: "gpt-5",
-      });
+		it("should load default model from env", () => {
+			const config = loadConfigFromEnv({
+				LLM_DEFAULT_MODEL: "gpt-5",
+			});
 
-      expect(config.defaultModel).toBe("gpt-5");
-    });
+			expect(config.defaultModel).toBe("gpt-5");
+		});
 
-    it("should load max retries from env", () => {
-      const config = loadConfigFromEnv({
-        LLM_DEFAULT_MAX_RETRIES: "5",
-      });
+		it("should load max retries from env", () => {
+			const config = loadConfigFromEnv({
+				LLM_DEFAULT_MAX_RETRIES: "5",
+			});
 
-      expect(config.defaultMaxRetries).toBe(5);
-    });
+			expect(config.defaultMaxRetries).toBe(5);
+		});
 
-    it("should load OpenAI provider configuration", () => {
-      const config = loadConfigFromEnv({
-        LLM_OPENAI_API_KEY: "sk-test-key",
-        LLM_OPENAI_BASE_URL: "https://custom.openai.com",
-        LLM_OPENAI_DEFAULT_MODEL: "gpt-4-turbo",
-      });
+		it("should load OpenAI provider configuration", () => {
+			const config = loadConfigFromEnv({
+				LLM_OPENAI_API_KEY: "sk-test-key",
+				LLM_OPENAI_BASE_URL: "https://custom.openai.com",
+				LLM_OPENAI_DEFAULT_MODEL: "gpt-4-turbo",
+			});
 
-      expect(config.providers.openai).toBeDefined();
-      expect(config.providers.openai.apiKey).toBe("sk-test-key");
-      expect(config.providers.openai.baseUrl).toBe("https://custom.openai.com");
-      expect(config.providers.openai.defaultModel).toBe("gpt-4-turbo");
-    });
+			expect(config.providers.openai).toBeDefined();
+			expect(config.providers.openai.apiKey).toBe("sk-test-key");
+			expect(config.providers.openai.baseUrl).toBe("https://custom.openai.com");
+			expect(config.providers.openai.defaultModel).toBe("gpt-4-turbo");
+		});
 
-    it("should use default base URL for OpenAI if not provided", () => {
-      const config = loadConfigFromEnv({
-        LLM_OPENAI_API_KEY: "sk-test-key",
-      });
+		it("should use default base URL for OpenAI if not provided", () => {
+			const config = loadConfigFromEnv({
+				LLM_OPENAI_API_KEY: "sk-test-key",
+			});
 
-      expect(config.providers.openai.baseUrl).toBe("https://api.openai.com/v1");
-    });
+			expect(config.providers.openai.baseUrl).toBe("https://api.openai.com/v1");
+		});
 
-    it("should use default model for OpenAI if not provided", () => {
-      const config = loadConfigFromEnv({
-        LLM_OPENAI_API_KEY: "sk-test-key",
-      });
+		it("should use default model for OpenAI if not provided", () => {
+			const config = loadConfigFromEnv({
+				LLM_OPENAI_API_KEY: "sk-test-key",
+			});
 
-      expect(config.providers.openai.defaultModel).toBe("gpt-4o");
-    });
+			expect(config.providers.openai.defaultModel).toBe("gpt-5.2");
+		});
 
-    it("should load Anthropic provider configuration", () => {
-      const config = loadConfigFromEnv({
-        LLM_ANTHROPIC_API_KEY: "sk-ant-test",
-      });
+		it("should load Anthropic provider configuration", () => {
+			const config = loadConfigFromEnv({
+				LLM_ANTHROPIC_API_KEY: "sk-ant-test",
+			});
 
-      expect(config.providers.anthropic).toBeDefined();
-      expect(config.providers.anthropic.apiKey).toBe("sk-ant-test");
-      expect(config.providers.anthropic.baseUrl).toBe(
-        "https://api.anthropic.com/v1",
-      );
-      expect(config.providers.anthropic.defaultModel).toBe(
-        "claude-sonnet-4-20250514",
-      );
-    });
+			expect(config.providers.anthropic).toBeDefined();
+			expect(config.providers.anthropic.apiKey).toBe("sk-ant-test");
+			expect(config.providers.anthropic.baseUrl).toBe(
+				"https://api.anthropic.com/v1",
+			);
+			expect(config.providers.anthropic.defaultModel).toBe(
+				"claude-sonnet-4-20250514",
+			);
+		});
 
-    it("should load multiple providers", () => {
-      const config = loadConfigFromEnv({
-        LLM_OPENAI_API_KEY: "sk-openai",
-        LLM_ANTHROPIC_API_KEY: "sk-anthropic",
-      });
+		it("should load multiple providers", () => {
+			const config = loadConfigFromEnv({
+				LLM_OPENAI_API_KEY: "sk-openai",
+				LLM_ANTHROPIC_API_KEY: "sk-anthropic",
+			});
 
-      expect(Object.keys(config.providers)).toHaveLength(2);
-      expect(config.providers.openai).toBeDefined();
-      expect(config.providers.anthropic).toBeDefined();
-    });
+			expect(Object.keys(config.providers)).toHaveLength(2);
+			expect(config.providers.openai).toBeDefined();
+			expect(config.providers.anthropic).toBeDefined();
+		});
 
-    it("should discover custom providers from API key pattern", () => {
-      const config = loadConfigFromEnv({
-        LLM_CUSTOM_API_KEY: "sk-custom",
-        LLM_CUSTOM_BASE_URL: "https://api.custom.com",
-        LLM_CUSTOM_DEFAULT_MODEL: "custom-model",
-      });
+		it("should discover custom providers from API key pattern", () => {
+			const config = loadConfigFromEnv({
+				LLM_CUSTOM_API_KEY: "sk-custom",
+				LLM_CUSTOM_BASE_URL: "https://api.custom.com",
+				LLM_CUSTOM_DEFAULT_MODEL: "custom-model",
+			});
 
-      expect(config.providers.custom).toBeDefined();
-      expect(config.providers.custom.apiKey).toBe("sk-custom");
-      expect(config.providers.custom.baseUrl).toBe("https://api.custom.com");
-      expect(config.providers.custom.defaultModel).toBe("custom-model");
-    });
+			expect(config.providers.custom).toBeDefined();
+			expect(config.providers.custom.apiKey).toBe("sk-custom");
+			expect(config.providers.custom.baseUrl).toBe("https://api.custom.com");
+			expect(config.providers.custom.defaultModel).toBe("custom-model");
+		});
 
-    it("should not create provider config without API key", () => {
-      const config = loadConfigFromEnv({
-        LLM_OPENAI_BASE_URL: "https://custom.com",
-      });
+		it("should not create provider config without API key", () => {
+			const config = loadConfigFromEnv({
+				LLM_OPENAI_BASE_URL: "https://custom.com",
+			});
 
-      expect(config.providers.openai).toBeUndefined();
-    });
-  });
+			expect(config.providers.openai).toBeUndefined();
+		});
+	});
 
-  describe("getProviderConfig", () => {
-    it("should return provider config by name", () => {
-      const config = loadConfigFromEnv({
-        LLM_OPENAI_API_KEY: "sk-test",
-      });
+	describe("getProviderConfig", () => {
+		it("should return provider config by name", () => {
+			const config = loadConfigFromEnv({
+				LLM_OPENAI_API_KEY: "sk-test",
+			});
 
-      const provider = getProviderConfig(config, "openai");
+			const provider = getProviderConfig(config, "openai");
 
-      expect(provider).toBeDefined();
-      expect(provider?.apiKey).toBe("sk-test");
-    });
+			expect(provider).toBeDefined();
+			expect(provider?.apiKey).toBe("sk-test");
+		});
 
-    it("should return default provider config when name not specified", () => {
-      const config = loadConfigFromEnv({
-        LLM_DEFAULT_PROVIDER: "anthropic",
-        LLM_ANTHROPIC_API_KEY: "sk-test",
-      });
+		it("should return default provider config when name not specified", () => {
+			const config = loadConfigFromEnv({
+				LLM_DEFAULT_PROVIDER: "anthropic",
+				LLM_ANTHROPIC_API_KEY: "sk-test",
+			});
 
-      const provider = getProviderConfig(config);
+			const provider = getProviderConfig(config);
 
-      expect(provider).toBeDefined();
-      expect(provider?.name).toBe("anthropic");
-    });
+			expect(provider).toBeDefined();
+			expect(provider?.name).toBe("anthropic");
+		});
 
-    it("should be case insensitive", () => {
-      const config = loadConfigFromEnv({
-        LLM_OPENAI_API_KEY: "sk-test",
-      });
+		it("should be case insensitive", () => {
+			const config = loadConfigFromEnv({
+				LLM_OPENAI_API_KEY: "sk-test",
+			});
 
-      const provider = getProviderConfig(config, "OpenAI");
+			const provider = getProviderConfig(config, "OpenAI");
 
-      expect(provider).toBeDefined();
-    });
+			expect(provider).toBeDefined();
+		});
 
-    it("should return undefined for non-existent provider", () => {
-      const config = loadConfigFromEnv({});
+		it("should return undefined for non-existent provider", () => {
+			const config = loadConfigFromEnv({});
 
-      const provider = getProviderConfig(config, "nonexistent");
+			const provider = getProviderConfig(config, "nonexistent");
 
-      expect(provider).toBeUndefined();
-    });
-  });
+			expect(provider).toBeUndefined();
+		});
+	});
 
-  describe("getConfiguredProviders", () => {
-    it("should return empty array when no providers configured", () => {
-      const config = loadConfigFromEnv({});
+	describe("getConfiguredProviders", () => {
+		it("should return empty array when no providers configured", () => {
+			const config = loadConfigFromEnv({});
 
-      expect(getConfiguredProviders(config)).toEqual([]);
-    });
+			expect(getConfiguredProviders(config)).toEqual([]);
+		});
 
-    it("should return list of configured provider names", () => {
-      const config = loadConfigFromEnv({
-        LLM_OPENAI_API_KEY: "sk-openai",
-        LLM_ANTHROPIC_API_KEY: "sk-anthropic",
-      });
+		it("should return list of configured provider names", () => {
+			const config = loadConfigFromEnv({
+				LLM_OPENAI_API_KEY: "sk-openai",
+				LLM_ANTHROPIC_API_KEY: "sk-anthropic",
+			});
 
-      const providers = getConfiguredProviders(config);
+			const providers = getConfiguredProviders(config);
 
-      expect(providers).toContain("openai");
-      expect(providers).toContain("anthropic");
-      expect(providers).toHaveLength(2);
-    });
-  });
+			expect(providers).toContain("openai");
+			expect(providers).toContain("anthropic");
+			expect(providers).toHaveLength(2);
+		});
+	});
 
-  describe("isProviderConfigured", () => {
-    it("should return true for configured provider", () => {
-      const config = loadConfigFromEnv({
-        LLM_OPENAI_API_KEY: "sk-test",
-      });
+	describe("isProviderConfigured", () => {
+		it("should return true for configured provider", () => {
+			const config = loadConfigFromEnv({
+				LLM_OPENAI_API_KEY: "sk-test",
+			});
 
-      expect(isProviderConfigured(config, "openai")).toBe(true);
-    });
+			expect(isProviderConfigured(config, "openai")).toBe(true);
+		});
 
-    it("should return false for non-configured provider", () => {
-      const config = loadConfigFromEnv({});
+		it("should return false for non-configured provider", () => {
+			const config = loadConfigFromEnv({});
 
-      expect(isProviderConfigured(config, "openai")).toBe(false);
-    });
+			expect(isProviderConfigured(config, "openai")).toBe(false);
+		});
 
-    it("should be case insensitive", () => {
-      const config = loadConfigFromEnv({
-        LLM_OPENAI_API_KEY: "sk-test",
-      });
+		it("should be case insensitive", () => {
+			const config = loadConfigFromEnv({
+				LLM_OPENAI_API_KEY: "sk-test",
+			});
 
-      expect(isProviderConfigured(config, "OPENAI")).toBe(true);
-    });
-  });
+			expect(isProviderConfigured(config, "OPENAI")).toBe(true);
+		});
+	});
+
+	describe("switch provider (claude-switch-proxy)", () => {
+		it("should discover the switch provider from LLM_SWITCH_API_KEY", () => {
+			const config = loadConfigFromEnv({
+				LLM_SWITCH_API_KEY: "sk-proxy",
+			});
+
+			const provider = getProviderConfig(config, "switch");
+
+			expect(provider).toBeDefined();
+			expect(provider?.apiKey).toBe("sk-proxy");
+		});
+
+		it("should default the switch model to abaci", () => {
+			const config = loadConfigFromEnv({
+				LLM_SWITCH_API_KEY: "sk-proxy",
+			});
+
+			expect(getProviderConfig(config, "switch")?.defaultModel).toBe("abaci");
+		});
+
+		it("should respect an explicit LLM_SWITCH_DEFAULT_MODEL", () => {
+			const config = loadConfigFromEnv({
+				LLM_SWITCH_API_KEY: "sk-proxy",
+				LLM_SWITCH_DEFAULT_MODEL: "claude-abaci",
+			});
+
+			expect(getProviderConfig(config, "switch")?.defaultModel).toBe(
+				"claude-abaci",
+			);
+		});
+
+		it("should use an explicit LLM_SWITCH_BASE_URL", () => {
+			const config = loadConfigFromEnv({
+				LLM_SWITCH_API_KEY: "sk-proxy",
+				LLM_SWITCH_BASE_URL: "http://192.0.2.1:8787/v1",
+			});
+
+			expect(getProviderConfig(config, "switch")?.baseUrl).toBe(
+				"http://192.0.2.1:8787/v1",
+			);
+		});
+
+		it("falls back to the invented https://api.switch.com/v1 without a base URL (the client factory refuses this)", () => {
+			// Documents the hazard: there is deliberately no baseUrl in
+			// PROVIDER_DEFAULTS for switch, so the generic fallback invents a real
+			// third-party domain. LLMClient's switch factory refuses this value so
+			// the proxy client secret can never be sent there.
+			const config = loadConfigFromEnv({
+				LLM_SWITCH_API_KEY: "sk-proxy",
+			});
+
+			expect(getProviderConfig(config, "switch")?.baseUrl).toBe(
+				"https://api.switch.com/v1",
+			);
+		});
+	});
 });
