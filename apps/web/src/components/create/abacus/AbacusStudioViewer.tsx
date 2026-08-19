@@ -34,6 +34,7 @@ import {
   isModular,
   MARKER_BITS,
   markersFollowFrameGhost,
+  moduleFeetStuds,
   outerD,
   type ShellInfo,
   shellHex,
@@ -452,34 +453,34 @@ export function AbacusStudioViewer() {
     }
 
     // ---- printed-feet stud preview (Gitea #23) -------------------------------
-    // The MAIN STL never carries feet (the scad emits them only via the
-    // `only="feet"` part pass, so analyzeShells can't mis-classify studs as
-    // beads); preview them as mouth-diameter studs at the mirrored FEET_POS.
+    // The MAIN STL never carries feet (the scad emits them only via the part
+    // passes — `only="feet"` on a monolith, `only="module_*_feet"` per module —
+    // so analyzeShells can't mis-classify studs as beads); preview them as
+    // mouth-diameter studs at the positions the matching pass would emit.
     // The studs deliberately dip below the z=0 grid — the print stands on its
     // feet, and showing them buried would hide the whole point of the feature.
     const feetGroup = new THREE.Group()
     centered.add(feetGroup)
-    // every stud is the same solid, so one geometry + one material back the whole
-    // group; held here (not walked off the children) so disposal is exact-once and
-    // the unmount teardown can reuse it.
-    let feetGeo: THREE.BufferGeometry | null = null
+    // Studs share a solid per FOOT CLASS — one on a monolith, two on a modular
+    // design (the mid modules' smaller class beside the mono corner foot) — so
+    // the geometries are keyed by mouth and the material is shared by all of
+    // them. Held here (not walked off the children) so disposal is exact-once
+    // and the unmount teardown can reuse it.
+    const feetGeos = new Map<number, THREE.BufferGeometry>()
     let feetMat: THREE.Material | null = null
 
     function disposeFeet() {
       feetGroup.clear()
-      feetGeo?.dispose()
+      for (const geo of feetGeos.values()) geo.dispose()
+      feetGeos.clear()
       feetMat?.dispose()
-      feetGeo = null
       feetMat = null
     }
 
     function updateFeet() {
       const p = paramsRef.current
       disposeFeet()
-      // Modular modules carry their own feet at module-local positions
-      // (moduleFeetPositions) — the MONO feetPositions this preview mirrors
-      // drift as every seam widens the pitch, so the studs gate off.
-      const on = p.feet_mode === 'printed' && p.show_frame && !isModular(p)
+      const on = p.feet_mode === 'printed' && p.show_frame
       feetGroup.visible = on
       if (!on) return
       const fx = feetEffective(p)
@@ -487,11 +488,19 @@ export function AbacusStudioViewer() {
       // flares to `seat` at depth and carries the crossbar slot, but all of that
       // is buried inside the pocket — the only part anyone can see is the straight
       // mouth-section stand-off below the bottom face, which this matches exactly.
+      // (It is also why a mid module's rotated crossbar needs nothing here: the
+      // only thing that varies above the bottom face is the mouth.)
       const h = fx.proud + fx.depthEff
-      feetGeo =
-        p.feet_shape === 'square'
-          ? new THREE.BoxGeometry(fx.mouth, fx.mouth, h)
-          : new THREE.CylinderGeometry(fx.mouth / 2, fx.mouth / 2, h, 32).rotateX(Math.PI / 2)
+      const geoFor = (mouth: number): THREE.BufferGeometry => {
+        const hit = feetGeos.get(mouth)
+        if (hit) return hit
+        const geo =
+          p.feet_shape === 'square'
+            ? new THREE.BoxGeometry(mouth, mouth, h)
+            : new THREE.CylinderGeometry(mouth / 2, mouth / 2, h, 32).rotateX(Math.PI / 2)
+        feetGeos.set(mouth, geo)
+        return geo
+      }
       // reality-first: the studs wear the feet role's mapped spool, falling back
       // to the frame slot exactly like planToFilamentMap's no-TPU fallback; the
       // intrinsic-reveal hover shows the plan's designed feet hex instead.
@@ -509,8 +518,16 @@ export function AbacusStudioViewer() {
         opacity: ghosted ? XRAY_OPACITY : 1,
         depthWrite: !ghosted,
       })
-      for (const [x, y] of feetPositions(p)) {
-        const stud = new THREE.Mesh(feetGeo, feetMat)
+      // A modular kit's feet are its modules' own (two per module, mid ones in
+      // the smaller class beside the seam socket) — NOT the monolith's, whose
+      // intermediate pairs don't exist once every seam lands a foot.
+      // ...and they ride the take-it-apart gap with their own module, which is
+      // why the explode is read here and not baked into a seated layout.
+      const studs = isModular(p)
+        ? moduleFeetStuds(p, explodeRef.current)
+        : feetPositions(p).map(([x, y]) => ({ x, y, mouth: fx.mouth }))
+      for (const { x, y, mouth } of studs) {
+        const stud = new THREE.Mesh(geoFor(mouth), feetMat)
         stud.position.set(x, y, (fx.depthEff - fx.proud) / 2)
         feetGroup.add(stud)
       }
