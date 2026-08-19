@@ -525,11 +525,38 @@ describe('packKitPlate (tower first, then the modules around it)', () => {
 
     it('leaves no keep-out inside the whole plate box, on the real X1C bed', () => {
       const layout = packKitPlate({ instances, bases, supportsAtSlice: true, filaments: 3 })
-      const box = boxOf(layout)
-      // Non-vacuous: the packer seeds from the bed origin, so this plate comes out of
-      // packPlates touching (0, 0) — the staged 3MF that took the 192 had exactly that
-      // box. What this asserts is that it does not STAY there.
-      expect(box.y0).toBeGreaterThanOrEqual(28 - 1e-6)
+      // The box that has to stay clear is the FIRST-LAYER box: each module grown
+      // by its 5.45 mm supports-on reach, the tower rect as reserved (its ring is
+      // already inside the reserve). The plate's OUTLINE used to come out of
+      // packPlates touching (0, 0) — the staged 3MF that took the 192 had exactly
+      // that box — and the outline-only slide it got then still left the first
+      // layer off the bed (the 2026-08-18 exit 154).
+      const rects: Rect[] = [
+        ...layout.placements.map((pl) => {
+          const r = rectOf(pl)
+          return { x0: r.x0 - 5.45, y0: r.y0 - 5.45, x1: r.x1 + 5.45, y1: r.y1 + 5.45 }
+        }),
+        {
+          x0: layout.tower.xMm,
+          y0: layout.tower.yMm,
+          x1: layout.tower.xMm + layout.tower.wMm,
+          y1: layout.tower.yMm + layout.tower.dMm,
+        },
+      ]
+      const box: Rect = {
+        x0: Math.min(...rects.map((r) => r.x0)),
+        y0: Math.min(...rects.map((r) => r.y0)),
+        x1: Math.max(...rects.map((r) => r.x1)),
+        y1: Math.max(...rects.map((r) => r.y1)),
+      }
+      // Non-vacuous without picking a slide axis: the plate spans most of the
+      // bed, so keeping this box on the bed and out of the corner is a real
+      // constraint, not a formality.
+      expect(Math.max(box.x1 - box.x0, box.y1 - box.y0)).toBeGreaterThan(200)
+      expect(box.x0).toBeGreaterThanOrEqual(-1e-6)
+      expect(box.y0).toBeGreaterThanOrEqual(-1e-6)
+      expect(box.x1).toBeLessThanOrEqual(layout.bed.wMm + 1e-6)
+      expect(box.y1).toBeLessThanOrEqual(layout.bed.dMm + 1e-6)
       for (const e of layout.bed.exclude ?? []) {
         expect(overlaps(box, { x0: e.xMm, y0: e.yMm, x1: e.xMm + e.wMm, y1: e.yMm + e.dMm })).toBe(
           false
@@ -588,6 +615,127 @@ describe('packKitPlate (tower first, then the modules around it)', () => {
     // two ever disagree — a THH zone shape the seed rounds differently, or the pending
     // swap onto @eink/plate-packing — because the alternative to refusing is emitting
     // a plate the slicer rejects after the user has waited for the render.
+  })
+
+  // ---- the exit-154 law: first layers, not outlines, must stay on the bed ----
+  //
+  // `packPlates` seeds its free space at `bed.marginMm ?? 0`, and no bed here
+  // ever set a margin — so every kit used to pack with some module FLUSH against
+  // a bed edge. The outline was legal; the first layer (brim + supports,
+  // 5.1–5.45 mm past it) extruded off the bed, and Orca refused the plate with
+  // exit 154, "Found G-code in unprintable area of multi-extruder printers" —
+  // the production "Abacus kit — 4 columns" failure of 2026-08-18. The packer
+  // now packs into `firstLayerBed`: the growth becomes bed margin and inflated
+  // keep-outs, and `clearOfKeepOuts` slides the grown box, not the outline box.
+  describe('first-layer clearance at the bed edge', () => {
+    const GROWTH = 5.1 // brim_object_gap 0.1 + brim_width 5
+    const GROWTH_SUPPORTED = 5.45 // + support_object_xy_distance 0.35
+
+    const grow = (r: Rect, g: number): Rect => ({
+      x0: r.x0 - g,
+      y0: r.y0 - g,
+      x1: r.x1 + g,
+      y1: r.y1 + g,
+    })
+
+    it('keeps every module’s first layer on the bed, supports on and off', () => {
+      // Non-vacuous both ways: before the fix this exact call packed a module at
+      // x = 0 (supports on) / y = 0 (supports off) — the geometry Orca refuses.
+      for (const [supportsAtSlice, g] of [
+        [true, GROWTH_SUPPORTED],
+        [false, GROWTH],
+      ] as const) {
+        const { placements, bed } = packKitPlate({
+          instances,
+          bases,
+          supportsAtSlice,
+          filaments: 3,
+        })
+        for (const pl of placements) {
+          const r = rectOf(pl)
+          expect(r.x0).toBeGreaterThanOrEqual(g - 1e-6)
+          expect(r.y0).toBeGreaterThanOrEqual(g - 1e-6)
+          expect(r.x1).toBeLessThanOrEqual(bed.wMm - g + 1e-6)
+          expect(r.y1).toBeLessThanOrEqual(bed.dMm - g + 1e-6)
+        }
+      }
+    })
+
+    it('packs up to the new margin rather than merely clearing it', () => {
+      // Exactness proves the margin is the PACKER's, not slack that happens to
+      // be there: a 13-column kit on a 256 bed is tight enough that something
+      // lands exactly on the margin line — and that the supports-off margin is
+      // the smaller growth, not one number for both states.
+      const edgeClearance = (layout: ReturnType<typeof packKitPlate>): number =>
+        Math.min(
+          ...layout.placements
+            .map(rectOf)
+            .flatMap((r) => [r.x0, r.y0, layout.bed.wMm - r.x1, layout.bed.dMm - r.y1])
+        )
+      expect(edgeClearance(packKitPlate({ instances, bases, filaments: 3 }))).toBeCloseTo(GROWTH, 6)
+      expect(
+        edgeClearance(packKitPlate({ instances, bases, supportsAtSlice: true, filaments: 3 }))
+      ).toBeCloseTo(GROWTH_SUPPORTED, 6)
+    })
+
+    it('keeps grown modules out of the cutter corner on the real X1C bed', () => {
+      const layout = packKitPlate({ instances, bases, supportsAtSlice: true, filaments: 3 })
+      for (const pl of layout.placements) {
+        for (const e of layout.bed.exclude ?? []) {
+          expect(
+            overlaps(grow(rectOf(pl), GROWTH_SUPPORTED), {
+              x0: e.xMm,
+              y0: e.yMm,
+              x1: e.xMm + e.wMm,
+              y1: e.yMm + e.dMm,
+            })
+          ).toBe(false)
+        }
+      }
+    })
+
+    it('slides far enough that the grown box clears the zone too', () => {
+      // Before the fix the slide parked the OUTLINE box flush on the zone edge
+      // (y0 exactly 40.0), leaving the first layer 5.1 mm inside the zone.
+      const notched: BedSize = {
+        wMm: 400,
+        dMm: 400,
+        exclude: [{ xMm: 0, yMm: 0, wMm: 60, dMm: 40 }],
+      }
+      const layout = packKitPlate({ instances, bases, bed: notched })
+      const rects: Rect[] = [
+        ...layout.placements.map((pl) => grow(rectOf(pl), GROWTH)),
+        {
+          x0: layout.tower.xMm,
+          y0: layout.tower.yMm,
+          x1: layout.tower.xMm + layout.tower.wMm,
+          y1: layout.tower.yMm + layout.tower.dMm,
+        },
+      ]
+      const box: Rect = {
+        x0: Math.min(...rects.map((r) => r.x0)),
+        y0: Math.min(...rects.map((r) => r.y0)),
+        x1: Math.max(...rects.map((r) => r.x1)),
+        y1: Math.max(...rects.map((r) => r.y1)),
+      }
+      expect(overlaps(box, { x0: 0, y0: 0, x1: 60, y1: 40 })).toBe(false)
+    })
+
+    it('leaves the tower’s 16 mm edge law untouched by the margin change', () => {
+      // towerMargin is max(marginMm, TOWER_EDGE 16), and the growth is ≤ 5.45,
+      // so 16 must still decide the tower's distance from every bed edge. Pins
+      // that decision so a growth bump past 16 can't slip through silently.
+      const { tower } = packKitPlate({
+        instances,
+        bases,
+        bed: { wMm: 400, dMm: 400 },
+        supportsAtSlice: true,
+      })
+      expect(tower.xMm).toBeGreaterThanOrEqual(16 - 1e-6)
+      expect(tower.yMm).toBeGreaterThanOrEqual(16 - 1e-6)
+      expect(tower.xMm + tower.wMm).toBeLessThanOrEqual(400 - 16 + 1e-6)
+      expect(tower.yMm + tower.dMm).toBeLessThanOrEqual(400 - 16 + 1e-6)
+    })
   })
 
   it('refuses an overfull plate by name rather than dropping a module', () => {

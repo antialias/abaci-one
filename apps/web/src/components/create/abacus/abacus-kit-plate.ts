@@ -99,17 +99,22 @@ const EPS = 1e-6
 const MODULE_GROWTH_MM = 5.1
 const MODULE_GROWTH_SUPPORTED_MM = 5.45
 
+/** One module's first-layer reach past its declared outline, per side. */
+const moduleGrowthMm = (supports: boolean): number =>
+  supports ? MODULE_GROWTH_SUPPORTED_MM : MODULE_GROWTH_MM
+
 /**
  * Gap between neighbouring modules — BOTH grow, so it's twice one module's
- * reach, never once.
+ * reach, never once. The same reach must also be LEFT AT THE BED EDGE, where
+ * there is no neighbour to share it with — that single-growth margin is
+ * `firstLayerBed`'s job, not this gap's.
  *
  * The 4 mm this started as is the shared bundler's default, and it is wrong for a
  * kit in both states: it doesn't hold two brims. What it is NOT is the cause of
  * the exit 192 this file used to blame it for — see `clearOfKeepOuts`. Two modules
  * whose brims overlap slice without complaint; they just print fused.
  */
-const moduleGapMm = (supports: boolean): number =>
-  2 * (supports ? MODULE_GROWTH_SUPPORTED_MM : MODULE_GROWTH_MM)
+const moduleGapMm = (supports: boolean): number => 2 * moduleGrowthMm(supports)
 
 // ---- refusals ---------------------------------------------------------------
 
@@ -449,12 +454,30 @@ function plateTowerReserve(
  * every internal clearance exactly — the tower moves with the modules — which is
  * why this runs after packing rather than shrinking the region packed into. A pure
  * inset would spend a 256-wide strip of bed to avoid an 18 × 28 corner.
+ *
+ * And the box that has to stay clear is the FIRST-LAYER box, not the outline
+ * box — the exit-154 half of the story. Brim and supports grow each module by
+ * `growthMm` per side past its declared outline, so the box tested here is built
+ * from the GROWN module rects (the tower rect stays as-is: its reserve already
+ * carries `TOWER_GAP` + `SUPPORT_SKIRT` of ring, see `plateTowerReserve`). A
+ * plate whose outline sat exactly at y = 0 was legal by the old outline test and
+ * still sliced its support brim into unprintable area.
  */
 function clearOfKeepOuts(
   bed: BedSize,
-  rects: readonly BedRect[]
+  modules: readonly BedRect[],
+  tower: BedRect,
+  growthMm: number
 ): { dxMm: number; dyMm: number } | null {
-  if (rects.length === 0) return { dxMm: 0, dyMm: 0 }
+  const rects: BedRect[] = [
+    ...modules.map((r) => ({
+      xMm: r.xMm - growthMm,
+      yMm: r.yMm - growthMm,
+      wMm: r.wMm + 2 * growthMm,
+      dMm: r.dMm + 2 * growthMm,
+    })),
+    tower,
+  ]
   const box = {
     x0: Math.min(...rects.map((r) => r.xMm)),
     y0: Math.min(...rects.map((r) => r.yMm)),
@@ -469,6 +492,7 @@ function clearOfKeepOuts(
   }))
   const clears = (dx: number, dy: number): boolean => {
     const b = { x0: box.x0 + dx, y0: box.y0 + dy, x1: box.x1 + dx, y1: box.y1 + dy }
+    // Bounds = no first-layer extrusion off the bed — the exit-154 belt.
     if (b.x0 < -EPS || b.y0 < -EPS || b.x1 > bed.wMm + EPS || b.y1 > bed.dMm + EPS) return false
     return !excludes.some(
       (e) => b.x0 < e.x1 - EPS && b.x1 > e.x0 + EPS && b.y0 < e.y1 - EPS && b.y1 > e.y0 + EPS
@@ -519,8 +543,11 @@ function splitRect(f: BedRect, ex: BedRect): BedRect[] {
 /** The bed's genuinely usable rectangles at `margin`, printer keep-outs carved
  *  out — what the tower reservation searches. Mirrors the packer's own free-space
  *  seed, which frames-engine keeps private; it comes across with the rest of the
- *  import block when `@eink/plate-packing` publishes. Overlapping candidates are
- *  left in: they only widen the search, never move its answer. */
+ *  import block when `@eink/plate-packing` publishes. Because it is that mirror,
+ *  it must be handed the SAME bed object `packPlates` gets — the `firstLayerBed`,
+ *  not the printer's — or the tower search and the pack disagree about where the
+ *  free space is. That identity is load-bearing, not hygiene. Overlapping
+ *  candidates are left in: they only widen the search, never move its answer. */
 function bedFreeRects(bed: BedSize, margin: number): BedRect[] {
   const wMm = bed.wMm - 2 * margin
   const dMm = bed.dMm - 2 * margin
@@ -528,6 +555,42 @@ function bedFreeRects(bed: BedSize, margin: number): BedRect[] {
   let free: BedRect[] = [{ xMm: margin, yMm: margin, wMm, dMm }]
   for (const ex of bed.exclude ?? []) free = free.flatMap((f) => splitRect(f, ex))
   return free
+}
+
+/**
+ * The bed as the PACKER and the tower search must see it: usable margin raised
+ * to one module's first-layer growth, and every printer keep-out inflated by the
+ * same growth on all sides.
+ *
+ * This is the exit-154 lesson (prod, 2026-08-18). `packPlates` seeds its free
+ * space at `bed.marginMm ?? 0`, and this bed never set a margin — so modules
+ * packed FLUSH against the bed edge: outline legal, first layer (brim +
+ * supports, `moduleGrowthMm` past the outline) extruding off the bed. Orca's
+ * multi-extruder post-slice check refuses that plate with exit 154, "Found
+ * G-code in unprintable area". The keep-outs are unprintable area too, so they
+ * grow by the same reach.
+ *
+ * PACKING VIEW ONLY: `KitPlateLayout.bed` always reports the printer's real
+ * bed. The preview draws `bed.exclude` verbatim, and an inflated zone presented
+ * as the printer's own would be a lie. Spreading `...bed` keeps any future
+ * `BedSize` field. An inflated zone may reach negative coordinates; that is
+ * fine — both `splitRect` and the packer's own carve clip against the free rect.
+ */
+function firstLayerBed(bed: BedSize, growthMm: number): BedSize {
+  return {
+    ...bed,
+    marginMm: Math.max(bed.marginMm ?? 0, growthMm),
+    ...(bed.exclude
+      ? {
+          exclude: bed.exclude.map((e) => ({
+            xMm: e.xMm - growthMm,
+            yMm: e.yMm - growthMm,
+            wMm: e.wMm + 2 * growthMm,
+            dMm: e.dMm + 2 * growthMm,
+          })),
+        }
+      : {}),
+  }
 }
 
 /**
@@ -571,7 +634,10 @@ export function packKitPlate(args: {
    *  the fallback plate. */
   bed?: BedSize
   /** Override the derived inter-module gap. Leave unset — the default follows
-   *  `supportsAtSlice`, and that coupling is the whole point (see moduleGapMm). */
+   *  `supportsAtSlice`, and that coupling is the whole point (see moduleGapMm).
+   *  Moves the INTER-MODULE gap only: the bed-edge margin follows
+   *  `supportsAtSlice` regardless, because clearing the bed edge is physics,
+   *  not a preference. */
   gapMm?: number
   wipeTower?: WipeTowerProfileGeometry
   /** Supports will be on when this plate is sliced (printed feet, or the
@@ -594,9 +660,20 @@ export function packKitPlate(args: {
     filaments,
   } = args
   const gapMm = args.gapMm ?? moduleGapMm(supportsAtSlice)
+  const growthMm = moduleGrowthMm(supportsAtSlice)
+  const packBed = firstLayerBed(bed, growthMm)
 
   const reserve = plateTowerReserve(wipeTower, supportsAtSlice, filaments)
-  const towerSpots = towerPlacementCandidates(bed, reserve, bedFreeRects(bed, towerMargin(bed)))
+  // The tower searches the SAME first-layer bed the packer packs. Its edge law
+  // is untouched by that: `towerMargin` is max(marginMm, TOWER_EDGE 16) and the
+  // growth is ≤ 5.45, so 16 still dominates — the tower already keeps a stricter
+  // edge than a module needs. Candidate ORDER is unchanged too: `cornerPull`
+  // scores off `bed.wMm`/`bed.dMm`, which `firstLayerBed` never touches.
+  const towerSpots = towerPlacementCandidates(
+    packBed,
+    reserve,
+    bedFreeRects(packBed, towerMargin(packBed))
+  )
   if (towerSpots.length === 0) {
     throw new KitPlateFitError(
       'no-tower-room',
@@ -617,7 +694,7 @@ export function packKitPlate(args: {
   let firstRefusal: KitPlateFitError | null = null
   for (const tower of towerSpots) {
     try {
-      return layoutAroundTower({ instances, bases, bed, gapMm, tower })
+      return layoutAroundTower({ instances, bases, bed, packBed, growthMm, gapMm, tower })
     } catch (err) {
       if (!(err instanceof KitPlateFitError)) throw err
       firstRefusal ??= err
@@ -634,18 +711,22 @@ export function packKitPlate(args: {
 function layoutAroundTower(args: {
   instances: readonly KitPlateInstance[]
   bases: Record<ModuleKind, ModuleBasis>
+  /** The printer's real bed — what refusals name and what the layout reports. */
   bed: BedSize
+  /** The `firstLayerBed` — what the packer packs into. */
+  packBed: BedSize
+  growthMm: number
   gapMm: number
   tower: PlacedTower
 }): KitPlateLayout {
-  const { instances, bases, bed, gapMm, tower } = args
+  const { instances, bases, bed, packBed, growthMm, gapMm, tower } = args
 
   const items: PackItem[] = instances.map((inst) => ({
     id: inst.id,
     wMm: bases[inst.kind].wMm,
     hMm: bases[inst.kind].hMm,
   }))
-  const packed = packPlates(items, bed, gapMm, tower)
+  const packed = packPlates(items, packBed, gapMm, tower)
   const byId = new Map(packed.placements.map((pl) => [pl.id, pl]))
   const labelOf = (id: string): string =>
     instances.find((inst) => inst.id === id)?.label ?? `module ${id}`
@@ -693,12 +774,16 @@ function layoutAroundTower(args: {
     }
   })
 
-  // The plate's BOX has to clear the printer's keep-outs, not just its parts —
-  // Orca hulls each volume, and our volumes span the plate. See clearOfKeepOuts.
-  const shift = clearOfKeepOuts(bed, [
-    ...packedPlacements.map((pl) => ({ xMm: pl.xMm, yMm: pl.yMm, wMm: pl.wMm, dMm: pl.hMm })),
+  // The plate's FIRST-LAYER box has to clear the printer's keep-outs and the
+  // bed edges, not just its parts' outlines — Orca hulls each volume, our
+  // volumes span the plate, and brim/supports grow every module by `growthMm`
+  // per side. See clearOfKeepOuts.
+  const shift = clearOfKeepOuts(
+    bed,
+    packedPlacements.map((pl) => ({ xMm: pl.xMm, yMm: pl.yMm, wMm: pl.wMm, dMm: pl.hMm })),
     { xMm: tower.xMm, yMm: tower.yMm, wMm: tower.wMm, dMm: tower.dMm },
-  ])
+    growthMm
+  )
   if (!shift) {
     throw new KitPlateFitError(
       'keep-out',
