@@ -2357,6 +2357,55 @@ export function moduleFeetPositions(p: Params, kind: 'left' | 'mid' | 'right'): 
   ]
 }
 
+/** One printed foot of a modular design, in ASSEMBLED-frame coordinates — the
+ *  same frame {@link feetPositions} answers in, so the viewer draws both kinds
+ *  of design through one code path. */
+export type ModuleFootStud = {
+  x: number
+  y: number
+  /** This foot's own mouth width. Mid modules run the smaller ≤ 6.35 mm
+   *  module-foot class (`moduleFeetLayout`), end modules keep the monolith's
+   *  corner foot — one plate can carry both, so the size travels per stud. */
+  mouth: number
+  kind: 'left' | 'mid' | 'right'
+}
+
+/**
+ * Every printed foot of a MODULAR design, laid out in the assembled frame.
+ *
+ * A modular kit's feet are NOT the monolith's: `module_feet` in the scad emits
+ * exactly two per module — mid modules get `MF_XY` (beside the seam socket, in
+ * the smaller foot class), end modules keep the monolith's own corner feet (0
+ * and 3 on the left, 1 and 2 on the right) and nothing else. The mono
+ * intermediate feet that split a long bottom run never appear: every seam
+ * already lands a foot, so the run is split by construction.
+ *
+ * Modules abut with no added width (`2·modWe + (cols−2)·scW === frameW`), so a
+ * module's origin is just the widths to its left — which is why the four end
+ * studs come back exactly on the mono corners while the mid ones sit on the
+ * seam pitch, not the mono foot pitch. Mirroring `feetPositions` here instead
+ * would drift by a whole foot class and a socket's offset.
+ *
+ * `explode` is the studio's take-it-apart gap, and the feet have to ride it:
+ * module i (carrying column i) slides +i·explode, exactly as the scad's own
+ * `-Dexplode` moves the bodies. A stud left at its seated x would hang in the
+ * opened seam — under a module that is no longer there.
+ */
+export function moduleFeetStuds(p: Params, explode = 0): ModuleFootStud[] {
+  const d = derived(p)
+  const endMouth = feetEffective(p).mouth
+  const midMouth = moduleFeetLayout(p).mouth
+  const e = isModular(p) ? explode : 0
+  const studs: ModuleFootStud[] = []
+  const add = (kind: 'left' | 'mid' | 'right', x0: number, mouth: number): void => {
+    for (const [x, y] of moduleFeetPositions(p, kind)) studs.push({ x: x0 + x, y, mouth, kind })
+  }
+  add('left', 0, endMouth)
+  for (let j = 0; j < p.cols - 2; j++) add('mid', d.modWe + j * d.scW + (j + 1) * e, midMouth)
+  add('right', d.frameW - d.modWe + (p.cols - 1) * e, endMouth)
+  return studs
+}
+
 /** One row of the seam-fit table: a TS mirror of one scad assert. `ok:false`
  *  means the corresponding module/coupon render would ABORT on that assert —
  *  which is why the panel blocks the kit and coupon downloads on any failure

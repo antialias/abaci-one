@@ -12,9 +12,11 @@ import {
   derived,
   EXPLODE_GAP,
   feetEffective,
+  feetPositions,
   isModular,
   moduleFeetLayout,
   moduleFeetPositions,
+  moduleFeetStuds,
   PART_ONLY_DEFINE_KEYS,
   type Params,
   previewDedupKey,
@@ -972,6 +974,105 @@ describe('moduleFeetPositions', () => {
     expect(moduleFeetPositions(p({ cols: 5 }), 'right')[0][0]).toBe(
       moduleFeetPositions(p({ cols: 13 }), 'right')[0][0]
     )
+  })
+})
+
+// The studio's hero preview draws printed feet as synthetic studs (the main STL
+// never carries them), and it used to gate them OFF entirely for a modular
+// design: it mirrored the MONO feetPositions, which are the wrong count, the
+// wrong pitch and the wrong foot class once the frame prints as modules. These
+// pin the assembled-frame layout the preview draws instead, against the same
+// scad rules `module_feet(kind)` emits.
+describe('moduleFeetStuds (the assembled-frame studs the viewer draws)', () => {
+  const mp = p({ seam_mode: 'modular', feet_mode: 'printed' })
+
+  it('emits exactly two feet per module — never the mono intermediate pairs', () => {
+    for (const cols of [3, 4, 7, 13]) {
+      const studs = moduleFeetStuds(p({ ...mp, cols }))
+      expect(studs).toHaveLength(2 * cols)
+      expect(studs.filter((s) => s.kind === 'mid')).toHaveLength(2 * (cols - 2))
+    }
+    // non-vacuity: the mono design this replaces carries a different count at
+    // the same size, which is exactly why mirroring it drew the wrong picture
+    expect(feetPositions(p({ ...mp, cols: 13 })).length).not.toBe(2 * 13)
+  })
+
+  it('lands the four end-module studs exactly on the monolith corners', () => {
+    const d = derived(mp)
+    const { c } = feetEffective(mp)
+    const ends = moduleFeetStuds(mp).filter((s) => s.kind !== 'mid')
+    expect(ends.map((s) => [s.x, s.y])).toEqual([
+      [c, c],
+      [c, d.outerD - c],
+      [d.frameW - c, c],
+      [d.frameW - c, d.outerD - c],
+    ])
+  })
+
+  it('puts every mid stud inside its own module, on the seam pitch', () => {
+    const d = derived(mp)
+    const mids = moduleFeetStuds(mp).filter((s) => s.kind === 'mid')
+    const local = moduleFeetPositions(mp, 'mid')
+    mids.forEach((s, i) => {
+      const j = Math.floor(i / 2)
+      const x0 = d.modWe + j * d.scW
+      expect(s.x).toBeCloseTo(x0 + local[i % 2][0], 12)
+      expect(s.x).toBeGreaterThan(x0)
+      expect(s.x).toBeLessThan(x0 + d.scW)
+      expect(s.y).toBe(local[i % 2][1])
+    })
+  })
+
+  it('gives mid modules the smaller foot class and end modules the monolith’s', () => {
+    const studs = moduleFeetStuds(mp)
+    const mid = studs.find((s) => s.kind === 'mid')
+    const end = studs.find((s) => s.kind === 'left')
+    expect(mid?.mouth).toBeCloseTo(moduleFeetLayout(mp).mouth, 12)
+    expect(end?.mouth).toBeCloseTo(feetEffective(mp).mouth, 12)
+    // at stock the module foot really is the capped class, not the mono foot —
+    // drawing one size for both would oversize every mid stud
+    expect(mid?.mouth).toBeLessThan(end?.mouth ?? 0)
+    expect(mid?.mouth).toBeLessThanOrEqual(6.35)
+  })
+
+  it('rides the take-it-apart gap: module i slides +i·explode', () => {
+    // The same law analyzeShells reads an exploded chain by, and the same one
+    // `recenter` sizes the view with — a stud that ignored it would hang in the
+    // opened seam, under a module that has moved on.
+    const e = EXPLODE_GAP
+    const seated = moduleFeetStuds(mp)
+    const apart = moduleFeetStuds(mp, e)
+    const d = derived(mp)
+    // left (module 0) never moves; right is the last module, so it moves most
+    expect(apart[0].x).toBe(seated[0].x)
+    expect(apart.at(-1)?.x).toBeCloseTo((seated.at(-1)?.x ?? 0) + (mp.cols - 1) * e, 12)
+    // every mid stud moves by its own module's index, not a shared offset
+    apart
+      .map((s, i) => ({ s, seat: seated[i] }))
+      .filter(({ s }) => s.kind === 'mid')
+      .forEach(({ s, seat }, k) => {
+        expect(s.x - seat.x).toBeCloseTo((Math.floor(k / 2) + 1) * e, 12)
+      })
+    // and the exploded chain still fits the extent the viewer centres on
+    expect(apart.at(-1)?.x ?? 0).toBeLessThan(d.frameW + (mp.cols - 1) * e)
+  })
+
+  it('ignores an explode gap on a monolith (there are no seams to open)', () => {
+    const mono = p({ feet_mode: 'printed' })
+    expect(moduleFeetStuds(mono, EXPLODE_GAP)).toEqual(moduleFeetStuds(mono))
+  })
+
+  it('keeps every stud on the frame, feet inset from both edges', () => {
+    for (const cols of [3, 4, 13]) {
+      const q = p({ ...mp, cols })
+      const d = derived(q)
+      for (const s of moduleFeetStuds(q)) {
+        expect(s.x - s.mouth / 2).toBeGreaterThan(0)
+        expect(s.x + s.mouth / 2).toBeLessThan(d.frameW)
+        expect(s.y - s.mouth / 2).toBeGreaterThan(0)
+        expect(s.y + s.mouth / 2).toBeLessThan(d.outerD)
+      }
+    }
   })
 })
 
