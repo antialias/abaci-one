@@ -16,6 +16,7 @@ import type { Player } from '@/db/schema/players'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { batchGetEnrolledClassrooms, batchGetStudentPresence } from '@/lib/classroom'
 import { getParentedPlayerIds } from '@/lib/classroom/access-control'
+import { metrics } from '@/lib/metrics'
 import { getUserId } from '@/lib/viewer'
 import {
   computeIntervention,
@@ -24,19 +25,10 @@ import {
   type StudentActiveSessionInfo,
   type StudentWithSkillData,
 } from '@/utils/studentGrouping'
-import { computeBktFromHistory, getStalenessWarning } from './bkt'
-import {
-  getAllSkillMastery,
-  getPaginatedSessions,
-  getPlayerCurriculum,
-  getRecentSessions,
-} from './progress-manager'
-import {
-  batchGetRecentSessionResults,
-  getActiveSessionPlan,
-  getRecentSessionResults,
-  type ProblemResultWithContext,
-} from './session-planner'
+import { computeBktFromHistory, getStalenessWarning, type BktEvidence } from './bkt'
+import { batchGetRecentBktEvidence } from './bkt/evidence-query'
+import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
+import { getActiveSessionPlan } from './session-planner'
 
 export type { PlayerCurriculum } from '@/db/schema/player-curriculum'
 export type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
@@ -95,11 +87,11 @@ export async function getPlayersForViewer(): Promise<Player[]> {
  * Compute skill distribution for a player from pre-fetched problem history.
  * Uses BKT to determine mastery levels and staleness.
  *
- * Accepts pre-fetched ProblemResultWithContext[] to avoid per-player DB queries.
+ * Accepts pre-fetched BKT evidence to avoid per-player DB queries.
  */
 function computePlayerSkillDistribution(
   practicingSkillIds: string[],
-  problemHistory: ProblemResultWithContext[]
+  problemHistory: readonly BktEvidence[]
 ): SkillDistribution {
   const distribution: SkillDistribution = {
     strong: 0,
@@ -234,17 +226,46 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
 
   const playerIds = players.map((p) => p.id)
 
-  // Batch-fetch all enrichment data in parallel (single query each)
-  const [allSkillMastery, enrollmentMap, presenceMap, activeSessionMap, sessionResultsByPlayer] =
-    await Promise.all([
-      db.query.playerSkillMastery.findMany({
-        where: inArray(schema.playerSkillMastery.playerId, playerIds),
-      }),
-      batchGetEnrolledClassrooms(playerIds),
-      batchGetStudentPresence(playerIds),
-      batchGetActiveSessions(playerIds),
-      batchGetRecentSessionResults(playerIds, 100),
-    ])
+  // Batch-fetch the lightweight enrichment data in parallel (single query each).
+  const [allSkillMastery, enrollmentMap, presenceMap, activeSessionMap] = await Promise.all([
+    db.query.playerSkillMastery.findMany({
+      where: inArray(schema.playerSkillMastery.playerId, playerIds),
+    }),
+    batchGetEnrolledClassrooms(playerIds),
+    batchGetStudentPresence(playerIds),
+    batchGetActiveSessions(playerIds),
+  ])
+
+  // BKT history is only needed for active students with skills in rotation.
+  // Fetch a narrow projection with the per-player cap enforced in SQL so the
+  // practice picker never transfers full historical problem payloads.
+  const activePlayerIds = new Set(players.filter((player) => !player.isArchived).map((p) => p.id))
+  const bktPlayerIds = [
+    ...new Set(
+      allSkillMastery
+        .filter((skill) => skill.isPracticing && activePlayerIds.has(skill.playerId))
+        .map((skill) => skill.playerId)
+    ),
+  ]
+
+  let sessionResultsByPlayer = new Map<string, BktEvidence[]>()
+  if (bktPlayerIds.length > 0) {
+    try {
+      sessionResultsByPlayer = await batchGetRecentBktEvidence(bktPlayerIds, 100)
+    } catch (error) {
+      // Skill distribution is advisory enrichment. If history loading fails,
+      // render the student picker without interventions rather than taking the
+      // entire practice route down.
+      console.error('[Practice] Failed to load BKT evidence for student picker', {
+        playerCount: bktPlayerIds.length,
+        error,
+      })
+      metrics.errors.total.inc({
+        type: 'database',
+        location: 'practice-bkt-enrichment',
+      })
+    }
+  }
 
   // Group skill mastery by player
   const skillsByPlayer = new Map<string, typeof allSkillMastery>()

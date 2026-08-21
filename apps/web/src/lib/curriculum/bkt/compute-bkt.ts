@@ -7,7 +7,6 @@
  */
 
 import { BKT_THRESHOLDS } from '../config/bkt-integration'
-import type { ProblemResultWithContext } from '../session-planner'
 import { getEffectiveResponseTimeMs } from '../timing/effective-time'
 import { calculateConfidence, getUncertaintyRange } from './confidence'
 import { type BlameMethod, updateOnCorrect, updateOnIncorrectWithMethod } from './conjunctive-bkt'
@@ -16,6 +15,7 @@ import { getDefaultParams } from './skill-priors'
 import type {
   BktComputeOptions,
   BktComputeResult,
+  BktEvidence,
   BktModeResult,
   BktSkillState,
   MasteryClassification,
@@ -76,7 +76,7 @@ function applyTimeDecay(
  * @returns BKT results for all skills, sorted by need for intervention
  */
 export function computeBktFromHistory(
-  results: ProblemResultWithContext[],
+  results: readonly BktEvidence[],
   options: Partial<BktComputeExtendedOptions> = {}
 ): BktComputeResult {
   // Merge with defaults so callers can override just what they need
