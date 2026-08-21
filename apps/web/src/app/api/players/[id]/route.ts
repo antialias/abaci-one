@@ -1,31 +1,10 @@
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
+import { isParentOf } from '@/lib/classroom/access-control'
 import { getUserId } from '@/lib/viewer'
 import { normalizeBirthdayInput } from '@/lib/playerAge'
-
-/**
- * Check if a user can manage a player (owner or linked parent).
- */
-async function canManagePlayer(playerId: string, userId: string): Promise<boolean> {
-  // Check direct ownership
-  const player = await db.query.players.findFirst({
-    where: and(eq(schema.players.id, playerId), eq(schema.players.userId, userId)),
-    columns: { id: true },
-  })
-  if (player) return true
-
-  // Check parent-child link
-  const link = await db.query.parentChild.findFirst({
-    where: and(
-      eq(schema.parentChild.childPlayerId, playerId),
-      eq(schema.parentChild.parentUserId, userId)
-    ),
-    columns: { childPlayerId: true },
-  })
-  return !!link
-}
 
 /**
  * PATCH /api/players/[id]
@@ -47,7 +26,7 @@ export const PATCH = withAuth(async (request, { params }) => {
     }
 
     // Check authorization: owner or linked parent
-    const authorized = await canManagePlayer(id, userId)
+    const authorized = await isParentOf(userId, id)
     if (!authorized) {
       return NextResponse.json({ error: 'Player not found or unauthorized' }, { status: 404 })
     }
@@ -87,7 +66,7 @@ export const DELETE = withAuth(async (_request, { params }) => {
     const { id } = (await params) as { id: string }
     const userId = await getUserId()
 
-    const authorized = await canManagePlayer(id, userId)
+    const authorized = await isParentOf(userId, id)
     if (!authorized) {
       return NextResponse.json({ error: 'Player not found or unauthorized' }, { status: 404 })
     }

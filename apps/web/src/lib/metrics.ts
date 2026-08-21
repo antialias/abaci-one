@@ -173,6 +173,63 @@ export const practiceStreakMax = new Gauge({
 })
 
 // =============================================================================
+// PRACTICE PICKER METRICS
+// =============================================================================
+
+export const practicePickerLoadDuration = new Histogram({
+  name: 'practice_picker_load_duration_seconds',
+  help: 'Time to load and enrich the parented-student practice picker roster',
+  labelNames: ['outcome'],
+  buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+  registers: [metricsRegistry],
+})
+
+export const practicePickerPayloadSize = new Histogram({
+  name: 'practice_picker_payload_size_bytes',
+  help: 'Serialized size of practice picker student data at the server/client boundary',
+  labelNames: ['outcome'],
+  buckets: [1024, 5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000],
+  registers: [metricsRegistry],
+})
+
+export const practicePickerStudentsReturned = new Histogram({
+  name: 'practice_picker_students_returned',
+  help: 'Number of parented practice students returned by archive state',
+  labelNames: ['state'],
+  buckets: [0, 1, 2, 5, 10, 25, 50, 100, 250, 500],
+  registers: [metricsRegistry],
+})
+
+export const practicePickerBktLoadDuration = new Histogram({
+  name: 'practice_picker_bkt_load_duration_seconds',
+  help: 'Time to load bounded BKT evidence for the practice picker',
+  labelNames: ['outcome'],
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+  registers: [metricsRegistry],
+})
+
+export const practicePickerBktPlayers = new Histogram({
+  name: 'practice_picker_bkt_players',
+  help: 'Number of active players requiring BKT evidence in a picker load',
+  buckets: [0, 1, 2, 5, 10, 25, 50, 100, 250],
+  registers: [metricsRegistry],
+})
+
+export const practicePickerBktChunks = new Histogram({
+  name: 'practice_picker_bkt_chunks',
+  help: 'Number of bounded libSQL chunks required for a picker BKT load',
+  buckets: [0, 1, 2, 3, 5, 10, 25, 50],
+  registers: [metricsRegistry],
+})
+
+export const practicePickerBktEvidence = new Histogram({
+  name: 'practice_picker_bkt_evidence',
+  help: 'Number of projected BKT evidence records returned for a picker load',
+  buckets: [0, 10, 50, 100, 250, 500, 1_000, 2_500, 5_000, 10_000, 25_000],
+  registers: [metricsRegistry],
+})
+
+// =============================================================================
 // ARCADE GAME METRICS
 // =============================================================================
 
@@ -680,6 +737,15 @@ export const metrics = {
     problemsTotal: practiceProblemsTotal,
     responseTime: practiceResponseTime,
     streakMax: practiceStreakMax,
+  },
+  practicePicker: {
+    loadDuration: practicePickerLoadDuration,
+    payloadSize: practicePickerPayloadSize,
+    studentsReturned: practicePickerStudentsReturned,
+    bktLoadDuration: practicePickerBktLoadDuration,
+    bktPlayers: practicePickerBktPlayers,
+    bktChunks: practicePickerBktChunks,
+    bktEvidence: practicePickerBktEvidence,
   },
   arcade: {
     sessionsActive: arcadeSessionsActive,

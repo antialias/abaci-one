@@ -26,7 +26,7 @@ import {
   type StudentWithSkillData,
 } from '@/utils/studentGrouping'
 import { computeBktFromHistory, getStalenessWarning, type BktEvidence } from './bkt'
-import { batchGetRecentBktEvidence } from './bkt/evidence-query'
+import { batchGetRecentBktEvidence, BKT_EVIDENCE_PLAYER_CHUNK_SIZE } from './bkt/evidence-query'
 import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
 import { getActiveSessionPlan } from './session-planner'
 
@@ -202,6 +202,43 @@ async function batchGetActiveSessions(
  * - activeSession: Batch-fetched active session info
  */
 export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
+  const loadStartedAt = performance.now()
+
+  try {
+    return await loadPlayersWithSkillData(loadStartedAt)
+  } catch (error) {
+    metrics.practicePicker.loadDuration.observe(
+      { outcome: 'error' },
+      (performance.now() - loadStartedAt) / 1000
+    )
+    throw error
+  }
+}
+
+async function loadPlayersWithSkillData(loadStartedAt: number): Promise<StudentWithSkillData[]> {
+  let loadOutcome: 'complete' | 'degraded' = 'complete'
+
+  const observeResult = (result: readonly StudentWithSkillData[]) => {
+    const activeCount = result.reduce((count, player) => count + (player.isArchived ? 0 : 1), 0)
+    const archivedCount = result.length - activeCount
+
+    metrics.practicePicker.loadDuration.observe(
+      { outcome: loadOutcome },
+      (performance.now() - loadStartedAt) / 1000
+    )
+    metrics.practicePicker.studentsReturned.observe({ state: 'active' }, activeCount)
+    metrics.practicePicker.studentsReturned.observe({ state: 'archived' }, archivedCount)
+
+    // This is the exact data object serialized into the RSC boundary and API response.
+    // Keep telemetry fail-open so measurement can never take down the picker.
+    try {
+      const payloadBytes = new TextEncoder().encode(JSON.stringify(result)).byteLength
+      metrics.practicePicker.payloadSize.observe({ outcome: loadOutcome }, payloadBytes)
+    } catch (error) {
+      console.error('[Practice] Failed to measure picker payload size', error)
+    }
+  }
+
   const userId = await getUserId()
 
   // Get all player IDs the user has parent access to (owned + linked, with guest expiry)
@@ -222,7 +259,10 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
     players = []
   }
 
-  if (players.length === 0) return []
+  if (players.length === 0) {
+    observeResult([])
+    return []
+  }
 
   const playerIds = players.map((p) => p.id)
 
@@ -248,11 +288,23 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
     ),
   ]
 
+  metrics.practicePicker.bktPlayers.observe(bktPlayerIds.length)
+  metrics.practicePicker.bktChunks.observe(
+    Math.ceil(bktPlayerIds.length / BKT_EVIDENCE_PLAYER_CHUNK_SIZE)
+  )
+
   let sessionResultsByPlayer = new Map<string, BktEvidence[]>()
   if (bktPlayerIds.length > 0) {
+    const finishBktLoad = metrics.practicePicker.bktLoadDuration.startTimer()
     try {
       sessionResultsByPlayer = await batchGetRecentBktEvidence(bktPlayerIds, 100)
+      finishBktLoad({ outcome: 'complete' })
+      metrics.practicePicker.bktEvidence.observe(
+        [...sessionResultsByPlayer.values()].reduce((count, evidence) => count + evidence.length, 0)
+      )
     } catch (error) {
+      finishBktLoad({ outcome: 'error' })
+      loadOutcome = 'degraded'
       // Skill distribution is advisory enrichment. If history loading fails,
       // render the student picker without interventions rather than taking the
       // entire practice route down.
@@ -265,6 +317,8 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
         location: 'practice-bkt-enrichment',
       })
     }
+  } else {
+    metrics.practicePicker.bktEvidence.observe(0)
   }
 
   // Group skill mastery by player
@@ -342,6 +396,7 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
     }
   })
 
+  observeResult(playersWithSkills)
   return playersWithSkills
 }
 
