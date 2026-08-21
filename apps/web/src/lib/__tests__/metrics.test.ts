@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 // Must mock prom-client before importing metrics
 vi.mock('prom-client', () => {
@@ -227,6 +227,7 @@ describe('metrics', () => {
       expect(metrics.socket).toBeDefined()
       expect(metrics.db).toBeDefined()
       expect(metrics.practice).toBeDefined()
+      expect(metrics.practicePicker).toBeDefined()
       expect(metrics.arcade).toBeDefined()
       expect(metrics.worksheet).toBeDefined()
       expect(metrics.flashcard).toBeDefined()
@@ -259,6 +260,18 @@ describe('metrics', () => {
       expect(metrics.practice.problemsTotal).toBeDefined()
       expect(metrics.practice.responseTime).toBeDefined()
       expect(metrics.practice.streakMax).toBeDefined()
+    })
+
+    it('practice picker category has bounded-load metrics', async () => {
+      const { metrics } = await import('../metrics')
+
+      expect(metrics.practicePicker.loadDuration).toBeDefined()
+      expect(metrics.practicePicker.payloadSize).toBeDefined()
+      expect(metrics.practicePicker.studentsReturned).toBeDefined()
+      expect(metrics.practicePicker.bktLoadDuration).toBeDefined()
+      expect(metrics.practicePicker.bktPlayers).toBeDefined()
+      expect(metrics.practicePicker.bktChunks).toBeDefined()
+      expect(metrics.practicePicker.bktEvidence).toBeDefined()
     })
   })
 
