@@ -1,10 +1,10 @@
 'use client'
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/queryClient'
-import { playerKeys } from '@/lib/queryKeys'
-import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
 import { stakeholdersKeys } from '@/hooks/useStudentStakeholders'
+import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
+import { api } from '@/lib/queryClient'
+import { playerKeys, practicePickerKeys } from '@/lib/queryKeys'
 
 // =============================================================================
 // Unlink Parent
@@ -37,6 +37,7 @@ export function useUnlinkParent() {
     onSuccess: (_, { playerId }) => {
       queryClient.invalidateQueries({ queryKey: stakeholdersKeys.player(playerId) })
       queryClient.invalidateQueries({ queryKey: playerKeys.all })
+      queryClient.invalidateQueries({ queryKey: practicePickerKeys.v1() })
     },
   })
 }
@@ -74,6 +75,7 @@ export function useUnenrollFromClassroom() {
       // Also invalidate stakeholders view and broad player cache
       queryClient.invalidateQueries({ queryKey: stakeholdersKeys.player(playerId) })
       queryClient.invalidateQueries({ queryKey: playerKeys.all })
+      queryClient.invalidateQueries({ queryKey: practicePickerKeys.v1() })
     },
   })
 }

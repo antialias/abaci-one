@@ -1,4 +1,4 @@
-import { getPlayersWithSkillData } from '@/lib/curriculum/server'
+import { getPracticePickerV1Data } from '@/lib/practice-picker/server'
 import { getUserId } from '@/lib/viewer'
 import { PracticeClient } from './PracticeClient'
 
@@ -11,11 +11,11 @@ import { PracticeClient } from './PracticeClient'
  * URL: /practice
  */
 export default async function PracticePage() {
-  // Fetch players with skill data directly on server - no HTTP round-trip
-  const players = await getPlayersWithSkillData()
+  // Fetch the bounded picker contract directly on server - no HTTP round-trip
+  const pickerData = await getPracticePickerV1Data()
 
   // Get database user ID for parent socket notifications and session observation
   const userId = await getUserId()
 
-  return <PracticeClient initialPlayers={players} viewerId={userId} userId={userId} />
+  return <PracticeClient initialPickerData={pickerData} viewerId={userId} userId={userId} />
 }

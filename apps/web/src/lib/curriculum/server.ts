@@ -11,8 +11,8 @@ import 'server-only'
 
 import { and, eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import type { Player } from '@/db/schema/players'
+import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { batchGetEnrolledClassrooms, batchGetStudentPresence } from '@/lib/classroom'
 import { getParentedPlayerIds } from '@/lib/classroom/access-control'
@@ -25,8 +25,8 @@ import {
   type StudentActiveSessionInfo,
   type StudentWithSkillData,
 } from '@/utils/studentGrouping'
-import { computeBktFromHistory, getStalenessWarning, type BktEvidence } from './bkt'
-import { batchGetRecentBktEvidence, BKT_EVIDENCE_PLAYER_CHUNK_SIZE } from './bkt/evidence-query'
+import { type BktEvidence, computeBktFromHistory, getStalenessWarning } from './bkt'
+import { BKT_EVIDENCE_PLAYER_CHUNK_SIZE, batchGetRecentBktEvidence } from './bkt/evidence-query'
 import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
 import { getActiveSessionPlan } from './session-planner'
 
@@ -201,11 +201,14 @@ async function batchGetActiveSessions(
  * - currentPresence: Batch-fetched presence info
  * - activeSession: Batch-fetched active session info
  */
-export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]> {
+export async function getPlayersWithSkillData(options?: {
+  /** Set false when a caller measures a narrower serialized contract itself. */
+  measurePayload?: boolean
+}): Promise<StudentWithSkillData[]> {
   const loadStartedAt = performance.now()
 
   try {
-    return await loadPlayersWithSkillData(loadStartedAt)
+    return await loadPlayersWithSkillData(loadStartedAt, options?.measurePayload ?? true)
   } catch (error) {
     metrics.practicePicker.loadDuration.observe(
       { outcome: 'error' },
@@ -215,7 +218,10 @@ export async function getPlayersWithSkillData(): Promise<StudentWithSkillData[]>
   }
 }
 
-async function loadPlayersWithSkillData(loadStartedAt: number): Promise<StudentWithSkillData[]> {
+async function loadPlayersWithSkillData(
+  loadStartedAt: number,
+  measurePayload: boolean
+): Promise<StudentWithSkillData[]> {
   let loadOutcome: 'complete' | 'degraded' = 'complete'
 
   const observeResult = (result: readonly StudentWithSkillData[]) => {
@@ -229,13 +235,14 @@ async function loadPlayersWithSkillData(loadStartedAt: number): Promise<StudentW
     metrics.practicePicker.studentsReturned.observe({ state: 'active' }, activeCount)
     metrics.practicePicker.studentsReturned.observe({ state: 'archived' }, archivedCount)
 
-    // This is the exact data object serialized into the RSC boundary and API response.
-    // Keep telemetry fail-open so measurement can never take down the picker.
-    try {
-      const payloadBytes = new TextEncoder().encode(JSON.stringify(result)).byteLength
-      metrics.practicePicker.payloadSize.observe({ outcome: loadOutcome }, payloadBytes)
-    } catch (error) {
-      console.error('[Practice] Failed to measure picker payload size', error)
+    if (measurePayload) {
+      // Keep telemetry fail-open so measurement can never take down the picker.
+      try {
+        const payloadBytes = new TextEncoder().encode(JSON.stringify(result)).byteLength
+        metrics.practicePicker.payloadSize.observe({ outcome: loadOutcome }, payloadBytes)
+      } catch (error) {
+        console.error('[Practice] Failed to measure picker payload size', error)
+      }
     }
   }
 
@@ -403,6 +410,7 @@ async function loadPlayersWithSkillData(loadStartedAt: number): Promise<StudentW
 // Re-export the individual functions for granular prefetching
 export { getPlayer } from '@/lib/arcade/player-manager'
 export { getPracticeStudent } from './practice-student'
+export type { PaginatedSessionsResponse } from './progress-manager'
 export {
   getAllSkillMastery,
   getPaceAssessment,
@@ -410,12 +418,11 @@ export {
   getPlayerCurriculum,
   getRecentSessions,
 } from './progress-manager'
-export type { PaginatedSessionsResponse } from './progress-manager'
-export type { PaceAssessment } from './timing/pace-estimation'
+export type { ProblemResultWithContext } from './session-planner'
 export {
   getActiveSessionPlan,
   getMostRecentCompletedSession,
   getRecentSessionResults,
   getSessionPlan,
 } from './session-planner'
-export type { ProblemResultWithContext } from './session-planner'
+export type { PaceAssessment } from './timing/pace-estimation'

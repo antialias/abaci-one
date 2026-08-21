@@ -19,6 +19,15 @@ export const playerKeys = {
     [...playerKeys.all, playerId, 'observation-stats'] as const,
 }
 
+// Versioned practice-picker contract keys. Kept separate from generic player
+// queries so contract migrations cannot silently reuse incompatible cache data.
+export const practicePickerKeys = {
+  all: ['practice-picker'] as const,
+  versions: () => [...practicePickerKeys.all, 'version'] as const,
+  v1: () => [...practicePickerKeys.versions(), 'v1', 'students'] as const,
+  notes: (playerId: string) => [...practicePickerKeys.all, 'notes', playerId] as const,
+}
+
 // Curriculum query keys
 export const curriculumKeys = {
   all: ['curriculum'] as const,

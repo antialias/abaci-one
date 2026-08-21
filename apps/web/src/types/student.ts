@@ -6,6 +6,7 @@
  */
 
 import type { Player } from '@/db/schema/players'
+import type { PracticePickerPlayerFields } from '@/lib/practice-picker/contract'
 import type { StudentIntervention } from '@/utils/studentGrouping'
 
 /**
@@ -76,15 +77,14 @@ export interface StudentActivity {
  * Unified student type combining all data sources
  *
  * This is the main type used by the unified student list component.
- * It extends Player with:
+ * It extends the bounded practice-picker player fields with:
  * - Skill/progress data from curriculum system
  * - Relationship data (is child, enrolled, present)
  * - Activity data (practicing, learning)
  *
- * Note: Fields that already exist in Player (like isArchived) are not redeclared
- * to avoid type conflicts.
+ * Note: Database-only Player fields are intentionally absent.
  */
-export interface UnifiedStudent extends Player {
+export interface UnifiedStudent extends PracticePickerPlayerFields {
   // ============================================================================
   // From StudentWithSkillData / StudentWithProgress
   // (Only fields NOT already in Player)

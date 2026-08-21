@@ -1,17 +1,17 @@
 'use client'
 
+import { useMutation } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { Fragment, useCallback, useMemo, useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { useToast } from '@/components/common/ToastContext'
-import { GuestProgressBanner } from '@/components/GuestProgressBanner'
 // Direct imports to avoid barrel pulling in EmojiPicker (694KB emojibase-data)
 import { AddStudentByFamilyCodeModal } from '@/components/classroom/AddStudentByFamilyCodeModal'
 import { CreateClassroomForm } from '@/components/classroom/CreateClassroomForm'
 import { PendingApprovalsSection } from '@/components/classroom/PendingApprovalsSection'
 import { SessionObserverModal } from '@/components/classroom/SessionObserverModal'
 import { TeacherEnrollmentSection } from '@/components/classroom/TeacherEnrollmentSection'
+import { useToast } from '@/components/common/ToastContext'
+import { GuestProgressBanner } from '@/components/GuestProgressBanner'
 
 // Dynamic imports for modals that use EmojiPicker (694KB emojibase-data)
 const AddStudentToClassroomModal = dynamic(
@@ -28,8 +28,7 @@ const AddStudentToClassroomContent = dynamic(
     ),
   { ssr: false }
 )
-import { useClassroomSocket } from '@/hooks/useClassroomSocket'
-import { api } from '@/lib/queryClient'
+
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   EntryPromptBanner,
@@ -43,6 +42,7 @@ import {
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useMyClassroom } from '@/hooks/useClassroom'
+import { useClassroomSocket } from '@/hooks/useClassroomSocket'
 import { type CompactItem, useMeasuredCompactLayout } from '@/hooks/useMeasuredCompactLayout'
 import { useParentSocket } from '@/hooks/useParentSocket'
 import {
@@ -51,6 +51,8 @@ import {
   useUnifiedStudents,
 } from '@/hooks/useUnifiedStudents'
 import { useUpdatePlayer } from '@/hooks/useUserPlayers'
+import type { PracticePickerV1Response } from '@/lib/practice-picker/contract'
+import { api } from '@/lib/queryClient'
 import type { UnifiedStudent } from '@/types/student'
 import type { StudentWithSkillData } from '@/utils/studentGrouping'
 import { filterStudents, getStudentsNeedingAttention, groupStudents } from '@/utils/studentGrouping'
@@ -63,7 +65,7 @@ const AddStudentModal = dynamic(() => import('./AddStudentModal').then((m) => m.
 })
 
 interface PracticeClientProps {
-  initialPlayers: StudentWithSkillData[]
+  initialPickerData: PracticePickerV1Response
   /** Viewer ID for session observation */
   viewerId: string
   /** Database user ID for parent socket notifications */
@@ -77,7 +79,7 @@ interface PracticeClientProps {
  * Manages filter state (search, skills, archived, edit mode) and passes
  * grouped/filtered students to StudentSelector.
  */
-export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeClientProps) {
+export function PracticeClient({ initialPickerData, viewerId, userId }: PracticeClientProps) {
   const router = useRouter()
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -98,7 +100,7 @@ export function PracticeClient({ initialPlayers, viewerId, userId }: PracticeCli
     isTeacher,
     classroomCode,
     classroomId,
-  } = useUnifiedStudents(initialPlayers, userId)
+  } = useUnifiedStudents(initialPickerData, userId)
 
   // Real-time WebSocket updates for classroom events
   // This invalidates React Query caches when students enter/leave, sessions start/end, etc.

@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { Player } from '@/db/schema/players'
+import type { PracticePickerV1Response } from '@/lib/practice-picker/contract'
+import { practicePickerKeys } from '@/lib/queryKeys'
 import type { StudentWithSkillData } from '@/utils/studentGrouping'
 
 // Mock React's cache function (not available in test environment)
@@ -13,7 +15,7 @@ vi.mock('react', async () => {
   }
 })
 
-import { useCreatePlayer, useUpdatePlayer, useDeletePlayer, playerKeys } from '../useUserPlayers'
+import { playerKeys, useCreatePlayer, useDeletePlayer, useUpdatePlayer } from '../useUserPlayers'
 
 describe('useUserPlayers hooks', () => {
   let queryClient: QueryClient
@@ -42,6 +44,28 @@ describe('useUserPlayers hooks', () => {
     lastPracticedAt: new Date('2024-01-15'),
     skillCategory: 'basic',
     intervention: null,
+  }
+
+  const mockPracticePickerResponse: PracticePickerV1Response = {
+    version: 1,
+    students: [
+      {
+        id: mockPlayer.id,
+        name: mockPlayer.name,
+        emoji: mockPlayer.emoji,
+        color: mockPlayer.color,
+        createdAt: mockPlayer.createdAt.toISOString(),
+        isArchived: false,
+        practicingSkills: ['skill-1', 'skill-2'],
+        lastPracticedAt: '2024-01-15T00:00:00.000Z',
+        skillCategory: 'basic',
+        intervention: null,
+        enrolledClassrooms: [],
+        currentPresence: null,
+        activeSession: null,
+      },
+    ],
+    counts: { active: 1, archived: 0, total: 1 },
   }
 
   beforeEach(() => {
@@ -419,6 +443,58 @@ describe('useUserPlayers hooks', () => {
   })
 
   describe('useUpdatePlayer', () => {
+    test('optimistically updates the isolated v1 contract and its archive counts', async () => {
+      queryClient.setQueryData(practicePickerKeys.v1(), mockPracticePickerResponse)
+
+      let resolveRequest: (value: unknown) => void
+      const pendingRequest = new Promise((resolve) => {
+        resolveRequest = resolve
+      })
+      global.fetch = vi.fn().mockImplementation(() => pendingRequest)
+
+      const { result } = renderHook(() => useUpdatePlayer(), { wrapper })
+      act(() => {
+        result.current.mutate({
+          id: 'player-1',
+          updates: { name: 'Archived Student', isArchived: true },
+        })
+      })
+
+      await waitFor(() => {
+        const picker = queryClient.getQueryData<PracticePickerV1Response>(practicePickerKeys.v1())
+        expect(picker?.students[0]).toMatchObject({
+          name: 'Archived Student',
+          isArchived: true,
+        })
+        expect(picker?.counts).toEqual({ active: 0, archived: 1, total: 1 })
+      })
+
+      resolveRequest!({
+        ok: true,
+        json: async () => ({
+          player: { ...mockPlayer, name: 'Archived Student', isArchived: true },
+        }),
+      })
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    })
+
+    test('rolls back a newly-created notes cache entry on error', async () => {
+      queryClient.setQueryData(practicePickerKeys.v1(), mockPracticePickerResponse)
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: 'Update failed' }),
+      })
+
+      const { result } = renderHook(() => useUpdatePlayer(), { wrapper })
+      act(() => {
+        result.current.mutate({ id: 'player-1', updates: { notes: 'Private note' } })
+      })
+
+      await waitFor(() => expect(result.current.isError).toBe(true))
+      expect(queryClient.getQueryData(practicePickerKeys.notes('player-1'))).toBeUndefined()
+      expect(queryClient.getQueryData(practicePickerKeys.v1())).toEqual(mockPracticePickerResponse)
+    })
+
     test('optimistically updates player in both queries', async () => {
       queryClient.setQueryData<Player[]>(playerKeys.list(), [mockPlayer])
       queryClient.setQueryData<StudentWithSkillData[]>(playerKeys.listWithSkillData(), [
@@ -497,6 +573,11 @@ describe('useUserPlayers hooks', () => {
   describe('useDeletePlayer', () => {
     test('optimistically removes player from list', async () => {
       queryClient.setQueryData<Player[]>(playerKeys.list(), [mockPlayer])
+      queryClient.setQueryData(practicePickerKeys.notes('player-1'), {
+        version: 1,
+        studentId: 'player-1',
+        notes: 'Private note',
+      })
 
       let resolveRequest: (value: unknown) => void
       const pendingRequest = new Promise((resolve) => {
@@ -514,6 +595,7 @@ describe('useUserPlayers hooks', () => {
       await waitFor(() => {
         expect(queryClient.getQueryData<Player[]>(playerKeys.list())).toHaveLength(0)
       })
+      expect(queryClient.getQueryData(practicePickerKeys.notes('player-1'))).toBeUndefined()
 
       resolveRequest!({ ok: true })
 
@@ -524,6 +606,12 @@ describe('useUserPlayers hooks', () => {
 
     test('rolls back on error', async () => {
       queryClient.setQueryData<Player[]>(playerKeys.list(), [mockPlayer])
+      const previousNotes = {
+        version: 1 as const,
+        studentId: 'player-1',
+        notes: 'Private note',
+      }
+      queryClient.setQueryData(practicePickerKeys.notes('player-1'), previousNotes)
 
       global.fetch = vi.fn().mockResolvedValue({
         ok: false,
@@ -543,6 +631,7 @@ describe('useUserPlayers hooks', () => {
       // Player should be restored
       expect(queryClient.getQueryData<Player[]>(playerKeys.list())).toHaveLength(1)
       expect(queryClient.getQueryData<Player[]>(playerKeys.list())?.[0]).toEqual(mockPlayer)
+      expect(queryClient.getQueryData(practicePickerKeys.notes('player-1'))).toEqual(previousNotes)
     })
   })
 })

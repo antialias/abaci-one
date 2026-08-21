@@ -10,15 +10,16 @@ import { Z_INDEX } from '@/constants/zIndex'
 import { usePageTransition } from '@/contexts/PageTransitionContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { usePlayerCurriculumQuery } from '@/hooks/usePlayerCurriculum'
+import { usePracticePickerNotes } from '@/hooks/usePracticePicker'
 import { useSessionMode } from '@/hooks/useSessionMode'
-import { useStudentActions, type StudentActionData } from '@/hooks/useStudentActions'
+import { type StudentActionData, useStudentActions } from '@/hooks/useStudentActions'
 import { useStudentStakeholders } from '@/hooks/useStudentStakeholders'
 import { useUpdatePlayer } from '@/hooks/useUserPlayers'
 import type { StudentActivity, StudentRelationship, UnifiedStudent } from '@/types/student'
 import { css } from '../../../styled-system/css'
 import { MiniStartPracticeBanner } from './MiniStartPracticeBanner'
-import { RelationshipCard } from './RelationshipCard'
 import { RelationshipSummary } from './RelationshipBadge'
+import { RelationshipCard } from './RelationshipCard'
 import { ACTION_DEFINITIONS } from './studentActions'
 
 // ============================================================================
@@ -160,6 +161,13 @@ export function NotesModal({
   const { data: sessionModeData } = useSessionMode(student.id)
   const sessionMode = sessionModeData?.sessionMode ?? null
   const updatePlayer = useUpdatePlayer() // For notes only
+  const shouldFetchNotes = isOpen && (student.relationship?.isMyChild ?? true)
+  const {
+    data: notesData,
+    isLoading: isLoadingNotes,
+    isError: hasNotesLoadError,
+  } = usePracticePickerNotes(student.id, shouldFetchNotes)
+  const resolvedNotes = notesData?.notes ?? student.notes ?? null
 
   // ========== Stakeholder data for Relationships tab ==========
   const { data: stakeholdersData } = useStudentStakeholders(student.id)
@@ -218,12 +226,12 @@ export function NotesModal({
   // Reset state when modal opens/closes or student changes
   useEffect(() => {
     if (isOpen) {
-      setEditedNotes(student.notes ?? '')
+      setEditedNotes(resolvedNotes ?? '')
       setIsEditing(false)
       setActiveTab(defaultTab)
       setIsHiddenForTransition(false)
     }
-  }, [isOpen, student.id, student.notes, defaultTab])
+  }, [isOpen, student.id, resolvedNotes, defaultTab])
 
   // Focus textarea when entering edit mode
   useEffect(() => {
@@ -238,7 +246,7 @@ export function NotesModal({
       if (e.key === 'Escape') {
         if (isEditing) {
           setIsEditing(false)
-          setEditedNotes(student.notes ?? '')
+          setEditedNotes(resolvedNotes ?? '')
         } else {
           onClose()
         }
@@ -248,7 +256,7 @@ export function NotesModal({
       window.addEventListener('keydown', handleKeyDown)
       return () => window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isOpen, isEditing, student.notes, onClose])
+  }, [isOpen, isEditing, resolvedNotes, onClose])
 
   // ========== Animation ==========
   const wasOpenRef = useRef(false)
@@ -708,7 +716,9 @@ export function NotesModal({
             <RelationshipsTab playerId={student.id} playerName={student.name} editable />
           ) : (
             <NotesTab
-              notes={student.notes ?? null}
+              notes={resolvedNotes}
+              isLoading={isLoadingNotes}
+              hasLoadError={hasNotesLoadError}
               isEditing={isEditing}
               editedNotes={editedNotes}
               isSaving={isSaving}
@@ -717,7 +727,7 @@ export function NotesModal({
               onStartEditing={() => setIsEditing(true)}
               onCancel={() => {
                 setIsEditing(false)
-                setEditedNotes(student.notes ?? '')
+                setEditedNotes(resolvedNotes ?? '')
               }}
               onSave={handleSaveNotes}
               isDark={isDark}
@@ -1017,6 +1027,8 @@ function StatBox({ label, value, isDark }: StatBoxProps) {
 
 interface NotesTabProps {
   notes: string | null
+  isLoading: boolean
+  hasLoadError: boolean
   isEditing: boolean
   editedNotes: string
   isSaving: boolean
@@ -1030,6 +1042,8 @@ interface NotesTabProps {
 
 function NotesTab({
   notes,
+  isLoading,
+  hasLoadError,
   isEditing,
   editedNotes,
   isSaving,
@@ -1052,7 +1066,34 @@ function NotesTab({
         minHeight: 0,
       })}
     >
-      {isEditing ? (
+      {hasLoadError ? (
+        <div
+          role="alert"
+          className={css({
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            textAlign: 'center',
+            color: isDark ? 'red.300' : 'red.600',
+          })}
+        >
+          Notes could not be loaded. Close this window and try again.
+        </div>
+      ) : isLoading ? (
+        <div
+          className={css({
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: isDark ? 'gray.400' : 'gray.500',
+          })}
+        >
+          Loading notes…
+        </div>
+      ) : isEditing ? (
         <>
           <textarea
             ref={textareaRef}

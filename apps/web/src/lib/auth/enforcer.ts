@@ -86,6 +86,7 @@ p, guest, /api/feature-flags, GET
 # Guest-accessible practice & app routes
 p, guest, /api/players, *
 p, guest, /api/players/*, *
+p, guest, /api/practice-picker/*, *
 p, guest, /api/family/*, *
 p, guest, /api/curriculum/*, *
 p, guest, /api/game-results, *

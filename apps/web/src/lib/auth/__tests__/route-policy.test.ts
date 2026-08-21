@@ -29,6 +29,14 @@ describe('route RBAC policy', () => {
     expect(await enforcer.enforce('guest', '/api/players/p1/abacus-identity', 'PUT')).toBe(true)
   })
 
+  it('guests reach the versioned practice-picker contract', async () => {
+    const enforcer = await getRouteEnforcer()
+    expect(await enforcer.enforce('guest', '/api/practice-picker/v1/students', 'GET')).toBe(true)
+    expect(
+      await enforcer.enforce('guest', '/api/practice-picker/v1/students/p1/notes', 'GET')
+    ).toBe(true)
+  })
+
   it('guests reach the design snapshot + sharing routes', async () => {
     const enforcer = await getRouteEnforcer()
     for (const [path, method] of [
