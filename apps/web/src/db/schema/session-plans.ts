@@ -1,4 +1,5 @@
 import { createId } from '@paralleldrive/cuid2'
+import { sql } from 'drizzle-orm'
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import type { PracticeTypeId } from '@/constants/practiceTypes'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
@@ -678,6 +679,14 @@ export const sessionPlans = sqliteTable(
 
     /** Index for recent plans */
     createdAtIdx: index('session_plans_created_at_idx').on(table.createdAt),
+
+    /** Supports bounded per-player BKT history scans for practice summaries. */
+    bktRecentIdx: index('session_plans_bkt_recent_idx')
+      // SQLite can scan this composite index backward for the DESC query.
+      .on(table.playerId, table.completedAt, table.id)
+      .where(
+        sql`${table.status} in ('completed', 'recency-refresh') and ${table.completedAt} is not null`
+      ),
   })
 )
 

@@ -4,6 +4,32 @@
  * These types are used throughout the BKT computation module.
  */
 
+import type { SessionPartType, SlotResult } from '@/db/schema/session-plans'
+
+/**
+ * The minimal persisted attempt data required to replay BKT.
+ *
+ * Keeping this contract narrow lets summary surfaces load mastery evidence
+ * without transferring the full problem payload and generation trace stored
+ * on every SlotResult.
+ */
+export type BktEvidence = Pick<
+  SlotResult,
+  | 'skillsExercised'
+  | 'isCorrect'
+  | 'responseTimeMs'
+  | 'hadHelp'
+  | 'masteryWeight'
+  | 'source'
+  | 'originalSource'
+  | 'timingReview'
+> & {
+  /** JSON persistence serializes Date values as ISO strings. */
+  timestamp: Date | string
+  /** Practice mode for per-mode BKT; absent on legacy evidence. */
+  partType?: SessionPartType
+}
+
 /**
  * BKT model parameters for a skill.
  * These are the four key probabilities in standard BKT.
