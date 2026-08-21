@@ -17,7 +17,7 @@
  */
 
 import type { QueryClient } from '@tanstack/react-query'
-import { classroomKeys, entryPromptKeys, playerKeys } from '@/lib/queryKeys'
+import { classroomKeys, entryPromptKeys, playerKeys, practicePickerKeys } from '@/lib/queryKeys'
 
 /**
  * Event types that trigger query invalidations
@@ -133,6 +133,7 @@ export function invalidateForEvent(
       queryClient.invalidateQueries({
         queryKey: playerKeys.listWithSkillData(),
       })
+      queryClient.invalidateQueries({ queryKey: practicePickerKeys.v1() })
       // Parent's pending approvals list updates
       queryClient.invalidateQueries({
         queryKey: classroomKeys.pendingParentApprovals(),
@@ -162,6 +163,7 @@ export function invalidateForEvent(
       queryClient.invalidateQueries({
         queryKey: playerKeys.listWithSkillData(),
       })
+      queryClient.invalidateQueries({ queryKey: practicePickerKeys.v1() })
       break
 
     case 'studentEntered':
@@ -177,6 +179,7 @@ export function invalidateForEvent(
           queryKey: playerKeys.presence(playerId),
         })
       }
+      queryClient.invalidateQueries({ queryKey: practicePickerKeys.v1() })
       break
 
     case 'studentLeft':
@@ -192,6 +195,7 @@ export function invalidateForEvent(
           queryKey: playerKeys.presence(playerId),
         })
       }
+      queryClient.invalidateQueries({ queryKey: practicePickerKeys.v1() })
       break
 
     case 'sessionStarted':
@@ -273,6 +277,7 @@ export function getInvalidationKeys(
         keys.push(playerKeys.enrolledClassrooms(playerId))
       }
       keys.push(playerKeys.listWithSkillData())
+      keys.push(practicePickerKeys.v1())
       keys.push(classroomKeys.pendingParentApprovals())
       break
 
@@ -286,6 +291,7 @@ export function getInvalidationKeys(
         keys.push(playerKeys.presence(playerId))
       }
       keys.push(playerKeys.listWithSkillData())
+      keys.push(practicePickerKeys.v1())
       break
 
     case 'studentEntered':
@@ -295,6 +301,7 @@ export function getInvalidationKeys(
       if (playerId) {
         keys.push(playerKeys.presence(playerId))
       }
+      keys.push(practicePickerKeys.v1())
       break
 
     case 'studentLeft':
@@ -304,6 +311,7 @@ export function getInvalidationKeys(
       if (playerId) {
         keys.push(playerKeys.presence(playerId))
       }
+      keys.push(practicePickerKeys.v1())
       break
 
     case 'sessionStarted':

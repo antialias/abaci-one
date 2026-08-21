@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
-import { classroomKeys, entryPromptKeys, playerKeys } from '@/lib/queryKeys'
+import { describe, expect, it, vi } from 'vitest'
+import { classroomKeys, entryPromptKeys, playerKeys, practicePickerKeys } from '@/lib/queryKeys'
 import {
   type ClassroomEventType,
   getInvalidationKeys,
@@ -102,6 +102,7 @@ describe('query-invalidations', () => {
         getInvalidationKeys('enrollmentCompleted', { classroomId: C, playerId: P })
       )
       expect(keys).toContainEqual([...playerKeys.listWithSkillData()])
+      expect(keys).toContainEqual([...practicePickerKeys.v1()])
     })
   })
 
@@ -121,6 +122,7 @@ describe('query-invalidations', () => {
         getInvalidationKeys('studentUnenrolled', { classroomId: C, playerId: P })
       )
       expect(keys).toContainEqual([...playerKeys.listWithSkillData()])
+      expect(keys).toContainEqual([...practicePickerKeys.v1()])
     })
   })
 
@@ -140,6 +142,7 @@ describe('query-invalidations', () => {
       )
       expect(keys).toContainEqual([...classroomKeys.presence(C)])
       expect(keys).toContainEqual([...playerKeys.presence(P)])
+      expect(keys).toContainEqual([...practicePickerKeys.v1()])
     })
 
     it('studentLeft invalidates presence on both sides', () => {
@@ -148,6 +151,7 @@ describe('query-invalidations', () => {
       )
       expect(keys).toContainEqual([...classroomKeys.presence(C)])
       expect(keys).toContainEqual([...playerKeys.presence(P)])
+      expect(keys).toContainEqual([...practicePickerKeys.v1()])
     })
   })
 
@@ -201,6 +205,7 @@ describe('query-invalidations', () => {
       expect(perPlayerKeys).toHaveLength(0)
       // But the player list (which embeds enrollment data) should still be invalidated
       expect(keys).toContainEqual([...playerKeys.listWithSkillData()])
+      expect(keys).toContainEqual([...practicePickerKeys.v1()])
     })
 
     it('studentUnenrolled without classroomId still invalidates player side', () => {

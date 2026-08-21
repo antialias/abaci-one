@@ -1,21 +1,22 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 
 // Stable empty array reference to avoid re-renders
 const EMPTY_CHILD_IDS: string[] = []
+
+import { type ChildActiveSession, useChildSessionsSocket } from '@/hooks/useChildSessionsSocket'
 import {
-  useMyClassroom,
-  useEnrolledStudents,
-  useClassroomPresence,
-  useActiveSessionsInClassroom,
   type ActiveSessionInfo,
   type PresenceStudent,
+  useActiveSessionsInClassroom,
+  useClassroomPresence,
+  useEnrolledStudents,
+  useMyClassroom,
 } from '@/hooks/useClassroom'
-import { useChildSessionsSocket, type ChildActiveSession } from '@/hooks/useChildSessionsSocket'
-import { usePlayersWithSkillData } from '@/hooks/useUserPlayers'
-import type { StudentWithSkillData } from '@/utils/studentGrouping'
-import type { UnifiedStudent, StudentRelationship, StudentActivity } from '@/types/student'
+import { usePracticePickerV1 } from '@/hooks/usePracticePicker'
+import type { PracticePickerV1Response } from '@/lib/practice-picker/contract'
+import type { StudentActivity, StudentRelationship, UnifiedStudent } from '@/types/student'
 
 /**
  * Return type for useUnifiedStudents hook
@@ -44,11 +45,11 @@ export interface UseUnifiedStudentsResult {
  *
  * Returns a unified list with relationship and activity status for each student.
  *
- * @param initialPlayers - Server-prefetched player data
+ * @param initialPickerData - Server-prefetched v1 picker contract
  * @param userId - The current user's database ID (for parent session subscriptions)
  */
 export function useUnifiedStudents(
-  initialPlayers?: StudentWithSkillData[],
+  initialPickerData?: PracticePickerV1Response,
   userId?: string
 ): UseUnifiedStudentsResult {
   // Get classroom data (determines if user is a teacher)
@@ -56,9 +57,10 @@ export function useUnifiedStudents(
   const isTeacher = !!classroom
 
   // Get my children (all users see this)
-  const { data: myChildren = [], isLoading: isLoadingChildren } = usePlayersWithSkillData({
-    initialData: initialPlayers,
+  const { data: pickerData, isLoading: isLoadingChildren } = usePracticePickerV1({
+    initialData: initialPickerData,
   })
+  const myChildren = pickerData?.students ?? []
 
   // Get child IDs for parent session subscription
   const childIds = useMemo(() => myChildren.map((c) => c.id), [myChildren])

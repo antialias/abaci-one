@@ -1,35 +1,26 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   computeIntervention,
-  getStudentsNeedingAttention,
   computeSkillCategory,
+  filterStudents,
+  getGroupCategoryName,
   getRecencyBucket,
   getRecencyBucketName,
-  getGroupCategoryName,
+  getStudentsNeedingAttention,
   groupStudents,
-  filterStudents,
-  type StudentWithSkillData,
   type SkillDistribution,
+  type StudentWithSkillData,
 } from '../studentGrouping'
 
 // Helper to create a mock student
 function makeStudent(overrides: Partial<StudentWithSkillData> = {}): StudentWithSkillData {
   return {
     id: 'student-1',
-    userId: 'user-1',
     name: 'Test Student',
     emoji: '🧑',
     color: '#FF0000',
-    isActive: true,
     createdAt: new Date('2024-01-01'),
-    helpSettings: null,
-    notes: null,
     isArchived: false,
-    isPracticeStudent: true,
-    birthday: null,
-    isExpungeable: false,
-    familyCode: null,
-    familyCodeGeneratedAt: null,
     practicingSkills: [],
     lastPracticedAt: null,
     skillCategory: null,

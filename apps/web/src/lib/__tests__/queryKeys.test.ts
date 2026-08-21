@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import {
-  playerKeys,
-  curriculumKeys,
-  sessionPlanKeys,
-  sessionHistoryKeys,
+  attachmentKeys,
   classroomKeys,
+  curriculumKeys,
   entryPromptKeys,
   gameResultsKeys,
+  playerKeys,
+  practicePickerKeys,
+  sessionHistoryKeys,
+  sessionPlanKeys,
   skillMetricsKeys,
-  workshopSessionKeys,
   versionHistoryKeys,
-  attachmentKeys,
+  workshopSessionKeys,
 } from '../queryKeys'
 
 describe('queryKeys', () => {
@@ -41,6 +42,20 @@ describe('queryKeys', () => {
 
     it('presence(playerId) includes player id', () => {
       expect(playerKeys.presence('p1')).toEqual(['players', 'p1', 'presence'])
+    })
+  })
+
+  describe('practicePickerKeys', () => {
+    it('isolates each contract version from legacy player caches', () => {
+      expect(practicePickerKeys.all).toEqual(['practice-picker'])
+      expect(practicePickerKeys.versions()).toEqual(['practice-picker', 'version'])
+      expect(practicePickerKeys.v1()).toEqual(['practice-picker', 'version', 'v1', 'students'])
+      expect(practicePickerKeys.v1()).not.toEqual(playerKeys.listWithSkillData())
+    })
+
+    it('keeps notes outside the roster contract cache', () => {
+      expect(practicePickerKeys.notes('p1')).toEqual(['practice-picker', 'notes', 'p1'])
+      expect(practicePickerKeys.notes('p1')).not.toEqual(practicePickerKeys.v1())
     })
   })
 
@@ -256,6 +271,11 @@ describe('queryKeys', () => {
       // playerKeys hierarchy
       expect(playerKeys.lists().slice(0, 1)).toEqual(playerKeys.all)
       expect(playerKeys.detail('x').slice(0, 1)).toEqual(playerKeys.all)
+
+      // practicePickerKeys hierarchy
+      expect(practicePickerKeys.versions().slice(0, 1)).toEqual(practicePickerKeys.all)
+      expect(practicePickerKeys.v1().slice(0, 2)).toEqual(practicePickerKeys.versions())
+      expect(practicePickerKeys.notes('x').slice(0, 1)).toEqual(practicePickerKeys.all)
 
       // sessionPlanKeys hierarchy
       expect(sessionPlanKeys.lists().slice(0, 1)).toEqual(sessionPlanKeys.all)

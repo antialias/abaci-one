@@ -1,14 +1,38 @@
 'use client'
 
-import { useRef } from 'react'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useRef } from 'react'
 import type { Player } from '@/db/schema/players'
+import type {
+  PracticePickerStudentV1,
+  PracticePickerV1Response,
+} from '@/lib/practice-picker/contract'
 import { api } from '@/lib/queryClient'
-import { playerKeys } from '@/lib/queryKeys'
+import { playerKeys, practicePickerKeys } from '@/lib/queryKeys'
 import type { StudentWithSkillData } from '@/utils/studentGrouping'
 
 // Re-export query keys for consumers
 export { playerKeys } from '@/lib/queryKeys'
+
+function withPracticePickerStudents(
+  response: PracticePickerV1Response,
+  students: PracticePickerStudentV1[]
+): PracticePickerV1Response {
+  const active = students.reduce((count, student) => count + (student.isArchived ? 0 : 1), 0)
+  return {
+    ...response,
+    students,
+    counts: {
+      active,
+      archived: students.length - active,
+      total: students.length,
+    },
+  }
+}
+
+function isPickerVisibleUpdate(updates: object): boolean {
+  return ['name', 'emoji', 'color', 'isArchived'].some((field) => field in updates)
+}
 
 /**
  * Fetch all players for the current user
@@ -188,12 +212,18 @@ export function useCreatePlayer() {
     mutationFn: createPlayer,
     onMutate: async (newPlayer) => {
       // Cancel outgoing refetches for all player queries
-      await queryClient.cancelQueries({ queryKey: playerKeys.all })
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: playerKeys.all }),
+        queryClient.cancelQueries({ queryKey: practicePickerKeys.v1() }),
+      ])
 
       // Snapshot previous values
       const previousPlayers = queryClient.getQueryData<Player[]>(playerKeys.list())
       const previousPlayersWithSkillData = queryClient.getQueryData<StudentWithSkillData[]>(
         playerKeys.listWithSkillData()
+      )
+      const previousPracticePicker = queryClient.getQueryData<PracticePickerV1Response>(
+        practicePickerKeys.v1()
       )
 
       // Create optimistic player
@@ -239,7 +269,32 @@ export function useCreatePlayer() {
         ])
       }
 
-      return { previousPlayers, previousPlayersWithSkillData }
+      if (previousPracticePicker) {
+        const optimisticPickerStudent: PracticePickerStudentV1 = {
+          id: optimisticPlayer.id,
+          name: optimisticPlayer.name,
+          emoji: optimisticPlayer.emoji,
+          color: optimisticPlayer.color,
+          createdAt: optimisticPlayer.createdAt.toISOString(),
+          isArchived: false,
+          practicingSkills: [],
+          lastPracticedAt: null,
+          skillCategory: null,
+          intervention: null,
+          enrolledClassrooms: [],
+          currentPresence: null,
+          activeSession: null,
+        }
+        queryClient.setQueryData(
+          practicePickerKeys.v1(),
+          withPracticePickerStudents(previousPracticePicker, [
+            ...previousPracticePicker.students,
+            optimisticPickerStudent,
+          ])
+        )
+      }
+
+      return { previousPlayers, previousPlayersWithSkillData, previousPracticePicker }
     },
     onError: (_err, _newPlayer, context) => {
       // Rollback on error
@@ -252,11 +307,15 @@ export function useCreatePlayer() {
           context.previousPlayersWithSkillData
         )
       }
+      if (context?.previousPracticePicker) {
+        queryClient.setQueryData(practicePickerKeys.v1(), context.previousPracticePicker)
+      }
     },
     onSettled: () => {
       // Always refetch after error or success
       // Invalidate ALL player queries (including listWithSkillData used by practice page)
       queryClient.invalidateQueries({ queryKey: playerKeys.all })
+      queryClient.invalidateQueries({ queryKey: practicePickerKeys.v1() })
     },
   })
 }
@@ -271,13 +330,21 @@ export function useUpdatePlayer() {
     mutationFn: updatePlayer,
     onMutate: async ({ id, updates }) => {
       // Cancel outgoing refetches for all player lists
-      await queryClient.cancelQueries({ queryKey: playerKeys.all })
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: playerKeys.all }),
+        queryClient.cancelQueries({ queryKey: practicePickerKeys.all }),
+      ])
 
       // Snapshot previous values
       const previousPlayers = queryClient.getQueryData<Player[]>(playerKeys.list())
       const previousPlayersWithSkillData = queryClient.getQueryData<StudentWithSkillData[]>(
         playerKeys.listWithSkillData()
       )
+      const previousPracticePicker = queryClient.getQueryData<PracticePickerV1Response>(
+        practicePickerKeys.v1()
+      )
+      const previousNotes = queryClient.getQueryData(practicePickerKeys.notes(id))
+      const hadPreviousNotes = queryClient.getQueryState(practicePickerKeys.notes(id)) !== undefined
 
       // Optimistically update player list
       if (previousPlayers) {
@@ -298,7 +365,39 @@ export function useUpdatePlayer() {
         )
       }
 
-      return { previousPlayers, previousPlayersWithSkillData }
+      if (previousPracticePicker && isPickerVisibleUpdate(updates)) {
+        const optimisticStudents = previousPracticePicker.students.map((student) =>
+          student.id === id
+            ? {
+                ...student,
+                ...(updates.name !== undefined ? { name: updates.name } : {}),
+                ...(updates.emoji !== undefined ? { emoji: updates.emoji } : {}),
+                ...(updates.color !== undefined ? { color: updates.color } : {}),
+                ...(updates.isArchived !== undefined ? { isArchived: updates.isArchived } : {}),
+              }
+            : student
+        )
+        queryClient.setQueryData(
+          practicePickerKeys.v1(),
+          withPracticePickerStudents(previousPracticePicker, optimisticStudents)
+        )
+      }
+
+      if (updates.notes !== undefined) {
+        queryClient.setQueryData(practicePickerKeys.notes(id), {
+          version: 1,
+          studentId: id,
+          notes: updates.notes,
+        })
+      }
+
+      return {
+        previousPlayers,
+        previousPlayersWithSkillData,
+        previousPracticePicker,
+        previousNotes,
+        hadPreviousNotes,
+      }
     },
     onError: (err, _variables, context) => {
       // Log error for debugging
@@ -314,10 +413,24 @@ export function useUpdatePlayer() {
           context.previousPlayersWithSkillData
         )
       }
+      if (context?.previousPracticePicker) {
+        queryClient.setQueryData(practicePickerKeys.v1(), context.previousPracticePicker)
+      }
+      if (context?.hadPreviousNotes) {
+        queryClient.setQueryData(practicePickerKeys.notes(_variables.id), context.previousNotes)
+      } else {
+        queryClient.removeQueries({
+          queryKey: practicePickerKeys.notes(_variables.id),
+          exact: true,
+        })
+      }
     },
-    onSettled: (_data, _error, { id }) => {
+    onSettled: (_data, _error, { id, updates }) => {
       // Refetch after error or success - invalidate all player queries
       queryClient.invalidateQueries({ queryKey: playerKeys.all })
+      if (isPickerVisibleUpdate(updates)) {
+        queryClient.invalidateQueries({ queryKey: practicePickerKeys.v1() })
+      }
       if (_data) {
         queryClient.setQueryData(playerKeys.detail(id), _data)
       }
@@ -335,10 +448,18 @@ export function useDeletePlayer() {
     mutationFn: deletePlayer,
     onMutate: async (id) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: playerKeys.lists() })
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: playerKeys.lists() }),
+        queryClient.cancelQueries({ queryKey: practicePickerKeys.all }),
+      ])
 
       // Snapshot previous value
       const previousPlayers = queryClient.getQueryData<Player[]>(playerKeys.list())
+      const previousPracticePicker = queryClient.getQueryData<PracticePickerV1Response>(
+        practicePickerKeys.v1()
+      )
+      const previousNotes = queryClient.getQueryData(practicePickerKeys.notes(id))
+      const hadPreviousNotes = queryClient.getQueryState(practicePickerKeys.notes(id)) !== undefined
 
       // Optimistically remove from list
       if (previousPlayers) {
@@ -346,18 +467,36 @@ export function useDeletePlayer() {
         queryClient.setQueryData<Player[]>(playerKeys.list(), optimisticPlayers)
       }
 
-      return { previousPlayers }
+      if (previousPracticePicker) {
+        queryClient.setQueryData(
+          practicePickerKeys.v1(),
+          withPracticePickerStudents(
+            previousPracticePicker,
+            previousPracticePicker.students.filter((student) => student.id !== id)
+          )
+        )
+      }
+      queryClient.removeQueries({ queryKey: practicePickerKeys.notes(id), exact: true })
+
+      return { previousPlayers, previousPracticePicker, previousNotes, hadPreviousNotes }
     },
     onError: (_err, _id, context) => {
       // Rollback on error
       if (context?.previousPlayers) {
         queryClient.setQueryData(playerKeys.list(), context.previousPlayers)
       }
+      if (context?.previousPracticePicker) {
+        queryClient.setQueryData(practicePickerKeys.v1(), context.previousPracticePicker)
+      }
+      if (context?.hadPreviousNotes) {
+        queryClient.setQueryData(practicePickerKeys.notes(_id), context.previousNotes)
+      }
     },
     onSettled: () => {
       // Refetch after error or success
       // Invalidate ALL player queries (including listWithSkillData used by practice page)
       queryClient.invalidateQueries({ queryKey: playerKeys.all })
+      queryClient.invalidateQueries({ queryKey: practicePickerKeys.v1() })
     },
   })
 }
@@ -410,6 +549,7 @@ export function useLinkChild() {
         // Invalidate ALL player queries to show the newly linked child
         // This includes both playerKeys.list() and playerKeys.listWithSkillData()
         queryClient.invalidateQueries({ queryKey: playerKeys.all })
+        queryClient.invalidateQueries({ queryKey: practicePickerKeys.v1() })
       }
     },
   })

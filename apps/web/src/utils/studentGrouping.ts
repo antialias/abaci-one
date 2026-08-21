@@ -12,7 +12,7 @@ import {
   type SkillCategoryKey,
 } from '@/constants/skillCategories'
 import type { Classroom } from '@/db/schema/classrooms'
-import type { Player } from '@/db/schema/players'
+import type { PracticePickerPlayerFields } from '@/lib/practice-picker/contract'
 
 /**
  * Recency bucket for student grouping
@@ -86,7 +86,7 @@ export interface StudentActiveSessionInfo {
 /**
  * Extended student type with skill data for grouping
  */
-export interface StudentWithSkillData extends Player {
+export interface StudentWithSkillData extends PracticePickerPlayerFields {
   /** List of skillIds being practiced */
   practicingSkills: string[]
   /** Most recent practice session timestamp */
