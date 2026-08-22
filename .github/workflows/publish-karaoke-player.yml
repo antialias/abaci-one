@@ -49,6 +49,7 @@ jobs:
       - name: Verify Abaci adapter
         run: |
           pnpm --filter @soroban/web type-check:karaoke
+          pnpm --filter @soroban/abacus-react build
           pnpm --filter @soroban/web test:run src/components/song/__tests__/SyncedLyricsPlayer.test.tsx
 
       - name: Publish new package version
