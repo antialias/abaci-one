@@ -16,5 +16,5 @@
       "@styled/*": ["./styled-system/*"]
     }
   },
-  "include": ["src", "tests", "panda.config.ts", "vitest.config.ts"]
+  "include": ["src", "tests", "panda.config.ts", "tsup.config.ts", "vitest.config.ts"]
 }

@@ -1,6 +1,6 @@
 {
   "name": "@tidepool/karaoke-player",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Portable React karaoke playback with resilient ElevenLabs word alignment",
   "type": "module",
   "license": "MIT",
@@ -23,11 +23,11 @@
     "./styles.css": "./dist/styles.css"
   },
   "scripts": {
-    "build": "pnpm clean && panda codegen && panda cssgen --outfile dist/styles.css && tsup src/index.ts --format esm,cjs --dts --external react --external react-dom --external react/jsx-runtime --out-dir dist --sourcemap",
+    "build": "pnpm clean && panda codegen && panda cssgen --outfile dist/styles.css && tsup",
     "clean": "rm -rf dist styled-system",
     "codegen": "panda codegen",
     "compat:react": "node scripts/verify-react-compat.mjs",
-    "dev": "panda codegen && mkdir -p dist && concurrently \"panda cssgen --watch --outfile dist/styles.css\" \"tsup src/index.ts --format esm,cjs --dts --external react --external react-dom --external react/jsx-runtime --out-dir dist --sourcemap --watch\"",
+    "dev": "panda codegen && mkdir -p dist && concurrently \"panda cssgen --watch --outfile dist/styles.css\" \"tsup --watch\"",
     "lint": "eslint .",
     "pack:verify": "node scripts/verify-pack.mjs",
     "test": "vitest",
