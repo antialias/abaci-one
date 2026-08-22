@@ -3,6 +3,7 @@ packages:
   - "packages/templates"
   - "packages/abacus-react"
   - "packages/llm-client"
+  - "packages/karaoke-player"
   - "packages/core/client/node"
   - "packages/core/client/typescript"
   - "packages/core/client/browser"

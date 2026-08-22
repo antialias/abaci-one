@@ -107,6 +107,7 @@ const nextConfig = {
     '@svg-maps/world',
     '@svg-maps/usa',
     '@tidepool/debug-panel',
+    '@tidepool/karaoke-player',
   ],
   webpack: (config, { isServer }) => {
     config.experiments = {

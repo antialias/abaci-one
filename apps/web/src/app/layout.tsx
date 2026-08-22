@@ -1,6 +1,7 @@
 import { dehydrate } from '@tanstack/react-query'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import '@tidepool/karaoke-player/styles.css'
 import { auth } from '@/auth'
 import { ClientProviders } from '@/components/ClientProviders'
 import { fraunces, inter } from '@/lib/fonts'

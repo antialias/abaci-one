@@ -1,0 +1,62 @@
+name: Publish @tidepool/karaoke-player
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/karaoke-player/**"
+      - "apps/web/src/components/song/SyncedLyricsPlayer.tsx"
+      - "apps/web/src/lib/song/alignment.ts"
+      - ".github/workflows/publish-karaoke-player.yml"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.27.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Configure Gitea package authentication
+        run: echo "//git.dev.abaci.one/api/packages/antialias/npm/:_authToken=${{ secrets.GITEA_NPM_TOKEN }}" >> .npmrc
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify package
+        run: |
+          pnpm --filter @tidepool/karaoke-player lint
+          pnpm --filter @tidepool/karaoke-player type-check
+          pnpm --filter @tidepool/karaoke-player test:run
+          pnpm --filter @tidepool/karaoke-player build
+          pnpm --filter @tidepool/karaoke-player pack:verify
+          pnpm --filter @tidepool/karaoke-player compat:react
+
+      - name: Verify Abaci adapter
+        run: |
+          pnpm --filter @soroban/web type-check:karaoke
+          pnpm --filter @soroban/web test:run src/components/song/__tests__/SyncedLyricsPlayer.test.tsx
+
+      - name: Publish new package version
+        working-directory: packages/karaoke-player
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if pnpm view "@tidepool/karaoke-player@$version" version >/dev/null 2>&1; then
+            echo "@tidepool/karaoke-player@$version is already published"
+          else
+            pnpm publish --no-git-checks --access restricted
+          fi
