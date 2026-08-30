@@ -12,6 +12,8 @@
 
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { mkdir, writeFile } from 'fs/promises'
+import { atomicWriteSong } from '@/lib/kid-songs/atomicWriteSong'
+import { ringKidSongsDoorbell } from '@/lib/kid-songs/doorbell'
 import { dirname, join } from 'path'
 import { db, schema } from '@/db'
 import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
@@ -354,7 +356,7 @@ async function generateAndSaveMusic({
 
   const localPath = join(SONGS_DIR, `${songId}.mp3`)
   await mkdir(dirname(localPath), { recursive: true })
-  await writeFile(localPath, audioBuffer)
+  await atomicWriteSong(localPath, audioBuffer)
   await writeAlignmentSidecar(songId, alignment)
 
   await setSongStatus(songId, input.sessionPlanId, 'completed', {
@@ -366,6 +368,7 @@ async function generateAndSaveMusic({
   })
 
   await emitSongReady(input, songId)
+  void ringKidSongsDoorbell()
 
   handle.complete({ songId, status: 'completed' })
 }
@@ -664,7 +667,7 @@ export async function startSessionSongGeneration(
 
         const localPath = join(SONGS_DIR, `${songId}.mp3`)
         await mkdir(dirname(localPath), { recursive: true })
-        await writeFile(localPath, audioBuffer)
+        await atomicWriteSong(localPath, audioBuffer)
         await writeAlignmentSidecar(songId, alignment)
 
         // Step 5: Mark completed
@@ -674,6 +677,7 @@ export async function startSessionSongGeneration(
         })
 
         await emitSongReady(input, songId)
+        void ringKidSongsDoorbell()
 
         handle.complete({ songId, status: 'completed' })
       } catch (error) {

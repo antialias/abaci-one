@@ -72,9 +72,11 @@ export function withAuth(handler: RouteHandler, options?: WithAuthOptions) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
       }
     } catch (err) {
-      console.error('[withAuth] Route enforcement error:', err)
-      // Fail open for now — log but don't block
-      // TODO: Consider fail-closed after confidence period
+      console.error('[withAuth] Route enforcement error — failing closed:', err)
+      // Authorization must fail closed: a broken enforcer means the RBAC layer
+      // is gone, and proceeding would silently serve every withAuth route
+      // without it.
+      return NextResponse.json({ error: 'Authorization unavailable' }, { status: 503 })
     }
 
     // Check minimum role requirement if specified

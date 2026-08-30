@@ -83,6 +83,10 @@ p, guest, /api/audio/collected-clips/manifest, GET
 p, guest, /api/create/*, *
 p, guest, /api/feature-flags, GET
 
+# /api/integrations/* is deliberately absent. Those routes self-authenticate
+# with a static bearer token and must not use withAuth(), whose enforcer-error
+# path currently fails open. Do not add a guest grant here.
+
 # Guest-accessible practice & app routes
 p, guest, /api/players, *
 p, guest, /api/players/*, *

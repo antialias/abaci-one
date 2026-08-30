@@ -15,6 +15,7 @@ import {
   getAdminSongPlanSummary,
   getSongPlanValidationSummary,
 } from '@/lib/session-song/admin-validation-summary'
+import { ringKidSongsDoorbell } from '@/lib/kid-songs/doorbell'
 import { parseSongPlan } from '@/lib/song-share/songPlan'
 import {
   retrySessionSongGeneration,
@@ -252,6 +253,7 @@ export const POST = withAuth(
         })
         .where(eq(schema.sessionSongs.id, songId))
 
+      void ringKidSongsDoorbell()
       return NextResponse.json({ ok: true })
     }
 
@@ -266,6 +268,7 @@ export const POST = withAuth(
         })
         .where(eq(schema.sessionSongs.id, songId))
 
+      void ringKidSongsDoorbell()
       return NextResponse.json({ ok: true })
     }
 
