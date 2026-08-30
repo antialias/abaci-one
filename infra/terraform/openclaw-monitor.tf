@@ -61,3 +61,33 @@ resource "null_resource" "openclaw_scrape" {
     manifest = filemd5("${path.module}/files/openclaw-scrape.yaml")
   }
 }
+
+# Dashboard "OpenClaw Gateway — failure visibility" (uid openclaw-gateway).
+# Grafana picks this up via the kube-prometheus-stack sidecar (grafana_dashboard="1"),
+# same ConfigMap idiom as claude-usage / dns-probe.
+#
+# STILL NO ALERT RULES. A dashboard is pure observation and is exactly what the
+# platform#13 alerting rebuild needs as input; a PrometheusRule is not. Do not
+# "complete the set" by copying claude-usage-rule.yaml here.
+#
+# The "Est. silent turns" panel is deliberately labelled approximate — a reply that
+# emits both text and media counts twice in delivery_started, biasing it low. It is a
+# lead into the log line, not a metric to alert on. See home-infra #100.
+resource "null_resource" "grafana_dashboard_openclaw" {
+  depends_on = [helm_release.kube_prometheus_stack]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      export KUBECONFIG=${pathexpand(var.kubeconfig_path)}
+      kubectl -n monitoring create configmap grafana-dashboard-openclaw \
+        --from-file=openclaw.json=${path.module}/files/openclaw-dashboard.json \
+        --dry-run=client -o yaml \
+        | kubectl label --local -f - grafana_dashboard=1 -o yaml \
+        | kubectl apply -f -
+    EOT
+  }
+
+  triggers = {
+    dashboard = filemd5("${path.module}/files/openclaw-dashboard.json")
+  }
+}
