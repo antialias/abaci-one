@@ -3,7 +3,16 @@ import type { SongRow } from './queries'
 
 export const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 export const VERSION_PATTERN = /^[a-f0-9]{64}$/
-const CONTROL_PATTERN = /[\x00-\x1f\x7f-\x9f]/
+// Spelled as a code-unit scan rather than a regex character class: a class over
+// C0/C1 is what lint/suspicious/noControlCharactersInRegex exists to catch, and
+// suppressing that rule would hide the next one someone writes by accident.
+function hasControlCharacter(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index)
+    if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return true
+  }
+  return false
+}
 
 export function isValidId(value: unknown): value is string {
   return typeof value === 'string' && ID_PATTERN.test(value)
@@ -16,7 +25,7 @@ export function isValidAudioVersion(value: unknown): value is string {
 export function isValidTitle(value: unknown): value is string {
   if (typeof value !== 'string') return false
   const title = value.trim()
-  return title.length >= 1 && title.length <= 120 && !CONTROL_PATTERN.test(title)
+  return title.length >= 1 && title.length <= 120 && !hasControlCharacter(title)
 }
 
 export function toIso(value: Date | number | string): string {
