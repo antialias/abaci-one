@@ -101,6 +101,51 @@ variable "elevenlabs_music_api_key" {
   default     = ""
 }
 
+variable "kid_songs_sync_token" {
+  description = "Bearer token for the NAS kid-song sync"
+  type        = string
+  sensitive   = true
+  nullable    = false
+  validation {
+    condition     = length(var.kid_songs_sync_token) >= 16
+    error_message = "kid_songs_sync_token must contain at least 16 characters."
+  }
+}
+
+variable "kid_songs_sync_player_ids" {
+  description = "Comma-separated abaci player IDs allowed for the NAS kid-song sync"
+  type        = string
+  sensitive   = false
+  nullable    = false
+  validation {
+    condition = length(trimspace(var.kid_songs_sync_player_ids)) > 0 && alltrue([
+      for id in split(",", var.kid_songs_sync_player_ids) : can(regex("^[A-Za-z0-9_-]{1,64}$", trimspace(id)))
+    ])
+    error_message = "kid_songs_sync_player_ids must be a non-empty comma-separated list of valid player IDs."
+  }
+}
+
+variable "kid_songs_doorbell_url" {
+  description = "LAN receiver URL for kid-song synchronization doorbells"
+  type        = string
+  nullable    = false
+  validation {
+    condition     = var.kid_songs_doorbell_url == "http://192.168.86.51:9117/v1/abaci-song-sync"
+    error_message = "kid_songs_doorbell_url must be the exact LAN receiver URL."
+  }
+}
+
+variable "kid_songs_doorbell_secret" {
+  description = "HMAC secret shared with the NAS kid-song doorbell receiver"
+  type        = string
+  sensitive   = true
+  nullable    = false
+  validation {
+    condition     = length(var.kid_songs_doorbell_secret) >= 32
+    error_message = "kid_songs_doorbell_secret must contain at least 32 characters."
+  }
+}
+
 variable "nfs_server" {
   description = "NFS server IP address (NAS)"
   type        = string

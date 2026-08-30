@@ -29,6 +29,10 @@ resource "kubernetes_secret" "app_env" {
     STRIPE_WEBHOOK_SECRET          = local.stripe_enabled ? stripe_webhook_endpoint.app[0].secret : ""
     VAPID_PRIVATE_KEY              = var.vapid_private_key
     SECRET_BOX_KEY                 = var.secret_box_key
+    KID_SONGS_SYNC_TOKEN           = var.kid_songs_sync_token
+    KID_SONGS_SYNC_PLAYER_IDS      = var.kid_songs_sync_player_ids
+    KID_SONGS_DOORBELL_URL         = var.kid_songs_doorbell_url
+    KID_SONGS_DOORBELL_SECRET      = var.kid_songs_doorbell_secret
   }
 }
 
