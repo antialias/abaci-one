@@ -70,9 +70,13 @@ resource "null_resource" "openclaw_scrape" {
 # platform#13 alerting rebuild needs as input; a PrometheusRule is not. Do not
 # "complete the set" by copying claude-usage-rule.yaml here.
 #
-# The "Est. silent turns" panel is deliberately labelled approximate — a reply that
-# emits both text and media counts twice in delivery_started, biasing it low. It is a
-# lead into the log line, not a metric to alert on. See home-infra #100.
+# The "Turns parked on subagent yield" panel is NOT a failure signal and is deliberately
+# rendered without threshold colouring. Verified 2026-08-30 (home-infra #100): the first real
+# capture was 4/4 subagent yields, every one followed by a successful delivery 28-376s later —
+# zero genuine silent failures. It was previously titled "Est. silent turns" with red at >=5,
+# which would have flagged entirely healthy traffic. A real silent-failure detector has to
+# correlate the parked turn against a LATER delivery on the same session with a deadline;
+# this metric cannot do that. Do not alert on it. See home-infra #100 and #108.
 resource "null_resource" "grafana_dashboard_openclaw" {
   depends_on = [helm_release.kube_prometheus_stack]
 

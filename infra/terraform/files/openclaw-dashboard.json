@@ -159,8 +159,8 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Est. silent turns (24h)",
-      "description": "APPROXIMATE. Dispatches that completed with reason=none minus deliveries started. reason=active_run_injected is excluded because those messages fold into an already-running turn and correctly produce no reply of their own. Treat as a lead, not a count: one reply emitting both text and media counts twice in delivery_started, which biases this LOW. Confirm against the log line 'visible channel turn dispatched with no queued reply payloads' (home-infra #100).",
+      "title": "Turns parked on subagent yield (24h)",
+      "description": "NOT a failure signal \u2014 do not alert on this. Measures dispatches that completed with reason=none and started no delivery. Verified 2026-08-30 (home-infra #100): on the first real capture this was 4/4 SUBAGENT YIELDS, not silent failures. The agent delegates, parks the turn via sessions_yield (which aborts the in-flight model request in ~20-46ms, surfacing as a [model-fetch] error), and the SUBAGENT delivers later \u2014 all four were followed by a successful send 28-376s afterwards. A non-zero value here is normal on a bot that uses subagents. reason=active_run_injected is excluded: those fold into an already-running turn and correctly produce no reply of their own. Caveat: one reply emitting both text and media counts twice in delivery_started, biasing this LOW. A real silent-failure detector must correlate the parked turn against a LATER delivery on the same session with a deadline \u2014 this panel cannot distinguish yield-with-delivery from yield-with-nothing. See home-infra #100.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -192,7 +192,7 @@
           "values": false
         },
         "textMode": "auto",
-        "colorMode": "value",
+        "colorMode": "none",
         "graphMode": "area",
         "justifyMode": "auto"
       },
@@ -202,22 +202,15 @@
           "decimals": 0,
           "mappings": [],
           "color": {
-            "mode": "thresholds"
+            "mode": "fixed",
+            "fixedColor": "text"
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "text",
                 "value": null
-              },
-              {
-                "color": "orange",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 5
               }
             ]
           }
