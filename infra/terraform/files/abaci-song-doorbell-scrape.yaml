@@ -1,0 +1,69 @@
+# abaci-song-doorbell scrape wiring — codifies the off-cluster NAS doorbell receiver.
+# The receiver runs on the NAS (192.168.86.51:9117), outside the cluster: abaci
+# emits a signed HMAC ping after each committed kid-song mutation, and the
+# receiver debounces those into runs of the abaci→Yoto sync engine. Off-cluster,
+# so it is scraped via a headless Service + manually-managed Endpoints + a
+# ServiceMonitor. Series carry job="abaci-song-doorbell". Receiver source lives in
+# the home-infra repo (services/abaci-song-doorbell). Applied via
+# null_resource.abaci_song_doorbell_scrape.
+#
+# What this is for: the whole pipeline is deliberately silent — no cron, no LLM,
+# no alerting — so the only way to know it is alive is to look. Two conditions
+# the engine itself calls bad (Yoto auth breaker backing off, abaci bearer 401)
+# never surface in the receiver's exit code, and they are exposed here as
+# abaci_song_sync_yoto_auth_broken / abaci_song_sync_abaci_auth_ok. No alert
+# rules: alerting is saturated pending platform#13.
+#
+# /metrics is unauthenticated by design. It is bound to the LAN address, carries
+# no secret, and cannot enqueue a run — only a signed POST to the doorbell path
+# can. Nothing free-form from the engine's state file reaches it either: track
+# URLs, song titles and error messages are reduced to numbers, and the kid name
+# is the single state-derived label.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: abaci-song-doorbell
+  namespace: monitoring
+  labels:
+    app: abaci-song-doorbell
+spec:
+  # Headless + no selector: endpoints managed manually (object below) — external host.
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9117
+      targetPort: 9117
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: abaci-song-doorbell
+  namespace: monitoring
+  labels:
+    app: abaci-song-doorbell
+subsets:
+  - addresses:
+      - ip: 192.168.86.51
+    ports:
+      - name: metrics
+        port: 9117
+        protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: abaci-song-doorbell
+  namespace: monitoring
+  labels:
+    app: abaci-song-doorbell
+spec:
+  selector:
+    matchLabels:
+      app: abaci-song-doorbell
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 60s
+      scrapeTimeout: 10s
