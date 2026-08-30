@@ -23,6 +23,10 @@ COPY packages/core/client/node/package.json ./packages/core/client/node/
 COPY packages/abacus-react/package.json ./packages/abacus-react/
 COPY packages/templates/package.json ./packages/templates/
 COPY packages/llm-client/package.json ./packages/llm-client/
+# pnpm-workspace.yaml lists packages/karaoke-player and apps/web depends on it as
+# workspace:*, so --frozen-lockfile cannot resolve the link unless its manifest is
+# here too. turbo build --filter=@soroban/web then builds it via dependsOn ^build.
+COPY packages/karaoke-player/package.json ./packages/karaoke-player/
 
 # Install ALL dependencies for build stage.
 # Mount the Gitea npm token as a buildkit secret (no layer leak) and use a
@@ -85,6 +89,11 @@ COPY packages/core/client/node/package.json ./packages/core/client/node/
 COPY packages/abacus-react/package.json ./packages/abacus-react/
 COPY packages/templates/package.json ./packages/templates/
 COPY packages/llm-client/package.json ./packages/llm-client/
+# Same reason as the build stage: apps/web lists karaoke-player under
+# dependencies, so even --prod needs the manifest to resolve the workspace link.
+# Like llm-client, the package itself is never copied into the runtime stage —
+# Next bundles it at build time.
+COPY packages/karaoke-player/package.json ./packages/karaoke-player/
 
 # Install ONLY production dependencies
 # Mount the Gitea npm token as a buildkit secret (no layer leak) and use a

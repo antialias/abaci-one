@@ -38,6 +38,15 @@ jobs:
       - name: Build @soroban/abacus-react
         run: pnpm --filter @soroban/abacus-react run build
 
+      - name: Build @tidepool/karaoke-player
+        # apps/web consumes this as workspace:*, and every entry point in its
+        # package.json (main/module/exports, plus the ./styles.css subpath that
+        # layout.tsx imports) resolves into dist/, which is gitignored. Without
+        # this build vite cannot resolve the package at all, so alignment.test.ts,
+        # layout.nav.test.tsx and SyncedLyricsPlayer.test.tsx collect zero tests
+        # and the whole run fails.
+        run: pnpm --filter @tidepool/karaoke-player run build
+
       - name: Generate build artifacts
         working-directory: apps/web
         run: |
