@@ -709,6 +709,37 @@ export const errorsByCode = new Counter({
 })
 
 // =============================================================================
+// KID-SONGS DOORBELL METRICS
+// =============================================================================
+// The emitter half of the abaci -> Yoto card easter egg. It is deliberately
+// fire-and-forget: a committed song mutation must never be rolled back or
+// delayed because the NAS receiver is down, so ringKidSongsDoorbell() resolves
+// on every path and the caller cannot tell the difference. These counters are
+// the only way that difference becomes visible.
+//
+// The receiver publishes its own /metrics on the NAS (job="abaci-song-doorbell",
+// wired in infra/terraform/abaci-song-doorbell-monitor.tf), but it can only
+// count pings that ARRIVED. A ring that never landed — receiver down, secret
+// rotated on one side, LAN partition — is invisible there by construction and
+// visible only here. Comparing the two sides is the point.
+
+export const kidSongsDoorbellRingsTotal = new Counter({
+  name: 'kid_songs_doorbell_rings_total',
+  help: 'Doorbell rings after a committed kid-song mutation, by terminal outcome',
+  // delivered = 202 accepted; rejected = a non-retryable status; exhausted = all
+  // three attempts failed; unconfigured = no URL (the normal state off prod);
+  // misconfigured = URL/secret failed validation; error = the emitter itself threw.
+  labelNames: ['outcome'],
+  registers: [metricsRegistry],
+})
+
+export const kidSongsDoorbellAttemptsTotal = new Counter({
+  name: 'kid_songs_doorbell_attempts_total',
+  help: 'Individual HTTP attempts made to the doorbell; one ring makes up to three',
+  registers: [metricsRegistry],
+})
+
+// =============================================================================
 // CONVENIENCE NAMESPACE EXPORT
 // =============================================================================
 
@@ -810,6 +841,10 @@ export const metrics = {
   errors: {
     total: errorsTotal,
     byCode: errorsByCode,
+  },
+  kidSongsDoorbell: {
+    rings: kidSongsDoorbellRingsTotal,
+    attempts: kidSongsDoorbellAttemptsTotal,
   },
   sessions: {
     active: sessionsActive,

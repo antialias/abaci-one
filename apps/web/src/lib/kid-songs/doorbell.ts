@@ -1,4 +1,5 @@
 import { createHmac } from 'crypto'
+import { kidSongsDoorbellAttemptsTotal, kidSongsDoorbellRingsTotal } from '@/lib/metrics'
 
 const DOORBELL_URL = 'http://192.168.86.51:9117/v1/abaci-song-sync'
 const RETRY_DELAYS_MS = [1_000, 3_000] as const
@@ -21,14 +22,37 @@ function warn(message: string): void {
   }
 }
 
-async function deliver(): Promise<void> {
+/**
+ * The receiver counts pings that arrived; only this side can count the ones that
+ * did not. Guarded for the same reason warn() is — a counter must never be the
+ * thing that makes a best-effort ring observable to the caller.
+ */
+type Outcome = 'delivered' | 'rejected' | 'exhausted' | 'unconfigured' | 'misconfigured' | 'error'
+
+function count(outcome: Outcome): void {
+  try {
+    kidSongsDoorbellRingsTotal.inc({ outcome })
+  } catch {
+    // Metrics are observability, never a delivery precondition.
+  }
+}
+
+function countAttempt(): void {
+  try {
+    kidSongsDoorbellAttemptsTotal.inc()
+  } catch {
+    // As above.
+  }
+}
+
+async function deliver(): Promise<Outcome> {
   const configuredUrl = process.env.KID_SONGS_DOORBELL_URL
-  if (!configuredUrl) return
+  if (!configuredUrl) return 'unconfigured'
 
   const secret = process.env.KID_SONGS_DOORBELL_SECRET
   if (configuredUrl !== DOORBELL_URL || !secret || secret.length < 32) {
     warn('[kid-songs-doorbell] Invalid configuration; delivery skipped')
-    return
+    return 'misconfigured'
   }
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -37,6 +61,7 @@ async function deliver(): Promise<void> {
     const body = JSON.stringify({ timestamp: Math.floor(Date.now() / 1_000) })
     const signature = createHmac('sha256', secret).update(body, 'utf8').digest('hex')
 
+    countAttempt()
     try {
       const response = await fetch(configuredUrl, {
         method: 'POST',
@@ -48,10 +73,10 @@ async function deliver(): Promise<void> {
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       })
 
-      if (response.status === 202) return
+      if (response.status === 202) return 'delivered'
       if (!isRetryableStatus(response.status)) {
         warn(`[kid-songs-doorbell] Delivery rejected with HTTP ${response.status}`)
-        return
+        return 'rejected'
       }
     } catch {
       // Network errors and request timeouts are transient.
@@ -59,13 +84,15 @@ async function deliver(): Promise<void> {
   }
 
   warn('[kid-songs-doorbell] Delivery failed after 3 attempts')
+  return 'exhausted'
 }
 
 /** Best-effort notification. It always resolves, including on invalid config or delivery failure. */
 export async function ringKidSongsDoorbell(): Promise<void> {
   try {
-    await deliver()
+    count(await deliver())
   } catch {
+    count('error')
     warn('[kid-songs-doorbell] Delivery failed')
   }
 }

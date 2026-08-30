@@ -2,6 +2,7 @@
 
 import { createHmac } from 'crypto'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { kidSongsDoorbellAttemptsTotal, kidSongsDoorbellRingsTotal } from '@/lib/metrics'
 import { ringKidSongsDoorbell } from '../doorbell'
 
 const URL = 'http://192.168.86.51:9117/v1/abaci-song-sync'
@@ -11,11 +12,24 @@ function response(status: number): Response {
   return { status } as Response
 }
 
+/** Reads one counter sample out of prom-client rather than trusting a spy. */
+async function rings(): Promise<Record<string, number>> {
+  const { values } = await kidSongsDoorbellRingsTotal.get()
+  return Object.fromEntries(values.map((sample) => [String(sample.labels.outcome), sample.value]))
+}
+
+async function attempts(): Promise<number> {
+  const { values } = await kidSongsDoorbellAttemptsTotal.get()
+  return values[0]?.value ?? 0
+}
+
 describe('ringKidSongsDoorbell', () => {
   const originalEnvironment = { ...process.env }
   let fetchMock: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
+    kidSongsDoorbellRingsTotal.reset()
+    kidSongsDoorbellAttemptsTotal.reset()
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-08-30T12:00:00Z'))
     process.env.KID_SONGS_DOORBELL_URL = URL
@@ -161,5 +175,82 @@ describe('ringKidSongsDoorbell', () => {
 
     await expect(delivery).resolves.toBeUndefined()
     expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  describe('metrics', () => {
+    it('counts a delivered ring and its single attempt', async () => {
+      await ringKidSongsDoorbell()
+
+      expect(await rings()).toEqual({ delivered: 1 })
+      expect(await attempts()).toBe(1)
+    })
+
+    it('counts an unconfigured ring without an attempt', async () => {
+      delete process.env.KID_SONGS_DOORBELL_URL
+
+      await ringKidSongsDoorbell()
+
+      expect(await rings()).toEqual({ unconfigured: 1 })
+      expect(await attempts()).toBe(0)
+    })
+
+    it('counts a misconfigured ring without an attempt', async () => {
+      process.env.KID_SONGS_DOORBELL_SECRET = 'too-short'
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+      await ringKidSongsDoorbell()
+
+      expect(await rings()).toEqual({ misconfigured: 1 })
+      expect(await attempts()).toBe(0)
+    })
+
+    it('counts a non-retryable status as rejected', async () => {
+      fetchMock.mockResolvedValue(response(401))
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+      await ringKidSongsDoorbell()
+
+      expect(await rings()).toEqual({ rejected: 1 })
+      expect(await attempts()).toBe(1)
+    })
+
+    it('counts three attempts but one exhausted ring when delivery never lands', async () => {
+      // This is the case the receiver cannot see: from its side nothing happened
+      // at all, so a ring that never arrived is only ever visible here.
+      fetchMock.mockRejectedValue(new Error('offline'))
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+      const delivery = ringKidSongsDoorbell()
+      await vi.advanceTimersByTimeAsync(4_000)
+      await delivery
+
+      expect(await rings()).toEqual({ exhausted: 1 })
+      expect(await attempts()).toBe(3)
+    })
+
+    it('counts a retried-then-delivered ring once, with both attempts', async () => {
+      fetchMock.mockResolvedValueOnce(response(503)).mockResolvedValue(response(202))
+
+      const delivery = ringKidSongsDoorbell()
+      await vi.advanceTimersByTimeAsync(1_000)
+      await delivery
+
+      expect(await rings()).toEqual({ delivered: 1 })
+      expect(await attempts()).toBe(2)
+    })
+
+    it('still resolves when the counters themselves throw', async () => {
+      // The guarantee under test is the emitter's, not prom-client's: a broken
+      // counter must not be what makes a best-effort ring observable.
+      vi.spyOn(kidSongsDoorbellRingsTotal, 'inc').mockImplementation(() => {
+        throw new Error('registry exploded')
+      })
+      vi.spyOn(kidSongsDoorbellAttemptsTotal, 'inc').mockImplementation(() => {
+        throw new Error('registry exploded')
+      })
+
+      await expect(ringKidSongsDoorbell()).resolves.toBeUndefined()
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
   })
 })
