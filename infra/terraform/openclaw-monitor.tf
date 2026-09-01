@@ -1,7 +1,8 @@
 # =============================================================================
 # OpenClaw Gateway monitoring — hauntbot failure visibility
 # =============================================================================
-# Codifies the scrape of OpenClaw's native diagnostics metrics. The gateway runs
+# Codifies the scrape of OpenClaw's native diagnostics metrics plus a supported
+# companion plugin for loop and delivery-reconciliation evidence. The gateway runs
 # on the NAS at 192.168.86.51:18789 (compose project openclaw-deploy; image built
 # from the openclaw-image repo), so this is the same off-cluster idiom as
 # dns-probe-monitor.tf / claude-usage-monitor.tf: headless Service + manual
