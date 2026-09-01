@@ -5,9 +5,11 @@
 # job="openclaw-gateway". Applied via null_resource.openclaw_scrape.
 #
 # Metrics come from OpenClaw's official `diagnostics-prometheus` plugin, installed
-# on the gateway 2026-08-30 (home-infra #99). Unlike the other off-cluster targets
-# this endpoint is NOT anonymous: the route uses gateway operator auth, so the
-# ServiceMonitor reads a bearer token from the `openclaw-gateway-token` Secret.
+# on the gateway 2026-08-30 (home-infra #99), plus the supported image-baked
+# `openclaw-task-observability` companion plugin for failure classes absent from
+# the native exporter (tool-loop blocks and completed-run/delivery reconciliation).
+# Both endpoints use gateway operator auth, so the ServiceMonitor reads a bearer
+# token from the `openclaw-gateway-token` Secret.
 #
 # THE SECRET IS NOT IN GIT and is not created by Terraform. Create/rotate it with:
 #
@@ -68,6 +70,16 @@ spec:
   endpoints:
     - port: metrics
       path: /api/diagnostics/prometheus
+      scheme: http
+      interval: 60s
+      scrapeTimeout: 30s
+      authorization:
+        type: Bearer
+        credentials:
+          name: openclaw-gateway-token
+          key: token
+    - port: metrics
+      path: /api/openclaw-task-observability/metrics
       scheme: http
       interval: 60s
       scrapeTimeout: 30s
