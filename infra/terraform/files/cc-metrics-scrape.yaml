@@ -1,0 +1,54 @@
+# cc-metrics scrape wiring — off-cluster NAS collector for Claude Code
+# context/compaction metrics (home-infra repo, services/cc-metrics). The
+# collector runs on the NAS (192.168.86.51:9119), fed by Claude Code hooks on the
+# owner's Mac, so it is scraped via a headless Service + manually-managed
+# Endpoints + a ServiceMonitor, the same idiom as claude-usage-scrape.yaml.
+# Series carry job="cc-metrics". Applied via null_resource.cc_metrics_scrape.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cc-metrics
+  namespace: monitoring
+  labels:
+    app: cc-metrics
+spec:
+  # Headless + no selector: endpoints managed manually (object below) — external host.
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9119
+      targetPort: 9119
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: cc-metrics
+  namespace: monitoring
+  labels:
+    app: cc-metrics
+subsets:
+  - addresses:
+      - ip: 192.168.86.51
+    ports:
+      - name: metrics
+        port: 9119
+        protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cc-metrics
+  namespace: monitoring
+  labels:
+    app: cc-metrics
+spec:
+  selector:
+    matchLabels:
+      app: cc-metrics
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 60s
+      scrapeTimeout: 10s
