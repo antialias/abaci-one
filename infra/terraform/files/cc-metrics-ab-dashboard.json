@@ -1,0 +1,3769 @@
+{
+  "uid": "cc-ab",
+  "title": "Claude Code — proxy vs direct A/B",
+  "tags": [
+    "claude-code",
+    "cc-metrics",
+    "ab"
+  ],
+  "description": "Controlled A/B of Claude Code through claude-switch-proxy vs direct to Anthropic: paired scripted sessions tagged by exp/scenario (services/cc-metrics/ab). Every panel splits by arm.",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "type": "link",
+      "title": "everyday cc-metrics",
+      "url": "/d/cc-metrics",
+      "icon": "external link",
+      "targetBlank": false
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "query",
+        "name": "exp",
+        "label": "experiment",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(cc_sessions_total, exp)",
+          "refId": "var-exp"
+        },
+        "definition": "label_values(cc_sessions_total, exp)",
+        "refresh": 2,
+        "includeAll": false,
+        "multi": false,
+        "allValue": ".*",
+        "sort": 2,
+        "regex": "/^(?!none$).+/",
+        "current": {},
+        "options": []
+      },
+      {
+        "type": "query",
+        "name": "scenario",
+        "label": "scenario",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(cc_sessions_total{exp=\"$exp\"}, scenario)",
+          "refId": "var-scenario"
+        },
+        "definition": "label_values(cc_sessions_total{exp=\"$exp\"}, scenario)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "regex": "",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": []
+      },
+      {
+        "type": "query",
+        "name": "model",
+        "label": "model",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(cc_api_calls_total{exp=\"$exp\"}, model)",
+          "refId": "var-model"
+        },
+        "definition": "label_values(cc_api_calls_total{exp=\"$exp\"}, model)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "regex": "",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": []
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Read me",
+      "collapsed": false,
+      "id": 1,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "text",
+      "title": "What this dashboard is",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**One experiment at a time.** Pick `exp` (an `ab_run.py` run id); every panel below is split by **arm** — **proxy** (blue, `claude` via claude-switch-proxy) vs **direct** (orange, `claude-direct` to api.anthropic.com). Sessions are scripted, **paired** (each replicate ran both arms with identical inputs, concurrently, in randomised order) and tagged by `scenario`. Filter `scenario` to a single one to compare like with like.\n\n**Whole-experiment totals, not the time range.** An experiment's series exist only for that experiment, so every tile reads the counters' current values — exact totals since the run began, unaffected by the time picker (which only scopes the timeline row and *Turns per 10 min*). The main dashboard's range panels also work for an experiment, with Prometheus' `increase()` extrapolation on top.\n\n**Read ratios, not counts.** The *direct ÷ proxy* row is the comparison: 1.00 = no difference. Metric definitions are the pre-registered ones in `services/cc-metrics/ab/CONTRACT.md` §5; `ab_report.py` computes the same numbers offline with paired bootstrap CIs — that report is the verdict, this page is the eyeball.\n\n**Caveats.** Both arms share one Anthropic org, so one arm can warm the other's prompt cache (watch *cache hit ratio* on the first call). The proxy may route to a non-Anthropic lane; `model` is what Claude Code asked for, not what served it. Latency is estimated from transcript timestamps."
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 24,
+        "h": 6
+      }
+    },
+    {
+      "type": "row",
+      "title": "Sample size — is there enough data yet?",
+      "collapsed": false,
+      "id": 3,
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Sessions",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm)(cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",source=\"startup\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 4,
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Turns",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm)(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 5,
+      "gridPos": {
+        "x": 4,
+        "y": 8,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "API calls",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 6,
+      "gridPos": {
+        "x": 8,
+        "y": 8,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Pairs (min over arms)",
+      "description": "a lower bound on completed pairs — a pair needs a session in both arms",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "min(sum by (arm)(cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",source=\"startup\"}))",
+          "legendFormat": "pairs",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 7,
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Sessions by scenario and arm",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (scenario, arm)(cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",source=\"startup\"})",
+          "legendFormat": "{{arm}} {{scenario}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#2a78d6"
+          },
+          "min": 0,
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "valueMode": "text",
+        "sizing": "auto",
+        "minVizHeight": 14,
+        "minVizWidth": 8
+      },
+      "id": 8,
+      "gridPos": {
+        "x": 16,
+        "y": 8,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Turns per 10 min by arm — both arms should move together",
+      "description": "Paired sessions run concurrently: the two lines should track. A lone spike means one arm ran alone.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm)(increase(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"}[10m]))",
+          "legendFormat": "{{arm}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 9,
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Active sessions by arm",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm)(cc_active_sessions{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "{{arm}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 10,
+      "gridPos": {
+        "x": 8,
+        "y": 16,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "row",
+      "title": "Primary metrics by arm (whole experiment)",
+      "collapsed": false,
+      "id": 11,
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Cache hit ratio",
+      "description": "higher is better",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_read\"}) / sum by (arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 3,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 12,
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cost-weighted tokens / turn",
+      "description": "lower is better",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1.0 * (sum by (arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"input\"}) or sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 0.1 * (sum by (arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_read\"}) or sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 1.25 * (sum by (arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_write_5m\"}) or sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 2.0 * (sum by (arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_write_1h\"}) or sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 5.0 * (sum by (arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"output\"}) or sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0)) / sum by (arm)(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 13,
+      "gridPos": {
+        "x": 6,
+        "y": 25,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "API latency p50",
+      "description": "lower is better",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(cc_api_call_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}))",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 14,
+      "gridPos": {
+        "x": 12,
+        "y": 25,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "API latency p95",
+      "description": "lower is better",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, arm)(cc_api_call_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}))",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 15,
+      "gridPos": {
+        "x": 18,
+        "y": 25,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Turn wall-clock p50",
+      "description": "lower is better",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(cc_turn_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"}))",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 16,
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Failures / 100 calls",
+      "description": "lower is better",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * (sum by (arm)(cc_api_failures_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) or sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) / sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 17,
+      "gridPos": {
+        "x": 6,
+        "y": 29,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Compactions / session",
+      "description": "lower is better",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (arm)(cc_compactions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"}) or sum by (arm)(cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",source=\"startup\"}) * 0) / sum by (arm)(cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",source=\"startup\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 18,
+      "gridPos": {
+        "x": 12,
+        "y": 29,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cache writes that are 1h",
+      "description": "no direction — a difference is a finding, not a score",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_write_1h\"}) or sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) / ((sum by (arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_write_5m\"}) or sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + (sum by (arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_write_1h\"}) or sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0))",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 3,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 19,
+      "gridPos": {
+        "x": 18,
+        "y": 29,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "row",
+      "title": "direct ÷ proxy — 1.00 means no difference",
+      "collapsed": false,
+      "id": 20,
+      "gridPos": {
+        "x": 0,
+        "y": 33,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Cache hit ratio",
+      "description": "higher is better (Cache hit ratio)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\",kind=\"cache_read\"}) / sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"})) / (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\",kind=\"cache_read\"}) / sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"}))",
+          "legendFormat": "direct ÷ proxy",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "0 ÷ 0",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "noValue": "no pair yet"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 21,
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cost-weighted tokens / turn",
+      "description": "lower is better (Cost-weighted tokens / turn)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((1.0 * (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\",kind=\"input\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}) * 0) + 0.1 * (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\",kind=\"cache_read\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}) * 0) + 1.25 * (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\",kind=\"cache_write_5m\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}) * 0) + 2.0 * (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\",kind=\"cache_write_1h\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}) * 0) + 5.0 * (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\",kind=\"output\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}) * 0)) / sum (cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\"})) / ((1.0 * (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\",kind=\"input\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"}) * 0) + 0.1 * (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\",kind=\"cache_read\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"}) * 0) + 1.25 * (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\",kind=\"cache_write_5m\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"}) * 0) + 2.0 * (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\",kind=\"cache_write_1h\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"}) * 0) + 5.0 * (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\",kind=\"output\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"}) * 0)) / sum (cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\"}))",
+          "legendFormat": "direct ÷ proxy",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "0 ÷ 0",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "noValue": "no pair yet"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 22,
+      "gridPos": {
+        "x": 6,
+        "y": 34,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "API latency p50",
+      "description": "lower is better (API latency p50)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(histogram_quantile(0.5, sum by (le)(cc_api_call_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}))) / (histogram_quantile(0.5, sum by (le)(cc_api_call_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"})))",
+          "legendFormat": "direct ÷ proxy",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "0 ÷ 0",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "noValue": "no pair yet"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 23,
+      "gridPos": {
+        "x": 12,
+        "y": 34,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "API latency p95",
+      "description": "lower is better (API latency p95)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(histogram_quantile(0.95, sum by (le)(cc_api_call_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}))) / (histogram_quantile(0.95, sum by (le)(cc_api_call_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"})))",
+          "legendFormat": "direct ÷ proxy",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "0 ÷ 0",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "noValue": "no pair yet"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 24,
+      "gridPos": {
+        "x": 18,
+        "y": 34,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Turn wall-clock p50",
+      "description": "lower is better (Turn wall-clock p50)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(histogram_quantile(0.5, sum by (le)(cc_turn_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\"}))) / (histogram_quantile(0.5, sum by (le)(cc_turn_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\"})))",
+          "legendFormat": "direct ÷ proxy",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "0 ÷ 0",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "noValue": "no pair yet"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 25,
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Failures / 100 calls",
+      "description": "lower is better (Failures / 100 calls)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(100 * (sum (cc_api_failures_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}) * 0) / sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"})) / (100 * (sum (cc_api_failures_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"}) * 0) / sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"}))",
+          "legendFormat": "direct ÷ proxy",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "0 ÷ 0",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "noValue": "no pair yet"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 26,
+      "gridPos": {
+        "x": 6,
+        "y": 38,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Compactions / session",
+      "description": "lower is better (Compactions / session)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((sum (cc_compactions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\"}) or sum (cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",source=\"startup\"}) * 0) / sum (cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",source=\"startup\"})) / ((sum (cc_compactions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\"}) or sum (cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",source=\"startup\"}) * 0) / sum (cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",source=\"startup\"}))",
+          "legendFormat": "direct ÷ proxy",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "0 ÷ 0",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "noValue": "no pair yet"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 27,
+      "gridPos": {
+        "x": 12,
+        "y": 38,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cache writes that are 1h",
+      "description": "no direction — a difference is a finding, not a score (Cache writes that are 1h)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "((sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\",kind=\"cache_write_1h\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}) * 0) / ((sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\",kind=\"cache_write_5m\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}) * 0) + (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\",kind=\"cache_write_1h\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"direct\",model=~\"$model\"}) * 0))) / ((sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\",kind=\"cache_write_1h\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"}) * 0) / ((sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\",kind=\"cache_write_5m\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"}) * 0) + (sum (cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\",kind=\"cache_write_1h\"}) or sum (cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=\"proxy\",model=~\"$model\"}) * 0)))",
+          "legendFormat": "direct ÷ proxy",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "0 ÷ 0",
+                  "index": 0
+                }
+              }
+            }
+          ],
+          "noValue": "no pair yet"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 28,
+      "gridPos": {
+        "x": 18,
+        "y": 38,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "row",
+      "title": "Secondary metrics by arm",
+      "collapsed": false,
+      "id": 29,
+      "gridPos": {
+        "x": 0,
+        "y": 42,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "API calls / turn",
+      "description": "no direction — a difference is a finding, not a score",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) / sum by (arm)(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 30,
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Context tokens / call",
+      "description": "no direction — a difference is a finding, not a score",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm)(cc_context_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) / sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 31,
+      "gridPos": {
+        "x": 4,
+        "y": 43,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Output tokens / turn",
+      "description": "no direction — a difference is a finding, not a score",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"output\"}) or sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) / sum by (arm)(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 32,
+      "gridPos": {
+        "x": 8,
+        "y": 43,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cache breaks / 100 calls",
+      "description": "lower is better",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * (sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",cache_state=\"break\"}) or sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) / sum by (arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 33,
+      "gridPos": {
+        "x": 12,
+        "y": 43,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Sub-agents / session",
+      "description": "no direction — a difference is a finding, not a score",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (arm)(cc_subagents_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"}) or sum by (arm)(cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",source=\"startup\"}) * 0) / sum by (arm)(cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",source=\"startup\"})",
+          "legendFormat": "{{arm}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 34,
+      "gridPos": {
+        "x": 16,
+        "y": 43,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Tokens by kind / turn",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm, kind)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h|output\"}) / on(arm) group_left sum by (arm)(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "{{arm}} {{kind}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "id": 35,
+      "gridPos": {
+        "x": 20,
+        "y": 43,
+        "w": 4,
+        "h": 4
+      }
+    },
+    {
+      "type": "row",
+      "title": "Per scenario — every metric, rows = (scenario, arm)",
+      "collapsed": false,
+      "id": 36,
+      "gridPos": {
+        "x": 0,
+        "y": 47,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Per-scenario summary",
+      "description": "Same definitions as the tiles above, grouped by scenario. Sort by a column to compare arms within a scenario.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (scenario, arm)(cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",source=\"startup\"})",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (scenario, arm)(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) / sum by (scenario, arm)(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_read\"}) / sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"})",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1.0 * (sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"input\"}) or sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 0.1 * (sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_read\"}) or sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 1.25 * (sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_write_5m\"}) or sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 2.0 * (sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_write_1h\"}) or sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 5.0 * (sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"output\"}) or sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0)) / sum by (scenario, arm)(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, scenario, arm)(cc_api_call_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}))",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, scenario, arm)(cc_turn_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"}))",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * (sum by (scenario, arm)(cc_api_failures_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) or sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) / sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"})",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum by (scenario, arm)(cc_compactions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"}) or sum by (scenario, arm)(cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",source=\"startup\"}) * 0) / sum by (scenario, arm)(cc_sessions_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",source=\"startup\"})",
+          "legendFormat": "",
+          "instant": true,
+          "range": false,
+          "editorMode": "code",
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cache hit ratio"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "API latency p50"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Turn wall-clock p50"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "Value #A": "Sessions",
+              "Value #B": "Turns",
+              "Value #C": "API calls / turn",
+              "Value #D": "Cache hit ratio",
+              "Value #E": "Cost-weighted tokens / turn",
+              "Value #F": "API latency p50",
+              "Value #G": "Turn wall-clock p50",
+              "Value #H": "Failures / 100 calls",
+              "Value #I": "Compactions / session",
+              "scenario": "scenario",
+              "arm": "arm"
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "id": 37,
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 24,
+        "h": 10
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Cache hit ratio by scenario",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_read\"}) / sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"})",
+          "legendFormat": "{{arm}} {{scenario}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#2a78d6"
+          },
+          "min": 0,
+          "decimals": 3,
+          "max": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "valueMode": "text",
+        "sizing": "auto",
+        "minVizHeight": 14,
+        "minVizWidth": 8
+      },
+      "id": 38,
+      "gridPos": {
+        "x": 0,
+        "y": 58,
+        "w": 6,
+        "h": 9
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Cost-weighted tokens / turn by scenario",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1.0 * (sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"input\"}) or sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 0.1 * (sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_read\"}) or sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 1.25 * (sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_write_5m\"}) or sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 2.0 * (sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_write_1h\"}) or sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0) + 5.0 * (sum by (scenario, arm)(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"output\"}) or sum by (scenario, arm)(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}) * 0)) / sum by (scenario, arm)(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "{{arm}} {{scenario}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#2a78d6"
+          },
+          "min": 0,
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "valueMode": "text",
+        "sizing": "auto",
+        "minVizHeight": 14,
+        "minVizWidth": 8
+      },
+      "id": 39,
+      "gridPos": {
+        "x": 6,
+        "y": 58,
+        "w": 6,
+        "h": 9
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "API latency p50 by scenario",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, scenario, arm)(cc_api_call_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}))",
+          "legendFormat": "{{arm}} {{scenario}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#2a78d6"
+          },
+          "min": 0,
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "valueMode": "text",
+        "sizing": "auto",
+        "minVizHeight": 14,
+        "minVizWidth": 8
+      },
+      "id": 40,
+      "gridPos": {
+        "x": 12,
+        "y": 58,
+        "w": 6,
+        "h": 9
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Turn wall-clock p50 by scenario",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, scenario, arm)(cc_turn_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"}))",
+          "legendFormat": "{{arm}} {{scenario}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#2a78d6"
+          },
+          "min": 0,
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "valueMode": "text",
+        "sizing": "auto",
+        "minVizHeight": 14,
+        "minVizWidth": 8
+      },
+      "id": 41,
+      "gridPos": {
+        "x": 18,
+        "y": 58,
+        "w": 6,
+        "h": 9
+      }
+    },
+    {
+      "type": "row",
+      "title": "Over the experiment's timeline (30 min windows)",
+      "collapsed": false,
+      "id": 42,
+      "gridPos": {
+        "x": 0,
+        "y": 67,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Cache hit ratio",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm)(increase(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_read\"}[30m])) / sum by (arm)(increase(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"}[30m]))",
+          "legendFormat": "{{arm}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0
+          },
+          "max": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 43,
+      "gridPos": {
+        "x": 0,
+        "y": 68,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Cost-weighted tokens / turn",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(1.0 * (sum by (arm)(increase(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"input\"}[30m])) or sum by (arm)(increase(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m])) * 0) + 0.1 * (sum by (arm)(increase(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_read\"}[30m])) or sum by (arm)(increase(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m])) * 0) + 1.25 * (sum by (arm)(increase(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_write_5m\"}[30m])) or sum by (arm)(increase(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m])) * 0) + 2.0 * (sum by (arm)(increase(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"cache_write_1h\"}[30m])) or sum by (arm)(increase(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m])) * 0) + 5.0 * (sum by (arm)(increase(cc_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\",kind=\"output\"}[30m])) or sum by (arm)(increase(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m])) * 0)) / sum by (arm)(increase(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"}[30m]))",
+          "legendFormat": "{{arm}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 44,
+      "gridPos": {
+        "x": 8,
+        "y": 68,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "API latency p50 / p95",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_api_call_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m])))",
+          "legendFormat": "{{arm}} p50",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le, arm)(increase(cc_api_call_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m])))",
+          "legendFormat": "{{arm}} p95",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/p95$/"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 45,
+      "gridPos": {
+        "x": 16,
+        "y": 68,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Turn wall-clock p50",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_turn_duration_seconds_bucket{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"}[30m])))",
+          "legendFormat": "{{arm}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 46,
+      "gridPos": {
+        "x": 0,
+        "y": 76,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Context tokens / call",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm)(increase(cc_context_tokens_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m])) / sum by (arm)(increase(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m]))",
+          "legendFormat": "{{arm}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 47,
+      "gridPos": {
+        "x": 8,
+        "y": 76,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Failures / 100 calls",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "100 * (sum by (arm)(increase(cc_api_failures_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m])) or sum by (arm)(increase(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m])) * 0) / sum by (arm)(increase(cc_api_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"}[30m]))",
+          "legendFormat": "{{arm}}",
+          "instant": false,
+          "range": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 48,
+      "gridPos": {
+        "x": 16,
+        "y": 76,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "row",
+      "title": "Sub-agents, tools, failures",
+      "collapsed": false,
+      "id": 49,
+      "gridPos": {
+        "x": 0,
+        "y": 84,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "bargauge",
+      "title": "Sub-agents by type and arm",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm, agent_type)(cc_subagents_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "{{arm}} {{agent_type}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#2a78d6"
+          },
+          "min": 0,
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "valueMode": "text",
+        "sizing": "auto",
+        "minVizHeight": 14,
+        "minVizWidth": 8
+      },
+      "id": 50,
+      "gridPos": {
+        "x": 0,
+        "y": 85,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Tool calls / turn by tool and arm",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm, tool)(cc_tool_calls_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"}) / on(arm) group_left sum by (arm)(cc_turns_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\"})",
+          "legendFormat": "{{arm}} {{tool}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#2a78d6"
+          },
+          "min": 0,
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "valueMode": "text",
+        "sizing": "auto",
+        "minVizHeight": 14,
+        "minVizWidth": 8
+      },
+      "id": 51,
+      "gridPos": {
+        "x": 8,
+        "y": 85,
+        "w": 8,
+        "h": 8
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "API failures by type and arm",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (arm, error_type)(cc_api_failures_total{exp=\"$exp\",scenario=~\"$scenario\",arm=~\"proxy|direct\",model=~\"$model\"})",
+          "legendFormat": "{{arm}} {{error_type}}",
+          "instant": true,
+          "range": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#2a78d6"
+          },
+          "min": 0,
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^proxy/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^direct/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#eb6834"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^other/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8a8a86"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "valueMode": "text",
+        "sizing": "auto",
+        "minVizHeight": 14,
+        "minVizWidth": 8
+      },
+      "id": 52,
+      "gridPos": {
+        "x": 16,
+        "y": 85,
+        "w": 8,
+        "h": 8
+      }
+    }
+  ]
+}

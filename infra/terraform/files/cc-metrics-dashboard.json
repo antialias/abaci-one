@@ -19,7 +19,16 @@
   "annotations": {
     "list": []
   },
-  "links": [],
+  "links": [
+    {
+      "type": "link",
+      "title": "proxy vs direct A/B",
+      "url": "/d/cc-ab",
+      "icon": "external link",
+      "tooltip": "controlled paired-session experiments",
+      "targetBlank": false
+    }
+  ],
   "templating": {
     "list": [
       {
@@ -40,6 +49,7 @@
         "multi": true,
         "allValue": ".*",
         "sort": 1,
+        "regex": "",
         "current": {
           "selected": true,
           "text": [
@@ -69,6 +79,7 @@
         "multi": true,
         "allValue": ".*",
         "sort": 1,
+        "regex": "",
         "current": {
           "selected": true,
           "text": [
@@ -98,6 +109,67 @@
         "multi": true,
         "allValue": ".*",
         "sort": 1,
+        "regex": "",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "options": []
+      },
+      {
+        "type": "query",
+        "name": "exp",
+        "label": "experiment (none = normal use)",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(cc_sessions_total, exp)",
+          "refId": "var-exp"
+        },
+        "definition": "label_values(cc_sessions_total, exp)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "regex": "",
+        "current": {
+          "selected": true,
+          "text": [
+            "none"
+          ],
+          "value": [
+            "none"
+          ]
+        },
+        "options": []
+      },
+      {
+        "type": "query",
+        "name": "scenario",
+        "label": "scenario",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(cc_sessions_total, scenario)",
+          "refId": "var-scenario"
+        },
+        "definition": "label_values(cc_sessions_total, scenario)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "sort": 1,
+        "regex": "",
         "current": {
           "selected": true,
           "text": [
@@ -140,7 +212,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(increase(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",kind=\"cache_read\"}[$__range])) / sum by (arm)(increase(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"}[$__range]))",
+          "expr": "sum by (arm)(increase(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",kind=\"cache_read\"}[$__range])) / sum by (arm)(increase(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"}[$__range]))",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -196,7 +268,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",category=\"prefix_est\"}[$__range])) / sum by (arm)(increase(cc_context_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__range]))",
+          "expr": "sum by (arm)(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",category=\"prefix_est\"}[$__range])) / sum by (arm)(increase(cc_context_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -252,7 +324,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * sum by (arm)(increase(cc_compactions_total{arm=~\"$arm\",project=~\"$project\"}[$__range])) / sum by (arm)(increase(cc_turns_total{arm=~\"$arm\",project=~\"$project\"}[$__range]))",
+          "expr": "100 * sum by (arm)(increase(cc_compactions_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])) / sum by (arm)(increase(cc_turns_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -308,7 +380,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__range]))",
+          "expr": "sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -364,7 +436,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(increase(cc_api_failures_total{arm=~\"$arm\",model=~\"$model\"}[$__range]))",
+          "expr": "sum by (arm)(increase(cc_api_failures_total{arm=~\"$arm\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -420,7 +492,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(cc_active_sessions{arm=~\"$arm\"})",
+          "expr": "sum by (arm)(cc_active_sessions{arm=~\"$arm\",exp=~\"$exp\",scenario=~\"$scenario\"})",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -489,7 +561,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (category)(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",category=~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__rate_interval]))",
+          "expr": "sum by (category)(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",category=~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__rate_interval]))",
           "legendFormat": "{{category}}",
           "instant": false,
           "range": true,
@@ -501,7 +573,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",category!~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__rate_interval]))",
+          "expr": "sum(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",category!~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__rate_interval]))",
           "legendFormat": "other",
           "instant": false,
           "range": true,
@@ -699,7 +771,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (category)(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",category=~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__range])) / on() group_left sum(increase(cc_context_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__range]))",
+          "expr": "sum by (category)(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",category=~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__range])) / on() group_left sum(increase(cc_context_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{category}}",
           "instant": true,
           "range": false,
@@ -711,7 +783,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",category!~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__range])) / on() group_left sum(increase(cc_context_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__range]))",
+          "expr": "sum(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",category!~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__range])) / on() group_left sum(increase(cc_context_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "other",
           "instant": true,
           "range": false,
@@ -906,7 +978,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(10, sum by (tool)(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",category=\"tool_result\"}[$__range])))",
+          "expr": "topk(10, sum by (tool)(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",category=\"tool_result\"}[$__range])))",
           "legendFormat": "{{tool}}",
           "instant": true,
           "range": false,
@@ -965,7 +1037,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(10, sum by (tool)(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",category=\"attachment\"}[$__range])))",
+          "expr": "topk(10, sum by (tool)(increase(cc_context_category_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",category=\"attachment\"}[$__range])))",
           "legendFormat": "{{tool}}",
           "instant": true,
           "range": false,
@@ -1024,7 +1096,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(rate(cc_context_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__rate_interval])) / sum by (arm)(rate(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__rate_interval]))",
+          "expr": "sum by (arm)(rate(cc_context_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__rate_interval])) / sum by (arm)(rate(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__rate_interval]))",
           "legendFormat": "{{arm}}",
           "instant": false,
           "range": true,
@@ -1133,7 +1205,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "cc_session_prefix_tokens_est{arm=~\"$arm\",project=~\"$project\"}",
+          "expr": "cc_session_prefix_tokens_est{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}",
           "legendFormat": "",
           "instant": true,
           "range": false,
@@ -1146,7 +1218,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "cc_session_context_tokens{arm=~\"$arm\",project=~\"$project\"}",
+          "expr": "cc_session_context_tokens{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}",
           "legendFormat": "",
           "instant": true,
           "range": false,
@@ -1213,7 +1285,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (file)(cc_instructions_bytes{arm=~\"$arm\",project=~\"$project\"})",
+          "expr": "max by (file)(cc_instructions_bytes{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"})",
           "legendFormat": "{{file}}",
           "instant": true,
           "range": false,
@@ -1284,7 +1356,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm, trigger)(increase(cc_compactions_total{arm=~\"$arm\",project=~\"$project\"}[1h]))",
+          "expr": "sum by (arm, trigger)(increase(cc_compactions_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[1h]))",
           "legendFormat": "{{arm}} {{trigger}}",
           "instant": false,
           "range": true,
@@ -1418,7 +1490,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * sum by (arm)(increase(cc_compactions_total{arm=~\"$arm\",project=~\"$project\"}[6h])) / sum by (arm)(increase(cc_turns_total{arm=~\"$arm\",project=~\"$project\"}[6h]))",
+          "expr": "100 * sum by (arm)(increase(cc_compactions_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[6h])) / sum by (arm)(increase(cc_turns_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[6h]))",
           "legendFormat": "{{arm}}",
           "instant": false,
           "range": true,
@@ -1526,7 +1598,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (category)(increase(cc_compaction_epoch_category_bytes_total{arm=~\"$arm\",project=~\"$project\",category=~\"tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__range])) / on() group_left sum(increase(cc_compaction_epoch_category_bytes_total{arm=~\"$arm\",project=~\"$project\"}[$__range]))",
+          "expr": "sum by (category)(increase(cc_compaction_epoch_category_bytes_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\",category=~\"tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__range])) / on() group_left sum(increase(cc_compaction_epoch_category_bytes_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{category}}",
           "instant": true,
           "range": false,
@@ -1538,7 +1610,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(cc_compaction_epoch_category_bytes_total{arm=~\"$arm\",project=~\"$project\",category!~\"tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__range])) / on() group_left sum(increase(cc_compaction_epoch_category_bytes_total{arm=~\"$arm\",project=~\"$project\"}[$__range]))",
+          "expr": "sum(increase(cc_compaction_epoch_category_bytes_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\",category!~\"tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[$__range])) / on() group_left sum(increase(cc_compaction_epoch_category_bytes_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "other",
           "instant": true,
           "range": false,
@@ -1733,7 +1805,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_epoch_turns_bucket{arm=~\"$arm\",project=~\"$project\"}[$__range])))",
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_epoch_turns_bucket{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])))",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -1789,7 +1861,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_epoch_calls_bucket{arm=~\"$arm\",project=~\"$project\"}[$__range])))",
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_epoch_calls_bucket{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])))",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -1845,7 +1917,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_duration_seconds_bucket{arm=~\"$arm\",project=~\"$project\"}[$__range])))",
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_duration_seconds_bucket{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])))",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -1901,7 +1973,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_pre_tokens_bucket{arm=~\"$arm\",project=~\"$project\"}[$__range])))",
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_pre_tokens_bucket{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])))",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -1957,7 +2029,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_post_tokens_bucket{arm=~\"$arm\",project=~\"$project\"}[$__range])))",
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_post_tokens_bucket{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])))",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -2013,7 +2085,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(increase(cc_compaction_dropped_tokens_total{arm=~\"$arm\",project=~\"$project\"}[$__range])) / sum by (arm)(increase(cc_compactions_total{arm=~\"$arm\",project=~\"$project\"}[$__range]))",
+          "expr": "sum by (arm)(increase(cc_compaction_dropped_tokens_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])) / sum by (arm)(increase(cc_compactions_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{arm}}",
           "instant": true,
           "range": false,
@@ -2069,7 +2141,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_duration_seconds_bucket{arm=~\"$arm\",project=~\"$project\"}[6h])))",
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_compaction_duration_seconds_bucket{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[6h])))",
           "legendFormat": "{{arm}} p50",
           "instant": false,
           "range": true,
@@ -2081,7 +2153,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le, arm)(increase(cc_compaction_duration_seconds_bucket{arm=~\"$arm\",project=~\"$project\"}[6h])))",
+          "expr": "histogram_quantile(0.95, sum by (le, arm)(increase(cc_compaction_duration_seconds_bucket{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[6h])))",
           "legendFormat": "{{arm}} p95",
           "instant": false,
           "range": true,
@@ -2207,7 +2279,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (category)(increase(cc_context_added_bytes_total{arm=~\"$arm\",project=~\"$project\",category=~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[1h]))",
+          "expr": "sum by (category)(increase(cc_context_added_bytes_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\",category=~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[1h]))",
           "legendFormat": "{{category}}",
           "instant": false,
           "range": true,
@@ -2219,7 +2291,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(cc_context_added_bytes_total{arm=~\"$arm\",project=~\"$project\",category!~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[1h]))",
+          "expr": "sum(increase(cc_context_added_bytes_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\",category!~\"prefix_est|tool_result|tool_use|thinking|assistant_text|user_prompt|attachment|compact_summary\"}[1h]))",
           "legendFormat": "other",
           "instant": false,
           "range": true,
@@ -2430,7 +2502,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (kind)(rate(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__rate_interval])) * 60",
+          "expr": "sum by (kind)(rate(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__rate_interval])) * 60",
           "legendFormat": "{{kind}}",
           "instant": false,
           "range": true,
@@ -2583,7 +2655,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (kind)(increase(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__range]))",
+          "expr": "sum by (kind)(increase(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{kind}}",
           "instant": true,
           "range": false,
@@ -2733,7 +2805,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (model)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__range]))",
+          "expr": "sum by (model)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{model}}",
           "instant": true,
           "range": false,
@@ -2792,7 +2864,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(rate(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",kind=\"cache_read\"}[6h])) / sum by (arm)(rate(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"}[6h]))",
+          "expr": "sum by (arm)(rate(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",kind=\"cache_read\"}[6h])) / sum by (arm)(rate(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"}[6h]))",
           "legendFormat": "{{arm}}",
           "instant": false,
           "range": true,
@@ -2901,7 +2973,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * sum by (arm)(rate(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",cache_state=\"break\"}[6h])) / sum by (arm)(rate(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[6h]))",
+          "expr": "100 * sum by (arm)(rate(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",cache_state=\"break\"}[6h])) / sum by (arm)(rate(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[6h]))",
           "legendFormat": "{{arm}}",
           "instant": false,
           "range": true,
@@ -3009,7 +3081,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(rate(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",kind=~\"output|thinking\"}[$__rate_interval])) / sum by (arm)(rate(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__rate_interval]))",
+          "expr": "sum by (arm)(rate(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",kind=~\"output|thinking\"}[$__rate_interval])) / sum by (arm)(rate(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__rate_interval]))",
           "legendFormat": "{{arm}}",
           "instant": false,
           "range": true,
@@ -3125,7 +3197,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "Run some sessions with `claude-direct` (arm **direct**) and some with plain `claude` (arm **proxy**), pick **one model** above, and compare **ratios** — raw counts differ with session count and mean nothing across arms. Latency is estimated from transcript timestamps (previous entry → reply), so it includes tool time only when a tool ran mid-message; compare arms, not absolutes."
+        "content": "Run some sessions with `claude-direct` (arm **direct**) and some with plain `claude` (arm **proxy**), pick **one model** above, and compare **ratios** — raw counts differ with session count and mean nothing across arms. For a *controlled* comparison use the **proxy vs direct A/B** dashboard (link at the top): scripted paired sessions tagged by `exp`. Latency is estimated from transcript timestamps (previous entry → reply), so it includes tool time only when a tool ran mid-message; compare arms, not absolutes."
       },
       "id": 36,
       "gridPos": {
@@ -3150,7 +3222,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__range]))",
+          "expr": "sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "",
           "instant": true,
           "range": false,
@@ -3163,7 +3235,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(increase(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",kind=\"cache_read\"}[$__range])) / sum by (arm)(increase(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"}[$__range]))",
+          "expr": "sum by (arm)(increase(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",kind=\"cache_read\"}[$__range])) / sum by (arm)(increase(cc_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",kind=~\"input|cache_read|cache_write_5m|cache_write_1h\"}[$__range]))",
           "legendFormat": "",
           "instant": true,
           "range": false,
@@ -3176,7 +3248,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",cache_state=\"break\"}[$__range])) / sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__range]))",
+          "expr": "100 * sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\",cache_state=\"break\"}[$__range])) / sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "",
           "instant": true,
           "range": false,
@@ -3189,7 +3261,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(increase(cc_context_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__range])) / sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__range]))",
+          "expr": "sum by (arm)(increase(cc_context_tokens_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])) / sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "",
           "instant": true,
           "range": false,
@@ -3202,7 +3274,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_api_call_duration_seconds_bucket{arm=~\"$arm\",model=~\"$model\"}[$__range])))",
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(increase(cc_api_call_duration_seconds_bucket{arm=~\"$arm\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])))",
           "legendFormat": "",
           "instant": true,
           "range": false,
@@ -3215,7 +3287,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * sum by (arm)(increase(cc_compactions_total{arm=~\"$arm\",project=~\"$project\"}[$__range])) / sum by (arm)(increase(cc_turns_total{arm=~\"$arm\",project=~\"$project\"}[$__range]))",
+          "expr": "100 * sum by (arm)(increase(cc_compactions_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])) / sum by (arm)(increase(cc_turns_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "",
           "instant": true,
           "range": false,
@@ -3228,7 +3300,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 * sum by (arm)(increase(cc_api_failures_total{arm=~\"$arm\",model=~\"$model\"}[$__range])) / sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\"}[$__range]))",
+          "expr": "100 * sum by (arm)(increase(cc_api_failures_total{arm=~\"$arm\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])) / sum by (arm)(increase(cc_api_calls_total{arm=~\"$arm\",project=~\"$project\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "",
           "instant": true,
           "range": false,
@@ -3362,7 +3434,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, arm)(rate(cc_api_call_duration_seconds_bucket{arm=~\"$arm\",model=~\"$model\"}[6h])))",
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(rate(cc_api_call_duration_seconds_bucket{arm=~\"$arm\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[6h])))",
           "legendFormat": "{{arm}}",
           "instant": false,
           "range": true,
@@ -3470,7 +3542,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, arm)(rate(cc_turn_duration_seconds_bucket{arm=~\"$arm\",project=~\"$project\"}[6h])))",
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(rate(cc_turn_duration_seconds_bucket{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[6h])))",
           "legendFormat": "{{arm}}",
           "instant": false,
           "range": true,
@@ -3578,7 +3650,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, arm)(rate(cc_turn_api_calls_bucket{arm=~\"$arm\",project=~\"$project\"}[6h])))",
+          "expr": "histogram_quantile(0.5, sum by (le, arm)(rate(cc_turn_api_calls_bucket{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[6h])))",
           "legendFormat": "{{arm}}",
           "instant": false,
           "range": true,
@@ -3699,7 +3771,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (source)(increase(cc_sessions_total{arm=~\"$arm\",project=~\"$project\"}[$__range]))",
+          "expr": "sum by (source)(increase(cc_sessions_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{source}}",
           "instant": true,
           "range": false,
@@ -3758,7 +3830,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (agent_type)(increase(cc_subagents_total{arm=~\"$arm\",project=~\"$project\"}[$__range]))",
+          "expr": "sum by (agent_type)(increase(cc_subagents_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{agent_type}}",
           "instant": true,
           "range": false,
@@ -3817,7 +3889,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(12, sum by (tool)(increase(cc_tool_calls_total{arm=~\"$arm\",project=~\"$project\"}[$__range])))",
+          "expr": "topk(12, sum by (tool)(increase(cc_tool_calls_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])))",
           "legendFormat": "{{tool}}",
           "instant": true,
           "range": false,
@@ -3876,7 +3948,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(12, sum by (tool)(increase(cc_tool_result_bytes_total{arm=~\"$arm\",project=~\"$project\"}[$__range])))",
+          "expr": "topk(12, sum by (tool)(increase(cc_tool_result_bytes_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range])))",
           "legendFormat": "{{tool}}",
           "instant": true,
           "range": false,
@@ -3934,7 +4006,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (error_type)(increase(cc_api_failures_total{arm=~\"$arm\",model=~\"$model\"}[$__range]))",
+          "expr": "sum by (error_type)(increase(cc_api_failures_total{arm=~\"$arm\",model=~\"$model\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{error_type}}",
           "instant": true,
           "range": false,
@@ -3993,7 +4065,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (reason)(increase(cc_session_ends_total{arm=~\"$arm\",project=~\"$project\"}[$__range]))",
+          "expr": "sum by (reason)(increase(cc_session_ends_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[$__range]))",
           "legendFormat": "{{reason}}",
           "instant": true,
           "range": false,
@@ -4052,7 +4124,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (arm)(increase(cc_turns_total{arm=~\"$arm\",project=~\"$project\"}[1h]))",
+          "expr": "sum by (arm)(increase(cc_turns_total{arm=~\"$arm\",project=~\"$project\",exp=~\"$exp\",scenario=~\"$scenario\"}[1h]))",
           "legendFormat": "{{arm}}",
           "instant": false,
           "range": true,

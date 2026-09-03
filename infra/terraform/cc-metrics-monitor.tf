@@ -10,8 +10,12 @@
 #
 #   1. Scrape    — headless Service + manual Endpoints + ServiceMonitor
 #                  (job="cc-metrics"), same off-cluster idiom as claude-usage.
-#   2. Dashboard — files/cc-metrics-dashboard.json (uid cc-metrics), picked up by
-#                  the kube-prometheus-stack sidecar via grafana_dashboard="1".
+#   2. Dashboards — files/cc-metrics-dashboard.json (uid cc-metrics, everyday view)
+#                  and files/cc-metrics-ab-dashboard.json (uid cc-ab, the proxy-vs-
+#                  direct A/B view over paired scripted sessions), both in ONE
+#                  ConfigMap, picked up by the kube-prometheus-stack sidecar via
+#                  grafana_dashboard="1". Generated, never hand-edited:
+#                  home-infra services/cc-metrics/dashboard/gen_dashboard.py [main|ab].
 #
 # No alert rules on purpose: alerting is parked until the platform#13 rebuild.
 #
@@ -44,6 +48,7 @@ resource "null_resource" "grafana_dashboard_cc_metrics" {
       export KUBECONFIG=${pathexpand(var.kubeconfig_path)}
       kubectl -n monitoring create configmap grafana-dashboard-cc-metrics \
         --from-file=cc-metrics.json=${path.module}/files/cc-metrics-dashboard.json \
+        --from-file=cc-metrics-ab.json=${path.module}/files/cc-metrics-ab-dashboard.json \
         --dry-run=client -o yaml \
         | kubectl label --local -f - grafana_dashboard=1 -o yaml \
         | kubectl apply -f -
@@ -51,6 +56,7 @@ resource "null_resource" "grafana_dashboard_cc_metrics" {
   }
 
   triggers = {
-    dashboard = filemd5("${path.module}/files/cc-metrics-dashboard.json")
+    dashboard    = filemd5("${path.module}/files/cc-metrics-dashboard.json")
+    dashboard_ab = filemd5("${path.module}/files/cc-metrics-ab-dashboard.json")
   }
 }
