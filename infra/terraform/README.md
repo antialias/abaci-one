@@ -284,22 +284,37 @@ To add a new subdomain (e.g., `api.abaci.one`):
    terraform apply
    ```
 
-## Moved out: openclaw (2026-09-04)
+## Moved out: app-specific monitoring (2026-09-04)
 
-`openclaw-monitor.tf` and its `files/` artifacts now live in **`antialias/openclaw-image`**
-at `infra/terraform/`, applied by that repo's own pipeline on push to `main`.
+These monitors and their `files/` payloads now live with their applications, following
+[platform#25](https://git.dev.abaci.one/antialias/platform/issues/25):
 
-They were here because the litmus test in platform's README (*"if this app were deleted,
-would this infra still need to exist?"*) had no landing site for a "no" answer that needs
-to touch the cluster. platform#25 gave it one — a least-privilege ServiceAccount per app,
-remote state in the `monitoring` namespace, and a `terraform-apply` step in the app's own
-pipeline. openclaw is the first adoption; `cc-metrics`, `switch-proxy` and `yoto-bridge`
-are queued behind it.
+| Monitor | Repository | Terraform root |
+|---|---|---|
+| OpenClaw | `antialias/openclaw-image` | `infra/terraform/` |
+| cc-metrics | `antialias/home-infra-agent-resources` | `services/cc-metrics/infra/terraform/` |
+| switch-proxy | `antialias/home-infra-agent-resources` | `services/claude-switch-proxy/infra/terraform/` |
+| yoto-bridge | `antialias/yoto-bridge` | `infra/terraform/` |
 
-Deleting these files was safe because they were **never in this state file** — their
-`local-exec` had never run here, so the objects were only ever created by someone typing
-`kubectl apply` by hand. Nothing to `terraform state rm`, nothing to destroy. Verified
-against serial 657 before removal.
+Each app applies on pushes to `main`, using its own monitoring ServiceAccount and
+Kubernetes state backend. The idempotent kubectl commands run on every apply to
+restore declared fields and recreate missing objects; file hashes alone cannot
+repair live drift. No destroy provisioners or pruning are used.
 
-**The shared stack stays here**: `helm_release.kube_prometheus_stack`, cluster-wide node
-health, ArgoCD, cert-manager, Gitea. Apps own their wiring; platform owns the stack.
+The eight original null resources were absent from this root's local state
+(serial 657, checked before removal). No state move, import, removal, or destroy
+was required. For the three latest adoptions, two applies per app ran all six
+provisioners and left all 12 existing objects identical, including resourceVersions.
+All three Prometheus targets remained up. App source commits: home-infra `4b7a2e1`,
+yoto-bridge `5aa93ee`; OpenClaw's corrected apply path is `0c466fd`.
+
+**Do not apply this root to perform these migrations.** Its unrelated ArgoCD
+configuration discrepancy can prune two live PVCs. The original 30 state-owned
+monitoring resources remain here until they are otherwise being touched. In
+particular, the older `abaci-song-doorbell` scrape stays here even though the
+runtime now lives in yoto-bridge. Existing scrape bearer Secrets are unchanged;
+reproducible CI management is still platform#25 item 4.
+
+**The shared stack stays here**: `helm_release.kube_prometheus_stack`, cluster-wide
+node health, ArgoCD, cert-manager, Gitea. Apps own their wiring; platform owns the
+shared capability and contract.
