@@ -283,3 +283,23 @@ To add a new subdomain (e.g., `api.abaci.one`):
    ```bash
    terraform apply
    ```
+
+## Moved out: openclaw (2026-09-04)
+
+`openclaw-monitor.tf` and its `files/` artifacts now live in **`antialias/openclaw-image`**
+at `infra/terraform/`, applied by that repo's own pipeline on push to `main`.
+
+They were here because the litmus test in platform's README (*"if this app were deleted,
+would this infra still need to exist?"*) had no landing site for a "no" answer that needs
+to touch the cluster. platform#25 gave it one — a least-privilege ServiceAccount per app,
+remote state in the `monitoring` namespace, and a `terraform-apply` step in the app's own
+pipeline. openclaw is the first adoption; `cc-metrics`, `switch-proxy` and `yoto-bridge`
+are queued behind it.
+
+Deleting these files was safe because they were **never in this state file** — their
+`local-exec` had never run here, so the objects were only ever created by someone typing
+`kubectl apply` by hand. Nothing to `terraform state rm`, nothing to destroy. Verified
+against serial 657 before removal.
+
+**The shared stack stays here**: `helm_release.kube_prometheus_stack`, cluster-wide node
+health, ArgoCD, cert-manager, Gitea. Apps own their wiring; platform owns the stack.
