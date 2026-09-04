@@ -1,0 +1,703 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "How to read this dashboard",
+      "description": "The authoritative measures are exact lifetime plays and last-play time. Selected-range and daily counts use Prometheus increase(), which estimates counter changes at range boundaries and may be fractional.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**Plays** are physical-player playback starts\u2014not completed listens or duration. **Child** is the configured card owner. **Physical player** shows where each card was actually played, so borrowed-card use stays visible. Range and daily panels are explicitly **estimated**; exact lifetime totals and recency come from the durable bridge ledger."
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Exact lifetime plays",
+      "description": "Exact cumulative starts from the durable bridge ledger for the current filters.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(max by (card_owner, player, song_id, card, chapter, track) (yoto_song_plays_total{card_owner=~\"$child\",player=~\"$player\",card=~\"$card\",song_id=~\"$song\"}))",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Songs practiced",
+      "description": "Number of distinct canonical songs with at least one lifetime play under the current filters.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(sum by (song_id) (max by (card_owner, player, song_id, card, chapter, track) (yoto_song_plays_total{card_owner=~\"$child\",player=~\"$player\",card=~\"$card\",song_id=~\"$song\"})) > 0)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Most recent play",
+      "description": "Exact latest counted playback start for the current filters.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(max by (card_owner, player, song_id, card, chapter, track) (yoto_song_last_play_timestamp_seconds{card_owner=~\"$child\",player=~\"$player\",card=~\"$card\",song_id=~\"$song\"})) * 1000",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeFromNow"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Estimated plays in selected range",
+      "description": "Prometheus increase() extrapolates at the selected range boundaries. This is an estimate; exact lifetime totals are authoritative.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 3,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase((max by (card_owner, player, song_id, card, chapter, track) (yoto_song_plays_total{card_owner=~\"$child\",player=~\"$player\",card=~\"$card\",song_id=~\"$song\"}))[$__range:]))",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1,
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Daily plays by child (estimated)",
+      "description": "Rolling 24-hour increase evaluated over the dashboard range. Boundary extrapolation means small values can be fractional; use lifetime and last-play panels for exact truth.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 7,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (card_owner) (increase((max by (card_owner, player, song_id, card, chapter, track) (yoto_song_plays_total{card_owner=~\"$child\",player=~\"$player\",card=~\"$card\",song_id=~\"$song\"}))[1d:]))",
+          "legendFormat": "{{card_owner}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "calcs": [
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 65,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "decimals": 1,
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Repertoire \u2014 exact lifetime plays",
+      "description": "One row per child/card/song. Lifetime totals are exact durable counters; Last is the exact latest counted start.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 16,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "Plays",
+          "expr": "sum by (card_owner, card, chapter, track, song_id) (max by (card_owner, player, song_id, card, chapter, track) (yoto_song_plays_total{card_owner=~\"$child\",player=~\"$player\",card=~\"$card\",song_id=~\"$song\"}))",
+          "format": "table",
+          "instant": true
+        },
+        {
+          "refId": "Last",
+          "expr": "max by (card_owner, card, chapter, track, song_id) (max by (card_owner, player, song_id, card, chapter, track) (yoto_song_last_play_timestamp_seconds{card_owner=~\"$child\",player=~\"$player\",card=~\"$card\",song_id=~\"$song\"})) * 1000",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "song_id",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "song_id": true
+            },
+            "indexByName": {
+              "card_owner": 0,
+              "card": 1,
+              "chapter": 2,
+              "track": 3,
+              "Value #Plays": 4,
+              "Value #Last": 5
+            },
+            "renameByName": {
+              "card_owner": "Child",
+              "card": "Card",
+              "chapter": "Chapter",
+              "track": "Song",
+              "Value #Plays": "Lifetime plays",
+              "Value #Last": "Last played"
+            }
+          }
+        }
+      ],
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lifetime plays"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last played"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeFromNow"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Card and device context",
+      "description": "Card owner is the teacher-facing child. Physical player is where the start was actually reported; no device owner is inferred from the Abaci integration identity.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 15,
+        "w": 8,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (card_owner, player, card) (max by (card_owner, player, song_id, card, chapter, track) (yoto_song_plays_total{card_owner=~\"$child\",player=~\"$player\",card=~\"$card\",song_id=~\"$song\"}))",
+          "format": "table",
+          "instant": true
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "card_owner": 0,
+              "card": 1,
+              "player": 3,
+              "Value": 4
+            },
+            "renameByName": {
+              "card_owner": "Card owner",
+              "card": "Card",
+              "player": "Physical player",
+              "Value": "Lifetime plays"
+            }
+          }
+        }
+      ],
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Observer connected",
+      "description": "Informational only; no alert is attached.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(yoto_observer_connected)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Disconnected"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "Connected"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "stat",
+      "title": "Ledger readable",
+      "description": "Informational only; exact counters are unavailable if this is degraded.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 25,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(yoto_song_play_ledger_readable)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Degraded"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "Readable"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Ledger writable",
+      "description": "Informational only; new starts are not exposed unless their durable write succeeds.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 25,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(yoto_song_play_ledger_writable)",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "color": "red",
+                  "index": 0,
+                  "text": "Degraded"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "Writable"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      }
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [
+    "yoto",
+    "suzuki",
+    "violin",
+    "practice"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "child",
+        "label": "Child (card owner)",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(yoto_song_plays_total, card_owner)",
+        "query": {
+          "query": "label_values(yoto_song_plays_total, card_owner)",
+          "refId": "VariableQueryEditor-Child"
+        },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "refresh": 1,
+        "sort": 1
+      },
+      {
+        "name": "player",
+        "label": "Physical player",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(yoto_song_plays_total{card_owner=~\"$child\"}, player)",
+        "query": {
+          "query": "label_values(yoto_song_plays_total{card_owner=~\"$child\"}, player)",
+          "refId": "VariableQueryEditor-Player"
+        },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "refresh": 1,
+        "sort": 1
+      },
+      {
+        "name": "card",
+        "label": "Card",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "label_values(yoto_song_plays_total{card_owner=~\"$child\",player=~\"$player\"}, card)",
+        "query": {
+          "query": "label_values(yoto_song_plays_total{card_owner=~\"$child\",player=~\"$player\"}, card)",
+          "refId": "VariableQueryEditor-Card"
+        },
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "refresh": 1,
+        "sort": 1
+      },
+      {
+        "name": "song",
+        "label": "Song",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "definition": "query_result(max by (song_id, track) (yoto_song_plays_total{card_owner=~\"$child\",player=~\"$player\",card=~\"$card\"}))",
+        "query": {
+          "query": "query_result(max by (song_id, track) (yoto_song_plays_total{card_owner=~\"$child\",player=~\"$player\",card=~\"$card\"}))",
+          "refId": "VariableQueryEditor-Song"
+        },
+        "regex": "/song_id=\"(?<value>[^\"]+)\".*track=\"(?<text>[^\"]+)\"/",
+        "includeAll": true,
+        "allValue": ".*",
+        "multi": true,
+        "refresh": 1,
+        "sort": 1
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Suzuki Violin Practice",
+  "uid": "yoto-suzuki-practice",
+  "version": 1,
+  "weekStart": "monday"
+}
