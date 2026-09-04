@@ -1,0 +1,24 @@
+# Route ci-node capacity alerts through the NAS alert bridge.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: ci-node-health
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  route:
+    receiver: ci-node-bridge
+    groupBy: ["alertname"]
+    groupWait: 30s
+    groupInterval: 5m
+    repeatInterval: 2h
+    matchers:
+      - name: alertroute
+        value: ci-node
+        matchType: "="
+  receivers:
+    - name: ci-node-bridge
+      webhookConfigs:
+        - url: http://192.168.86.51:9116/alert
+          sendResolved: true

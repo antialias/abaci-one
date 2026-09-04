@@ -1,0 +1,51 @@
+# yoto-bridge scrape wiring — off-cluster NAS player and song-sync telemetry.
+# The bridge runs on the NAS (192.168.86.51:9117), outside the cluster, so it is
+# scraped through a headless Service + manual Endpoints + ServiceMonitor.
+# Series carry job="yoto-bridge". No alert rules are declared here.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yoto-bridge
+  namespace: monitoring
+  labels:
+    app: yoto-bridge
+spec:
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9117
+      targetPort: 9117
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: yoto-bridge
+  namespace: monitoring
+  labels:
+    app: yoto-bridge
+subsets:
+  - addresses:
+      - ip: 192.168.86.51
+    ports:
+      - name: metrics
+        port: 9117
+        protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: yoto-bridge
+  namespace: monitoring
+  labels:
+    app: yoto-bridge
+spec:
+  selector:
+    matchLabels:
+      app: yoto-bridge
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 60s
+      scrapeTimeout: 10s

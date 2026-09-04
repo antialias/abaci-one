@@ -1,0 +1,107 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ci-node-health-alerts
+  namespace: monitoring
+  labels:
+    app: kube-prometheus-stack
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: ci-node-capacity
+      rules:
+        - alert: CiNodeExporterDown
+          expr: up{job="ci-node-exporter"} == 0
+          for: 3m
+          labels:
+            severity: critical
+            alertroute: ci-node
+            delivery: critical
+            namespace: monitoring
+          annotations:
+            summary: "ci-node metrics are unavailable"
+            description: "Prometheus has not scraped ci-node at 192.168.86.34:9100 for 3m. The VM, exporter, or LAN path may be down."
+
+        - alert: CiNodeLowAvailableMemory
+          expr: node_memory_MemAvailable_bytes{job="ci-node-exporter"} / node_memory_MemTotal_bytes{job="ci-node-exporter"} < 0.15
+          for: 10m
+          labels:
+            severity: warning
+            alertroute: ci-node
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: "ci-node has less than 15% memory available"
+            description: "Available memory has remained below 15% for 10m (currently {{ $value | humanizePercentage }}). Check concurrent Woodpecker builds, PSI, and zram."
+
+        - alert: CiNodeSustainedMemoryPressure
+          expr: rate(node_pressure_memory_waiting_seconds_total{job="ci-node-exporter"}[5m]) > 0.10
+          for: 10m
+          labels:
+            severity: critical
+            alertroute: ci-node
+            delivery: critical
+            namespace: monitoring
+          annotations:
+            summary: "ci-node is stalled on memory pressure"
+            description: "Tasks have spent more than 10% of wall time waiting on memory for 10m (currently {{ $value | humanizePercentage }}). A bounded CI workload should fail before the agent or SSH stalls."
+
+        - alert: CiNodeSwapBusy
+          expr: rate(node_vmstat_pswpin{job="ci-node-exporter"}[5m]) + rate(node_vmstat_pswpout{job="ci-node-exporter"}[5m]) > 100
+          for: 15m
+          labels:
+            severity: warning
+            alertroute: ci-node
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: "ci-node is continuously swapping"
+            description: "Swap traffic exceeded 100 pages/s for 15m. Zram should absorb bursts, not sustain an undersized workload."
+
+        - alert: CiNodeSwapNearlyFull
+          expr: (1 - node_memory_SwapFree_bytes{job="ci-node-exporter"} / node_memory_SwapTotal_bytes{job="ci-node-exporter"}) > 0.85
+          for: 10m
+          labels:
+            severity: warning
+            alertroute: ci-node
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: "ci-node zram is over 85% allocated"
+            description: "The compressed emergency buffer is nearly full (currently {{ $value | humanizePercentage }})."
+
+        - alert: CiNodeRootDiskFilling
+          expr: 1 - node_filesystem_avail_bytes{job="ci-node-exporter",mountpoint="/",fstype!=""} / node_filesystem_size_bytes{job="ci-node-exporter",mountpoint="/",fstype!=""} > 0.75
+          for: 30m
+          labels:
+            severity: warning
+            alertroute: ci-node
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: "ci-node root disk is over 75% full"
+            description: "Docker images, BuildKit cache, and Woodpecker volumes are consuming the 60 GiB CI disk (currently {{ $value | humanizePercentage }} used)."
+
+        - alert: CiNodeRootDiskCritical
+          expr: 1 - node_filesystem_avail_bytes{job="ci-node-exporter",mountpoint="/",fstype!=""} / node_filesystem_size_bytes{job="ci-node-exporter",mountpoint="/",fstype!=""} > 0.85
+          for: 10m
+          labels:
+            severity: critical
+            alertroute: ci-node
+            delivery: critical
+            namespace: monitoring
+          annotations:
+            summary: "ci-node root disk is over 85% full"
+            description: "CI is approaching a genuine disk-full failure (currently {{ $value | humanizePercentage }} used). Check docker-prune.service before manually deleting data."
+
+        - alert: CiNodeInodesFilling
+          expr: 1 - node_filesystem_files_free{job="ci-node-exporter",mountpoint="/",fstype!=""} / node_filesystem_files{job="ci-node-exporter",mountpoint="/",fstype!=""} > 0.80
+          for: 30m
+          labels:
+            severity: warning
+            alertroute: ci-node
+            delivery: telegram
+            namespace: monitoring
+          annotations:
+            summary: "ci-node root filesystem is over 80% of inodes"
+            description: "A build can fail with free bytes remaining if Docker exhausts inodes (currently {{ $value | humanizePercentage }} used)."

@@ -15,7 +15,7 @@
 #                  direct A/B view over paired scripted sessions), both in ONE
 #                  ConfigMap, picked up by the kube-prometheus-stack sidecar via
 #                  grafana_dashboard="1". Generated, never hand-edited:
-#                  home-infra services/cc-metrics/dashboard/gen_dashboard.py [main|ab].
+#                  home-infra services/cc-metrics/dashboard/gen_dashboard.py [main|ab|hygiene].
 #
 # No alert rules on purpose: alerting is parked until the platform#13 rebuild.
 #
@@ -58,5 +58,28 @@ resource "null_resource" "grafana_dashboard_cc_metrics" {
   triggers = {
     dashboard    = filemd5("${path.module}/files/cc-metrics-dashboard.json")
     dashboard_ab = filemd5("${path.module}/files/cc-metrics-ab-dashboard.json")
+  }
+}
+
+# Its own ConfigMap, not a third --from-file above: client-side apply stores the whole
+# manifest in the last-applied-configuration annotation, and three dashboards blow past
+# the 256KB annotation ceiling. The Grafana sidecar collects every ConfigMap carrying
+# grafana_dashboard=1, so splitting costs nothing and leaves room for the next one.
+resource "null_resource" "grafana_dashboard_cc_hygiene" {
+  depends_on = [helm_release.kube_prometheus_stack]
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      export KUBECONFIG=${pathexpand(var.kubeconfig_path)}
+      kubectl -n monitoring create configmap grafana-dashboard-cc-hygiene \
+        --from-file=cc-metrics-hygiene.json=${path.module}/files/cc-metrics-hygiene-dashboard.json \
+        --dry-run=client -o yaml \
+        | kubectl label --local -f - grafana_dashboard=1 -o yaml \
+        | kubectl apply -f -
+    EOT
+  }
+
+  triggers = {
+    dashboard_hygiene = filemd5("${path.module}/files/cc-metrics-hygiene-dashboard.json")
   }
 }

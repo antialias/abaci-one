@@ -505,13 +505,166 @@
       }
     },
     {
+      "id": 44,
+      "type": "table",
+      "title": "Delivery errors \u2014 which send, which channel (24h)",
+      "description": "The lead the 'Delivery errors (24h)' stat above does not give you. Empty is the healthy state. Note error_category comes from the host and is close to useless (it reads \"Error\"); channel and delivery_kind are the load-bearing columns. On 2026-09-01 the row that mattered was channel=telegram, delivery_kind=text \u2014 a post-quantum TLS ClientHello that a fraction of api.telegram.org backends reset.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 9,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (channel, delivery_kind, error_category) (increase(openclaw_message_delivery_total{outcome=\"error\"}[24h]))",
+          "refId": "A",
+          "instant": true,
+          "range": false,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "job": true,
+              "instance": true,
+              "namespace": true,
+              "service": true,
+              "endpoint": true,
+              "container": true,
+              "pod": true
+            }
+          }
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 45,
+      "type": "timeseries",
+      "title": "Sends seen by the companion plugin",
+      "description": "openclaw_task_observability_task_reconciled_total, from the image-baked companion plugin's message_sent hook \u2014 an INDEPENDENT count of the same sends the panel to the left measures, so delivery_outcome=\"delivery_error\" here and outcome=\"error\" there should agree. run_outcome is \"unknown\" for every send on this host: the gateway grants ctx.internalDiagnostics only to its own bundled diagnostics-otel / diagnostics-prometheus services, so run.completed never reaches a third-party plugin and no send can be attributed to a run. A flat zero line on the \"delivered\" series means the PLUGIN is dead, not that the bot is quiet \u2014 that is the whole reason the success arm is plotted next to the failure arm.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 12,
+        "w": 9,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (delivery_outcome) (increase(openclaw_task_observability_task_reconciled_total[$__rate_interval]))",
+          "refId": "A",
+          "legendFormat": "{{delivery_outcome}}"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "auto"
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "delivery_error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 46,
+      "type": "text",
+      "title": "When a reply goes missing",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 12,
+        "w": 6,
+        "h": 8
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "### A reply went missing \u2014 recovery recipe\n\nThe counter tells you one send failed. It does **not** tell you which conversation, and the\nreply is not where you would look for it. Verified 2026-09-01 (incident: transcript seq 2241).\n\n**1 \u2014 Find the turn.** The companion plugin writes one `delivery_failed` forensic record per\nfailed send (timestamp, channel, error category; session ids hashed):\n\n```\nssh -p 2222 730op.synology.me\ndocker exec -u node openclaw-openclaw-gateway-1 \\\n  find /home/node/.openclaw -name 'openclaw-task-observability-forensics.jsonl'\n```\n\n**2 \u2014 Recover the text.** The reply survives in the per-agent transcript, a *different* store\nfrom the delivery queue:\n\n```\ndocker exec -u node openclaw-openclaw-gateway-1 sqlite3 \\\n  /home/node/.openclaw/agents/main/agent/openclaw-agent.sqlite \\\n  \"select created_at, substr(event_json,1,600) from transcript_events\n   where created_at > '<T-2min>' and created_at < '<T+2min>'\n   order by seq desc limit 20;\"\n```\n\n**3 \u2014 Do not bother with the delivery queue.** A permanently-failed `delivery_queue_entries`\nrow is a tombstone: `status=failed`, `recovery_state=completed_permanent`, and `session_key`,\n`channel`, `target`, `last_error` and the payload all **NULL**. Nothing links the failed queue\nid back to the transcript row \u2014 step 2's timestamp window is the only join you have.\n\n**Why there is no alert on this.** Alerting rebuild is parked (platform#13). This panel and\nthe stat above are the entire notification path, which is exactly how a red panel sat unread\nthrough the 2026-09-01 drop.\n"
+      }
+    },
+    {
       "id": 20,
       "type": "row",
       "title": "Model calls & routing",
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 20,
         "w": 24,
         "h": 1
       },
@@ -528,7 +681,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 13,
+        "y": 21,
         "w": 12,
         "h": 7
       },
@@ -592,7 +745,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 13,
+        "y": 21,
         "w": 12,
         "h": 7
       },
@@ -652,7 +805,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 28,
         "w": 24,
         "h": 1
       },
@@ -669,7 +822,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 21,
+        "y": 29,
         "w": 8,
         "h": 7
       },
@@ -733,7 +886,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 21,
+        "y": 29,
         "w": 8,
         "h": 7
       },
@@ -797,7 +950,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 21,
+        "y": 29,
         "w": 8,
         "h": 7
       },
@@ -868,7 +1021,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 28,
+        "y": 36,
         "w": 24,
         "h": 1
       },
@@ -885,7 +1038,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 37,
         "w": 8,
         "h": 7
       },
@@ -949,7 +1102,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 29,
+        "y": 37,
         "w": 8,
         "h": 7
       },
@@ -1013,7 +1166,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 29,
+        "y": 37,
         "w": 8,
         "h": 7
       },

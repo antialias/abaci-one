@@ -1,0 +1,48 @@
+# Off-cluster node_exporter installed on ci-node by the platform Ansible role.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ci-node-exporter
+  namespace: monitoring
+  labels:
+    app: ci-node-exporter
+spec:
+  clusterIP: None
+  ports:
+    - name: metrics
+      port: 9100
+      targetPort: 9100
+      protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: ci-node-exporter
+  namespace: monitoring
+  labels:
+    app: ci-node-exporter
+subsets:
+  - addresses:
+      - ip: 192.168.86.34
+    ports:
+      - name: metrics
+        port: 9100
+        protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ci-node-exporter
+  namespace: monitoring
+  labels:
+    app: ci-node-exporter
+spec:
+  selector:
+    matchLabels:
+      app: ci-node-exporter
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
