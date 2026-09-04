@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Add the switchover row to the claude-usage Grafana dashboard.
+"""Add the switchover and member-health rows to the claude-usage Grafana dashboard.
 
 Rewrites infra/terraform/files/claude-usage-dashboard.json IN PLACE. Terraform
 applies it from that file (filemd5 trigger -> kubectl create configmap), so the
@@ -27,10 +27,10 @@ HERE = pathlib.Path(__file__).resolve().parent
 DASH = HERE / ".." / "terraform" / "files" / "claude-usage-dashboard.json"
 
 DS = {"type": "prometheus", "uid": "prometheus"}
-OURS = {101, 103, 105, 107, 109, 111}  # panel ids this script owns
-ROW_H = 17                             # height of the switchover row block (5 + 6 + 6)
+OURS = {101, 103, 105, 107, 109, 111, 201, 203, 205, 207, 209, 211, 213}  # panel ids this script owns
+ROW_H = 36  # switchover (17), health heading (1), and three health rows (6 each)
 ANN = "Account switchover"
-VERSION = 3
+VERSION = 4
 TITLE = "Claude Code Usage — quota, burn & switchover"
 
 
@@ -169,6 +169,47 @@ PANELS = [
             "color": {"mode": "palette-classic"},
         }, "overrides": []},
     },
+]
+
+# #125: current samples only, no alert rules and no last-value carry across gaps.
+def health_series(panel_id, title, x, y, width, targets, unit="short"):
+    return {
+        "id": panel_id, "type": "timeseries", "title": title, "datasource": DS,
+        "gridPos": {"x": x, "y": y, "w": width, "h": 6}, "targets": targets,
+        "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": True},
+                    "tooltip": {"mode": "multi", "sort": "desc"}},
+        "fieldConfig": {"defaults": {"unit": unit, "min": 0,
+            "custom": {"lineWidth": 2, "fillOpacity": 0, "showPoints": "never", "spanNulls": False},
+            "color": {"mode": "palette-classic"}}, "overrides": []},
+    }
+
+
+PANELS += [
+    {"id": 201, "type": "row", "title": "Member health", "collapsed": False,
+     "gridPos": {"x": 0, "y": 17, "w": 24, "h": 1}, "panels": []},
+    {"id": 203, "type": "state-timeline", "title": "Health state by endpoint", "datasource": DS,
+     "description": "One row per endpoint; absent scrape samples remain gaps. Health scoring covers class requests.",
+     "gridPos": {"x": 0, "y": 18, "w": 24, "h": 6},
+     "targets": [tgt('sum by (key) (switch_health_state{state="healthy"} * 0 or switch_health_state{state="convalescent"} * 1 or switch_health_state{state="half_open"} * 2 or switch_health_state{state="open"} * 3)', "{{key}}", instant=False)],
+     "options": {"showValue": "auto", "rowHeight": 0.9, "mergeValues": True,
+                 "legend": {"showLegend": True, "displayMode": "list", "placement": "bottom"},
+                 "tooltip": {"mode": "single", "sort": "none"}},
+     "fieldConfig": {"defaults": {"custom": {"spanNulls": False},
+         "mappings": [{"type": "value", "options": {
+             "0": {"text": "healthy", "color": "green"}, "1": {"text": "convalescent", "color": "blue"},
+             "2": {"text": "half_open", "color": "yellow"}, "3": {"text": "open", "color": "red"}}}]}, "overrides": []}},
+    health_series(205, "Episode hold step (k)", 0, 24, 8,
+                  [tgt("switch_health_episode_k", "{{key}}", instant=False)]),
+    health_series(207, "Degradation rate and trip threshold", 8, 24, 8,
+                  [tgt("switch_health_evidence_rate", "{{key}}", instant=False),
+                   tgt('switch_health_config{name="trip_rate"}', "trip threshold", instant=False, ref="B")], "percentunit"),
+    health_series(209, "Routing decisions by hop", 16, 24, 8,
+                  [tgt("sum by (class, hop_kind) (rate(switch_health_route_decisions_total[$__rate_interval]))", "{{class}} · {{hop_kind}}", instant=False)], "reqps"),
+    health_series(211, "Health exhaustion responses (529)", 0, 30, 12,
+                  [tgt("sum by (class, pinned) (increase(switch_health_exhausted_total[$__rate_interval]))", "{{class}} · pinned={{pinned}}", instant=False)]),
+    health_series(213, "Prefills paid and pending returns", 12, 30, 12,
+                  [tgt("sum by (class) (increase(switch_health_prefills_paid_total[$__rate_interval]))", "{{class}} · prefills", instant=False),
+                   tgt("switch_health_ramp_pending", "{{class}} · pending", instant=False, ref="B")]),
 ]
 
 ANNOTATION = {
