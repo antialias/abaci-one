@@ -77,6 +77,23 @@ import {
 import { describeJobError, isParked } from './print-jobs'
 import { PrintServiceError, type SubmitFailure } from './print-submit-failure'
 import { studioHref } from './studio-url'
+import {
+  checkSeam,
+  clearTwoStageRecord,
+  handoffView,
+  jobIdFromSubmitBody,
+  loadTwoStageRecord,
+  STAGE_B_HANDOFF_STEPS,
+  safeStorage,
+  saveTwoStageRecord,
+  sha256Hex,
+  TWO_STAGE_FEED_FAMILY,
+  TWO_STAGE_SEAM_TOOL_OVERRIDES,
+  TwoStageDriftError,
+  type TwoStageRecord,
+  twoStageAvailability,
+  withTwoStageProcess,
+} from './two-stage-print'
 
 export interface PrintPanelProps {
   /** Rendered but hidden when false — internal state (style edits) survives. */
@@ -223,6 +240,17 @@ function extractApplied(body: unknown): Record<string, ParamScalarValue> | undef
   }
   return Object.keys(out).length > 0 ? out : undefined
 }
+
+/** Which job a submit is (Gitea #38): the ordinary one-job print, or one of the
+ *  two stages of a feet-first split print. */
+type SubmitStage = 'single' | 'stage-a' | 'stage-b'
+
+const stageTagStyle = {
+  marginLeft: 6,
+  color: 'rgba(103,232,249,0.95)',
+  fontSize: 11,
+  fontWeight: 700,
+} as const
 
 export function PrintPanel(props: PrintPanelProps) {
   const {
@@ -385,8 +413,35 @@ export function PrintPanel(props: PrintPanelProps) {
   // role entry — or a stale idempotency key), and only while its spool is still
   // loaded. Unloading the picked spool otherwise gets as far as submit, where
   // buildAbacusTicket throws "not in the loaded roster".
+  // ---- two-stage feet print (Gitea #38 / THH #456) --------------------------
+  // An OPTION at submit, never a design parameter: with a TPU-for-AMS tray loaded
+  // the one-job path stays the default and the feet geometry is identical — only
+  // the feed source differs. On, Stage A prints everything below the feet seam
+  // from the external spool and Stage B chains the rest onto it, off ONE slice.
+  // THH keeps the retained half by model bytes + filament plan, so what the
+  // client remembers between the two (`twoStageRecord`) is the Stage A job id
+  // and the bytes it shipped — per printer, in localStorage, because Stage A
+  // prints for the better part of an hour and the tab won't necessarily last.
+  const twoStage = twoStageAvailability({ params, filamentMap, catalog, kit: !!kit })
+  const [twoStageWanted, setTwoStageWanted] = useState(false)
+  const twoStageOn = twoStageWanted && twoStage.ok
+  const seamCheck = twoStage.ok ? checkSeam(twoStage.atZMm, style) : null
+  const [twoStageRecord, setTwoStageRecord] = useState<TwoStageRecord | null>(null)
+  useEffect(() => {
+    setTwoStageRecord(printerId ? loadTwoStageRecord(safeStorage(), printerId) : null)
+  }, [printerId])
+  const forgetTwoStage = () => {
+    if (printerId) clearTwoStageRecord(safeStorage(), printerId)
+    setTwoStageRecord(null)
+  }
+
+  // In two-stage mode the support interface prints in filament 0: its layers sit
+  // right under the frame — under the seam — so routing it to another spool is a
+  // tool change inside Stage A, which THH refuses as `split_failed`.
   const supportPick =
-    supportsWanted && supportRoster.some((r) => r.slotId === supportSlotId) ? supportSlotId : null
+    !twoStageOn && supportsWanted && supportRoster.some((r) => r.slotId === supportSlotId)
+      ? supportSlotId
+      : null
 
   // Persist edits with a 600ms trailing debounce (event-driven — armed only by
   // onChange), deduped against the last-saved snapshot, flushed on unmount so
@@ -445,9 +500,26 @@ export function PrintPanel(props: PrintPanelProps) {
   const idemRef = useRef<IdempotencyToken | null>(null)
 
   const submit = useMutation({
-    mutationFn: async (): Promise<unknown> => {
+    mutationFn: async (stage: SubmitStage): Promise<unknown> => {
       if (!printerId) throw new Error('No printer available')
       if (!style) throw new Error('Print settings are still loading')
+      // Two-stage (Gitea #38): BOTH stages ride the mode's process keys, the
+      // seam-tool overlay and a filament-0 support interface, so THH's identity
+      // gate sees one resolved plan. Stage B additionally needs Stage A's record
+      // and — checked below, once the model is rebuilt — the same bytes.
+      const staged = stage !== 'single'
+      const seam = staged && twoStage.ok ? twoStage : null
+      if (staged && !seam) throw new Error('This design can no longer print in two stages')
+      const priorStage = stage === 'stage-b' ? twoStageRecord : null
+      if (stage === 'stage-b' && !priorStage) {
+        throw new Error('No Stage A on record for this printer — print Stage A first')
+      }
+      const ticketStyle = staged ? withTwoStageProcess(style) : style
+      const interfacePick = staged ? null : supportPick
+      // Stage B is held, never auto-started: the operator has to have swapped the
+      // spool and left the plate alone, and the chained-start park reasons (bed
+      // check, spool swap) are theirs to acknowledge on the job card.
+      const policy: TicketStartPolicy = stage === 'stage-b' ? 'hold' : startPolicy
 
       // The race covers the whole bundle (frame + marker part passes) — the
       // bundle promise resolves only after all renders land. The 3MF builds from
@@ -506,7 +578,7 @@ export function PrintPanel(props: PrintPanelProps) {
       // shallower envelope for fewer filaments), and that reservation is decided before
       // the ticket exists. The panel withholds design slots from the pickable interface
       // roster, so a pick is always a filament the bodies don't already carry.
-      const extraFilaments = supportPick ? 1 : 0
+      const extraFilaments = interfacePick ? 1 : 0
       const model = kit
         ? buildKitPlateThreeMf({
             parts: await raceRender(kit.requestExportModuleParts()),
@@ -539,12 +611,17 @@ export function PrintPanel(props: PrintPanelProps) {
           params,
           filamentMap,
           slotLabels,
-          style,
-          startPolicy,
-          supportInterfaceSlotId: supportPick,
+          style: ticketStyle,
+          startPolicy: policy,
+          supportInterfaceSlotId: interfacePick,
           printerBed,
           wipeTower,
           kitLayout,
+          twoStage: seam
+            ? priorStage
+              ? { stage: 'B', continuesJobId: priorStage.stageAJobId }
+              : { stage: 'A', atZMm: seam.atZMm, feedFamily: seam.feedFamily }
+            : null,
         }),
         () => crypto.randomUUID()
       )
@@ -552,8 +629,11 @@ export function PrintPanel(props: PrintPanelProps) {
       // A kit is named for what lands on the bed — the operator reading the job
       // list sees N loose modules to assemble, not one finished abacus.
       const label = kit ? `${params.cols}-column abacus kit` : `${params.cols}-column abacus`
+      const baseName = kit
+        ? `Abacus kit — ${params.cols} columns`
+        : `Abacus — ${params.cols} columns`
       const baseTicket = buildAbacusTicket({
-        name: kit ? `Abacus kit — ${params.cols} columns` : `Abacus — ${params.cols} columns`,
+        name: seam ? `${baseName} · ${priorStage ? 'Stage B (body)' : 'Stage A (feet)'}` : baseName,
         // With a persisted snapshot the artifact IS the design row (abaci#22);
         // a failed persist degrades to the pre-#22 shallow provenance. The kit
         // suffix keeps the two OUTPUTS of one design row distinguishable — the
@@ -577,10 +657,23 @@ export function PrintPanel(props: PrintPanelProps) {
             },
         bodies: model.bodies,
         catalog,
-        style,
-        startPolicy,
+        style: ticketStyle,
+        startPolicy: policy,
         idempotencyKey: idem.key,
-        supportInterfaceSlotId: supportPick,
+        supportInterfaceSlotId: interfacePick,
+        ...(seam
+          ? {
+              seamToolOverrides: TWO_STAGE_SEAM_TOOL_OVERRIDES,
+              ...(priorStage
+                ? { chain: { continuesJobId: priorStage.stageAJobId } }
+                : {
+                    split: {
+                      atZMm: seam.atZMm,
+                      feed: { external: true as const, family: seam.feedFamily },
+                    },
+                  }),
+            }
+          : {}),
         // A link back to the editor, not print content — deliberately outside
         // the idempotency signature (changing players must not rotate the key,
         // and neither may a transiently failed snapshot persist).
@@ -612,6 +705,14 @@ export function PrintPanel(props: PrintPanelProps) {
             }
           : baseTicket
 
+      // Stage B must be the SAME bytes THH retained for Stage A: a chained job with
+      // different bytes isn't refused — it slices on its own and silently prints
+      // the whole model. Refused here, before anything leaves the browser.
+      const modelSha256 = seam ? await sha256Hex(model.bytes) : null
+      if (priorStage && modelSha256 !== priorStage.modelSha256) {
+        throw new TwoStageDriftError(priorStage)
+      }
+
       const form = new FormData()
       form.set(
         'model',
@@ -629,6 +730,26 @@ export function PrintPanel(props: PrintPanelProps) {
       })
       const body: unknown = await res.json().catch(() => null)
       if (!res.ok) throw new PrintServiceError(res.status, body)
+      // Remember the stage: THH neither persists nor echoes `split`, so this
+      // client is the only party that knows which job was a Stage A.
+      const jobId = seam ? jobIdFromSubmitBody(body) : null
+      if (seam && jobId && modelSha256) {
+        const record: TwoStageRecord = priorStage
+          ? { ...priorStage, stageBJobId: jobId }
+          : {
+              v: 1,
+              printerId,
+              stageAJobId: jobId,
+              modelSha256,
+              designSig: idem.sig,
+              atZMm: seam.atZMm,
+              feedFamily: seam.feedFamily,
+              name: baseName,
+              submittedAt: Date.now(),
+            }
+        saveTwoStageRecord(safeStorage(), record)
+        setTwoStageRecord(record)
+      }
       return body
     },
     onSuccess: () => {
@@ -645,16 +766,25 @@ export function PrintPanel(props: PrintPanelProps) {
   const submitFailure: SubmitFailure | null =
     submit.error instanceof PrintServiceError
       ? submit.error.failure
-      : submit.error instanceof KitPlateFitError
+      : submit.error instanceof TwoStageDriftError
         ? {
-            code: `kit_${submit.error.reason.replace(/-/g, '_')}`,
-            headline: submit.error.headline,
-            remediation: submit.error.remediation,
+            code: 'two_stage_model_drift',
+            headline: 'This isn’t the model Stage A printed.',
+            remediation: submit.error.message,
             blockingJobId: null,
             invalidTicket: null,
             missing: [],
           }
-        : null
+        : submit.error instanceof KitPlateFitError
+          ? {
+              code: `kit_${submit.error.reason.replace(/-/g, '_')}`,
+              headline: submit.error.headline,
+              remediation: submit.error.remediation,
+              blockingJobId: null,
+              invalidTicket: null,
+              missing: [],
+            }
+          : null
   const invalidDetail = submitFailure?.invalidTicket ?? undefined
   const applied = useMemo(() => extractApplied(submit.data), [submit.data])
 
@@ -690,6 +820,13 @@ export function PrintPanel(props: PrintPanelProps) {
   // never a silent style injection (see feetSupportGate).
   const feetGate = feetSupportGate(params, style)
 
+  // The two-stage hand-off (Gitea #38): what Stage A is doing, and whether Stage
+  // B can go. Phases come from the same roster the rows render from.
+  const handoff = twoStageRecord
+    ? handoffView(twoStageRecord, (id) => jobRows.find((j) => j.id === id)?.phase ?? null)
+    : null
+  const seamMisses = seamCheck?.misses ?? false
+
   // The bed preview (Gitea #32). Runs the SAME plan the submit runs, so what's
   // drawn is what ships — including the refusals, which is the point: "this kit
   // needs two beds" belongs on screen while the column count is still in the
@@ -714,6 +851,12 @@ export function PrintPanel(props: PrintPanelProps) {
     unplacedRoles.length > 0 ||
     submit.isPending ||
     feetGate.blocked
+  // Stage A shares the ordinary gate plus the seam: THH can only split between
+  // layers, and a miss is a `split_failed` minutes into a slice.
+  const stageABlocked = submitBlocked || seamMisses
+  // Stage B ignores the toggle — the record, not the switch, is what it chains
+  // on — but still needs the mode available (feet tray still TPU, still loaded).
+  const stageBBlocked = submitBlocked || !twoStage.ok || seamMisses
 
   return (
     <div
@@ -1094,6 +1237,73 @@ export function PrintPanel(props: PrintPanelProps) {
               </button>
             </div>
           )}
+          {twoStage.ok && (
+            <div
+              data-element="two-stage-choice"
+              data-active={twoStageOn || undefined}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 10,
+                padding: '8px 10px',
+                borderRadius: 8,
+                background: twoStageOn ? 'rgba(8,145,178,0.22)' : 'rgba(30,41,59,0.48)',
+                border: twoStageOn
+                  ? '1px solid rgba(34,211,238,0.5)'
+                  : '1px solid rgba(148,163,184,0.3)',
+              }}
+            >
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.35 }}>
+                <strong style={{ color: 'rgba(226,232,240,0.98)' }}>Two-stage feet</strong>
+                <span style={{ color: 'rgba(148,163,184,0.95)', fontSize: 11 }}>
+                  Below {twoStage.atZMm} mm from the external spool (soft {TWO_STAGE_FEED_FAMILY}),
+                  the rest chained from the AMS — one slice, two jobs, a spool swap between.
+                </span>
+              </span>
+              <button
+                type="button"
+                data-action="toggle-two-stage"
+                aria-pressed={twoStageOn}
+                onClick={() => setTwoStageWanted((v) => !v)}
+                style={{
+                  flex: '0 0 auto',
+                  padding: '5px 10px',
+                  borderRadius: 6,
+                  border: twoStageOn
+                    ? '1px solid rgba(34,211,238,0.7)'
+                    : '1px solid rgba(148,163,184,0.45)',
+                  background: twoStageOn ? 'rgba(34,211,238,0.16)' : 'rgba(255,255,255,0.06)',
+                  color: twoStageOn ? 'rgba(207,250,254,0.98)' : 'rgba(226,232,240,0.95)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                {twoStageOn ? 'Print in one job' : 'Split at the feet'}
+              </button>
+            </div>
+          )}
+          {twoStageOn && seamCheck?.misses && (
+            <div
+              data-element="two-stage-seam-warning"
+              style={{
+                padding: '8px 10px',
+                borderRadius: 8,
+                background: 'rgba(120,53,15,0.35)',
+                border: '1px solid rgba(251,191,36,0.5)',
+                color: 'rgba(254,243,199,0.96)',
+                lineHeight: 1.45,
+              }}
+            >
+              The feet seam at {seamCheck.atZMm} mm doesn’t land between layers at{' '}
+              {seamCheck.layerHeightMm} mm
+              {seamCheck.firstLayerMm !== seamCheck.layerHeightMm &&
+                ` (first layer ${seamCheck.firstLayerMm} mm)`}
+              , and the print service can only split on a layer boundary. Pick a layer height that
+              divides the feet stand-off, or change the stand-off in the editor.
+            </div>
+          )}
           {/* Directly above the commit, because that's the question it answers:
               this is the bed you're about to print. */}
           {kit && (
@@ -1110,18 +1320,21 @@ export function PrintPanel(props: PrintPanelProps) {
             </div>
           )}
 
-
           <button
             type="button"
             data-action="submit-print-job"
-            onClick={() => submit.mutate()}
-            disabled={submitBlocked}
+            onClick={() => submit.mutate(twoStageOn ? 'stage-a' : 'single')}
+            disabled={twoStageOn ? stageABlocked : submitBlocked}
             title={
               exportBlocked
                 ? 'Fix the printability errors first'
                 : feetGate.blocked
                   ? 'Enable supports first — printed feet need them'
-                  : 'Slice and print on the paired printer'
+                  : twoStageOn && seamMisses
+                    ? 'The feet seam has to land on a layer boundary'
+                    : twoStageOn
+                      ? 'Slice once; print the feet from the external spool first'
+                      : 'Slice and print on the paired printer'
             }
             style={{
               padding: '10px 12px',
@@ -1140,7 +1353,9 @@ export function PrintPanel(props: PrintPanelProps) {
               ? 'Rendering & submitting…'
               : kit
                 ? '🖨 Print this kit'
-                : '🖨 Print this abacus'}
+                : twoStageOn
+                  ? '🖨 Print Stage A (feet)'
+                  : '🖨 Print this abacus'}
           </button>
 
           {submit.isSuccess && (
@@ -1155,8 +1370,11 @@ export function PrintPanel(props: PrintPanelProps) {
                 lineHeight: 1.45,
               }}
             >
-              Job submitted — it’ll start on its own once the printer’s ready, or show up below to
-              resolve if the bed needs a look.
+              {submit.variables === 'stage-a'
+                ? 'Stage A submitted — the feet print from the external spool first. When it completes, the hand-off below walks you to Stage B.'
+                : submit.variables === 'stage-b'
+                  ? 'Stage B submitted and held — start it from its job card below once the spool swap is done.'
+                  : 'Job submitted — it’ll start on its own once the printer’s ready, or show up below to resolve if the bed needs a look.'}
               {applied && ' Some settings were adjusted by the printer — see the editor.'}
             </div>
           )}
@@ -1169,6 +1387,117 @@ export function PrintPanel(props: PrintPanelProps) {
                 submit.error instanceof Error ? submit.error.message : 'Submit failed.'
               }
             />
+          )}
+          {twoStageRecord && handoff && (
+            <div
+              data-element="two-stage-handoff"
+              data-handoff={handoff.kind}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: 'rgba(30,41,59,0.6)',
+                border: '1px solid rgba(34,211,238,0.45)',
+                lineHeight: 1.45,
+              }}
+            >
+              <strong style={{ color: 'rgba(226,232,240,0.98)' }}>
+                Two-stage print — {twoStageRecord.name}
+              </strong>
+              {handoff.kind === 'stage-a-running' ? (
+                <span>
+                  Stage A (feet) is {handoff.phase ?? 'not in the job list yet'} — Stage B unlocks
+                  when it completes.
+                </span>
+              ) : handoff.kind === 'stage-a-ended' ? (
+                <span>
+                  Stage A {handoff.phase} — there is nothing to chain onto. Clear the plate and
+                  print Stage A again.
+                </span>
+              ) : handoff.kind === 'stage-b-open' ? (
+                <span>
+                  Stage B (body) is {handoff.phase ?? 'on its way to the job list'} — resolve it
+                  from its job card below.
+                </span>
+              ) : handoff.kind === 'done' ? (
+                <span>
+                  Stage B completed — the abacus is done. Forget this print to start another.
+                </span>
+              ) : (
+                <>
+                  <span>
+                    {handoff.retry
+                      ? 'Stage B did not start — it can be submitted again while Stage A is still the last thing on the plate.'
+                      : 'Stage A (feet) is done.'}{' '}
+                    Before Stage B:
+                  </span>
+                  <ol
+                    style={{
+                      margin: 0,
+                      paddingLeft: 18,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 3,
+                      color: 'rgba(203,213,225,0.96)',
+                    }}
+                  >
+                    {STAGE_B_HANDOFF_STEPS.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                  <button
+                    type="button"
+                    data-action="submit-stage-b"
+                    onClick={() => submit.mutate('stage-b')}
+                    disabled={stageBBlocked}
+                    title={
+                      !twoStage.ok
+                        ? 'The feet tray is no longer an AMS TPU spool — reload it to chain Stage B'
+                        : seamMisses
+                          ? 'The feet seam has to land on a layer boundary'
+                          : 'Chain the body onto the feet Stage A printed'
+                    }
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: 'none',
+                      background: stageBBlocked
+                        ? 'rgba(75,85,99,0.55)'
+                        : 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+                      color: stageBBlocked ? 'rgba(209,213,219,0.7)' : '#fff',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: stageBBlocked ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {submit.isPending && submit.variables === 'stage-b'
+                      ? 'Rendering & submitting…'
+                      : handoff.retry
+                        ? '🖨 Submit Stage B again'
+                        : '🖨 Submit Stage B (body)'}
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                data-action="forget-two-stage"
+                onClick={forgetTwoStage}
+                style={{
+                  alignSelf: 'flex-start',
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  border: '1px solid rgba(148,163,184,0.45)',
+                  background: 'transparent',
+                  color: 'rgba(203,213,225,0.9)',
+                  fontSize: 11,
+                  cursor: 'pointer',
+                }}
+              >
+                Forget this two-stage print
+              </button>
+            </div>
           )}
 
           {/* settings disclosure — the editor mounts once and stays mounted */}
@@ -1225,7 +1554,24 @@ export function PrintPanel(props: PrintPanelProps) {
               a collapsed editor. The recommendation ★ and any service caution
               render inside the kit editor; the reminder ("load your Support for
               PLA") is service DATA the kit leaves to the host. */}
-          {supportsWanted && (
+          {supportsWanted && twoStage.ok && twoStageOn && (
+            <div
+              data-element="print-support-role-two-stage"
+              style={{
+                padding: '8px 10px',
+                borderRadius: 8,
+                background: 'rgba(30,41,59,0.48)',
+                border: '1px solid rgba(148,163,184,0.3)',
+                color: 'rgba(203,213,225,0.96)',
+                lineHeight: 1.45,
+              }}
+            >
+              Support interface prints in the feet filament ({twoStage.feetSlot.name}): in a
+              two-stage print the interface layers sit under the seam, where only the feet spool
+              runs.
+            </div>
+          )}
+          {supportsWanted && !twoStageOn && (
             <div
               data-element="print-support-role"
               style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
@@ -1316,6 +1662,16 @@ export function PrintPanel(props: PrintPanelProps) {
                         }}
                       >
                         {job.name}
+                        {twoStageRecord?.stageAJobId === job.id && (
+                          <span data-element="job-stage-tag" style={stageTagStyle}>
+                            Stage A
+                          </span>
+                        )}
+                        {job.chain && (
+                          <span data-element="job-stage-tag" style={stageTagStyle}>
+                            Stage B · chained
+                          </span>
+                        )}
                       </span>
                       <span style={{ color: 'rgba(148,163,184,0.95)', whiteSpace: 'nowrap' }}>
                         {job.phase}
@@ -1351,7 +1707,11 @@ export function PrintPanel(props: PrintPanelProps) {
                           {failure.recommended === 'relayout_plate' && (
                             <button
                               type="button"
-                              onClick={() => submit.mutate()}
+                              onClick={() =>
+                                submit.mutate(
+                                  submit.variables ?? (twoStageOn ? 'stage-a' : 'single')
+                                )
+                              }
                               disabled={submit.isPending}
                               style={{
                                 border: '1px solid rgba(251,191,36,0.55)',

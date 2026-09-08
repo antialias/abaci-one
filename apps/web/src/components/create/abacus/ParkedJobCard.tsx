@@ -82,6 +82,10 @@ export function ParkedJobCard({
   const parked = isParked(job.phase)
   const printing = job.phase === 'printing'
   const hasReasons = job.attention.length > 0
+  // A chained Stage B (Gitea #38) the gateway prepared but refuses to start:
+  // `chain_start_disabled` is the one reason acknowledging can't clear (the
+  // gateway re-parks it), so the start button says so instead of round-tripping.
+  const chainStartDisabled = job.attention.some((reason) => reason.code === 'chain_start_disabled')
   const hasUnverifiedProfile = job.attention.some((reason) =>
     reason.code.startsWith('filament_profile_unverified:')
   )
@@ -89,9 +93,11 @@ export function ParkedJobCard({
   const title = printing
     ? 'Paused mid-print — confirm at the printer, then it resumes.'
     : job.phase === 'needs_attention'
-      ? hasUnverifiedProfile
-        ? 'Review required — this filament was sliced with a fallback profile.'
-        : 'Paused before printing — the printer flagged something to check.'
+      ? chainStartDisabled
+        ? 'Prepared, but chained starts are switched off on this print service.'
+        : hasUnverifiedProfile
+          ? 'Review required — this filament was sliced with a fallback profile.'
+          : 'Paused before printing — the printer flagged something to check.'
       : 'Sliced and waiting — start it when you’re ready.'
 
   const handleStart = () => {
@@ -179,13 +185,18 @@ export function ParkedJobCard({
             data-action="acknowledge-start"
             onClick={handleStart}
             onBlur={() => setArmed((a) => (a === 'start' ? null : a))}
-            disabled={startPending}
+            disabled={startPending || chainStartDisabled}
+            title={
+              chainStartDisabled
+                ? 'The print service refuses chained same-plate starts (CHAINED_START_ENABLED is off) — acknowledging cannot override it.'
+                : undefined
+            }
             aria-label={
               armed === 'start' && hasReasons
                 ? `Start anyway, despite: ${reasonText(job)}`
                 : undefined
             }
-            style={primaryBtn(startPending)}
+            style={primaryBtn(startPending || chainStartDisabled)}
           >
             {startPending
               ? 'Starting…'

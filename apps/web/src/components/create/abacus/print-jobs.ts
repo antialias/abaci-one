@@ -74,6 +74,15 @@ const FAILURE_FALLBACKS: Record<string, Omit<JobFailureView, 'technical'>> = {
     retrySameInput: false,
     recommended: 'change_filament_mapping',
   },
+  // A job-level failure code, not a cause: the two-stage Stage A slice could not
+  // be cut at the feet seam (Gitea #38 / things-haunt-house#456).
+  split_failed: {
+    summary: 'The slice could not be split at the feet seam. No print was sent.',
+    action:
+      'The seam has to land on a layer boundary and every layer below it must print in the feet filament alone — check the layer height against the feet stand-off, and that the support interface is not routed to another spool.',
+    retrySameInput: false,
+    recommended: 'review_print_profile',
+  },
 }
 
 const UNKNOWN_FAILURE: Omit<JobFailureView, 'technical'> = {
@@ -119,6 +128,9 @@ export type JobRow = {
   startPolicy: string | null
   /** Reason codes already confirmed on this job. */
   acknowledged: string[]
+  /** Stage B's chain declaration (Gitea #38 / things-haunt-house#456) as THH
+   *  echoes it, write-once — null on an ordinary job. */
+  chain: { continuesJobId: string } | null
   /** The service's last-touched epoch (seconds); a cache-buster for the frame. */
   updatedAt: number | null
   /** Source/editor linkage belongs to the failed job, not the page's current design. */
@@ -178,7 +190,10 @@ function normalizeJobError(value: unknown): JobError | null {
 
 /** User copy for both the v27 structured contract and older cause-only services. */
 export function describeJobError(error: JobError): JobFailureView {
-  const fallback = (error.cause && FAILURE_FALLBACKS[error.cause]) || UNKNOWN_FAILURE
+  const fallback =
+    (error.cause && FAILURE_FALLBACKS[error.cause]) ||
+    FAILURE_FALLBACKS[error.code] ||
+    UNKNOWN_FAILURE
   const detail =
     typeof error.technical?.detail === 'string' ? error.technical.detail : error.message
   const exit =
@@ -252,6 +267,13 @@ function normalizeStringArray(value: unknown): string[] {
 }
 
 /** Defensive projection of the proxy's pass-through jobs read (open wire shape). */
+function normalizeChain(value: unknown): { continuesJobId: string } | null {
+  const rec = asRecord(value)
+  return rec && typeof rec.continuesJobId === 'string' && rec.continuesJobId.length > 0
+    ? { continuesJobId: rec.continuesJobId }
+    : null
+}
+
 export function normalizeJobs(data: unknown): JobRow[] {
   const list = Array.isArray(data)
     ? data
@@ -287,6 +309,7 @@ export function normalizeJobs(data: unknown): JobRow[] {
       notices: normalizeNotices(rec.notices),
       startPolicy: typeof rec.startPolicy === 'string' ? rec.startPolicy : null,
       acknowledged: normalizeStringArray(rec.acknowledged),
+      chain: normalizeChain(rec.chain),
       updatedAt: typeof rec.updatedAt === 'number' ? rec.updatedAt : null,
       source: asRecord(rec.source),
       authoring: normalizeAuthoring(rec.authoring),

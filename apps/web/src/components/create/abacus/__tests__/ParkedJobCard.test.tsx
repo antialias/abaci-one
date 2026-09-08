@@ -22,6 +22,7 @@ function job(overrides: Partial<JobRow>): JobRow {
     notices: [],
     startPolicy: 'auto',
     acknowledged: [],
+    chain: null,
     updatedAt: 1_784_700_000,
     ...overrides,
   }
@@ -189,6 +190,32 @@ describe('ParkedJobCard', () => {
     const start = container.querySelector('[data-action="acknowledge-start"]') as HTMLButtonElement
     expect(start.disabled).toBe(true)
     expect(start.textContent).toBe('Starting…')
+    fireEvent.click(start)
+    fireEvent.click(start)
+    expect(onStart).not.toHaveBeenCalled()
+  })
+
+  it('a chained Stage B parked on chain_start_disabled cannot be started by acknowledging (Gitea #38)', () => {
+    const onStart = vi.fn()
+    const chained = job({
+      name: 'Abacus — Stage B',
+      chain: { continuesJobId: 'job-a' },
+      attention: [
+        {
+          code: 'chain_start_disabled',
+          detail: 'Chained starts are disabled on this gateway (CHAINED_START_ENABLED).',
+        },
+      ],
+    })
+    const { container } = render(
+      <ParkedJobCard job={chained} onStart={onStart} onCancel={vi.fn()} />
+    )
+    expect(
+      screen.getByText('Prepared, but chained starts are switched off on this print service.')
+    ).toBeInTheDocument()
+    const start = container.querySelector('[data-action="acknowledge-start"]') as HTMLButtonElement
+    expect(start.disabled).toBe(true)
+    expect(start.title).toMatch(/CHAINED_START_ENABLED/)
     fireEvent.click(start)
     fireEvent.click(start)
     expect(onStart).not.toHaveBeenCalled()
