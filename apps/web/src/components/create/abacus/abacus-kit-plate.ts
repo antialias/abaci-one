@@ -129,6 +129,10 @@ export type KitPlateRefusal =
   | 'no-tower-room'
   /** The plate can't be slid off the printer's keep-out zone (see `clearOfKeepOuts`). */
   | 'keep-out'
+  /** Fits the bed, but not with the back `rearBandMm` clear — everything printed
+   *  (tower and first-layer growth included) has to stay in front of the
+   *  two-stage hand-off band (see `packKitPlate`). */
+  | 'rear-band'
 
 /**
  * A kit that cannot be laid out on one plate. `modules` names the labels that
@@ -650,6 +654,13 @@ export function packKitPlate(args: {
    *  than the profile's six-filament bound, and on a full bed that is the
    *  difference between one plate and a refusal. */
   filaments?: number
+  /** Keep the back `rearBandMm` of the bed clear of EVERYTHING printed — module
+   *  outlines plus their first-layer growth, and the purge tower. The two-stage
+   *  hand-off homes Z and lays its purge lane in a band along the back edge,
+   *  measured on the union of the whole plate (`TWO_STAGE_REAR_BAND_MM`), so a
+   *  plate that reaches into it splits fine and then refuses at the printer.
+   *  Unset: the full bed is fair game. */
+  rearBandMm?: number
 }): KitPlateLayout {
   const {
     instances,
@@ -658,12 +669,123 @@ export function packKitPlate(args: {
     wipeTower = DEFAULT_WIPE_TOWER_PROFILE,
     supportsAtSlice = false,
     filaments,
+    rearBandMm,
   } = args
   const gapMm = args.gapMm ?? moduleGapMm(supportsAtSlice)
   const growthMm = moduleGrowthMm(supportsAtSlice)
-  const packBed = firstLayerBed(bed, growthMm)
-
   const reserve = plateTowerReserve(wipeTower, supportsAtSlice, filaments)
+  // `into` is the bed this pack is confined to — the printer's, or the printer's
+  // capped for the rear band. It has to reach `packAroundTower` as the bed
+  // itself, not just as the first-layer view: the keep-out slide bounds on the
+  // bed it is handed, and a slide bounded by the real bed would walk a capped
+  // pack straight back into the band. The layout reports the real bed regardless.
+  const packInto = (into: BedSize): KitPlateLayout => ({
+    ...packAroundTower({
+      instances,
+      bases,
+      bed: into,
+      packBed: firstLayerBed(into, growthMm),
+      growthMm,
+      gapMm,
+      reserve,
+    }),
+    bed,
+  })
+  if (rearBandMm === undefined) return packInto(bed)
+  return packClearOfRearBand({ bed, rearBandMm, growthMm, packInto })
+}
+
+/** Step of the capped-bed sweep in {@link packClearOfRearBand}. */
+const REAR_BAND_SWEEP_MM = 1
+
+/**
+ * Pack with the back `rearBandMm` of the bed clear of everything printed.
+ *
+ * Capping the bed at the band line is the obvious move, and it is where the
+ * search starts — but the packer is a MaxRects tournament, and its outcome is
+ * not monotonic in the bed it is handed: a 13-module kit that refuses a 231 mm
+ * deep bed packs on a 234 one with everything under 223 (measured 2026-09-08 on
+ * the kit-plate fixtures). So the caps are swept from the band line up to the
+ * full bed, a millimetre at a time, and the first layout whose printed extent
+ * ({@link printedYMax}) stays in front of the band ships. The sweep is
+ * deterministic, so Stage A and Stage B — each packing from the same inputs —
+ * land on the same arrangement, which the identity gate between them needs.
+ *
+ * Refusals: a kit that fits some bed but never clears the band is the
+ * `rear-band` diagnosis, naming what crosses the line on the nearest miss; a kit
+ * that fits no bed at all gets the full bed's own refusal (overflow, too-big, …).
+ */
+function packClearOfRearBand(args: {
+  bed: BedSize
+  rearBandMm: number
+  growthMm: number
+  packInto: (into: BedSize) => KitPlateLayout
+}): KitPlateLayout {
+  const { bed, rearBandMm, growthMm, packInto } = args
+  const limit = bed.dMm - rearBandMm
+  const caps: number[] = []
+  for (let cap = limit; cap < bed.dMm - EPS; cap += REAR_BAND_SWEEP_MM) caps.push(cap)
+  caps.push(bed.dMm)
+
+  let nearest: { layout: KitPlateLayout; over: number } | null = null
+  let refusal: KitPlateFitError | null = null
+  for (const cap of caps) {
+    let layout: KitPlateLayout
+    try {
+      layout = packInto({ ...bed, dMm: cap })
+    } catch (err) {
+      if (!(err instanceof KitPlateFitError)) throw err
+      refusal = err
+      continue
+    }
+    const over = printedYMax(layout, growthMm) - limit
+    if (over <= EPS) return layout
+    if (!nearest || over < nearest.over) nearest = { layout, over }
+  }
+  if (!nearest) throw refusal ?? new Error('packClearOfRearBand: no cap tried')
+
+  const crossing = nearest.layout.placements
+    .filter((pl) => pl.yMm + pl.hMm + growthMm > limit + EPS)
+    .map((pl) => pl.label)
+  const { tower } = nearest.layout
+  const what = [...crossing, ...(tower.yMm + tower.dMm > limit + EPS ? ['the purge tower'] : [])]
+  throw new KitPlateFitError(
+    'rear-band',
+    crossing,
+    `${what.join(', ')} reach${what.length === 1 ? 'es' : ''} into the back ${rearBandMm} mm of this ${bedLabel(
+      bed
+    )}, which a two-stage print keeps clear for its hand-off (Z home and purge lane) — the kit fits the bed, but not with that band free.`,
+    'Print the kit in one job instead, take a column or two out, or select a printer with a deeper bed.'
+  )
+}
+
+/**
+ * The back edge of everything the plate will print: module outlines plus their
+ * first-layer growth (brim, supports), and the tower's reserve — which already
+ * holds the tower's own clearance ring, so it is the outer bound there.
+ */
+function printedYMax(layout: KitPlateLayout, growthMm: number): number {
+  let y = layout.tower.yMm + layout.tower.dMm
+  for (const pl of layout.placements) y = Math.max(y, pl.yMm + pl.hMm + growthMm)
+  return y
+}
+
+/**
+ * Reserve the tower on `packBed`, then pack the modules around it. `bed` is the
+ * bed this pack is confined to — what refusals name and what bounds the keep-out
+ * slide; `packBed` is its first-layer view, what the packer and the tower search
+ * actually pack into.
+ */
+function packAroundTower(args: {
+  instances: readonly KitPlateInstance[]
+  bases: Record<ModuleKind, ModuleBasis>
+  bed: BedSize
+  packBed: BedSize
+  growthMm: number
+  gapMm: number
+  reserve: ReturnType<typeof plateTowerReserve>
+}): KitPlateLayout {
+  const { instances, bases, bed, packBed, growthMm, gapMm, reserve } = args
   // The tower searches the SAME first-layer bed the packer packs. Its edge law
   // is untouched by that: `towerMargin` is max(marginMm, TOWER_EDGE 16) and the
   // growth is ≤ 5.45, so 16 still dominates — the tower already keeps a stricter
@@ -858,6 +980,8 @@ export interface KitPlatePlanArgs {
   /** Filaments the ticket will add beyond the plate's own bodies — the
    *  support-interface spool. A download adds none. */
   extraFilaments?: number
+  /** Keep the back of the bed clear for the two-stage hand-off — see `packKitPlate`. */
+  rearBandMm?: number
 }
 
 /**
@@ -958,6 +1082,7 @@ export function planKitPlate(args: KitPlatePlanArgs): KitPlatePlan {
     wipeTower,
     supportsAtSlice: supportsAtSlice || feetPrinted,
     filaments,
+    rearBandMm: args.rearBandMm,
   })
   return { layout, instances, bases, soupsFor, feetPrinted, filaments }
 }
