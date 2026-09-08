@@ -89,6 +89,7 @@ import {
   saveTwoStageRecord,
   sha256Hex,
   TWO_STAGE_FEED_FAMILY,
+  TWO_STAGE_REAR_BAND_MM,
   TWO_STAGE_SEAM_TOOL_OVERRIDES,
   TwoStageDriftError,
   type TwoStageRecord,
@@ -423,7 +424,7 @@ export function PrintPanel(props: PrintPanelProps) {
   // client remembers between the two (`twoStageRecord`) is the Stage A job id
   // and the bytes it shipped — per printer, in localStorage, because Stage A
   // prints for the better part of an hour and the tab won't necessarily last.
-  const twoStage = twoStageAvailability({ params, filamentMap, catalog, kit: !!kit })
+  const twoStage = twoStageAvailability({ params, filamentMap, catalog })
   const [twoStageWanted, setTwoStageWanted] = useState(false)
   const twoStageOn = twoStageWanted && twoStage.ok
   const seamCheck = twoStage.ok ? checkSeam(twoStage.atZMm, style) : null
@@ -589,6 +590,9 @@ export function PrintPanel(props: PrintPanelProps) {
             bed,
             wipeTower: wipeTower ?? undefined,
             extraFilaments,
+            // A split plate keeps the back of the bed for the hand-off (Z home +
+            // purge lane); the packer refuses with `rear-band` when it can't.
+            rearBandMm: staged ? TWO_STAGE_REAR_BAND_MM : undefined,
           })
         : buildAbacusThreeMf({
             ...(await raceRender(requestExportParts())),

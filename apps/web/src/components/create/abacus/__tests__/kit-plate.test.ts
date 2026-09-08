@@ -20,6 +20,7 @@ import { BAMBU_256_BED } from '../abacus-3mf-assembly'
 import {
   buildKitPlateThreeMf,
   KitPlateFitError,
+  type KitPlateLayout,
   type KitPlatePlacement,
   kitPlateInstances,
   type ModuleBasis,
@@ -504,6 +505,67 @@ describe('packKitPlate (tower first, then the modules around it)', () => {
   // the packer carved. The plate that took a 192 on 2026-08-05 had zero geometry in
   // the X1C's cutter corner; nudging it 28.5 mm in +y sliced the identical bytes.
   // Hence: the plate's BOX must clear the keep-out, not just its parts.
+  describe('keeping the back of the bed clear (the two-stage hand-off band)', () => {
+    // THH's Stage B preamble homes Z and lays its purge lane in the back 25 mm of
+    // the bed, measured on the union of everything printed (TWO_STAGE_REAR_BAND_MM).
+    const rearBandMm = 25
+    const bandLine = BAMBU_256_BED.dMm - rearBandMm
+    // Supports-on first-layer growth past a module's outline (moduleGrowthMm).
+    const growth = 5.45
+    const printedYMax = (layout: KitPlateLayout): number =>
+      Math.max(
+        layout.tower.yMm + layout.tower.dMm,
+        ...layout.placements.map((pl) => pl.yMm + pl.hMm + growth)
+      )
+
+    it('packs a printed-feet 13-column kit with everything in front of the band', () => {
+      const plate = packKitPlate({
+        instances,
+        bases,
+        supportsAtSlice: true,
+        filaments: 4,
+        rearBandMm,
+      })
+      expect(plate.placements).toHaveLength(instances.length)
+      expect(printedYMax(plate)).toBeLessThanOrEqual(bandLine + 1e-6)
+      // The cap is the packer's view only: the layout reports the printer's bed.
+      expect(plate.bed).toEqual(BAMBU_256_BED)
+    })
+
+    it('is a real constraint — the same kit packed freely reaches into the band', () => {
+      const free = packKitPlate({ instances, bases, supportsAtSlice: true, filaments: 4 })
+      expect(printedYMax(free)).toBeGreaterThan(bandLine)
+    })
+
+    it('refuses with `rear-band` when the kit fits the bed but never clears the band', () => {
+      // The six-filament tower is the deepest reserve; this kit fits the full 256
+      // around it (the worst-case-tower test above) but no capped bed clears the band.
+      let err: unknown
+      try {
+        packKitPlate({ instances, bases, supportsAtSlice: true, filaments: 6, rearBandMm })
+      } catch (e) {
+        err = e
+      }
+      expect(err).toBeInstanceOf(KitPlateFitError)
+      const fit = err as KitPlateFitError
+      expect(fit.reason).toBe('rear-band')
+      expect(fit.modules.length).toBeGreaterThan(0)
+      expect(fit.headline).toMatch(/back 25 mm/)
+      expect(fit.remediation).toMatch(/one job/)
+    })
+
+    it('hands back the ordinary refusal when the kit fits no bed at all', () => {
+      let err: unknown
+      try {
+        packKitPlate({ instances, bases, bed: { wMm: 120, dMm: 120 }, rearBandMm })
+      } catch (e) {
+        err = e
+      }
+      expect(err).toBeInstanceOf(KitPlateFitError)
+      expect((err as KitPlateFitError).reason).not.toBe('rear-band')
+    })
+  })
+
   describe('keeping the plate clear of the printer keep-out', () => {
     const boxOf = (layout: ReturnType<typeof packKitPlate>): Rect => {
       const rects: Rect[] = [

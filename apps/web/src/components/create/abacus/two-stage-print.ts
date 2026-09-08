@@ -39,6 +39,21 @@ export type SeamToolOverrides = Readonly<
 export const TWO_STAGE_FEED_FAMILY = 'TPU'
 
 /**
+ * How much of the bed's back edge a two-stage plate leaves empty, in mm.
+ *
+ * THH's Stage B preamble homes Z on a clear spot and lays a purge lane, both in
+ * a band along one bed edge OUTSIDE the union of everything printed — every
+ * object, the wipe tower, brims: Orca's plate bbox. The back edge is the cheap
+ * one: the Z-home spot wants 15 mm of keep-away plus 10 mm of edge, and the
+ * purge lane sits at y 244–251 on a 256 bed, so a union ending under y 231
+ * satisfies both (`gcode_split.py` clear_spot / purge_lane). A one-piece abacus
+ * is well short of that on its own; a module kit packs to the bed and has to be
+ * told (`packKitPlate` `rearBandMm`). Not sent to the service — it is abaci's
+ * reading of the service's rule, so a plate refuses here instead of at split.
+ */
+export const TWO_STAGE_REAR_BAND_MM = 25
+
+/**
  * `style.process` keys the mode owns, on BOTH stages (the identity gate needs the
  * same resolved plan). Seam solidity first: a split through a merged solid leaves
  * Stage A's top layers as sparse infill with no top shell (the foot's top is
@@ -103,8 +118,6 @@ export function withTwoStageProcess(style: TicketStyle): TicketStyle {
 export type TwoStageUnavailableReason =
   /** `feet_mode` isn't `'printed'`, or the plan placed no feet role. */
   | 'feet-not-printed'
-  /** A module kit packs many parts; the seam contract is one object on the plate. */
-  | 'kit'
   /** The catalog isn't the live AMS roster — nothing to chain on. */
   | 'no-roster'
   /** The feet already print from the external spool (the #19 no-AMS shape). */
@@ -128,13 +141,11 @@ export function twoStageAvailability(input: {
   params: Pick<Params, 'feet_mode' | 'feet_proud'>
   filamentMap: Pick<FilamentMap, 'feet'>
   catalog: FilamentCatalog
-  kit?: boolean
 }): TwoStageAvailability {
-  const { params, filamentMap, catalog, kit = false } = input
+  const { params, filamentMap, catalog } = input
   if (params.feet_mode !== 'printed' || filamentMap.feet === undefined) {
     return { ok: false, reason: 'feet-not-printed' }
   }
-  if (kit) return { ok: false, reason: 'kit' }
   if (catalog.source !== 'thh-ams') return { ok: false, reason: 'no-roster' }
   const feetSlot = catalog.spools[filamentMap.feet]
   if (!feetSlot) return { ok: false, reason: 'feet-not-printed' }

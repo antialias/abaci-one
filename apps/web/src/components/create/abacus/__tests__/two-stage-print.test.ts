@@ -52,14 +52,6 @@ describe('twoStageAvailability (Gitea #38)', () => {
       twoStageAvailability({
         params: printed,
         filamentMap: { feet: 0 },
-        catalog: roster,
-        kit: true,
-      })
-    ).toEqual({ ok: false, reason: 'kit' })
-    expect(
-      twoStageAvailability({
-        params: printed,
-        filamentMap: { feet: 0 },
         catalog: { ...roster, source: 'default' as FilamentCatalog['source'] },
       })
     ).toEqual({ ok: false, reason: 'no-roster' })
