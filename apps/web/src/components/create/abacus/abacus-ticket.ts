@@ -25,8 +25,9 @@ import type {
 } from '@eink/print-dialog'
 import { PRINT_SOURCE_APP } from '@/lib/abacus/print/source-app'
 import type { SpoolBodySummary } from './abacus-3mf'
-import type { FilamentCatalog } from './abacus-catalog'
+import { coPrintGroup, type FilamentCatalog } from './abacus-catalog'
 import { studioHref } from './studio-url'
+import type { SeamToolOverrides, TwoStageChain, TwoStageSplit } from './two-stage-print'
 
 export interface AbacusTicketArgs {
   /** Job name shown on the service, e.g. "Abacus — 13 columns". */
@@ -57,6 +58,13 @@ export interface AbacusTicketArgs {
   /** THH's bounded profile + the pin packed into the emitted 3MF. Null on a
    *  single-filament job (no tower) or against a pre-contract service. */
   wipeTower?: AbacusWipeTowerRequest | null
+  /** Two-stage feet print (Gitea #38 / things-haunt-house#456). Stage A rides
+   *  `split` (seam + external feed), Stage B rides `chain` — never both. */
+  split?: TwoStageSplit | null
+  chain?: TwoStageChain | null
+  /** Filament overlay for filaments[0], the seam tool — the two-stage recipe
+   *  rides it on BOTH stages so the resolved plans match. */
+  seamToolOverrides?: SeamToolOverrides | null
 }
 
 export interface AbacusWipeTowerRequest {
@@ -72,6 +80,8 @@ export interface AbacusWipeTowerRequest {
 
 export interface AbacusPrintTicket extends PrintTicketV2 {
   wipeTower?: AbacusWipeTowerRequest
+  split?: TwoStageSplit
+  chain?: TwoStageChain
 }
 
 /** The abacus studio's `authoring` block (things-haunt-house#408). With a
@@ -109,6 +119,9 @@ export function buildAbacusTicket(args: AbacusTicketArgs): AbacusPrintTicket {
     authoring,
     supportInterfaceSlotId = null,
     wipeTower,
+    split = null,
+    chain = null,
+    seamToolOverrides = null,
   } = args
 
   if (catalog.source !== 'thh-ams') {
@@ -200,6 +213,47 @@ export function buildAbacusTicket(args: AbacusTicketArgs): AbacusPrintTicket {
     }
   }
 
+  // Two-stage feet print (Gitea #38 / things-haunt-house#456): Stage A = this same
+  // filament list + `split`, Stage B = the same list + `chain`. THH's slice
+  // invariants are refused HERE, at submit, rather than surfacing as a
+  // `split_failed` minutes into a slice: the seam tool is filaments[0] and must
+  // be a LOADED slot (the external feed is declared in `split.feed`, never as a
+  // filament entry — that would be the #19 no-AMS shape); the feed family must
+  // be filament 0's (alias-folded, TPU-AMS ≡ TPU); and no tool may change below
+  // the seam, so a routed support interface — whose layers sit right under the
+  // frame, i.e. under the seam — has to coincide with filament 0.
+  if (split && chain) {
+    throw new Error(
+      'split and chain cannot ride one ticket — Stage B chains, it does not split again'
+    )
+  }
+  if (split || chain) {
+    const seamTool = filaments[0]
+    if (!('slotId' in seamTool)) {
+      throw new Error(
+        'a two-stage print needs a loaded AMS slot as filament 0 — the external feed rides in split.feed'
+      )
+    }
+    if (supportInterfaceSlotId !== null && supportInterfaceSlotId !== seamTool.slotId) {
+      throw new Error(
+        'a two-stage print prints its support interface in filament 0 — routing it to another slot is a tool change below the seam'
+      )
+    }
+    if (split) {
+      if (!(split.atZMm > 0 && split.atZMm <= 100)) {
+        throw new Error(`split.atZMm must be in (0, 100] mm above the plate; got ${split.atZMm}`)
+      }
+      const spool = catalog.spools.find((s) => s.id === seamTool.slotId)
+      if (!spool || coPrintGroup(spool.material) !== coPrintGroup(split.feed.family)) {
+        throw new Error(
+          `split.feed.family "${split.feed.family}" is not filament 0's family (${spool?.material ?? 'unknown'})`
+        )
+      }
+    }
+  }
+  if (seamToolOverrides && Object.keys(seamToolOverrides).length > 0) {
+    filaments[0] = { ...filaments[0], overrides: seamToolOverrides }
+  }
   return {
     name,
     source: { ...source, app: PRINT_SOURCE_APP },
@@ -209,5 +263,7 @@ export function buildAbacusTicket(args: AbacusTicketArgs): AbacusPrintTicket {
     start: { policy: startPolicy },
     idempotencyKey,
     ...(wipeTower ? { wipeTower } : {}),
+    ...(split ? { split } : {}),
+    ...(chain ? { chain } : {}),
   }
 }

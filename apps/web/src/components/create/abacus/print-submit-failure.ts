@@ -84,6 +84,38 @@ export function describeSubmitFailure(status: number, body: unknown): SubmitFail
       }
     }
 
+    // Two-stage feet print (Gitea #38 / things-haunt-house#456) — the codes a
+    // split or chained submit can come back with.
+    case 'invalid_chain':
+      return {
+        code,
+        headline: serviceMessage ?? 'Stage B can no longer chain onto Stage A.',
+        remediation:
+          'Stage A has to be the last job that touched this printer’s plate — completed, and the plate untouched since. If anything printed in between or the plate moved, run Stage A again.',
+        blockingJobId: null,
+        invalidTicket: null,
+        missing: [],
+      }
+    case 'invalid_filaments':
+      return {
+        code,
+        headline: serviceMessage ?? 'The print service refused the filament plan.',
+        remediation:
+          'The external feed must be the same family as the AMS tray the feet print from (TPU). Check the feet slot in the filament map, then print again.',
+        blockingJobId: null,
+        invalidTicket: null,
+        missing: [],
+      }
+    case 'invalid_job':
+      return {
+        code,
+        headline: serviceMessage ?? 'The print service rejected the shape of this job.',
+        remediation:
+          'This is a ticket the studio built wrongly, not a settings problem — note the message above and report it.',
+        blockingJobId: null,
+        invalidTicket: null,
+        missing: [],
+      }
     default: {
       // Credentials failed — a re-pair, not a retry, is the fix.
       if (status === 401 || status === 403) {

@@ -29,6 +29,11 @@ export interface IdempotencyToken {
   readonly key: string
 }
 
+/** Which stage of a two-stage feet print (Gitea #38) a submit is. */
+export type TwoStageSignature =
+  | { readonly stage: 'A'; readonly atZMm: number; readonly feedFamily: string }
+  | { readonly stage: 'B'; readonly continuesJobId: string }
+
 /** Everything a submit encodes that changes the physical artifact. `slotLabels`
  *  are the catalog spool names the model embeds; the rest are the user's knobs. */
 export interface AbacusPrintSignatureInputs {
@@ -52,6 +57,10 @@ export interface AbacusPrintSignatureInputs {
    *  then the same design packs onto a different plate with none of the fields
    *  above moving — and reusing the key there would replay the old arrangement. */
   readonly kitLayout?: string
+  /** Two-stage feet print (Gitea #38): Stage A and Stage B share every input
+   *  above by design (THH's identity gate demands it), so without this they'd
+   *  share a key and THH would replay Stage A at 202 instead of chaining B. */
+  readonly twoStage?: TwoStageSignature | null
 }
 
 /** The content signature: identical inputs → identical string, any change → a
@@ -68,6 +77,7 @@ export function abacusPrintSignature(inputs: AbacusPrintSignatureInputs): string
     printerBed: inputs.printerBed,
     wipeTower: inputs.wipeTower,
     kitLayout: inputs.kitLayout,
+    twoStage: inputs.twoStage ?? null,
   })
 }
 
