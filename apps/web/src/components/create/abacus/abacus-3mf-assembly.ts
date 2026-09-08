@@ -95,19 +95,21 @@ export interface WipeTowerProfileGeometry {
  * with the selected printer's advertised copy, so a deploy can update geometry without
  * an Abaci release.
  *
- * The rows mirror THH's measured table (things-haunt-house#433): width is
- * count-independent, depth grows ~10.5 mm per filament. The bound was 56 here until
- * #34 — the pre-#433 number, which THH's own source records as escaped by the
- * six-filament fine-layer tower it claimed to hold. */
+ * The rows mirror THH's measured table (things-haunt-house#433, re-measured for #457):
+ * width is count-independent, depth grows ~10.5 mm per purge in the worst layer, and an
+ * N-filament layer can purge N times (Orca may enter a layer on a toolchange), so the
+ * N row is the (N+1)-swatch depth. The bound was 56 here until #34 — the pre-#433
+ * number, which THH's own source records as escaped by the six-filament fine-layer
+ * tower it claimed to hold — and 59 until #457, escaped by a two-filament coupon. */
 export const DEFAULT_WIPE_TOWER_PROFILE: WipeTowerProfileGeometry = {
   profile: 'orca-rectangle-60-v1',
-  envelopeMm: { minX: -4, minY: -4, maxX: 66, maxY: 59 },
+  envelopeMm: { minX: -4, minY: -4, maxX: 66, maxY: 69.5 },
   envelopeByFilamentsMm: {
-    '2': { minX: -4, minY: -4, maxX: 66, maxY: 17 },
-    '3': { minX: -4, minY: -4, maxX: 66, maxY: 27.5 },
-    '4': { minX: -4, minY: -4, maxX: 66, maxY: 38 },
-    '5': { minX: -4, minY: -4, maxX: 66, maxY: 48.5 },
-    '6': { minX: -4, minY: -4, maxX: 66, maxY: 59 },
+    '2': { minX: -4, minY: -4, maxX: 66, maxY: 27.5 },
+    '3': { minX: -4, minY: -4, maxX: 66, maxY: 38 },
+    '4': { minX: -4, minY: -4, maxX: 66, maxY: 48.5 },
+    '5': { minX: -4, minY: -4, maxX: 66, maxY: 59 },
+    '6': { minX: -4, minY: -4, maxX: 66, maxY: 69.5 },
   },
   process: {
     prime_tower_width: 60,
