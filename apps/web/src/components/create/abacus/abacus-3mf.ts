@@ -383,7 +383,19 @@ export function emitThreeMfBodies(args: {
     triCount.set(soup.slot, (triCount.get(soup.slot) ?? 0) + soup.positions.length / 9)
   }
 
-  const slots = [...triCount.keys()].sort((a, b) => a - b)
+  // Emission order = extruder order (1-based), and extruder order is the print
+  // ticket's filament order (`buildAbacusTicket` mirrors `bodies`). Ascending slot,
+  // EXCEPT the printed-feet slot goes first: THH's split/chain contract
+  // (things-haunt-house#456, abaci #38) requires the seam tool — the feet — to be
+  // filament 0 so a two-stage print's Stage A runs entirely on T0 from the
+  // external spool. Unconditional on purpose: a single-stage print sees the same
+  // spools under a different extruder numbering, and since the ticket follows the
+  // bodies nothing shifts at the printer — only the downloaded 3MF and the body
+  // list read "feet first".
+  const feetSlot = feetPrinted ? filamentMap.feet : undefined
+  const slots = [...triCount.keys()].sort(
+    (a, b) => Number(b === feetSlot) - Number(a === feetSlot) || a - b
+  )
   const buckets = new Map<number, { positions: Float32Array; fill: number }>()
   for (const slot of slots) {
     const count = triCount.get(slot)
@@ -414,8 +426,9 @@ export function emitThreeMfBodies(args: {
     const label = slotLabels?.[slot] ?? `Filament ${slot + 1}`
     const colorHex = filamentMap.slots[slot]
     bodies.push({ slot, label, colorHex, triangleCount: count })
-    // extruder = emission order (ascending slot), 1-based — the same color→filament
-    // convention `meshesToThreeMf` uses, so the print ticket stays correct.
+    // extruder = emission order (feet first, then ascending slot), 1-based — the
+    // same color→filament convention `meshesToThreeMf` uses, so the print ticket
+    // stays correct.
     assemblyBodies.push({
       positions: bucket.positions,
       colorHex,

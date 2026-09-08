@@ -38,6 +38,18 @@
 import type { BedSize } from '@eink/frames-engine/print-bundle'
 import { strToU8, zipSync } from 'fflate'
 
+/**
+ * The zip timestamp every 3MF we emit carries. fflate stamps `Date.now()` into
+ * each entry's DOS date when `mtime` is unset, so two builds of the same design
+ * differed by wall-clock bytes — and THH admits a chained Stage B print
+ * (things-haunt-house#456, abaci #38) only when its model bytes equal Stage A's.
+ * abaci rebuilds the 3MF on every submit, so the bytes must be a pure function of
+ * the design. 1980-01-01 is the DOS-date epoch (fflate rejects anything earlier —
+ * `mtime: 0` throws "invalid date"), built with the local-time constructor because
+ * fflate reads it back through local getters: identical bytes in every timezone.
+ */
+export const THREE_MF_ZIP_MTIME = new Date(1980, 0, 1)
+
 /** A co-registered, single-filament body: its triangle soup (9 floats/tri, in the
  *  shared render pose) plus the filament it prints on. */
 export interface AssemblyBody {
@@ -674,13 +686,14 @@ export function assembleAbacus3mf(
     `<Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>` +
     `</Relationships>`
 
-  const bytes = zipSync({
+  const entries = {
     '[Content_Types].xml': strToU8(contentTypes),
     '_rels/.rels': strToU8(rels),
     '3D/3dmodel.model': strToU8(model),
     'Metadata/model_settings.config': strToU8(modelSettings),
     'Metadata/project_settings.config': strToU8(projectSettings),
-  })
+  }
+  const bytes = zipSync(entries, { mtime: THREE_MF_ZIP_MTIME })
 
   return { bytes, wipeTower: tower }
 }

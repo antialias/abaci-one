@@ -9,7 +9,7 @@
  * front-left cutter keep-out.
  */
 import { strFromU8, unzipSync } from 'fflate'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   type AssemblyBody,
   assembleAbacus3mf,
@@ -19,6 +19,7 @@ import {
   SUPPORT_TRANSITION_HEIGHT_MM,
   SUPPORT_TRANSITION_NAME,
   SUPPORT_TRANSITION_SPEED_MM_S,
+  THREE_MF_ZIP_MTIME,
   type WipeTowerProfileGeometry,
 } from '../abacus-3mf-assembly'
 
@@ -382,5 +383,48 @@ describe('envelopeForFilaments (reserve the row, not the worst case)', () => {
     const six = assembleAbacus3mf(cols3, BAMBU_256_BED, { filaments: 6 }).wipeTower
     expect(two.xMm).toBeCloseTo(six.xMm, 6)
     expect(two.yMm).toBeGreaterThan(six.yMm)
+  })
+})
+
+describe('assembleAbacus3mf — reproducible bytes (THH #456 chain identity, abaci #38)', () => {
+  // THH admits a chained Stage B only when its model bytes equal Stage A's, and abaci
+  // rebuilds the 3MF for every submit. fflate stamps `Date.now()` into each zip entry
+  // unless told otherwise, so an unpinned mtime failed that gate on every two-stage
+  // print — silently (Stage B sliced its own copy and printed a full model).
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  /** DOS (time, date) of every local file header in a zip fflate's `zipSync` wrote. */
+  const dosStamps = (bytes: Uint8Array): Array<[number, number]> => {
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    const stamps: Array<[number, number]> = []
+    let at = 0
+    while (at + 30 <= bytes.length && dv.getUint32(at, true) === 0x04034b50) {
+      stamps.push([dv.getUint16(at + 10, true), dv.getUint16(at + 12, true)])
+      const nameLen = dv.getUint16(at + 26, true)
+      const extraLen = dv.getUint16(at + 28, true)
+      const compressedLen = dv.getUint32(at + 18, true)
+      at += 30 + nameLen + extraLen + compressedLen
+    }
+    return stamps
+  }
+
+  it('emits identical bytes for the same bodies on different days', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 8, 8, 10, 0, 0))
+    const stageA = assembleAbacus3mf(bodies, BAMBU_256_BED).bytes
+    vi.setSystemTime(new Date(2026, 8, 9, 22, 30, 0))
+    expect(Date.now()).toBe(new Date(2026, 8, 9, 22, 30, 0).getTime()) // the clock really moved
+    const stageB = assembleAbacus3mf(bodies, BAMBU_256_BED).bytes
+    expect(stageB).toEqual(stageA)
+  })
+
+  it('stamps every zip entry with the DOS-date epoch, not the wall clock', () => {
+    expect(THREE_MF_ZIP_MTIME.getFullYear()).toBe(1980)
+    const stamps = dosStamps(assembleAbacus3mf(bodies, BAMBU_256_BED).bytes)
+    expect(stamps).toHaveLength(5) // content types, rels, model, model + project settings
+    // 1980-01-01 00:00:00 → time 0x0000, date 0x0021 (day 1 | month 1 << 5 | year 0 << 9)
+    for (const stamp of stamps) expect(stamp).toEqual([0x0000, 0x0021])
   })
 })
