@@ -310,3 +310,17 @@ export const STAGE_B_HANDOFF_STEPS: readonly string[] = [
   'Check the AMS TPU tray the feet were mapped to is still loaded.',
   'Submit Stage B below, then start it from its job card once the printer clears the spool check.',
 ]
+
+/**
+ * What the operator must do at the printer BEFORE submitting Stage A. The gateway gates the
+ * AMS-fed stage on the external spool being gone (`awaiting_spool_swap`) and, since
+ * things-haunt-house #463, parks the external-fed stage on `awaiting_external_spool` while an
+ * AMS tray is still at the nozzle. It cannot see whether the PTFE tube is pulled or what material
+ * sits on the external spool, so the checklist stays.
+ */
+export const STAGE_A_PREP_STEPS: readonly string[] = [
+  'Pull the AMS PTFE tube out of the toolhead inlet.',
+  'Feed the external TPU95 spool through the external path until it reaches the nozzle.',
+  'On the printer screen, set the external spool to TPU.',
+  'Leave the AMS TPU tray the feet are mapped to loaded — Stage B chains from it.',
+]
