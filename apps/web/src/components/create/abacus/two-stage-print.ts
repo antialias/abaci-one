@@ -48,6 +48,18 @@ export const TWO_STAGE_FEED_FAMILY = 'TPU'
  * The speeds are the soft-TPU95 recipe proven on the #456 coupon: the slice takes
  * filament 0's AMS-TPU profile and TPU95 slips at those speeds (things-haunt-house#461
  * retires this by applying a feed-side profile below the seam only).
+ *
+ * Interface floor (from the first physical two-stage print, 2026-09-08): nothing
+ * rigid on the seam layer lands on a foot — the feet continue upward in TPU, and
+ * every bit of PLA (frame bottom, every bead bottom) lands on the TPU support
+ * interface. With the stock 0.2 mm top gap over a 0.5 mm-spaced interface that is a
+ * bridge onto a release material, and after the hand-off the interface is at plate
+ * temp rather than seconds-old nozzle heat, so the pick that carries a single job
+ * is gone (two bead colours held, two didn't). PLA won't fuse to TPU, so the gap
+ * isn't needed for release: zero gap on a solid interface is Orca's own recipe for
+ * a dedicated support material, and it turns the interface into a floor. These
+ * must ride the style too — the 3MF's `support_top_z_distance` is overridden by
+ * THH's `--load-settings` on a submitted print.
  */
 export const TWO_STAGE_PROCESS: Readonly<Record<string, TicketStyle['process'][string]>> = {
   sparse_infill_density: 100,
@@ -62,6 +74,12 @@ export const TWO_STAGE_PROCESS: Readonly<Record<string, TicketStyle['process'][s
   internal_solid_infill_speed: 30,
   top_surface_speed: 25,
   gap_infill_speed: 25,
+  support_top_z_distance: 0,
+  support_interface_spacing: 0,
+  // Orca already ignores this with a prime tower (every multi-filament abacus);
+  // pinned so a single-filament slice keeps support layers on the model's layer
+  // grid, which the seam-at-a-layer-boundary rule needs.
+  independent_support_layer_height: false,
 }
 
 /** `filaments[0].overrides` — the seam tool's filament overlay, on BOTH stages:

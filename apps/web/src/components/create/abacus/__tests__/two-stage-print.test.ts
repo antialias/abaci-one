@@ -110,15 +110,20 @@ describe('seam vs layer boundary', () => {
 })
 
 describe('withTwoStageProcess', () => {
-  it('forces the seam-solidity and slow-TPU keys over the operator style, keeping the rest', () => {
+  it('forces the seam-solidity, interface-floor and slow-TPU keys over the operator style, keeping the rest', () => {
     const out = withTwoStageProcess({
       basePreset: '0.20mm-standard',
-      process: { wall_loops: 3, sparse_infill_density: 15 },
+      process: { wall_loops: 3, sparse_infill_density: 15, support_top_z_distance: 0.2 },
     })
     expect(out.basePreset).toBe('0.20mm-standard')
     expect(out.process.wall_loops).toBe(3)
     expect(out.process.sparse_infill_density).toBe(100)
     expect(out.process.interface_shells).toBe(true)
+    // The seam layer's PLA lands on the TPU interface, not on a foot: zero gap on
+    // a solid interface makes it a floor (the operator's 0.2 gap is overridden).
+    expect(out.process.support_top_z_distance).toBe(0)
+    expect(out.process.support_interface_spacing).toBe(0)
+    expect(out.process.independent_support_layer_height).toBe(false)
     expect(out.process).toMatchObject(TWO_STAGE_PROCESS)
   })
   it('the overlay is filament-class, vector keys as one-element arrays, no brim', () => {
