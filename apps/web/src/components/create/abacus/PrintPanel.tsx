@@ -76,15 +76,15 @@ import {
 } from './print-idempotency'
 import { describeJobError, isParked } from './print-jobs'
 import { PrintServiceError, type SubmitFailure } from './print-submit-failure'
+import { StageAPrepCard } from './StageAPrepCard'
 import { studioHref } from './studio-url'
+import { TwoStageHandoffCard } from './TwoStageHandoffCard'
 import {
   checkSeam,
   clearTwoStageRecord,
   handoffView,
   jobIdFromSubmitBody,
   loadTwoStageRecord,
-  STAGE_A_PREP_STEPS,
-  STAGE_B_HANDOFF_STEPS,
   safeStorage,
   saveTwoStageRecord,
   sha256Hex,
@@ -1305,45 +1305,7 @@ export function PrintPanel(props: PrintPanelProps) {
               divides the feet stand-off, or change the stand-off in the editor.
             </div>
           )}
-          {twoStageOn && !twoStageRecord && (
-            <div
-              data-element="two-stage-prep"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-                padding: '10px 12px',
-                borderRadius: 10,
-                background: 'rgba(8,145,178,0.12)',
-                border: '1px solid rgba(34,211,238,0.35)',
-                fontSize: 12,
-                lineHeight: 1.4,
-              }}
-            >
-              <span style={{ fontWeight: 600, color: 'rgba(226,232,240,0.98)' }}>
-                Before Stage A — at the printer:
-              </span>
-              <ol
-                style={{
-                  margin: 0,
-                  paddingLeft: 18,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 3,
-                  color: 'rgba(203,213,225,0.96)',
-                }}
-              >
-                {STAGE_A_PREP_STEPS.map((step) => (
-                  <li key={step}>{step}</li>
-                ))}
-              </ol>
-              <span style={{ color: 'rgba(148,163,184,0.95)', fontSize: 11 }}>
-                If an AMS tray is still at the nozzle when you submit, the print service parks
-                Stage A until you swap the feed. It can’t see what is on the external spool, so
-                check the material yourself.
-              </span>
-            </div>
-          )}
+          {twoStageOn && !twoStageRecord && <StageAPrepCard />}
           {/* Directly above the commit, because that's the question it answers:
               this is the bed you're about to print. */}
           {kit && (
@@ -1429,115 +1391,21 @@ export function PrintPanel(props: PrintPanelProps) {
             />
           )}
           {twoStageRecord && handoff && (
-            <div
-              data-element="two-stage-handoff"
-              data-handoff={handoff.kind}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-                padding: '10px 12px',
-                borderRadius: 8,
-                background: 'rgba(30,41,59,0.6)',
-                border: '1px solid rgba(34,211,238,0.45)',
-                lineHeight: 1.45,
-              }}
-            >
-              <strong style={{ color: 'rgba(226,232,240,0.98)' }}>
-                Two-stage print — {twoStageRecord.name}
-              </strong>
-              {handoff.kind === 'stage-a-running' ? (
-                <span>
-                  Stage A (feet) is {handoff.phase ?? 'not in the job list yet'} — Stage B unlocks
-                  when it completes.
-                </span>
-              ) : handoff.kind === 'stage-a-ended' ? (
-                <span>
-                  Stage A {handoff.phase} — there is nothing to chain onto. Clear the plate and
-                  print Stage A again.
-                </span>
-              ) : handoff.kind === 'stage-b-open' ? (
-                <span>
-                  Stage B (body) is {handoff.phase ?? 'on its way to the job list'} — resolve it
-                  from its job card below.
-                </span>
-              ) : handoff.kind === 'done' ? (
-                <span>
-                  Stage B completed — the abacus is done. Forget this print to start another.
-                </span>
-              ) : (
-                <>
-                  <span>
-                    {handoff.retry
-                      ? 'Stage B did not start — it can be submitted again while Stage A is still the last thing on the plate.'
-                      : 'Stage A (feet) is done.'}{' '}
-                    Before Stage B:
-                  </span>
-                  <ol
-                    style={{
-                      margin: 0,
-                      paddingLeft: 18,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 3,
-                      color: 'rgba(203,213,225,0.96)',
-                    }}
-                  >
-                    {STAGE_B_HANDOFF_STEPS.map((step) => (
-                      <li key={step}>{step}</li>
-                    ))}
-                  </ol>
-                  <button
-                    type="button"
-                    data-action="submit-stage-b"
-                    onClick={() => submit.mutate('stage-b')}
-                    disabled={stageBBlocked}
-                    title={
-                      !twoStage.ok
-                        ? 'The feet tray is no longer an AMS TPU spool — reload it to chain Stage B'
-                        : seamMisses
-                          ? 'The feet seam has to land on a layer boundary'
-                          : 'Chain the body onto the feet Stage A printed'
-                    }
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 8,
-                      border: 'none',
-                      background: stageBBlocked
-                        ? 'rgba(75,85,99,0.55)'
-                        : 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-                      color: stageBBlocked ? 'rgba(209,213,219,0.7)' : '#fff',
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: stageBBlocked ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {submit.isPending && submit.variables === 'stage-b'
-                      ? 'Rendering & submitting…'
-                      : handoff.retry
-                        ? '🖨 Submit Stage B again'
-                        : '🖨 Submit Stage B (body)'}
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                data-action="forget-two-stage"
-                onClick={forgetTwoStage}
-                style={{
-                  alignSelf: 'flex-start',
-                  padding: '3px 8px',
-                  borderRadius: 6,
-                  border: '1px solid rgba(148,163,184,0.45)',
-                  background: 'transparent',
-                  color: 'rgba(203,213,225,0.9)',
-                  fontSize: 11,
-                  cursor: 'pointer',
-                }}
-              >
-                Forget this two-stage print
-              </button>
-            </div>
+            <TwoStageHandoffCard
+              name={twoStageRecord.name}
+              view={handoff}
+              disabled={stageBBlocked}
+              disabledReason={
+                !twoStage.ok
+                  ? 'The feet tray is no longer an AMS TPU spool — reload it to chain Stage B'
+                  : seamMisses
+                    ? 'The feet seam has to land on a layer boundary'
+                    : null
+              }
+              submitting={submit.isPending && submit.variables === 'stage-b'}
+              onSubmitStageB={() => submit.mutate('stage-b')}
+              onForget={forgetTwoStage}
+            />
           )}
 
           {/* settings disclosure — the editor mounts once and stays mounted */}

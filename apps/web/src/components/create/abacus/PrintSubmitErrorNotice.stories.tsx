@@ -183,3 +183,35 @@ export const NonCodedThrow: Story = {
     fallbackMessage: "The 3D render didn't finish — try again",
   },
 }
+
+// ── Two-stage feet print (Gitea #38 / things-haunt-house #456) ──────────────
+
+/** Stage B can no longer chain: something else touched the printer's plate
+ *  since Stage A completed, or Stage A isn't the last job any more. */
+export const InvalidChain: Story = {
+  args: {
+    failure: describeSubmitFailure(400, {
+      detail: {
+        code: 'invalid_chain',
+        message: 'job printapi-1788813519429-8c69346d is not the last job on x1c',
+      },
+    }),
+    blockingJob: null,
+    fallbackMessage: 'Submit failed.',
+  },
+}
+
+/** The split's external feed isn't the same family as the AMS tray the feet
+ *  print from — the gateway refuses the plan before slicing. */
+export const InvalidFilaments: Story = {
+  args: {
+    failure: describeSubmitFailure(400, {
+      detail: {
+        code: 'invalid_filaments',
+        message: 'split.feed family PLA does not match filament 0 (TPU)',
+      },
+    }),
+    blockingJob: null,
+    fallbackMessage: 'Submit failed.',
+  },
+}

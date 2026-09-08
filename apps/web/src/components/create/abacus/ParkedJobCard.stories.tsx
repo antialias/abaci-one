@@ -163,3 +163,94 @@ export const StartRefused: Story = {
     }),
   },
 }
+
+// ── Two-stage feet print (Gitea #38 / things-haunt-house #456, #463) ─────────
+// The parks a split pair can land in. The wording is the gateway's own `detail`,
+// copied from `print_jobs.py`, because that is what the card renders — there is
+// no client-side mapping for these codes.
+
+/** Stage A (feet, external spool) submitted with the AMS still at the nozzle:
+ *  positive sensor evidence, so the gateway re-parks it even after an
+ *  acknowledgement — the swap has to actually happen (#463). */
+export const StageAAwaitingExternalSpool: Story = {
+  args: {
+    job: job({
+      name: 'Abacus — 4 columns · Stage A (feet)',
+      attention: [
+        {
+          code: 'awaiting_external_spool',
+          detail:
+            'the AMS is still at the nozzle (tray 5) — pull the AMS tube from the toolhead, load the external spool through to the nozzle, then acknowledge to start',
+        },
+      ],
+    }),
+  },
+}
+
+/** Stage B (body, chained) sliced and held: it is never auto-started, so this
+ *  is the normal resting state between the operator's spool swap and the
+ *  start. Plain Start, no reasons. */
+export const StageBReadyHeld: Story = {
+  args: {
+    job: job({
+      name: 'Abacus — 4 columns · Stage B (body)',
+      phase: 'ready',
+      startPolicy: 'hold',
+      attention: [],
+    }),
+  },
+}
+
+/** Stage B parked because the external spool is still on the feed — the
+ *  mirror of the Stage A park above (#451 C6). */
+export const StageBAwaitingSpoolSwap: Story = {
+  args: {
+    job: job({
+      name: 'Abacus — 4 columns · Stage B (body)',
+      startPolicy: 'hold',
+      attention: [
+        {
+          code: 'awaiting_spool_swap',
+          detail:
+            'a spool is still loaded on the external feed — unload it at the printer and let the AMS take over, then acknowledge to start',
+        },
+      ],
+    }),
+  },
+}
+
+/** Stage B's expectation-based bed check: the live bed no longer looks like
+ *  Stage A's finish frames (the plate moved, or the feet came off). */
+export const StageBBedMismatch: Story = {
+  args: {
+    job: job({
+      name: 'Abacus — 4 columns · Stage B (body)',
+      startPolicy: 'hold',
+      attention: [
+        {
+          code: 'bed_mismatch',
+          detail: "the plate no longer holds the previous job's output",
+          frameRef: null,
+        },
+      ],
+    }),
+  },
+}
+
+/** Chained starts switched off on the gateway: prepared, but acknowledging
+ *  can't override it, so the Start button is disabled and says why. */
+export const StageBChainStartDisabled: Story = {
+  args: {
+    job: job({
+      name: 'Abacus — 4 columns · Stage B (body)',
+      startPolicy: 'hold',
+      attention: [
+        {
+          code: 'chain_start_disabled',
+          detail:
+            'chained same-plate starts are switched off on this gateway — a chained job may be prepared but not started until CHAINED_START_ENABLED is set',
+        },
+      ],
+    }),
+  },
+}
