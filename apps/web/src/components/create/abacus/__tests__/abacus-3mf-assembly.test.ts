@@ -201,8 +201,11 @@ describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
       { positions: tri(0, 0, 192.5, 100.5), colorHex: '#c9a26e', label: 'Frame', extruder: 1 },
       { positions: tri(10, 10, 40, 50), colorHex: '#1f2937', label: 'Feet', extruder: 2 },
     ]
-    const { wipeTower } = assembleAbacus3mf(abacus, BAMBU_256_BED, { support: true })
-    const e = DEFAULT_WIPE_TOWER_PROFILE.envelopeMm
+    // Reserve the two-filament row, as the print path does (it always passes the plate's
+    // count). The count-unaware bound stopped fitting beside a 100.5-deep abacus when
+    // things-haunt-house#457 grew every row by one purge (73.5 mm deep at six slots).
+    const { wipeTower } = assembleAbacus3mf(abacus, BAMBU_256_BED, { support: true, filaments: 2 })
+    const e = envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 2)
     const t = {
       x0: wipeTower.xMm + e.minX,
       y0: wipeTower.yMm + e.minY,
@@ -247,10 +250,13 @@ describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
       { positions: tri(0, 0, 192.5, 100.5), colorHex: '#c9a26e', label: 'Frame', extruder: 1 },
       { positions: tri(10, 10, 40, 50), colorHex: '#2e86ab', label: 'Beads', extruder: 2 },
     ]
-    const { wipeTower } = assembleAbacus3mf(abacus, BAMBU_256_BED)
+    const { wipeTower } = assembleAbacus3mf(abacus, BAMBU_256_BED, { filaments: 2 })
     // front gap, centered on the model in x — TOWER_GAP below the footprint
     expect(wipeTower.xMm).toBeCloseTo(97, 3)
-    expect(wipeTower.yMm).toBeCloseTo(77.75 - 6 - DEFAULT_WIPE_TOWER_PROFILE.envelopeMm.maxY, 3)
+    expect(wipeTower.yMm).toBeCloseTo(
+      77.75 - 6 - envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 2).maxY,
+      3
+    )
   })
 })
 
@@ -325,9 +331,9 @@ describe('envelopeForFilaments (reserve the row, not the worst case)', () => {
   const depth = (e: { minY: number; maxY: number }): number => e.maxY - e.minY
 
   it('takes the row for the count it is given', () => {
-    expect(depth(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 2))).toBeCloseTo(21, 6)
-    expect(depth(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 3))).toBeCloseTo(31.5, 6)
-    expect(depth(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 6))).toBeCloseTo(63, 6)
+    expect(depth(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 2))).toBeCloseTo(31.5, 6)
+    expect(depth(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 3))).toBeCloseTo(42, 6)
+    expect(depth(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, 6))).toBeCloseTo(73.5, 6)
   })
 
   it('is monotonic, and its top row IS the count-unaware bound', () => {
@@ -343,7 +349,7 @@ describe('envelopeForFilaments (reserve the row, not the worst case)', () => {
   it('floors at the two-filament row', () => {
     // A one-filament plate grows a tower the moment routing attaches a support
     // interface, and the plate is packed before that resolves. Row 2 is the hedge —
-    // and at 21 mm deep it is nearly free, which is what makes reserving
+    // and at 31.5 mm deep it is still cheap, which is what makes reserving
     // unconditionally defensible in the first place.
     for (const n of [0, 1, 2]) {
       expect(envelopeForFilaments(DEFAULT_WIPE_TOWER_PROFILE, n)).toEqual(
