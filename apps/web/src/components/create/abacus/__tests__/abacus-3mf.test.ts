@@ -14,7 +14,7 @@
  */
 import { writeBinaryStl } from '@eink/frames-engine/stl'
 import { strFromU8, unzipSync } from 'fflate'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildAbacusThreeMf } from '../abacus-3mf'
 import { defaultParams, derived, type FilamentMap, type Params } from '../abacus-model'
 
@@ -245,6 +245,9 @@ describe('buildAbacusThreeMf (printed feet — Gitea #23)', () => {
   // markers off keeps the merges independent; feet slot 2 has no other geometry.
   const feetParams: Params = { ...noMarkers, feet_mode: 'printed' }
   const feetFm: FilamentMap = { ...fm, feet: 2 }
+  afterEach(() => {
+    vi.useRealTimers()
+  })
 
   it('merges the feet part render into the plan-assigned feet slot', () => {
     const { bodies } = buildAbacusThreeMf({
@@ -261,6 +264,26 @@ describe('buildAbacusThreeMf (printed feet — Gitea #23)', () => {
       { slot: 1, label: 'Filament 2', colorHex: '#f5f5f5', triangleCount: 1 }, // earth bead
       { slot: 3, label: 'Filament 4', colorHex: '#2e86ab', triangleCount: 1 }, // heaven bead
     ])
+  })
+
+  it('builds byte-identical 3MFs across time so a chained Stage B passes the identity gate (THH #456 / abaci #38)', () => {
+    // Stage A and Stage B are separate submits, each rebuilding the 3MF from the same
+    // params + STL. THH admits Stage B only if its model bytes equal Stage A's, so the
+    // build must be a pure function of the design — no wall-clock zip timestamps.
+    const build = () =>
+      buildAbacusThreeMf({
+        stl: fixtureStl(feetParams),
+        feet: markerStl(6, 10, 10),
+        params: feetParams,
+        filamentMap: feetFm,
+      }).bytes
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 8, 8, 10, 0, 0))
+    const stageA = build()
+    vi.setSystemTime(new Date(2026, 8, 9, 22, 30, 0)) // Stage B: the next day, after Stage A printed
+    expect(Date.now()).toBe(new Date(2026, 8, 9, 22, 30, 0).getTime())
+    const stageB = build()
+    expect(stageB).toEqual(stageA)
   })
 
   it('emits the feet body first so the seam tool is filament 0 (THH #456 / abaci #38)', () => {

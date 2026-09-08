@@ -43,6 +43,7 @@ import {
 import {
   BAMBU_256_BED,
   DEFAULT_WIPE_TOWER_PROFILE,
+  THREE_MF_ZIP_MTIME,
   type WipeTowerProfileGeometry,
 } from './abacus-3mf-assembly'
 import {
@@ -392,7 +393,9 @@ export function buildModuleKit(args: {
   }
   zipInput['README.txt'] = strToU8(kitReadme(p, modules))
 
-  return { bytes: zipSync(zipInput), filename: kitFilename(p), modules }
+  // Same pinned stamp as the inner 3MFs: a kit download is a pure function of its design.
+  const bytes = zipSync(zipInput, { mtime: THREE_MF_ZIP_MTIME })
+  return { bytes, filename: kitFilename(p), modules }
 }
 
 /** The kit's printed instructions — counts, assembly, the joint_fit ritual,
