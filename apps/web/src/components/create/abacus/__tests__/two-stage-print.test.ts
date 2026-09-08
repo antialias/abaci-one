@@ -8,6 +8,8 @@ import {
   handoffView,
   jobIdFromSubmitBody,
   loadTwoStageRecord,
+  STAGE_A_PREP_STEPS,
+  STAGE_B_HANDOFF_STEPS,
   saveTwoStageRecord,
   sha256Hex,
   TWO_STAGE_PROCESS,
@@ -223,5 +225,20 @@ describe('helpers', () => {
       retry: true,
     })
     expect(handoffView(withB, phases({ a: 'completed', b: 'completed' }))).toEqual({ kind: 'done' })
+  })
+})
+
+describe('STAGE_A_PREP_STEPS', () => {
+  it('tells the operator to swap the toolhead feed to the external TPU95 spool before Stage A', () => {
+    const text = STAGE_A_PREP_STEPS.join(' ')
+    expect(STAGE_A_PREP_STEPS.length).toBeGreaterThanOrEqual(3)
+    expect(text).toMatch(/AMS PTFE tube/)
+    expect(text).toMatch(/external TPU95 spool/)
+    expect(text).toMatch(/printer screen/)
+  })
+
+  it('is the mirror of the Stage B hand-off, not a copy of it', () => {
+    expect(STAGE_A_PREP_STEPS.join(' ')).not.toMatch(/Unload the external/)
+    expect(STAGE_B_HANDOFF_STEPS.join(' ')).toMatch(/Unload the external/)
   })
 })
