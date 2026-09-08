@@ -2,7 +2,8 @@
  * Multi-material 3MF assembly tests (#9, #12): the export STL splits into one
  * body per filament slot via the shared shell→slot mapping, the ArUco marker
  * part renders merge into their plan-assigned slots (creating bodies for slots
- * with no frame/bead geometry), bodies come out in ascending slot order with the
+ * with no frame/bead geometry), bodies come out in ascending slot order (the
+ * printed-feet slot first, see the feet describe) with the
  * right colors/labels, empty slots are absent, and the result is a real zip.
  *
  * The fixture builds a synthetic triangle soup shaped the way `analyzeShells`
@@ -253,12 +254,36 @@ describe('buildAbacusThreeMf (printed feet — Gitea #23)', () => {
       filamentMap: feetFm,
     })
     expect(bodies).toEqual([
+      // slot 2 had NO frame/bead geometry — its body exists purely from the feet,
+      // and it comes FIRST (see the next test) even though it sorts third by slot
+      { slot: 2, label: 'Filament 3', colorHex: '#111111', triangleCount: 6 },
       { slot: 0, label: 'Filament 1', colorHex: '#c9a26e', triangleCount: 2 }, // frame
       { slot: 1, label: 'Filament 2', colorHex: '#f5f5f5', triangleCount: 1 }, // earth bead
-      // slot 2 had NO frame/bead geometry — its body exists purely from the feet
-      { slot: 2, label: 'Filament 3', colorHex: '#111111', triangleCount: 6 },
       { slot: 3, label: 'Filament 4', colorHex: '#2e86ab', triangleCount: 1 }, // heaven bead
     ])
+  })
+
+  it('emits the feet body first so the seam tool is filament 0 (THH #456 / abaci #38)', () => {
+    // THH's split/chain contract: Stage A (the feet, from the external spool) must
+    // run entirely on T0 and the chained Stage B's initial tool must be
+    // `filaments[0]`. Extruder = emission order and the ticket mirrors `bodies`,
+    // so "feet body first" is the whole guarantee. Feet on slot 2 would sort
+    // third by slot — pin that they still land on extruder 1.
+    const { bodies, bytes } = buildAbacusThreeMf({
+      stl: fixtureStl(feetParams),
+      feet: markerStl(6, 10, 10),
+      params: feetParams,
+      filamentMap: feetFm,
+    })
+    expect(bodies[0]).toMatchObject({ slot: 2, triangleCount: 6 })
+    expect(bodies.slice(1).map((b) => b.slot)).toEqual([0, 1, 3]) // the rest ascending
+    const modelSettings = strFromU8(unzipSync(bytes)['Metadata/model_settings.config'])
+    expect(modelSettings).toContain(
+      '<metadata key="name" value="Filament 3"/><metadata key="extruder" value="1"/>'
+    )
+    expect(modelSettings).toContain(
+      '<metadata key="name" value="Filament 1"/><metadata key="extruder" value="2"/>'
+    )
   })
 
   it('merges feet into the frame body when their slots collide (no-TPU fallback)', () => {
