@@ -37,6 +37,7 @@ import {
   type AbacusThreeMf,
   assertGroupsDiffer,
   emitThreeMfBodies,
+  type PartSoup,
   type SpoolBodySummary,
   type TextPlugRender,
 } from './abacus-3mf'
@@ -159,7 +160,7 @@ export interface ModuleSoups {
   /** Filament slot per shell. */
   slotOfShell: number[]
   /** Feet + inset-text soups, each already assigned its plan slot. */
-  partSoups: { slot: number; positions: Float32Array }[]
+  partSoups: PartSoup[]
   /** Printed feet rode this module — forces the assembly path + support keys. */
   feetPrinted: boolean
 }
@@ -201,7 +202,7 @@ export function moduleSoups(args: {
   // Feet ride the same unclassified part-pass merge as the mono export, under
   // the same gate (see buildAbacusThreeMf) so the map's conditional feet slot
   // and this consumer can never disagree about when feet exist.
-  const partSoups: { slot: number; positions: Float32Array }[] = []
+  const partSoups: PartSoup[] = []
   const feetPrinted = params.feet_mode === 'printed' && params.show_frame
   if (feetPrinted) {
     if (filamentMap.feet === undefined) {
@@ -218,7 +219,7 @@ export function moduleSoups(args: {
         `the module_${kind}_feet render came back empty — refusing to build a footless module 3MF`
       )
     }
-    partSoups.push({ slot: filamentMap.feet, positions: feetSoup.positions })
+    partSoups.push({ slot: filamentMap.feet, positions: feetSoup.positions, role: 'feet' })
   }
 
   // Inset side text (the CP-A end-module pockets): one render per color group

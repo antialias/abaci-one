@@ -53,6 +53,7 @@ import {
   assembleAbacus3mf,
   BAMBU_256_BED,
   DEFAULT_WIPE_TOWER_PROFILE,
+  FEET_PART_PROCESS,
   type WipeTowerProfileGeometry,
 } from './abacus-3mf-assembly'
 import {
@@ -96,6 +97,15 @@ export interface AbacusExportParts {
 }
 
 /** Per-body summary of what went into the 3MF — feeds the print panel + tests. */
+/** A part-pass soup headed for a slot's bucket. `role` marks the feet so the
+ *  emit can tell whether the feet slot's body is the feet alone (see
+ *  `FEET_PART_PROCESS`); markers and text carry no role. */
+export interface PartSoup {
+  slot: number
+  positions: Float32Array
+  role?: 'feet'
+}
+
 export interface SpoolBodySummary {
   /** Filament slot index (0-based, into `FilamentMap.slots`). */
   slot: number
@@ -225,7 +235,7 @@ export function buildAbacusThreeMf(args: {
   // a bead column) — they arrive as their own soups and merge straight into
   // their plan-assigned slots' buckets. The gates match the exporter's:
   // the part on AND a frame to sit in (a beads-only debug render has no pockets).
-  const partSoups: { slot: number; positions: Float32Array }[] = []
+  const partSoups: PartSoup[] = []
   if (params.show_markers && params.show_frame) {
     if (!markerBlack || !markerWhite) {
       throw new Error(
@@ -256,7 +266,7 @@ export function buildAbacusThreeMf(args: {
     if (feetSoup.triangleCount === 0) {
       throw new Error('the feet part render came back empty — refusing to build a footless 3MF')
     }
-    partSoups.push({ slot: filamentMap.feet, positions: feetSoup.positions })
+    partSoups.push({ slot: filamentMap.feet, positions: feetSoup.positions, role: 'feet' })
   }
 
   // Inset text: one render per inlay color group, each into its own plan slot.
@@ -337,7 +347,7 @@ export function emitThreeMfBodies(args: {
   mesh: StlMesh
   triShell: Int32Array
   slotOfShell: readonly number[]
-  partSoups: readonly { slot: number; positions: Float32Array }[]
+  partSoups: readonly PartSoup[]
   filamentMap: FilamentMap
   slotLabels?: readonly string[]
   /** Printed feet force the assembly path even single-bodied AND bake the
@@ -417,6 +427,16 @@ export function emitThreeMfBodies(args: {
     bucket.fill += soup.positions.length
   }
 
+  // The feet's own process keys (solid infill) ride only a body that is the feet
+  // and nothing else. Merged into another role's body — the no-TPU fallback puts
+  // the feet on the frame's slot — the keys would take the frame with them, and
+  // a rigid foot has no seam to solidify and nothing to squash.
+  const feetTris = partSoups.reduce(
+    (n, soup) => n + (soup.role === 'feet' ? soup.positions.length / 9 : 0),
+    0
+  )
+  const feetAlone = feetSlot !== undefined && feetTris > 0 && triCount.get(feetSlot) === feetTris
+
   const bodies: SpoolBodySummary[] = []
   const assemblyBodies: AssemblyBody[] = []
   for (const slot of slots) {
@@ -434,6 +454,7 @@ export function emitThreeMfBodies(args: {
       colorHex,
       label,
       extruder: assemblyBodies.length + 1,
+      ...(feetAlone && slot === feetSlot ? { process: FEET_PART_PROCESS } : {}),
     })
   }
 

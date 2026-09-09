@@ -56,10 +56,13 @@ export const TWO_STAGE_REAR_BAND_MM = 25
 /**
  * `style.process` keys the mode owns, on BOTH stages (the identity gate needs the
  * same resolved plan). Seam solidity first: a split through a merged solid leaves
- * Stage A's top layers as sparse infill with no top shell (the foot's top is
- * interior to the feet+frame union), so Stage B's first layer would land on open
- * infill — 100 % rectilinear infill plus interface shells make the seam a solid
- * bond (things-haunt-house#462 is the gateway-side seam band that retires this).
+ * Stage A's top layers with no top shell (the foot's top is interior to the
+ * feet+frame union), so Stage B's first layer lands on whatever infill the feet
+ * have. The feet print solid on their own account — `FEET_PART_PROCESS`, a
+ * per-part key in the 3MF that `--load-settings` leaves alone — so this style
+ * adds only the interface shells, and the operator's infill density stays on the
+ * frame and beads (a plate-wide 100 % here printed every bead solid).
+ * things-haunt-house#462 is the gateway-side seam band that retires the shells.
  * The speeds are the soft-TPU95 recipe proven on the #456 coupon: the slice takes
  * filament 0's AMS-TPU profile and TPU95 slips at those speeds (things-haunt-house#461
  * retires this by applying a feed-side profile below the seam only).
@@ -77,8 +80,6 @@ export const TWO_STAGE_REAR_BAND_MM = 25
  * THH's `--load-settings` on a submitted print.
  */
 export const TWO_STAGE_PROCESS: Readonly<Record<string, TicketStyle['process'][string]>> = {
-  sparse_infill_density: 100,
-  sparse_infill_pattern: 'rectilinear',
   interface_shells: true,
   initial_layer_speed: 15,
   initial_layer_infill_speed: 18,

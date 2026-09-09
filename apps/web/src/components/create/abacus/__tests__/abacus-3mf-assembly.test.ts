@@ -16,6 +16,7 @@ import {
   BAMBU_256_BED,
   DEFAULT_WIPE_TOWER_PROFILE,
   envelopeForFilaments,
+  FEET_PART_PROCESS,
   SUPPORT_TRANSITION_HEIGHT_MM,
   SUPPORT_TRANSITION_NAME,
   SUPPORT_TRANSITION_SPEED_MM_S,
@@ -150,6 +151,27 @@ describe('assembleAbacus3mf — support opts (printed feet, Gitea #23)', () => {
     expect(project.support_top_z_distance).toBe('0.2')
     // the interface SPOOL is THH's to pick (ticket filament order) — never baked
     expect('support_interface_filament' in project).toBe(false)
+  })
+
+  it('writes a part’s own process keys beside its extruder — the channel --load-settings leaves alone', () => {
+    const feet: AssemblyBody = {
+      positions: tri(0, 0, 60, 80),
+      colorHex: '#222222',
+      label: 'Feet',
+      extruder: 3,
+      process: FEET_PART_PROCESS,
+    }
+    const { modelSettings } = read(assembleAbacus3mf([...bodies, feet], BAMBU_256_BED).bytes)
+    expect(modelSettings).toContain(
+      '<metadata key="name" value="Feet"/><metadata key="extruder" value="3"/>' +
+        '<metadata key="sparse_infill_density" value="100%"/>' +
+        '<metadata key="sparse_infill_pattern" value="rectilinear"/></part>'
+    )
+    // the other parts carry none — their infill is the operator's
+    expect(modelSettings).toContain(
+      '<metadata key="name" value="Frame"/><metadata key="extruder" value="1"/></part>'
+    )
+    expect(modelSettings.match(/sparse_infill_density/g)).toHaveLength(1)
   })
 
   it('caps every first-frame feature with a 0.6 mm Orca modifier volume', () => {

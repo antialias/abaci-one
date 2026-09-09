@@ -102,14 +102,17 @@ describe('seam vs layer boundary', () => {
 })
 
 describe('withTwoStageProcess', () => {
-  it('forces the seam-solidity, interface-floor and slow-TPU keys over the operator style, keeping the rest', () => {
+  it('forces the interface-shell, interface-floor and slow-TPU keys over the operator style, keeping the rest', () => {
     const out = withTwoStageProcess({
       basePreset: '0.20mm-standard',
       process: { wall_loops: 3, sparse_infill_density: 15, support_top_z_distance: 0.2 },
     })
     expect(out.basePreset).toBe('0.20mm-standard')
     expect(out.process.wall_loops).toBe(3)
-    expect(out.process.sparse_infill_density).toBe(100)
+    // The operator's infill stays on the frame and beads: the feet are solid on
+    // their own account (FEET_PART_PROCESS rides the 3MF per part).
+    expect(out.process.sparse_infill_density).toBe(15)
+    expect('sparse_infill_density' in TWO_STAGE_PROCESS).toBe(false)
     expect(out.process.interface_shells).toBe(true)
     // The seam layer's PLA lands on the TPU interface, not on a foot: zero gap on
     // a solid interface makes it a floor (the operator's 0.2 gap is overridden).
