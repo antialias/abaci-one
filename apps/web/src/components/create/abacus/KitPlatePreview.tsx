@@ -30,6 +30,7 @@
 // paired printer or a WASM export.
 
 import { useId } from 'react'
+import { notice, STUDIO } from '@/components/studio/theme'
 import type { KitPlateLayout, KitPlatePlacement } from './abacus-kit-plate'
 
 export interface KitPlatePreviewProps {
@@ -47,13 +48,16 @@ export interface KitPlatePreviewProps {
   filaments?: number
 }
 
-const BED_FILL = 'rgba(15,23,42,0.72)'
-const BED_STROKE = 'rgba(148,163,184,0.45)'
-const MODULE_FILL = 'rgba(56,189,248,0.30)'
-const MODULE_STROKE = 'rgba(56,189,248,0.85)'
-const MODULE_TEXT = 'rgba(224,242,254,0.95)'
-const TOWER_STROKE = 'rgba(148,163,184,0.9)'
-const KEEPOUT_STROKE = 'rgba(248,113,113,0.85)'
+// The drawing's ink, all of it from the studio palette: the bed is a surface
+// (an opaque page ground read DARKER than the rail behind it), a module is the
+// ONE accent, the keep-out is the danger bar.
+const BED_FILL = STUDIO.color.surface
+const BED_STROKE = STUDIO.color.borderStrong
+const MODULE_FILL = STUDIO.color.accentFill
+const MODULE_STROKE = STUDIO.color.accent
+const MODULE_TEXT = STUDIO.color.text
+const TOWER_STROKE = STUDIO.color.muted
+const KEEPOUT_STROKE = STUDIO.color.tone.danger.bar
 
 /**
  * Font size for a label inside a `w × h` mm rect, or 0 to draw no label.
@@ -128,20 +132,16 @@ export function KitPlatePreview({
       <div
         data-component="kit-plate-preview"
         data-state="refused"
-        style={{
-          padding: '10px 12px',
-          borderRadius: 8,
-          background: 'rgba(127,29,29,0.32)',
-          border: '1px solid rgba(248,113,113,0.5)',
-          color: 'rgba(254,226,226,0.96)',
-          lineHeight: 1.45,
-          fontSize: 13,
-        }}
+        // status, not alert: the refusal recomputes with the design's params
+        role="status"
+        style={notice('danger')}
       >
-        <div style={{ fontWeight: 600 }}>{refusal.headline}</div>
-        <div style={{ color: 'rgba(254,226,226,0.82)', marginTop: 3 }}>{refusal.remediation}</div>
+        <div style={{ ...STUDIO.type.strong, color: 'inherit' }}>{refusal.headline}</div>
+        <div style={{ ...STUDIO.type.note, color: 'inherit', opacity: 0.85, marginTop: 3 }}>
+          {refusal.remediation}
+        </div>
         {refusal.modules.length > 0 && (
-          <div style={{ color: 'rgba(254,226,226,0.7)', marginTop: 4, fontSize: 12 }}>
+          <div style={{ ...STUDIO.type.note, color: 'inherit', opacity: 0.7, marginTop: 4 }}>
             {refusal.modules.join(', ')}
           </div>
         )}
@@ -155,11 +155,10 @@ export function KitPlatePreview({
         data-component="kit-plate-preview"
         data-state={pending ? 'pending' : 'idle'}
         style={{
+          ...STUDIO.type.note,
           padding: '10px 12px',
-          borderRadius: 8,
-          border: `1px dashed ${BED_STROKE}`,
-          color: 'rgba(203,213,225,0.72)',
-          fontSize: 12,
+          borderRadius: STUDIO.radius.button,
+          border: `1px dashed ${STUDIO.color.border}`,
         }}
       >
         {pending ? 'Laying the kit out on the bed…' : 'No plate to show yet.'}
@@ -183,7 +182,13 @@ export function KitPlatePreview({
         viewBox={`0 0 ${bed.wMm} ${bed.dMm}`}
         role="img"
         aria-label={`Build plate layout: ${caption}`}
-        style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8 }}
+        style={{
+          width: '100%',
+          height: 'auto',
+          display: 'block',
+          border: `1px solid ${STUDIO.color.border}`,
+          borderRadius: STUDIO.radius.button,
+        }}
       >
         <defs>
           {/* Diagonal hatch for the printer's keep-out. Pattern units are the
@@ -269,10 +274,7 @@ export function KitPlatePreview({
           <ModuleRect key={at.id} at={at} dMm={bed.dMm} />
         ))}
       </svg>
-      <div
-        data-element="kit-plate-caption"
-        style={{ marginTop: 6, fontSize: 12, color: 'rgba(203,213,225,0.72)' }}
-      >
+      <div data-element="kit-plate-caption" style={{ ...STUDIO.type.note, marginTop: 6 }}>
         {caption}
       </div>
     </div>

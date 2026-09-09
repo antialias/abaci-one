@@ -26,6 +26,7 @@ import {
 } from '@eink/print-dialog/ui'
 import '@eink/print-dialog/ui/style.css'
 import { useState } from 'react'
+import { CARD, STUDIO } from '@/components/studio/theme'
 import {
   type PrintConnectionDTO,
   type PrintProbeResult,
@@ -154,6 +155,10 @@ export function PairPrinterPrompt() {
         gap: '0.5rem',
         marginTop: '0.5rem',
       })}
+      // Panda's css() extracts LITERALS at build time, so a `STUDIO.*` value
+      // handed to it is silently dropped from the stylesheet — the theme's
+      // chrome has to ride in as an inline style here.
+      style={CARD}
     >
       <PairConnectionForm
         pair={adapter.pair}
@@ -165,7 +170,7 @@ export function PairPrinterPrompt() {
         role="status"
         aria-live="polite"
         data-element="pair-printer-notice"
-        className={css({ minHeight: '0.9rem', fontSize: '0.75rem', color: 'green.400' })}
+        style={{ ...STUDIO.type.note, minHeight: '0.9rem', color: STUDIO.color.tone.ok.text }}
       >
         {notice}
       </p>

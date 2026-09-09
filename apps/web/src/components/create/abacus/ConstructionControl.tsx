@@ -21,20 +21,16 @@
 // the choice legible, not to teach the mechanism. Three sentences: how it goes
 // together, how it holds, how it comes apart.
 
-import type { CSSProperties } from 'react'
 import { StudioChoice } from '@/components/studio/StudioChoice'
 import { StudioSelect } from '@/components/studio/StudioSelect'
+import { STUDIO } from '@/components/studio/theme'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { isModular, type JointType, SLIDING_FIT_VALUES } from './abacus-model'
 import { modularSizeDelta } from './ModularSeamPanel'
 
 const mm = (v: number) => v.toFixed(1)
 
-const NOTE: CSSProperties = {
-  fontSize: 11,
-  lineHeight: 1.5,
-  color: 'rgba(226,232,240,0.75)',
-}
+const NOTE = STUDIO.type.note
 
 export function ConstructionControl() {
   const { params, set } = useAbacusStudio()
@@ -99,10 +95,7 @@ export function ConstructionControl() {
                 {/* the tuning and the coupon are a printer's problem, so they
                     live in the print rail — say where, or the choice looks
                     unfinished */}
-                <div
-                  data-element="modular-print-pointer"
-                  style={{ fontSize: 10, lineHeight: 1.45, color: 'rgba(148,163,184,0.95)' }}
-                >
+                <div data-element="modular-print-pointer" style={NOTE}>
                   Tune the fit and print the seam coupon under Print options.
                 </div>
               </>

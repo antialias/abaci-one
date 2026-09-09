@@ -19,8 +19,9 @@
 // revocation stays discoverable without the panel being open.
 
 import Link from 'next/link'
-import { useRef, useState } from 'react'
+import { type CSSProperties, useRef, useState } from 'react'
 import { Disclosure } from '@/components/studio/Disclosure'
+import { button, CARD, CONTROL, STUDIO } from '@/components/studio/theme'
 import { useMyDesigns } from '@/hooks/useMyDesigns'
 import { DESIGN_NAME_MAX } from '@/lib/abacus/design-name'
 import { studioHref } from './studio-url'
@@ -43,6 +44,20 @@ function describe(name: string | null, label: string | null, cols: number | null
 
 const dated = (ms: number) =>
   new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+
+/** A design row: the job-row card — a card's surface at a row's height. */
+const ROW: CSSProperties = {
+  ...CARD,
+  padding: '8px 10px',
+  borderRadius: STUDIO.radius.button,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  fontSize: 11,
+}
+
+/** The row's own buttons: a chip, tightened so three of them fit a rail row. */
+const ROW_BTN: CSSProperties = { ...button('chip'), padding: '2px 8px' }
 
 export function MyDesignsList({ currentDesignId = null }: MyDesignsListProps) {
   const {
@@ -109,7 +124,7 @@ export function MyDesignsList({ currentDesignId = null }: MyDesignsListProps) {
               key={design.id}
               data-element="abacus-my-design-row"
               data-design-id={design.id}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}
+              style={ROW}
             >
               {editingId === design.id ? (
                 <input
@@ -129,14 +144,14 @@ export function MyDesignsList({ currentDesignId = null }: MyDesignsListProps) {
                     }
                   }}
                   style={{
+                    ...CONTROL,
+                    // a row-height field: the control box, tightened so renaming
+                    // in place doesn't make the row jump
+                    padding: '3px 6px',
+                    fontSize: 11,
+                    border: `1px solid ${STUDIO.color.accentBorder}`,
                     flex: 1,
                     minWidth: 0,
-                    padding: '1px 4px',
-                    borderRadius: 4,
-                    border: '1px solid rgba(6,182,212,0.6)',
-                    background: 'rgba(15,23,42,0.9)',
-                    color: 'rgba(226,232,240,1)',
-                    fontSize: 11,
                   }}
                 />
               ) : (
@@ -151,7 +166,7 @@ export function MyDesignsList({ currentDesignId = null }: MyDesignsListProps) {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      color: 'rgba(165,243,252,1)',
+                      color: STUDIO.color.accentText,
                       textDecoration: 'none',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
@@ -164,7 +179,7 @@ export function MyDesignsList({ currentDesignId = null }: MyDesignsListProps) {
                   {design.id === currentDesignId && (
                     <span
                       data-element="abacus-my-design-open"
-                      style={{ color: 'rgba(134,239,172,0.95)' }}
+                      style={{ color: STUDIO.color.tone.ok.text }}
                     >
                       · open
                     </span>
@@ -177,9 +192,7 @@ export function MyDesignsList({ currentDesignId = null }: MyDesignsListProps) {
                       🔗
                     </span>
                   )}
-                  <span
-                    style={{ marginLeft: 'auto', color: 'rgba(148,163,184,0.8)', fontSize: 10 }}
-                  >
+                  <span style={{ marginLeft: 'auto', color: STUDIO.color.muted2, fontSize: 10 }}>
                     {dated(design.createdAt)}
                   </span>
                   <button
@@ -187,7 +200,7 @@ export function MyDesignsList({ currentDesignId = null }: MyDesignsListProps) {
                     data-action="rename-design"
                     onClick={() => startRename(design.id, design.name)}
                     title="Rename this design. The link never changes."
-                    style={ghostButton}
+                    style={ROW_BTN}
                   >
                     ✎
                   </button>
@@ -201,7 +214,7 @@ export function MyDesignsList({ currentDesignId = null }: MyDesignsListProps) {
                       onClick={() => unshare(design.id)}
                       disabled={busy}
                       title="Stop anyone with the link from opening this. You can share it again later — same link."
-                      style={{ ...ghostButton, opacity: busy ? 0.55 : 1 }}
+                      style={{ ...ROW_BTN, opacity: busy ? 0.55 : 1 }}
                     >
                       🔒 Un-share
                     </button>
@@ -212,7 +225,7 @@ export function MyDesignsList({ currentDesignId = null }: MyDesignsListProps) {
                       onClick={() => remove(design)}
                       disabled={busy}
                       title="Take this out of your list. The design itself is kept, so any link you've already printed keeps working."
-                      style={{ ...ghostButton, opacity: busy ? 0.55 : 1 }}
+                      style={{ ...ROW_BTN, opacity: busy ? 0.55 : 1 }}
                     >
                       ✕ Remove
                     </button>
@@ -227,28 +240,24 @@ export function MyDesignsList({ currentDesignId = null }: MyDesignsListProps) {
             data-element="abacus-my-designs-undo"
             style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}
           >
-            <span style={{ color: 'rgba(148,163,184,0.95)' }}>
+            <span style={{ color: STUDIO.color.muted }}>
               Removed {undoable.name ? `“${undoable.name}”` : 'that design'}
             </span>
             <button
               type="button"
               data-action="undo-remove-design"
               onClick={() => undoRemove(undoable.id)}
-              style={{ ...ghostButton, borderColor: 'rgba(6,182,212,0.6)' }}
+              style={{ ...ROW_BTN, borderColor: STUDIO.color.accentBorderStrong }}
             >
               Undo
             </button>
           </div>
         )}
-        {truncated && (
-          <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.95)' }}>
-            Showing your 50 most recent.
-          </span>
-        )}
+        {truncated && <span style={STUDIO.type.note}>Showing your 50 most recent.</span>}
         {errorText && (
           <span
             data-element="abacus-my-designs-error"
-            style={{ fontSize: 11, color: 'rgba(252,165,165,0.95)' }}
+            style={{ ...STUDIO.type.note, color: STUDIO.color.dangerInline }}
           >
             {errorText}
           </span>
@@ -257,13 +266,3 @@ export function MyDesignsList({ currentDesignId = null }: MyDesignsListProps) {
     </Disclosure>
   )
 }
-
-const ghostButton = {
-  padding: '1px 6px',
-  borderRadius: 5,
-  border: '1px solid rgba(148,163,184,0.5)',
-  background: 'transparent',
-  color: 'rgba(226,232,240,1)',
-  fontSize: 10,
-  cursor: 'pointer',
-} as const

@@ -6,11 +6,19 @@
 // (printer profile) share one control instead of forking it. Options are plain
 // strings (value === label) or {value,label} pairs for id→label menus.
 //
+// Styled from theme.ts: label ABOVE the control in muted label-type, the select
+// itself the shared `CONTROL` box at full width, so selects, text fields, colour
+// wells and sliders all line up on the same left edge down a rail.
+//
 // An option may be `disabled` — kept visible on purpose. When a choice is real
 // hardware the user might own but the current geometry can't seat (a 1/2"
 // bumper on a stock-width brim), hiding it would read as "we don't support
 // that"; greying it with the reason in its own label says "not at these
-// settings", which is the true statement and names the fix.
+// settings", which is the true statement and names the fix. The option colours
+// are the light-popup pair from the theme — every platform paints the native
+// menu on white, whatever the rail behind it looks like.
+
+import { CONTROL, STUDIO } from './theme'
 
 export interface StudioSelectProps {
   label: string
@@ -33,28 +41,23 @@ export function StudioSelect({
   return (
     <label
       data-element={dataElement}
-      style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, fontWeight: 500 }}
+      style={{ display: 'flex', flexDirection: 'column', gap: STUDIO.space.field }}
     >
-      {label}
+      <span style={STUDIO.type.label}>{label}</span>
       <select
         value={value}
         data-action={dataAction}
         onChange={(e) => onChange(e.target.value)}
-        style={{
-          background: 'rgba(255,255,255,0.08)',
-          color: 'inherit',
-          border: '1px solid rgba(255,255,255,0.15)',
-          borderRadius: 4,
-          padding: '4px 6px',
-          fontSize: 12,
-        }}
+        style={{ ...CONTROL, width: '100%', boxSizing: 'border-box', cursor: 'pointer' }}
       >
         {opts.map((o) => (
           <option
             key={o.value}
             value={o.value}
             disabled={o.disabled}
-            style={{ color: o.disabled ? '#888' : '#111' }}
+            style={{
+              color: o.disabled ? STUDIO.color.optionTextDisabled : STUDIO.color.optionText,
+            }}
           >
             {o.label}
           </option>

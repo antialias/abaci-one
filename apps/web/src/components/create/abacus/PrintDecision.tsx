@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { button, STUDIO } from '@/components/studio/theme'
 import type { CommitmentSummary } from './abacus-commitment'
 import { PrintCommitmentCard } from './PrintCommitmentCard'
 
@@ -20,8 +21,16 @@ export function PrintDecision({ summary, plate, gates, prep, submit }: PrintDeci
     <>
       <PrintCommitmentCard summary={summary} plate={plate} />
       {gates.length > 0 && (
-        <div data-element="print-gates">
-          <div data-element="print-gates-heading">Before you can print</div>
+        <div
+          data-element="print-gates"
+          style={{ display: 'flex', flexDirection: 'column', gap: STUDIO.space.card }}
+        >
+          <div
+            data-element="print-gates-heading"
+            style={{ ...STUDIO.type.eyebrow, marginBottom: 2 }}
+          >
+            Before you can print
+          </div>
           {gates}
         </div>
       )}
@@ -32,22 +41,10 @@ export function PrintDecision({ summary, plate, gates, prep, submit }: PrintDeci
         disabled={submit.disabled}
         onClick={submit.onClick}
         title={submit.title}
-        // the PrintPanel button's styles, unchanged — except that the disabled
-        // look now follows the real `disabled` (it used to key off
-        // submitBlocked alone, so a two-stage seam miss left a dead button
-        // looking live)
-        style={{
-          padding: '10px 12px',
-          borderRadius: 8,
-          border: 'none',
-          background: submit.disabled
-            ? 'rgba(75,85,99,0.55)'
-            : 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-          color: submit.disabled ? 'rgba(209,213,219,0.7)' : '#fff',
-          fontSize: 13,
-          fontWeight: 700,
-          cursor: submit.disabled ? 'not-allowed' : 'pointer',
-        }}
+        // the studio's ONE primary style — the disabled look follows the real
+        // `disabled` (it used to key off submitBlocked alone, so a two-stage seam
+        // miss left a dead button looking live)
+        style={button('primary', { disabled: submit.disabled })}
       >
         {submit.label}
       </button>

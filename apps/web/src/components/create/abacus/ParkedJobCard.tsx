@@ -14,6 +14,7 @@
 // only local state is UI ceremony (two-tap arming, hiding a broken photo).
 
 import { useState } from 'react'
+import { button, notice, STUDIO } from '@/components/studio/theme'
 import { isParked, type JobRow } from './print-jobs'
 import type { SubmitFailure } from './print-submit-failure'
 
@@ -31,7 +32,7 @@ export interface ParkedJobCardProps {
   cancelFailure?: SubmitFailure | null
 }
 
-const amber = 'rgba(251,191,36,0.95)'
+const amber = STUDIO.color.warnInline
 
 function reasonText(job: JobRow): string {
   return job.attention.map((r) => r.detail ?? r.code).join('; ')
@@ -43,18 +44,14 @@ function ActionError({ failure }: { failure: SubmitFailure }) {
     <div
       data-element="parked-job-error"
       data-error-code={failure.code}
-      style={{
-        padding: '6px 8px',
-        borderRadius: 6,
-        background: 'rgba(127,29,29,0.35)',
-        border: '1px solid rgba(248,113,113,0.5)',
-        color: 'rgba(254,226,226,0.96)',
-        lineHeight: 1.4,
-      }}
+      role="alert"
+      style={notice('danger')}
     >
-      <div style={{ fontWeight: 600 }}>{failure.headline}</div>
+      <div style={{ ...STUDIO.type.strong, color: 'inherit' }}>{failure.headline}</div>
       {failure.remediation && (
-        <div style={{ color: 'rgba(254,226,226,0.82)', marginTop: 2 }}>{failure.remediation}</div>
+        <div style={{ ...STUDIO.type.note, color: 'inherit', opacity: 0.85, marginTop: 2 }}>
+          {failure.remediation}
+        </div>
       )}
     </div>
   )
@@ -128,20 +125,18 @@ export function ParkedJobCard({
       data-component="abacus-parked-job-card"
       data-element="parked-job-card"
       data-phase={job.phase}
+      // status, not alert: the card holds a polled camera frame and a live
+      // phase/progress, so every print-ring invalidation would re-announce it.
+      role="status"
       style={{
+        ...notice('warn'),
         display: 'flex',
         flexDirection: 'column',
         gap: 6,
         marginTop: 6,
-        padding: '8px 10px',
-        borderRadius: 8,
-        background: 'rgba(120,53,15,0.28)',
-        border: `1px solid ${'rgba(251,191,36,0.45)'}`,
-        color: 'rgba(254,243,199,0.96)',
-        lineHeight: 1.4,
       }}
     >
-      <div data-element="parked-job-title" style={{ fontWeight: 600 }}>
+      <div data-element="parked-job-title" style={{ ...STUDIO.type.strong, color: 'inherit' }}>
         <span aria-hidden="true">⏸ </span>
         {title}
       </div>
@@ -156,7 +151,7 @@ export function ParkedJobCard({
           src={`/api/abacus/print/jobs/${encodeURIComponent(job.id)}/attention-frame?t=${job.updatedAt ?? ''}`}
           alt="Latest camera view of the printer bed"
           onError={() => setBrokenToken(frameToken)}
-          style={{ width: '100%', borderRadius: 6, display: 'block' }}
+          style={{ width: '100%', borderRadius: STUDIO.radius.notice, display: 'block' }}
         />
       )}
 
@@ -196,7 +191,10 @@ export function ParkedJobCard({
                 ? `Start anyway, despite: ${reasonText(job)}`
                 : undefined
             }
-            style={primaryBtn(startPending || chainStartDisabled)}
+            style={{
+              ...button('primary', { disabled: startPending || chainStartDisabled }),
+              flex: 1,
+            }}
           >
             {startPending
               ? 'Starting…'
@@ -215,7 +213,7 @@ export function ParkedJobCard({
             onClick={handleStop}
             onBlur={() => setArmed((a) => (a === 'stop' ? null : a))}
             disabled={cancelPending}
-            style={dangerBtn(cancelPending)}
+            style={{ ...button('danger', { disabled: cancelPending }), flex: 1 }}
           >
             {cancelPending ? 'Stopping…' : armed === 'stop' ? 'Stop the print?' : 'Stop print'}
           </button>
@@ -226,7 +224,7 @@ export function ParkedJobCard({
               data-action="cancel-job"
               onClick={handleCancel}
               disabled={cancelPending}
-              style={secondaryBtn(cancelPending)}
+              style={{ ...button('secondary', { disabled: cancelPending }), color: 'inherit' }}
             >
               {cancelPending ? 'Canceling…' : 'Cancel'}
             </button>
@@ -238,47 +236,4 @@ export function ParkedJobCard({
       {cancelFailure && <ActionError failure={cancelFailure} />}
     </div>
   )
-}
-
-function primaryBtn(disabled: boolean): React.CSSProperties {
-  return {
-    flex: 1,
-    padding: '7px 8px',
-    borderRadius: 7,
-    border: 'none',
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    background: disabled
-      ? 'rgba(75,85,99,0.55)'
-      : 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-    color: disabled ? 'rgba(209,213,219,0.7)' : '#fff',
-  }
-}
-
-function secondaryBtn(disabled: boolean): React.CSSProperties {
-  return {
-    padding: '7px 10px',
-    borderRadius: 7,
-    border: '1px solid rgba(255,255,255,0.18)',
-    fontSize: 12,
-    fontWeight: 600,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    background: 'transparent',
-    color: 'inherit',
-  }
-}
-
-function dangerBtn(disabled: boolean): React.CSSProperties {
-  return {
-    flex: 1,
-    padding: '7px 8px',
-    borderRadius: 7,
-    border: '1px solid rgba(248,113,113,0.6)',
-    fontSize: 12,
-    fontWeight: 700,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    background: disabled ? 'rgba(75,85,99,0.55)' : 'rgba(153,27,27,0.5)',
-    color: disabled ? 'rgba(209,213,219,0.7)' : 'rgba(254,226,226,0.98)',
-  }
 }

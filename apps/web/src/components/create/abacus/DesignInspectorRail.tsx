@@ -23,10 +23,13 @@
 import { AbacusReact } from '@soroban/abacus-react'
 import { PlayerPicker } from '@/components/shared/PlayerPicker'
 import { Disclosure } from '@/components/studio/Disclosure'
+import { StudioCheckbox } from '@/components/studio/StudioCheckbox'
+import { StudioColor } from '@/components/studio/StudioColor'
 import { StudioSection } from '@/components/studio/StudioSection'
 import { StudioSelect } from '@/components/studio/StudioSelect'
+import { StudioSlider } from '@/components/studio/StudioSlider'
 import { StudioTextInput } from '@/components/studio/StudioTextInput'
-import { DebugCheckbox, DebugColor, DebugSlider } from '@/components/toys/ToyDebugPanel'
+import { button, STUDIO } from '@/components/studio/theme'
 import {
   ABACUS_COLOR_PALETTES,
   ABACUS_COLOR_SCHEMES,
@@ -106,11 +109,7 @@ const unfitSuffix = (fit: FeetFit): string => {
 const seamSuffix = (mf: ModuleFeetLayout): string =>
   mf.minScale ? ` — needs size ×${mf.minScale.toFixed(2)}` : ' — too wide beside the seam sockets'
 
-const NOTE = {
-  fontSize: 11,
-  lineHeight: 1.5,
-  color: 'rgba(148,163,184,0.95)',
-} as const
+const NOTE = STUDIO.type.note
 
 export interface DesignInspectorRailProps {
   /** ?player= value (pre-fallback), for the picker + notice */
@@ -177,13 +176,13 @@ export function DesignInspectorRail({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 16,
+        gap: STUDIO.space.rail,
         padding: '16px',
-        color: 'rgba(243,244,246,1)',
+        color: STUDIO.color.text,
         fontSize: 12,
       }}
     >
-      <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>Your abacus</div>
+      <div style={{ ...STUDIO.type.heading, letterSpacing: '0.02em' }}>Your abacus</div>
 
       {/* live mini-preview — the identity, reflecting every design edit */}
       <div
@@ -191,8 +190,8 @@ export function DesignInspectorRail({
         style={{
           display: 'flex',
           justifyContent: 'center',
-          background: 'rgba(255,255,255,0.04)',
-          borderRadius: 10,
+          background: STUDIO.color.surface,
+          borderRadius: STUDIO.radius.card,
           padding: '12px 8px',
           overflowX: 'auto',
         }}
@@ -215,31 +214,16 @@ export function DesignInspectorRail({
           parse for no new fact. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <PlayerPicker selectedPlayerId={selectedPlayerId} onSelect={onSelectPlayer} isDark />
-        <span
-          data-element="abacus-identity-owner"
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            color: 'rgba(148,163,184,0.95)',
-          }}
-        >
+        <span data-element="abacus-identity-owner" style={STUDIO.type.eyebrow}>
           {ownerLabel}
         </span>
         {playerUnavailable && (
-          <span
-            data-element="abacus-identity-unavailable"
-            style={{ fontSize: 11, color: 'rgba(148,163,184,0.95)' }}
-          >
+          <span data-element="abacus-identity-unavailable" style={NOTE}>
             Couldn't load that player's abacus — showing yours instead.
           </span>
         )}
         {designUnavailable && (
-          <span
-            data-element="abacus-design-unavailable"
-            style={{ fontSize: 11, color: 'rgba(148,163,184,0.95)' }}
-          >
+          <span data-element="abacus-design-unavailable" style={NOTE}>
             That design is private or no longer available — starting from the abacus instead. If
             it's yours, open it from the account that made it.
           </span>
@@ -258,7 +242,7 @@ export function DesignInspectorRail({
             justifyContent: 'space-between',
             gap: 8,
             fontSize: 11,
-            color: synced ? 'rgba(134,239,172,0.95)' : 'rgba(252,211,77,0.95)',
+            color: synced ? STUDIO.color.tone.ok.text : STUDIO.color.warnInline,
           }}
         >
           <span>
@@ -280,17 +264,16 @@ export function DesignInspectorRail({
                       : `Only a parent — or a teacher while ${playerName ?? 'this student'} is in class — can change their abacus`
                   }
                   style={{
-                    padding: '3px 8px',
-                    borderRadius: 5,
-                    border: '1px solid rgba(6,182,212,0.6)',
-                    background: 'rgba(6,182,212,0.15)',
-                    color: 'rgba(165,243,252,1)',
-                    fontSize: 11,
+                    // the accented half of the sync pair: this one WRITES the
+                    // identity, reset only discards
+                    ...button('pill', {
+                      on: true,
+                      disabled: !canWriteIdentity || !savableIdentity,
+                    }),
                     cursor:
                       !canWriteIdentity || !savableIdentity || saveIsPending
                         ? 'default'
                         : 'pointer',
-                    opacity: !canWriteIdentity || !savableIdentity ? 0.55 : 1,
                   }}
                 >
                   {saveIsPending ? 'saving…' : `make this ${playerPossessive} abacus`}
@@ -300,15 +283,7 @@ export function DesignInspectorRail({
                 type="button"
                 data-action="reset-to-my-abacus"
                 onClick={resync}
-                style={{
-                  padding: '3px 8px',
-                  borderRadius: 5,
-                  border: '1px solid rgba(148,163,184,0.5)',
-                  background: 'transparent',
-                  color: 'rgba(226,232,240,1)',
-                  fontSize: 11,
-                  cursor: 'pointer',
-                }}
+                style={button('pill', { on: false })}
               >
                 reset to {playerId ? `${playerPossessive} abacus` : 'my abacus'}
               </button>
@@ -318,7 +293,7 @@ export function DesignInspectorRail({
         {saveIsError && (
           <span
             data-element="abacus-identity-save-error"
-            style={{ fontSize: 11, color: 'rgba(252,165,165,0.95)' }}
+            style={{ ...NOTE, color: STUDIO.color.dangerInline }}
           >
             Couldn't save — check your access and try again.
           </span>
@@ -347,7 +322,7 @@ export function DesignInspectorRail({
           (Writing) stays collapsed. */}
       <StudioSection label="Shape" dataElement="abacus-section-shape">
         {isFdm && (
-          <DebugSlider
+          <StudioSlider
             label="size ×"
             value={params.scale_factor}
             min={0.5}
@@ -357,7 +332,7 @@ export function DesignInspectorRail({
             formatValue={(v) => v.toFixed(2)}
           />
         )}
-        <DebugSlider
+        <StudioSlider
           label="columns"
           value={params.cols}
           min={3}
@@ -402,7 +377,7 @@ export function DesignInspectorRail({
           />
         )}
         {isFdm && params.text_fill === 'single' && (
-          <DebugColor
+          <StudioColor
             label="text color"
             value={params.text_color}
             onChange={(v) => set('text_color', v)}
@@ -492,12 +467,7 @@ export function DesignInspectorRail({
                 <p
                   data-component="DesignInspectorRail"
                   data-element="abacus-bumper-note"
-                  style={{
-                    fontSize: 11,
-                    color: 'rgba(148,163,184,0.95)',
-                    lineHeight: 1.4,
-                    margin: 0,
-                  }}
+                  style={{ ...NOTE, margin: 0 }}
                 >
                   {params.feet_depth.toFixed(2)} mm pocket, so it stands{' '}
                   {bumperProud(matchBumper(params) as BumperPreset).toFixed(2)} mm proud.
@@ -525,7 +495,7 @@ export function DesignInspectorRail({
                 <p
                   data-component="DesignInspectorRail"
                   data-element="abacus-feet-crossbar-note"
-                  style={{ fontSize: 11, color: '#b45309', lineHeight: 1.4, margin: '2px 0 0' }}
+                  style={{ ...NOTE, color: STUDIO.color.warnInline, margin: '2px 0 0' }}
                 >
                   At this size the frame is too thin to hide a crossbar — these feet use the
                   dovetail flare. Raise size × to about 0.75 to get the linked bar back.
@@ -573,7 +543,7 @@ export function DesignInspectorRail({
               <p
                 data-component="DesignInspectorRail"
                 data-element="abacus-feet-fit-note"
-                style={{ fontSize: 11, color: '#b45309', lineHeight: 1.4, margin: '2px 0 0' }}
+                style={{ ...NOTE, color: STUDIO.color.warnInline, margin: '2px 0 0' }}
               >
                 {fit.tooWide
                   ? `These feet are too wide to seat here: each pocket needs ${fit.needs.toFixed(1)} mm of the ${fit.has.toFixed(1)} mm border strip, so it would cut into the bead channels.`
@@ -628,14 +598,11 @@ export function DesignInspectorRail({
             />
           ))}
           {notes.length > 0 && (
-            <span
-              data-element="abacus-writing-note"
-              style={{ fontSize: 10, lineHeight: 1.45, color: 'rgba(148,163,184,0.95)' }}
-            >
+            <span data-element="abacus-writing-note" style={NOTE}>
               {notes.join(' ')}
             </span>
           )}
-          <span style={{ fontSize: 10, color: 'rgba(148,163,184,0.7)' }}>
+          <span style={{ ...NOTE, color: STUDIO.color.muted2 }}>
             your own words — space-separated, one word per engraving
           </span>
           {WORD_FIELDS.map(({ key, label, slot }) => {
@@ -673,7 +640,7 @@ export function DesignInspectorRail({
         data-element="abacus-markers"
         style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
       >
-        <DebugCheckbox
+        <StudioCheckbox
           label="camera markers"
           checked={params.show_markers}
           onChange={(v) => set('show_markers', v)}

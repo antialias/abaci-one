@@ -3,11 +3,11 @@
 // SegmentedControl — the studio's dark, cyan-active pill toggle (Gitea epic #5,
 // full-bleed CP1a). Factored from the viewer's hand-rolled "My colors / Print
 // preview" lens so the same primitive drives the fabrication-target chooser (the
-// old fork), the preview lens, and — later — the start-policy toggle. Inline
-// styles keep it self-contained inside the dark studio; CP5 promotes the cyan to
-// a Panda token.
+// old fork), the preview lens, and — later — the start-policy toggle. Styled
+// from theme.ts, which owns the one cyan gradient the studio is allowed to use
+// (the local copy of it is gone).
 
-const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
+import { STUDIO } from './theme'
 
 export interface SegmentedOption<T extends string> {
   value: T
@@ -39,7 +39,7 @@ export function SegmentedControl<T extends string>({
   dataAction = 'segmented-select',
   size = 'sm',
 }: SegmentedControlProps<T>) {
-  const pad = size === 'md' ? '9px 10px' : '6px 8px'
+  const pad = size === 'md' ? '10px' : '7px 8px'
   const fontSize = size === 'md' ? 12 : 11
   return (
     <div
@@ -49,9 +49,9 @@ export function SegmentedControl<T extends string>({
       aria-label={ariaLabel}
       style={{
         display: 'flex',
-        borderRadius: 7,
+        borderRadius: STUDIO.radius.segmented,
         overflow: 'hidden',
-        border: '1px solid rgba(148,163,184,0.35)',
+        border: `1px solid ${STUDIO.color.borderStrong}`,
       }}
     >
       {options.map((opt) => {
@@ -72,8 +72,8 @@ export function SegmentedControl<T extends string>({
               gap: 6,
               padding: pad,
               border: 'none',
-              background: active ? CYAN_GRADIENT : 'transparent',
-              color: active ? '#fff' : 'rgba(203,213,225,0.9)',
+              background: active ? STUDIO.gradient.accent : 'transparent',
+              color: active ? STUDIO.color.onAccent : STUDIO.color.text2,
               fontSize,
               fontWeight: 600,
               cursor: 'pointer',

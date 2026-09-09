@@ -17,6 +17,7 @@
 // it the moment that prose changes. `cause` is the stable machine class, so it
 // rides out as a data attribute for tests and support rather than as copy.
 
+import { notice as noticeStyle } from '@/components/studio/theme'
 import type { JobNotice } from './print-jobs'
 
 export interface JobNoticesProps {
@@ -38,14 +39,13 @@ export function JobNotices({ notices }: JobNoticesProps) {
           data-code={notice.code}
           data-cause={notice.cause ?? undefined}
           style={{
+            ...noticeStyle('warn'),
+            // a job row is a compact 11 px list; the notice fragment's 12 px /
+            // 8-10 px box roughly doubles each row's height inside it
+            padding: '5px 8px 5px 10px',
+            fontSize: 11,
             display: 'flex',
             gap: 6,
-            padding: '4px 7px',
-            borderRadius: 5,
-            background: 'rgba(120,53,15,0.30)',
-            border: '1px solid rgba(251,191,36,0.35)',
-            color: 'rgba(254,243,199,0.94)',
-            lineHeight: 1.45,
             whiteSpace: 'normal',
             overflowWrap: 'anywhere',
           }}

@@ -14,12 +14,16 @@
 // the right, and the box was a card in a rail that has none. An option list
 // has no "beneath": the only things inside a row are that row's.
 //
+// Styled from theme.ts: the selected option wears the studio's one accent as a
+// soft fill plus border, and nothing else in the list is tinted at all.
+//
 // The options are native radios sharing one `name`, so arrow keys move between
 // them and the label text is the click target. The nested controls render
 // OUTSIDE the <label> (a select inside a label would be activated by the
 // label and is invalid nesting) but inside the option's block.
 
 import { type CSSProperties, type ReactNode, useId } from 'react'
+import { STUDIO } from './theme'
 
 export interface StudioChoiceOption<V extends string> {
   value: V
@@ -39,18 +43,18 @@ export interface StudioChoiceProps<V extends string> {
   dataAction?: string
 }
 
-const LABEL: CSSProperties = { fontSize: 11, fontWeight: 500 }
+const LABEL: CSSProperties = STUDIO.type.label
 
 const OPTION: CSSProperties = {
-  borderRadius: 8,
+  borderRadius: STUDIO.radius.choice,
   border: '1px solid transparent',
-  padding: '7px 10px 7px 8px',
+  padding: '9px 12px 9px 10px',
 }
 
 const OPTION_SELECTED: CSSProperties = {
   ...OPTION,
-  background: 'rgba(6,182,212,0.08)',
-  border: '1px solid rgba(6,182,212,0.35)',
+  background: STUDIO.color.accentSoft,
+  border: `1px solid ${STUDIO.color.accentBorder}`,
 }
 
 const ROW: CSSProperties = {
@@ -65,30 +69,21 @@ const RADIO: CSSProperties = {
   width: 14,
   height: 14,
   margin: '2px 0 0',
-  accentColor: '#06b6d4',
+  accentColor: STUDIO.color.accent,
   cursor: 'pointer',
 }
 
-const TITLE: CSSProperties = {
-  fontSize: 12,
-  fontWeight: 600,
-  lineHeight: 1.3,
-  color: 'rgba(243,244,246,1)',
-}
+const TITLE: CSSProperties = STUDIO.type.strong
 
-const DESCRIPTION: CSSProperties = {
-  fontSize: 11,
-  lineHeight: 1.45,
-  color: 'rgba(148,163,184,0.95)',
-}
+const DESCRIPTION: CSSProperties = STUDIO.type.note
 
 // indented to the title's column, so the nested controls hang off the option
 // the way the description does
 const DETAILS: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 8,
-  marginTop: 8,
+  gap: STUDIO.space.card,
+  marginTop: STUDIO.space.card,
   paddingLeft: 24,
 }
 
