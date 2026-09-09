@@ -476,7 +476,8 @@ export type PageSpotImageGenerateEvent =
 // Profile Image Generate domain events
 // ============================================================================
 
-import type { ProfileSize, ProfileTheme, ProfileState } from './profile-image-generate'
+import type { SkippedPart } from '@/db/schema/session-plans'
+import type { ProfileSize, ProfileState, ProfileTheme } from './profile-image-generate'
 
 export type ProfileImageGenerateEvent =
   | {
@@ -551,6 +552,7 @@ export type SessionPlanEvent =
       type: 'plan_structure_ready'
       message: string
       parts: Array<{ type: string; problemCount: number }>
+      skippedParts?: SkippedPart[]
     }
   | {
       type: 'plan_generating_problem'

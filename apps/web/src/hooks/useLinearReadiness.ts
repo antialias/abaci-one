@@ -9,21 +9,47 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/queryClient'
-import { curriculumKeys, sessionPlanKeys } from '@/lib/queryKeys'
 import type {
+  LinearCategoryStatus,
+  LinearReadinessFrontier,
+  LinearReadinessSkillState,
   LinearReadinessState,
   LinearReadyCategory,
 } from '@/lib/curriculum/linear-readiness-service'
+import { api } from '@/lib/queryClient'
+import { curriculumKeys, sessionPlanKeys } from '@/lib/queryKeys'
 
-export type { LinearReadinessState, LinearReadyCategory }
+export type {
+  LinearCategoryStatus,
+  LinearReadinessFrontier,
+  LinearReadinessSkillState,
+  LinearReadinessState,
+  LinearReadyCategory,
+}
+
+/**
+ * True when the readiness flag is on and no category currently feeds number
+ * sentences. Client-safe (the service module is server-only).
+ */
+export function isLinearLocked(state: LinearReadinessState | undefined | null): boolean {
+  if (!state?.enabled) return false
+  return !state.categories.some((c) => c.status === 'ready')
+}
 
 async function fetchLinearReadiness(playerId: string): Promise<LinearReadinessState> {
   const response = await api(`curriculum/${playerId}/linear-veto`)
   if (!response.ok) {
     throw new Error(`Failed to load linear readiness: ${response.statusText}`)
   }
-  return response.json()
+  const state = (await response.json()) as LinearReadinessState
+  // Old replicas (rolling deploy) may still send categories without `status`.
+  return {
+    ...state,
+    categories: state.categories.map((c) => ({
+      ...c,
+      status: c.status ?? (c.vetoed ? 'vetoed' : 'ready'),
+    })),
+  }
 }
 
 /** Fetch the derived linear-ready categories + veto state for a student. */

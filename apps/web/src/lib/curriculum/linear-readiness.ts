@@ -36,17 +36,18 @@
  * on the manual ladder (a teacher's `none` removes it — "off means off").
  */
 
-import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
-import { isActive } from '@/db/schema/player-skill-mastery'
 import {
+  getCategoryDisplayName,
   getCategorySkillIds,
   getFullSkillId,
   getSkillCategory,
   type SkillCategoryKey,
 } from '@/constants/skillCategories'
+import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
+import { isActive } from '@/db/schema/player-skill-mastery'
 import type { SkillBktResult } from '@/lib/curriculum/bkt/types'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
-import { assessSkillReadiness } from '@/lib/curriculum/skill-readiness'
+import { assessSkillReadiness, type SkillReadinessResult } from '@/lib/curriculum/skill-readiness'
 
 // =============================================================================
 // Stage model
@@ -54,6 +55,8 @@ import { assessSkillReadiness } from '@/lib/curriculum/skill-readiness'
 
 interface StageDef {
   rank: number
+  /** Category the stage is drawn from (display name + veto key). */
+  category: SkillCategoryKey
   skillIds: string[]
   /**
    * Cascading stages never block the frontier (no tutorial, rarely drilled), but
@@ -67,13 +70,23 @@ interface StageDef {
  * carry rides with addition (rank 3), cascading borrow with subtraction (rank 6).
  */
 const STAGE_DEFS: StageDef[] = [
-  { rank: 0, skillIds: getCategorySkillIds('basic') },
-  { rank: 1, skillIds: getCategorySkillIds('fiveComplements') },
-  { rank: 2, skillIds: getCategorySkillIds('tenComplements') },
-  { rank: 3, skillIds: [getFullSkillId('advanced', 'cascadingCarry')], exempt: true },
-  { rank: 4, skillIds: getCategorySkillIds('fiveComplementsSub') },
-  { rank: 5, skillIds: getCategorySkillIds('tenComplementsSub') },
-  { rank: 6, skillIds: [getFullSkillId('advanced', 'cascadingBorrow')], exempt: true },
+  { rank: 0, category: 'basic', skillIds: getCategorySkillIds('basic') },
+  { rank: 1, category: 'fiveComplements', skillIds: getCategorySkillIds('fiveComplements') },
+  { rank: 2, category: 'tenComplements', skillIds: getCategorySkillIds('tenComplements') },
+  {
+    rank: 3,
+    category: 'advanced',
+    skillIds: [getFullSkillId('advanced', 'cascadingCarry')],
+    exempt: true,
+  },
+  { rank: 4, category: 'fiveComplementsSub', skillIds: getCategorySkillIds('fiveComplementsSub') },
+  { rank: 5, category: 'tenComplementsSub', skillIds: getCategorySkillIds('tenComplementsSub') },
+  {
+    rank: 6,
+    category: 'advanced',
+    skillIds: [getFullSkillId('advanced', 'cascadingBorrow')],
+    exempt: true,
+  },
 ]
 
 /** One past the last stage rank — the frontier value when everything is mastered. */
@@ -165,17 +178,136 @@ export function deriveLinearReadyFromEvidence(params: {
 // Adapter — wires the planner's data (history + BKT + mastery) into the core
 // =============================================================================
 
+/** Per-skill readiness for every staged skill, plus the reduced evidence the frontier uses. */
+export function buildStagedSkillEvidence(
+  problemHistory: ProblemResultWithContext[],
+  bktResults: Map<string, SkillBktResult> | undefined
+): {
+  evidenceBySkill: Map<string, SkillEvidence>
+  readinessBySkill: Map<string, SkillReadinessResult>
+} {
+  const evidenceBySkill = new Map<string, SkillEvidence>()
+  const readinessBySkill = new Map<string, SkillReadinessResult>()
+  for (const skillId of ALL_STAGED_SKILL_IDS) {
+    const readiness = assessSkillReadiness(skillId, problemHistory, bktResults?.get(skillId))
+    readinessBySkill.set(skillId, readiness)
+    evidenceBySkill.set(skillId, {
+      isSolid: readiness.isSolid,
+      opportunities: readiness.dimensions.volume.opportunities,
+    })
+  }
+  return { evidenceBySkill, readinessBySkill }
+}
+
+/** The stage currently holding number sentences back, and how close it is to solid. */
+export interface LinearReadinessFrontier {
+  rank: number
+  category: SkillCategoryKey
+  /** Category display name, e.g. "Basic Skills". */
+  name: string
+  skillIds: string[]
+  /** Skills in the stage that are practiced AND solid. */
+  solidCount: number
+  total: number
+}
+
+export interface LinearReadinessSkillDetail {
+  skillId: string
+  stageRank: number
+  readiness: SkillReadinessResult
+}
+
+export interface LinearReadinessExplanation {
+  /** `null` once every non-exempt stage is solid (nothing left to unlock). */
+  frontier: LinearReadinessFrontier | null
+  /** Linear-ready skill ids after the teacher's category vetoes. */
+  readySkillIds: Set<string>
+  /** Linear-ready skill ids ignoring vetoes — lets callers tell "vetoed" from "not ready". */
+  readyBeforeVetoSkillIds: Set<string>
+  /** Readiness detail for each skill in the frontier stage (empty when `frontier` is null). */
+  frontierSkills: LinearReadinessSkillDetail[]
+}
+
+function describeFrontier(
+  frontierRank: number,
+  evidenceBySkill: ReadonlyMap<string, SkillEvidence>
+): LinearReadinessFrontier | null {
+  const stage = STAGE_DEFS.find((s) => s.rank === frontierRank)
+  if (!stage) return null
+  const solidCount = stage.skillIds.filter((id) => {
+    const e = evidenceBySkill.get(id)
+    return e != null && e.opportunities > 0 && e.isSolid
+  }).length
+  return {
+    rank: stage.rank,
+    category: stage.category,
+    name: getCategoryDisplayName(stage.category),
+    skillIds: [...stage.skillIds],
+    solidCount,
+    total: stage.skillIds.length,
+  }
+}
+
 /**
- * Derive the set of linear-ready skill ids for a student at plan time.
- *
- * Pure and side-effect free. Reuses `assessSkillReadiness` (no second BKT compute)
- * to get both solidity and opportunity count per skill from the already-loaded
- * problem history.
- *
- * MUST-FIX (critique Finding 2): `bktResults` is `undefined` in classic mode AND on
- * every student's first adaptive session, so it is dereferenced defensively. With no
- * history, every skill has 0 opportunities → no stage is mastered → the result is
- * empty. Correct: no evidence ⇒ no linear.
+ * Pure explanation over pre-computed evidence: the frontier, the ready set with and
+ * without vetoes, and the frontier stage's per-skill readiness (when supplied).
+ */
+export function explainLinearReadinessFromEvidence(params: {
+  evidenceBySkill: ReadonlyMap<string, SkillEvidence>
+  activeSkillIds: ReadonlySet<string>
+  vetoedCategories: ReadonlySet<string>
+  readinessBySkill?: ReadonlyMap<string, SkillReadinessResult>
+}): LinearReadinessExplanation {
+  const { evidenceBySkill, activeSkillIds, vetoedCategories, readinessBySkill } = params
+  const readyBeforeVetoSkillIds = deriveLinearReadyFromEvidence({
+    evidenceBySkill,
+    activeSkillIds,
+    vetoedCategories: new Set(),
+  })
+  const readySkillIds = new Set(
+    [...readyBeforeVetoSkillIds].filter((id) => {
+      const category = getSkillCategory(id)
+      return category !== null && !vetoedCategories.has(category)
+    })
+  )
+  const frontier = describeFrontier(computeFrontierRank(evidenceBySkill), evidenceBySkill)
+  const frontierSkills: LinearReadinessSkillDetail[] = []
+  if (frontier && readinessBySkill) {
+    for (const skillId of frontier.skillIds) {
+      const readiness = readinessBySkill.get(skillId)
+      if (readiness) frontierSkills.push({ skillId, stageRank: frontier.rank, readiness })
+    }
+  }
+  return { frontier, readySkillIds, readyBeforeVetoSkillIds, frontierSkills }
+}
+
+/**
+ * Single-source readiness contract: everything the planner, the modal and the
+ * dashboard need to agree on WHY number sentences are or aren't available.
+ */
+export function explainLinearReadiness(params: {
+  skillMastery: Pick<PlayerSkillMastery, 'skillId' | 'practiceLevel'>[]
+  problemHistory: ProblemResultWithContext[]
+  bktResults: Map<string, SkillBktResult> | undefined
+  vetoedCategories: ReadonlySet<string>
+}): LinearReadinessExplanation {
+  const { skillMastery, problemHistory, bktResults, vetoedCategories } = params
+  const { evidenceBySkill, readinessBySkill } = buildStagedSkillEvidence(problemHistory, bktResults)
+  const activeSkillIds = new Set(
+    skillMastery.filter((s) => isActive(s.practiceLevel)).map((s) => s.skillId)
+  )
+  return explainLinearReadinessFromEvidence({
+    evidenceBySkill,
+    activeSkillIds,
+    vetoedCategories,
+    readinessBySkill,
+  })
+}
+
+/**
+ * Adapter used by the session planner: derive evidence from the student's
+ * mastery rows, practice history and BKT results, then reduce to the
+ * linear-ready ids. Requires nothing but the real catalog.
  */
 export function deriveLinearReadySkills(params: {
   skillMastery: Pick<PlayerSkillMastery, 'skillId' | 'practiceLevel'>[]
@@ -183,22 +315,7 @@ export function deriveLinearReadySkills(params: {
   bktResults: Map<string, SkillBktResult> | undefined
   vetoedCategories: ReadonlySet<string>
 }): Set<string> {
-  const { skillMastery, problemHistory, bktResults, vetoedCategories } = params
-
-  const evidenceBySkill = new Map<string, SkillEvidence>()
-  for (const skillId of ALL_STAGED_SKILL_IDS) {
-    const readiness = assessSkillReadiness(skillId, problemHistory, bktResults?.get(skillId))
-    evidenceBySkill.set(skillId, {
-      isSolid: readiness.isSolid,
-      opportunities: readiness.dimensions.volume.opportunities,
-    })
-  }
-
-  const activeSkillIds = new Set(
-    skillMastery.filter((s) => isActive(s.practiceLevel)).map((s) => s.skillId)
-  )
-
-  return deriveLinearReadyFromEvidence({ evidenceBySkill, activeSkillIds, vetoedCategories })
+  return explainLinearReadiness(params).readySkillIds
 }
 
 /** Group a set of linear-ready skill ids by category (for the graduation banner). */

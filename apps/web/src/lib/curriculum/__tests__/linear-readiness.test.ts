@@ -1,13 +1,15 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { getCategorySkillIds, getFullSkillId } from '@/constants/skillCategories'
 import {
   ALL_STAGED_SKILL_IDS,
   computeFrontierRank,
   deriveLinearReadyFromEvidence,
   deriveLinearReadySkills,
+  explainLinearReadiness,
+  explainLinearReadinessFromEvidence,
   groupLinearReadyByCategory,
-  stageRank,
   type SkillEvidence,
+  stageRank,
 } from '../linear-readiness'
 
 // Real catalog ids so the tests exercise the true stage model, not a stand-in.
@@ -112,13 +114,7 @@ describe('deriveLinearReadyFromEvidence', () => {
     const ev = baseEvidence()
     set(ev, [...CAT.basic, ...CAT.five, ...CAT.ten, CASCADING_CARRY], MASTERED)
     set(ev, CAT.fiveSub, WEAK) // just became active, still in progress
-    const active = new Set([
-      ...CAT.basic,
-      ...CAT.five,
-      ...CAT.ten,
-      CASCADING_CARRY,
-      ...CAT.fiveSub,
-    ])
+    const active = new Set([...CAT.basic, ...CAT.five, ...CAT.ten, CASCADING_CARRY, ...CAT.fiveSub])
     const ready = deriveLinearReadyFromEvidence({
       evidenceBySkill: ev,
       activeSkillIds: active,
@@ -193,12 +189,7 @@ describe('deriveLinearReadyFromEvidence', () => {
     set(ev, CAT.fiveSub, WEAK)
     const offSkill = CAT.ten[0]
     // offSkill is mastered + past the frontier, but the teacher turned it off (absent from active)
-    const active = new Set([
-      ...CAT.basic,
-      ...CAT.five,
-      ...CAT.ten.slice(1),
-      CASCADING_CARRY,
-    ])
+    const active = new Set([...CAT.basic, ...CAT.five, ...CAT.ten.slice(1), CASCADING_CARRY])
     const ready = deriveLinearReadyFromEvidence({
       evidenceBySkill: ev,
       activeSkillIds: active,
@@ -240,5 +231,87 @@ describe('groupLinearReadyByCategory', () => {
     expect(grouped.get('basic')).toEqual([CAT.basic[0]])
     expect(grouped.get('fiveComplements')?.sort()).toEqual([CAT.five[0], CAT.five[1]].sort())
     expect(grouped.has('tenComplements')).toBe(false)
+  })
+})
+
+describe('explainLinearReadinessFromEvidence', () => {
+  it('names the frontier stage and counts how many of its skills are solid', () => {
+    const m = baseEvidence()
+    set(m, CAT.basic.slice(0, 2), MASTERED)
+    set(m, CAT.basic.slice(2), WEAK)
+    const x = explainLinearReadinessFromEvidence({
+      evidenceBySkill: m,
+      activeSkillIds: new Set(CAT.basic),
+      vetoedCategories: noVeto,
+    })
+    expect(x.frontier).toMatchObject({
+      rank: 0,
+      category: 'basic',
+      name: 'Basic Skills',
+      solidCount: 2,
+      total: CAT.basic.length,
+    })
+    expect(x.frontier?.skillIds).toEqual(CAT.basic)
+    expect(x.readySkillIds.size).toBe(0)
+    expect(x.readyBeforeVetoSkillIds.size).toBe(0)
+  })
+
+  it('keeps the pre-veto ready set so callers can tell "vetoed" from "not ready"', () => {
+    const m = baseEvidence()
+    set(m, CAT.basic, MASTERED)
+    set(m, CAT.five, WEAK)
+    const x = explainLinearReadinessFromEvidence({
+      evidenceBySkill: m,
+      activeSkillIds: new Set([...CAT.basic, ...CAT.five]),
+      vetoedCategories: new Set(['basic']),
+    })
+    expect(x.frontier?.rank).toBe(1)
+    expect([...x.readyBeforeVetoSkillIds].sort()).toEqual([...CAT.basic].sort())
+    expect(x.readySkillIds.size).toBe(0)
+    // Same evidence, no veto → the ready set matches the legacy derivation
+    expect(
+      explainLinearReadinessFromEvidence({
+        evidenceBySkill: m,
+        activeSkillIds: new Set([...CAT.basic, ...CAT.five]),
+        vetoedCategories: noVeto,
+      }).readySkillIds
+    ).toEqual(
+      deriveLinearReadyFromEvidence({
+        evidenceBySkill: m,
+        activeSkillIds: new Set([...CAT.basic, ...CAT.five]),
+        vetoedCategories: noVeto,
+      })
+    )
+  })
+
+  it('frontier is null once every non-exempt stage is solid', () => {
+    const m = baseEvidence()
+    for (const ids of Object.values(CAT)) set(m, ids, MASTERED)
+    const x = explainLinearReadinessFromEvidence({
+      evidenceBySkill: m,
+      activeSkillIds: new Set(CAT.basic),
+      vetoedCategories: noVeto,
+    })
+    expect(x.frontier).toBeNull()
+    expect(x.frontierSkills).toEqual([])
+  })
+})
+
+describe('explainLinearReadiness (adapter)', () => {
+  it('empty history → Basic Skills frontier at 0 solid, with a readiness row per frontier skill', () => {
+    const x = explainLinearReadiness({
+      skillMastery: CAT.basic.map((skillId) => ({ skillId, practiceLevel: 'abacus' as const })),
+      problemHistory: [],
+      bktResults: undefined,
+      vetoedCategories: noVeto,
+    })
+    expect(x.frontier).toMatchObject({ category: 'basic', solidCount: 0, total: CAT.basic.length })
+    expect(x.readySkillIds.size).toBe(0)
+    expect(x.frontierSkills.map((d) => d.skillId)).toEqual(CAT.basic)
+    for (const d of x.frontierSkills) {
+      expect(d.stageRank).toBe(0)
+      expect(d.readiness.dimensions.volume.opportunities).toBe(0)
+      expect(d.readiness.dimensions.volume.met).toBe(false)
+    }
   })
 })

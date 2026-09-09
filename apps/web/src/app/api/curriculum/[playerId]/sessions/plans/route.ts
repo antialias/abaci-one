@@ -235,6 +235,7 @@ export const POST = withAuth(async (request, { params }) => {
         {
           error: error.message,
           code: 'NO_ELIGIBLE_PARTS',
+          skippedParts: error.skippedParts,
         },
         { status: 400 }
       )

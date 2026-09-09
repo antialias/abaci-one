@@ -91,7 +91,7 @@ function getPartTypeEmoji(type: 'abacus' | 'visualization' | 'linear'): string {
     case 'visualization':
       return '🧠'
     case 'linear':
-      return '💭'
+      return '📝'
   }
 }
 

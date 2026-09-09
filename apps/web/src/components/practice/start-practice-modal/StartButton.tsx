@@ -1,5 +1,6 @@
 'use client'
 
+import { describeSkippedPart } from '@/lib/curriculum/skipped-parts'
 import { css } from '../../../../styled-system/css'
 import { useStartPracticeModal } from '../StartPracticeModalContext'
 
@@ -9,8 +10,13 @@ interface StartButtonProps {
 }
 
 export function StartButton({ onStart }: StartButtonProps) {
-  const { isStarting, handleStart, generationProgress, generationProgressMessage } =
-    useStartPracticeModal()
+  const {
+    isStarting,
+    handleStart,
+    generationProgress,
+    generationProgressMessage,
+    generationSkippedParts,
+  } = useStartPracticeModal()
 
   // Use provided onStart or fall back to context handleStart
   const handleClick = onStart ?? handleStart
@@ -77,6 +83,17 @@ export function StartButton({ onStart }: StartButtonProps) {
           })}
         >
           <span>{generationProgressMessage || 'Starting...'}</span>
+          {generationSkippedParts.map((part) => (
+            <span
+              key={part.type}
+              data-element="skipped-part-note"
+              data-part={part.type}
+              data-reason={part.reason}
+              className={css({ fontSize: '0.75rem', fontWeight: '500', opacity: 0.85 })}
+            >
+              {describeSkippedPart(part)}
+            </span>
+          ))}
         </span>
       ) : (
         <span
