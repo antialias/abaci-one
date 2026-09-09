@@ -14,6 +14,7 @@
 // floating toast — HUD overlays are reserved for the scene.
 
 import { useState } from 'react'
+import { button, STUDIO } from '@/components/studio/theme'
 import { useClipboard } from '@/hooks/useClipboard'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { DesignShareToggle } from './DesignShareToggle'
@@ -93,14 +94,14 @@ export function DesignLinkChip({ selectedPlayerId, onDesignSaved }: DesignLinkCh
         disabled={designLinkPending}
         title={title}
         style={{
+          ...button('chip', { disabled: designLinkPending }),
           alignSelf: 'flex-start',
-          padding: '3px 8px',
-          borderRadius: 5,
-          border: copied ? '1px solid rgba(134,239,172,0.6)' : '1px solid rgba(148,163,184,0.5)',
-          background: 'transparent',
-          color: copied ? 'rgba(134,239,172,0.95)' : 'rgba(226,232,240,1)',
-          fontSize: 11,
           cursor: designLinkPending ? 'default' : 'pointer',
+          // the copied window is the only feedback this control gets, so it
+          // borrows the ok tone rather than a colour of its own
+          ...(copied
+            ? { color: STUDIO.color.tone.ok.text, border: `1px solid ${STUDIO.color.tone.ok.bar}` }
+            : null),
         }}
       >
         {label}
@@ -108,24 +109,18 @@ export function DesignLinkChip({ selectedPlayerId, onDesignSaved }: DesignLinkCh
       {saveFailed && (
         <span
           data-element="abacus-design-link-error"
-          style={{ fontSize: 11, color: 'rgba(252,165,165,0.95)' }}
+          style={{ ...STUDIO.type.note, color: STUDIO.color.dangerInline }}
         >
           Couldn&apos;t save the design — try again.
         </span>
       )}
       {clipboardRefused && (
-        <span
-          data-element="abacus-design-link-note"
-          style={{ fontSize: 11, color: 'rgba(148,163,184,0.95)' }}
-        >
+        <span data-element="abacus-design-link-note" style={STUDIO.type.note}>
           Design saved — its link is in the address bar.
         </span>
       )}
       {designLinkStale && (
-        <span
-          data-element="abacus-design-link-stale"
-          style={{ fontSize: 11, color: 'rgba(148,163,184,0.95)' }}
-        >
+        <span data-element="abacus-design-link-stale" style={STUDIO.type.note}>
           Edited — copy a new link to share this version.
         </span>
       )}

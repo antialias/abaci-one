@@ -9,6 +9,7 @@
 
 import { jsPDF } from 'jspdf'
 import { useCallback, useEffect, useState } from 'react'
+import { STUDIO } from '@/components/studio/theme'
 import {
   generateMarkerSVG,
   getMarkerPositionLabel,
@@ -18,7 +19,6 @@ import {
 import { css } from '../../../../styled-system/css'
 
 const MARKER_SIZE_MM = 20 // default marker tile edge, in mm
-const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
 const PAPER_SIZES = {
   letter: {
     width: 215.9,
@@ -274,7 +274,7 @@ export function AbacusMarkerSheet({
               color: 'text.primary',
               lineHeight: '1.5',
             })}
-            style={{ background: 'rgba(6, 182, 212, 0.08)' }}
+            style={{ background: STUDIO.color.accentSoft }}
           >
             <span aria-hidden="true" className={css({ fontSize: 'lg', lineHeight: '1' })}>
               📷
@@ -414,11 +414,13 @@ export function AbacusMarkerSheet({
                 border: 'none',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                boxShadow: '0 4px 15px rgba(6, 182, 212, 0.3)',
                 _hover: { transform: 'translateY(-1px)' },
                 _disabled: { opacity: 0.5, cursor: 'not-allowed', transform: 'none' },
               })}
-              style={{ background: CYAN_GRADIENT }}
+              // Panda extracts css() at build time from literals, so a theme
+              // constant inside css() is silently dropped — these two ride an
+              // inline style instead.
+              style={{ background: STUDIO.gradient.accent, boxShadow: STUDIO.shadow.primary }}
             >
               ⬇ Download {PAPER_SIZES[size].label} PDF
             </button>

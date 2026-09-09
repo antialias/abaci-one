@@ -13,14 +13,8 @@
 // the very same URL. That is why there's no confirm modal and no separate Undo
 // affordance. Hidden entirely unless the viewer owns a currently-saved design.
 
+import { button, STUDIO } from '@/components/studio/theme'
 import { useAbacusStudio } from './AbacusStudioContext'
-
-const SEGMENT = {
-  padding: '3px 8px',
-  borderRadius: 5,
-  fontSize: 11,
-  background: 'transparent',
-} as const
 
 export function DesignShareToggle() {
   const { designShared, canShareDesign, setDesignShared, designSharePending, designShareFailed } =
@@ -31,12 +25,8 @@ export function DesignShareToggle() {
   if (!canShareDesign) return null
 
   const segmentStyle = (active: boolean) => ({
-    ...SEGMENT,
-    border: active ? '1px solid rgba(6,182,212,0.6)' : '1px solid rgba(148,163,184,0.5)',
-    background: active ? 'rgba(6,182,212,0.15)' : 'transparent',
-    color: active ? 'rgba(165,243,252,1)' : 'rgba(226,232,240,1)',
+    ...button('pill', { on: active, disabled: designSharePending }),
     cursor: designSharePending ? 'default' : 'pointer',
-    opacity: designSharePending ? 0.55 : 1,
   })
 
   return (
@@ -44,17 +34,7 @@ export function DesignShareToggle() {
       data-element="abacus-design-share"
       style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
     >
-      <span
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          color: 'rgba(148,163,184,0.95)',
-        }}
-      >
-        Who can open it
-      </span>
+      <span style={STUDIO.type.eyebrow}>Who can open it</span>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button
           type="button"
@@ -80,7 +60,7 @@ export function DesignShareToggle() {
       {designShareFailed && (
         <span
           data-element="abacus-design-share-error"
-          style={{ fontSize: 11, color: 'rgba(252,165,165,0.95)' }}
+          style={{ ...STUDIO.type.note, color: STUDIO.color.dangerInline }}
         >
           Couldn&apos;t change who can open this — try again.
         </span>

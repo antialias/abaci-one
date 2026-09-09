@@ -23,11 +23,13 @@
 // the store's live filamentMap/catalog. `exporterReady` gates the buttons while
 // the viewer chunk is still loading.
 
-import { type CSSProperties, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Disclosure } from '@/components/studio/Disclosure'
+import { StudioNotice } from '@/components/studio/StudioNotice'
 import { StudioSection } from '@/components/studio/StudioSection'
 import { StudioSelect } from '@/components/studio/StudioSelect'
-import { DebugSlider } from '@/components/toys/ToyDebugPanel'
+import { StudioSlider } from '@/components/studio/StudioSlider'
+import { button, STUDIO } from '@/components/studio/theme'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { buildAbacusThreeMf } from './abacus-3mf'
 import { commitmentSummary } from './abacus-commitment'
@@ -37,33 +39,13 @@ import { downloadBlob } from './download-blob'
 import { FilamentPlanPanel } from './FilamentPlanPanel'
 import { InfillControls } from './InfillControls'
 import {
-  BTN,
   ModularFitPanel,
   ModuleKitExport,
-  PRIMARY_BTN,
   type SeamBusy,
   type SeamBusyProps,
 } from './ModularSeamPanel'
 import { PrintCommitmentCard } from './PrintCommitmentCard'
 import { PrintPanel } from './PrintPanel'
-
-// shared style for the one-click solver-fix buttons (sit inside the red error box)
-const FIX_BTN: CSSProperties = {
-  padding: '5px 9px',
-  borderRadius: 6,
-  border: '1px solid rgba(248,113,113,0.6)',
-  background: 'rgba(254,226,226,0.12)',
-  color: 'rgba(254,226,226,0.98)',
-  fontSize: 11,
-  fontWeight: 600,
-  cursor: 'pointer',
-}
-
-const NOTE: CSSProperties = {
-  fontSize: 11,
-  lineHeight: 1.5,
-  color: 'rgba(148,163,184,0.95)',
-}
 
 /**
  * ExportFiles — the "Files" section: what you can carry to a slicer yourself.
@@ -147,7 +129,7 @@ function ExportFiles({ primary, ...busyProps }: { primary: boolean } & SeamBusyP
       {modular ? (
         <>
           <ModuleKitExport primary={primary} {...busyProps} />
-          <div data-element="modular-kit-caveat" style={{ ...NOTE, fontSize: 10 }}>
+          <div data-element="modular-kit-caveat" style={{ ...STUDIO.type.note, fontSize: 10 }}>
             End modules carry engraved marker pockets, not printed markers. Words on the top/bottom
             rails and front/back walls print on the one-piece abacus only.
           </div>
@@ -166,7 +148,11 @@ function ExportFiles({ primary, ...busyProps }: { primary: boolean } & SeamBusyP
                   ? 'Download a print-ready multi-material 3MF'
                   : 'Preparing the 3D exporter…'
             }
-            style={primary ? PRIMARY_BTN(canExport) : BTN(canExport)}
+            style={
+              primary
+                ? button('primary', { disabled: !canExport })
+                : button('secondary', { disabled: !canExport })
+            }
           >
             ⬇ 3MF
           </button>
@@ -175,27 +161,16 @@ function ExportFiles({ primary, ...busyProps }: { primary: boolean } & SeamBusyP
             data-action="export-stl"
             onClick={onExportPlainStl}
             disabled={!canExport}
-            style={BTN(canExport)}
+            style={button('secondary', { disabled: !canExport })}
           >
             ⬇ plain STL
           </button>
         </>
       )}
       {exportError != null && (
-        <div
-          data-element="abacus-studio-export-error"
-          style={{
-            padding: '8px 10px',
-            borderRadius: 8,
-            background: 'rgba(127,29,29,0.35)',
-            border: '1px solid rgba(248,113,113,0.5)',
-            color: 'rgba(254,226,226,0.96)',
-            fontSize: 11,
-            lineHeight: 1.45,
-          }}
-        >
+        <StudioNotice tone="danger" dataElement="abacus-studio-export-error">
           Export failed: {exportError}
-        </div>
+        </StudioNotice>
       )}
     </StudioSection>
   )
@@ -272,13 +247,13 @@ export function FabricationRail() {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 14,
+        gap: STUDIO.space.rail,
         padding: '16px',
-        color: 'rgba(243,244,246,1)',
+        color: STUDIO.color.text,
         fontSize: 12,
       }}
     >
-      <div style={{ fontWeight: 700, fontSize: 13, letterSpacing: '0.02em' }}>3D print</div>
+      <div style={{ ...STUDIO.type.heading, letterSpacing: '0.02em' }}>3D print</div>
 
       {/* the single part-aware filament↔color list (Gitea #17): one row per abacus
           part, each with a thumbnail + a flecked tile of the filament it prints on.
@@ -317,76 +292,69 @@ export function FabricationRail() {
           style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
         >
           {errors.length > 0 && (
-            <div
-              data-element="abacus-studio-solver-errors"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: 'rgba(127,29,29,0.35)',
-                border: '1px solid rgba(248,113,113,0.5)',
-                color: 'rgba(254,226,226,0.96)',
-                fontSize: 11,
-                lineHeight: 1.45,
-              }}
+            <StudioNotice
+              tone="danger"
+              // status, not alert: this box is present for as long as the design
+              // is unprintable and its text recomputes on every step of the bead
+              // clearance drag below — an alert would interrupt on each one.
+              role="status"
+              dataElement="abacus-studio-solver-errors"
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span aria-hidden="true">⛔</span> Won&apos;t print on {profile.label}
+                </span>
+              }
+              actions={
+                scaleFix != null || clearanceFix != null ? (
+                  <>
+                    {scaleFix != null && (
+                      <button
+                        type="button"
+                        data-action="apply-solver-fix"
+                        onClick={() => set('scale_factor', scaleFix)}
+                        style={button('fix')}
+                      >
+                        ⤢ Scale up to {scaleFix}×
+                      </button>
+                    )}
+                    {clearanceFix != null && (
+                      <button
+                        type="button"
+                        data-action="apply-solver-fix"
+                        onClick={() => set('clearance', clearanceFix)}
+                        style={button('fix')}
+                      >
+                        ↕ Raise bead clearance to {clearanceFix.toFixed(2)} mm
+                      </button>
+                    )}
+                  </>
+                ) : undefined
+              }
             >
-              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span aria-hidden="true">⛔</span> Won&apos;t print on {profile.label}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {errors.map((r) => (
+                  <div key={r.dim}>{r.message}</div>
+                ))}
               </div>
-              {errors.map((r) => (
-                <div key={r.dim}>{r.message}</div>
-              ))}
-              {(scaleFix != null || clearanceFix != null) && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
-                  {scaleFix != null && (
-                    <button
-                      type="button"
-                      data-action="apply-solver-fix"
-                      onClick={() => set('scale_factor', scaleFix)}
-                      style={FIX_BTN}
-                    >
-                      ⤢ Scale up to {scaleFix}×
-                    </button>
-                  )}
-                  {clearanceFix != null && (
-                    <button
-                      type="button"
-                      data-action="apply-solver-fix"
-                      onClick={() => set('clearance', clearanceFix)}
-                      style={FIX_BTN}
-                    >
-                      ↕ Raise bead clearance to {clearanceFix.toFixed(2)} mm
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
+            </StudioNotice>
           )}
           {warnings.length > 0 && (
-            <div
-              data-element="abacus-studio-solver-warnings"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: 'rgba(120,53,15,0.30)',
-                border: '1px solid rgba(251,191,36,0.45)',
-                color: 'rgba(254,243,199,0.96)',
-                fontSize: 11,
-                lineHeight: 1.45,
-              }}
+            <StudioNotice
+              tone="warn"
+              role="status"
+              dataElement="abacus-studio-solver-warnings"
+              title={
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span aria-hidden="true">⚠️</span> Heads up
+                </span>
+              }
             >
-              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span aria-hidden="true">⚠️</span> Heads up
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {warnings.map((r) => (
+                  <div key={r.dim}>{r.message}</div>
+                ))}
               </div>
-              {warnings.map((r) => (
-                <div key={r.dim}>{r.message}</div>
-              ))}
-            </div>
+            </StudioNotice>
           )}
         </div>
       )}
@@ -404,7 +372,7 @@ export function FabricationRail() {
           dataElement="abacus-print-advanced"
           dataAction="toggle-print-advanced"
         >
-          <DebugSlider
+          <StudioSlider
             label="bead clearance (mm)"
             value={params.clearance}
             min={0.1}
@@ -413,10 +381,10 @@ export function FabricationRail() {
             onChange={(v) => set('clearance', v)}
             formatValue={(v) => v.toFixed(2)}
           />
-          <div data-element="abacus-clearance-note" style={NOTE}>
+          <div data-element="abacus-clearance-note" style={STUDIO.type.note}>
             Gap between each bead and its rod. Raise it if beads bind on your printer.
           </div>
-          <DebugSlider
+          <StudioSlider
             label="curve smoothness"
             value={params.fn}
             min={8}
@@ -424,7 +392,7 @@ export function FabricationRail() {
             step={1}
             onChange={(v) => set('fn', v)}
           />
-          <div data-element="abacus-fn-note" style={NOTE}>
+          <div data-element="abacus-fn-note" style={STUDIO.type.note}>
             Facets per curve. Higher is smoother, and slower to preview and slice.
           </div>
         </Disclosure>

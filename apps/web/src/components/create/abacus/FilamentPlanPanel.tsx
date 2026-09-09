@@ -30,6 +30,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { button, EYEBROW_RULED, notice, STUDIO } from '@/components/studio/theme'
 import {
   coPrintGroup,
   type FilamentCatalog,
@@ -46,6 +47,7 @@ import {
   type RoleAssignment,
   roleShifted,
 } from './abacus-plan'
+import styles from './FilamentPlanPanel.module.css'
 
 export { roleShifted } from './abacus-plan'
 
@@ -86,14 +88,14 @@ const CHIP_WARNING_CODES = new Set([
 // The neutral part glyph stays a single slate so the flecked TILE is the row's
 // only color object (Gitea #17) — the glyph says "which part", the tile "what
 // color it prints".
-const GLYPH_NEUTRAL = 'rgba(148,163,184,0.85)'
+const GLYPH_NEUTRAL = STUDIO.color.muted2
 
 // A tiny, shape-honest thumbnail of the actual abacus part a row maps. Beads use
 // StandaloneBead (reads the user's on-screen bead shape from AbacusDisplayProvider,
 // falling back to defaults with no provider); the frame + ArUco marker get bespoke
 // slate line glyphs. Text is defensive (inset text isn't emitted yet).
 function PartGlyph({ kind }: { kind: PrintRoleKind }) {
-  if (kind === 'bead') return <StandaloneBead size={16} color="#64748b" />
+  if (kind === 'bead') return <StandaloneBead size={16} color={GLYPH_NEUTRAL} />
   if (kind === 'markerBlack' || kind === 'markerWhite') {
     // a 3×3 fiducial: bordered square with a scatter of filled cells
     return (
@@ -170,44 +172,19 @@ function PartGlyph({ kind }: { kind: PrintRoleKind }) {
 // filament-mapping panel — a calm summary at rest, one inline picker at a time.
 // Section eyebrow above each role group (beads first, structure below).
 const GROUP_LABEL: CSSProperties = {
-  fontSize: 9.5,
+  ...STUDIO.type.eyebrow,
+  color: STUDIO.color.muted2,
+  padding: '10px 6px 4px',
+}
+// The picker's own chrome rides the DESIGNED colour it sits on, so its ink comes
+// from pickerInk (solved against that ground), not from the theme. Only the
+// geometry is shared.
+const PICKER_LABEL: CSSProperties = {
+  fontSize: 10,
+  fontWeight: 600,
   textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  fontWeight: 700,
-  color: 'rgba(148,163,184,0.9)',
-  padding: '6px 6px 2px',
+  letterSpacing: STUDIO.type.eyebrow.letterSpacing,
 }
-const RESET_BTN: CSSProperties = {
-  padding: '3px 8px',
-  borderRadius: 5,
-  border: '1px solid rgba(148,163,184,0.5)',
-  background: 'transparent',
-  color: 'rgba(226,232,240,1)',
-  fontSize: 11,
-  cursor: 'pointer',
-}
-// Hover/focus, the chevron, and the in-place row expansion (grid 0fr→1fr so the
-// picker pushes the rows below down instead of floating), plus the reduced-motion
-// opt-out — none of which inline styles can express. Namespaced (abx-) so it can't
-// collide.
-const MAPPING_CSS = `
-.abx-map-row { background: transparent; transition: background 120ms ease; }
-.abx-map-row:hover { background: rgba(255,255,255,0.05); }
-.abx-map-row:focus-visible { outline: 2px solid rgba(103,232,249,0.9); outline-offset: -2px; }
-.abx-swatch:focus-visible { outline: 2px solid rgba(103,232,249,0.9); outline-offset: 2px; }
-.abx-chevron { transition: transform 200ms ease; }
-.abx-plan-pending { animation: abxPlanPulse 1.4s ease-in-out infinite; }
-@keyframes abxPlanPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
-.abx-picker-wrap { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 400ms cubic-bezier(0.22,1,0.36,1); }
-.abx-picker-wrap[data-open="true"] { grid-template-rows: 1fr; }
-.abx-picker-inner { overflow: hidden; min-height: 0; opacity: 0; transform: translateY(-4px); transition: opacity 300ms ease-out, transform 300ms ease-out; }
-.abx-picker-wrap[data-open="true"] .abx-picker-inner { opacity: 1; transform: none; }
-@media (prefers-reduced-motion: reduce) {
-  .abx-map-row, .abx-chevron { transition: none; }
-  .abx-plan-pending { animation: none; }
-  .abx-picker-wrap, .abx-picker-inner { transition-duration: 0.001ms; }
-}
-`
 
 export interface FilamentPlanPanelProps {
   /** the intrinsic design being reduced (colors as the user built them) */
@@ -336,15 +313,15 @@ export function FilamentPlanPanel({
         title={support ? `${material} — breakaway support filament` : material}
         style={{
           flex: '0 0 auto',
-          fontSize: 8,
-          fontWeight: 700,
-          letterSpacing: '0.04em',
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: STUDIO.type.eyebrow.letterSpacing,
           textTransform: 'uppercase',
           lineHeight: 1.6,
           padding: '0 4px',
-          borderRadius: 3,
-          border: support ? '1px solid rgba(251,191,36,0.55)' : '1px solid rgba(148,163,184,0.4)',
-          color: support ? 'rgba(253,230,138,0.95)' : 'rgba(148,163,184,0.95)',
+          borderRadius: STUDIO.radius.swatch,
+          border: `1px solid ${support ? STUDIO.color.tone.warn.bar : STUDIO.color.borderStrong}`,
+          color: support ? STUDIO.color.warnInline : STUDIO.color.muted,
         }}
       >
         {material}
@@ -520,14 +497,14 @@ export function FilamentPlanPanel({
       alignItems: 'center',
       gap: 7,
       width: '100%',
-      padding: '5px 6px',
+      padding: 6,
       textAlign: 'left',
       border: 'none',
-      borderLeft: `2px solid ${a.overridden ? 'rgba(103,232,249,0.95)' : 'transparent'}`,
-      borderRadius: 6,
-      background: isOpen ? 'rgba(255,255,255,0.05)' : undefined,
-      color: 'rgba(203,213,225,0.9)',
-      fontSize: 11,
+      borderLeft: `2px solid ${a.overridden ? STUDIO.color.accentText : 'transparent'}`,
+      borderRadius: STUDIO.radius.notice,
+      background: isOpen ? STUDIO.color.surfaceRaised : undefined,
+      color: STUDIO.color.text2,
+      fontSize: 12,
       cursor: interactive ? 'pointer' : 'default',
     }
     // the flecked tile is the row's ONE color object (the neutral glyph carries no
@@ -549,18 +526,20 @@ export function FilamentPlanPanel({
         }
         style={{
           position: 'relative',
-          width: 18,
-          height: 18,
-          borderRadius: 4,
+          width: 22,
+          height: 22,
+          borderRadius: STUDIO.radius.swatch,
           flex: '0 0 auto',
           overflow: 'hidden',
           // an unplaced role's tile shows the color the user DESIGNED — the thing
           // nothing loaded can print — behind a dashed alarm border, not a blank.
           background: assigned ? assigned.hex : a.role.intrinsicHex,
           border: assigned
-            ? '1px solid rgba(255,255,255,0.25)'
-            : '1px dashed rgba(248,113,113,0.95)',
-          boxShadow: a.overridden ? '0 0 0 1px #111827, 0 0 0 2px rgba(103,232,249,0.95)' : 'none',
+            ? `1px solid ${STUDIO.color.buttonBorder}`
+            : `1px dashed ${STUDIO.color.tone.danger.bar}`,
+          boxShadow: a.overridden
+            ? `0 0 0 1px ${STUDIO.color.rail}, 0 0 0 2px ${STUDIO.color.accentText}`
+            : 'none',
         }}
       >
         {shifted && (
@@ -617,8 +596,10 @@ export function FilamentPlanPanel({
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            fontSize: 10.5,
-            color: assigned ? 'rgba(148,163,184,0.95)' : 'rgba(248,113,113,0.92)',
+            fontSize: STUDIO.type.note.fontSize,
+            // an unplaced role says so in the one-word inline danger colour —
+            // the row is not a notice, it is a status
+            color: assigned ? STUDIO.color.muted : STUDIO.color.dangerInline,
           }}
         >
           {assigned ? shortName(assigned) : 'no spool'}
@@ -627,11 +608,11 @@ export function FilamentPlanPanel({
         {interactive && (
           <span
             aria-hidden="true"
-            className="abx-chevron"
+            className={styles.chevron}
             style={{
               flex: '0 0 auto',
               fontSize: 10,
-              color: 'rgba(148,163,184,0.7)',
+              color: STUDIO.color.muted2,
               transform: isOpen ? 'rotate(90deg)' : 'none',
             }}
           >
@@ -654,7 +635,7 @@ export function FilamentPlanPanel({
         {interactive ? (
           <button
             type="button"
-            className="abx-map-row"
+            className={styles.mapRow}
             data-action="toggle-mapping-row"
             aria-expanded={isOpen}
             onClick={() => setOpenRole((prev) => (prev === a.role.key ? null : a.role.key))}
@@ -678,11 +659,11 @@ export function FilamentPlanPanel({
 
         {interactive && (
           <div
-            className="abx-picker-wrap"
+            className={styles.pickerWrap}
             data-open={isOpen}
             data-element="abacus-studio-role-picker"
           >
-            <div className="abx-picker-inner">
+            <div className={styles.pickerInner}>
               <div
                 style={{
                   display: 'flex',
@@ -690,22 +671,13 @@ export function FilamentPlanPanel({
                   gap: 7,
                   margin: '4px 0 8px',
                   padding: '8px 10px',
-                  borderRadius: 8,
+                  borderRadius: STUDIO.radius.control,
                   // the picker IS the designed color — no separate "Match" swatch
                   background: a.role.intrinsicHex,
                   border: `1px solid ${fgHair}`,
                 }}
               >
-                <span
-                  style={{
-                    fontSize: 9.5,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    color: fgSoft,
-                  }}
-                >
-                  Matching your {a.role.label}
-                </span>
+                <span style={{ ...PICKER_LABEL, color: fgSoft }}>Matching your {a.role.label}</span>
                 <div
                   role="group"
                   aria-label={`filament for ${a.role.label}`}
@@ -721,10 +693,7 @@ export function FilamentPlanPanel({
                       {sec.label && (
                         <span
                           style={{
-                            fontSize: 8.5,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            fontWeight: 700,
+                            ...PICKER_LABEL,
                             // dim sections carry the caution signal; both it and the
                             // anchor label ride the ground-solved ink (warn vs soft)
                             color: sec.dim ? warn : fgSoft,
@@ -737,7 +706,7 @@ export function FilamentPlanPanel({
                         {sec.spools.map(({ spool: s, idx }) => {
                           const isAssigned = idx === a.spoolIndex
                           const isPreferred = idx === preferred
-                          const ring = a.overridden ? 'rgba(103,232,249,0.95)' : fg
+                          const ring = a.overridden ? STUDIO.color.accentText : fg
                           const dimNote = sec.dim
                             ? sec.key === 'support'
                               ? ' · breakaway support'
@@ -747,7 +716,7 @@ export function FilamentPlanPanel({
                             <button
                               key={s.id}
                               type="button"
-                              className="abx-swatch"
+                              className={styles.swatch}
                               data-action="override-role-spool"
                               aria-label={`${a.role.label} uses ${s.name}${showMaterial ? ` ${s.material}` : ''} ${s.hex}${isPreferred ? ' (best match)' : ''}${dimNote}`}
                               aria-pressed={isAssigned}
@@ -757,11 +726,11 @@ export function FilamentPlanPanel({
                                 position: 'relative',
                                 width: 22,
                                 height: 22,
-                                borderRadius: 5,
+                                borderRadius: STUDIO.radius.swatch,
                                 flex: '0 0 auto',
                                 padding: 0,
                                 background: s.hex,
-                                border: '1px solid rgba(255,255,255,0.25)',
+                                border: `1px solid ${STUDIO.color.buttonBorder}`,
                                 cursor: 'pointer',
                                 // dimmed ≠ disabled: off-anchor picks stay clickable
                                 // (the warning strip answers them); the current
@@ -779,16 +748,18 @@ export function FilamentPlanPanel({
                                     position: 'absolute',
                                     top: -5,
                                     right: -5,
-                                    width: 13,
-                                    height: 13,
+                                    width: 14,
+                                    height: 14,
                                     borderRadius: '50%',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    background: 'rgba(17,24,39,0.95)',
-                                    border: '1px solid rgba(226,232,240,0.8)',
-                                    color: 'rgba(226,232,240,0.95)',
-                                    fontSize: 8,
+                                    // the badge stays a fixed dark disc rather than
+                                    // ground-solved ink: it must read on ANY swatch
+                                    background: STUDIO.color.rail,
+                                    border: `1px solid ${STUDIO.color.text}`,
+                                    color: STUDIO.color.text,
+                                    fontSize: 10,
                                     lineHeight: 1,
                                   }}
                                 >
@@ -807,15 +778,16 @@ export function FilamentPlanPanel({
                     display: 'flex',
                     alignItems: 'center',
                     gap: 5,
-                    fontSize: 9.5,
+                    fontSize: STUDIO.type.note.fontSize,
+                    lineHeight: STUDIO.type.note.lineHeight,
                     color: fgSoft,
                   }}
                 >
                   <span
                     aria-hidden="true"
                     style={{
-                      width: 12,
-                      height: 12,
+                      width: 14,
+                      height: 14,
                       borderRadius: '50%',
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -824,7 +796,7 @@ export function FilamentPlanPanel({
                       background: 'transparent',
                       border: `1px solid ${fgHair}`,
                       color: fg,
-                      fontSize: 8,
+                      fontSize: 10,
                     }}
                   >
                     ✓
@@ -837,14 +809,13 @@ export function FilamentPlanPanel({
                     data-action="clear-role-override"
                     onClick={() => setRoleSpool(a.role.key, '')}
                     style={{
+                      // a `fix` button, but on the picker's designed-colour ground:
+                      // the ground-solved ink stays, the geometry comes from theme
+                      ...button('fix'),
                       alignSelf: 'flex-start',
-                      padding: '2px 8px',
-                      borderRadius: 5,
                       border: `1px solid ${fgHair}`,
                       background: 'transparent',
                       color: fg,
-                      fontSize: 10,
-                      cursor: 'pointer',
                     }}
                   >
                     ↺ Back to auto
@@ -866,18 +837,7 @@ export function FilamentPlanPanel({
       {reductionWarnings.length > 0 && (
         <div
           data-element="abacus-studio-plan-warnings"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 9,
-            padding: '8px 10px',
-            borderRadius: 8,
-            background: 'rgba(120,53,15,0.30)',
-            border: '1px solid rgba(251,191,36,0.45)',
-            color: 'rgba(254,243,199,0.96)',
-            fontSize: 11,
-            lineHeight: 1.45,
-          }}
+          style={{ ...notice('warn'), display: 'flex', flexDirection: 'column', gap: 9 }}
         >
           {reductionWarnings.map((w) => {
             // the roles this warning names, resolved to live assignments;
@@ -924,16 +884,12 @@ export function FilamentPlanPanel({
                           aria-label={`${x.role.label} prints on ${spool.name}${showMaterial ? ` (${spool.material})` : ''} — show it in the filament mapping`}
                           title="Show in filament mapping"
                           style={{
+                            ...button('chip'),
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 5,
-                            padding: '3px 8px',
-                            borderRadius: 999,
-                            border: '1px solid rgba(251,191,36,0.4)',
-                            background: 'rgba(0,0,0,0.25)',
-                            color: 'rgba(254,243,199,0.96)',
-                            fontSize: 10.5,
-                            cursor: 'pointer',
+                            // on the warn wash: inherit the notice's tone text
+                            color: 'inherit',
                           }}
                         >
                           <span
@@ -944,7 +900,7 @@ export function FilamentPlanPanel({
                               borderRadius: 3,
                               flex: '0 0 auto',
                               background: x.role.intrinsicHex,
-                              border: '1px solid rgba(255,255,255,0.3)',
+                              border: `1px solid ${STUDIO.color.buttonBorder}`,
                             }}
                           />
                           <span>{x.role.label}</span>
@@ -959,7 +915,7 @@ export function FilamentPlanPanel({
                               borderRadius: 3,
                               flex: '0 0 auto',
                               background: spool.hex,
-                              border: '1px solid rgba(255,255,255,0.3)',
+                              border: `1px solid ${STUDIO.color.buttonBorder}`,
                             }}
                           />
                           <span
@@ -988,16 +944,7 @@ export function FilamentPlanPanel({
                             return next
                           })
                         }
-                        style={{
-                          padding: '3px 9px',
-                          borderRadius: 5,
-                          border: '1px solid rgba(251,191,36,0.6)',
-                          background: 'rgba(251,191,36,0.14)',
-                          color: 'rgba(254,243,199,0.98)',
-                          fontSize: 10.5,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
+                        style={button('fix')}
                       >
                         ↺ Fix — back to auto
                       </button>
@@ -1010,11 +957,11 @@ export function FilamentPlanPanel({
         </div>
       )}
 
-      {/* the single part-aware mapping list — one surface for design↔filament (#17).
-          Auto-snap picks by nearest color within the plate's co-print anchor group
-          (gh#163); each row's picker is the escape hatch. A pin that leaves the
-          anchor, lands on support media, or splits the frame/marker weld lights the
-          warning strip above — allowed, never blocked. */}
+      {/* the single part-aware mapping list — one surface for design↔filament (#17). */}
+      {/* Auto-snap picks by nearest color within the plate's co-print anchor group */}
+      {/* (gh#163); each row's picker is the escape hatch. A pin that leaves the */}
+      {/* anchor, lands on support media, or splits the frame/marker weld lights the */}
+      {/* warning strip above — allowed, never blocked. */}
       <div
         data-element="abacus-studio-filament-mapping"
         style={{ display: 'flex', flexDirection: 'column', gap: 2 }}
@@ -1025,19 +972,17 @@ export function FilamentPlanPanel({
           onHighlightRole?.(null)
         }}
       >
-        <style>{MAPPING_CSS}</style>
-
         <div
           data-element="abacus-studio-mapping-header"
           style={{
+            ...EYEBROW_RULED,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 8,
-            padding: '2px 6px 4px',
           }}
         >
-          <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(203,213,225,0.9)' }}>
+          <span>
             Filament mapping
             {planPending && (
               // the one visible cost of the matching authority moving to the
@@ -1045,14 +990,20 @@ export function FilamentPlanPanel({
               // a silent multi-second hold on stale colors reads as a hang.
               <span
                 data-element="abacus-studio-plan-pending"
-                className="abx-plan-pending"
-                style={{ marginLeft: 6, fontWeight: 400, color: 'rgba(148,163,184,0.95)' }}
+                className={styles.planPending}
+                style={{
+                  marginLeft: 6,
+                  fontWeight: 400,
+                  textTransform: 'none',
+                  letterSpacing: 'normal',
+                  color: STUDIO.color.muted,
+                }}
               >
                 · asking your printer…
               </span>
             )}
             {activeOverrides > 0 && (
-              <span style={{ marginLeft: 6, color: 'rgba(103,232,249,0.95)' }}>
+              <span style={{ marginLeft: 6, color: STUDIO.color.accentText }}>
                 · {activeOverrides} pinned
               </span>
             )}
@@ -1062,7 +1013,7 @@ export function FilamentPlanPanel({
               type="button"
               data-action="clear-all-overrides"
               onClick={() => setOverrides({})}
-              style={RESET_BTN}
+              style={{ ...button('chip'), textTransform: 'none', letterSpacing: 'normal' }}
             >
               ↺ Reset all to auto
             </button>
@@ -1070,14 +1021,7 @@ export function FilamentPlanPanel({
         </div>
 
         {catalog.spools.length === 1 && (
-          <div
-            style={{
-              fontSize: 10.5,
-              lineHeight: 1.4,
-              color: 'rgba(148,163,184,0.85)',
-              padding: '0 6px 4px',
-            }}
-          >
+          <div style={{ ...STUDIO.type.note, padding: '4px 6px' }}>
             One filament loaded — load more to remap roles.
           </div>
         )}
@@ -1096,12 +1040,9 @@ export function FilamentPlanPanel({
             <div
               data-element="abacus-studio-mapping-group"
               data-group="structure"
-              style={{ ...GROUP_LABEL, color: 'rgba(148,163,184,0.7)' }}
+              style={{ ...GROUP_LABEL, opacity: 0.8 }}
             >
-              Structure{' '}
-              <span style={{ fontWeight: 400, color: 'rgba(148,163,184,0.5)' }}>
-                · rarely changed
-              </span>
+              Structure <span style={{ fontWeight: 400, opacity: 0.7 }}>· rarely changed</span>
             </div>
             {structureRows.map(renderMappingRow)}
           </>
@@ -1111,23 +1052,24 @@ export function FilamentPlanPanel({
         <div
           data-element="abacus-studio-mapping-footer"
           style={{
+            ...STUDIO.type.note,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'baseline',
             gap: 8,
-            marginTop: 4,
-            padding: '4px 6px 0',
-            fontSize: 10,
-            textTransform: 'uppercase',
-            letterSpacing: '0.04em',
+            marginTop: 6,
+            padding: '8px 6px 0',
+            borderTop: `1px solid ${STUDIO.color.border}`,
           }}
         >
-          <span style={{ color: 'rgba(148,163,184,0.9)' }}>
+          <span>
             {facts.loaded} filament{facts.loaded === 1 ? '' : 's'} loaded
           </span>
           <span
             data-element="abacus-studio-mapping-shift"
-            style={{ color: facts.shifted > 0 ? 'rgba(251,191,36,0.92)' : 'rgba(148,163,184,0.7)' }}
+            style={{
+              color: facts.shifted > 0 ? STUDIO.color.warnInline : STUDIO.color.muted2,
+            }}
           >
             {facts.shifted > 0
               ? `${facts.shifted} color${facts.shifted === 1 ? '' : 's'} shift`

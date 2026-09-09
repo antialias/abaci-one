@@ -27,6 +27,7 @@ import { FabricationSwitch } from '@/components/create/abacus/FabricationSwitch'
 import { studioHref } from '@/components/create/abacus/studio-url'
 import { PageWithNav } from '@/components/PageWithNav'
 import { StudioShell } from '@/components/studio/StudioShell'
+import { STUDIO } from '@/components/studio/theme'
 import { useAbacusDesignSnapshot } from '@/hooks/useAbacusDesignSnapshot'
 import { usePlayerAbacusIdentity } from '@/hooks/usePlayerAbacusIdentity'
 import { css } from '../../../../styled-system/css'
@@ -45,9 +46,9 @@ const AbacusStudioViewer = dynamic(
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'rgba(226,232,240,0.7)',
           fontSize: 'sm',
         })}
+        style={{ color: STUDIO.color.text2 }}
       >
         Loading 3D preview…
       </div>
@@ -99,8 +100,8 @@ export default function CreateAbacusPage() {
           // mobile URL bar doesn't clip the studio).
           height: '100dvh',
           pt: 'var(--app-nav-height)',
-          bg: '#0b0f14',
         })}
+        style={{ background: STUDIO.color.bg }}
       >
         <AbacusStudioProvider
           playerId={playerUnavailable ? null : selectedPlayerId}

@@ -9,8 +9,13 @@
 // header in the SAME type as a Disclosure's, so the two read as one ladder and
 // the open/closed distinction carries the only meaning it should: "you will
 // probably want this" vs "ask for it".
+//
+// Styled from theme.ts — the header is the ruled eyebrow (`EYEBROW_RULED`),
+// which is what makes a rail of sections read as a document with headings
+// instead of a stack of bolded lines.
 
 import type { ReactNode } from 'react'
+import { EYEBROW_RULED, STUDIO } from './theme'
 
 export interface StudioSectionProps {
   label: string
@@ -27,19 +32,12 @@ export function StudioSection({
     <div
       data-component="studio-section"
       data-element={dataElement}
-      style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+      style={{ display: 'flex', flexDirection: 'column', gap: STUDIO.space.section }}
     >
-      <div
-        style={{
-          padding: '6px 2px',
-          color: 'rgba(203,213,225,0.9)',
-          fontSize: 12,
-          fontWeight: 600,
-        }}
-      >
-        {label}
+      <div style={EYEBROW_RULED}>{label}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: STUDIO.space.section }}>
+        {children}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{children}</div>
     </div>
   )
 }

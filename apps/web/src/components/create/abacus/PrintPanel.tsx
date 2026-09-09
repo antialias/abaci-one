@@ -33,6 +33,9 @@ import { PrintSettingsEditor, SupportRoleEditor } from '@eink/print-dialog/ui'
 import '@eink/print-dialog/ui/style.css'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
+import { Disclosure } from '@/components/studio/Disclosure'
+import { StudioNotice } from '@/components/studio/StudioNotice'
+import { button, CARD, EYEBROW_RULED, notice, STUDIO, toggleRow } from '@/components/studio/theme'
 import { persistAbacusDesign } from '@/hooks/useAbacusDesignSnapshot'
 import { useAbacusPrintJobs, useCancelPrintJob, useStartPrintJob } from '@/hooks/useAbacusPrintJobs'
 import { useAbacusPrintSettings, useSaveAbacusPrintSettings } from '@/hooks/useAbacusPrintSettings'
@@ -257,7 +260,7 @@ type SubmitStage = 'single' | 'stage-a' | 'stage-b'
 
 const stageTagStyle = {
   marginLeft: 6,
-  color: 'rgba(103,232,249,0.95)',
+  color: STUDIO.color.accentText,
   fontSize: 11,
   fontWeight: 700,
 } as const
@@ -490,10 +493,9 @@ export function PrintPanel(props: PrintPanelProps) {
   }
   useEffect(() => () => flushPendingSaveRef.current(), [])
 
+  // The Disclosure below owns the fold; the panel keeps the state because the
+  // floating shape widens for an open editor.
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // mount-once: after the first open the editor stays mounted, only hidden
-  const settingsEverOpened = useRef(false)
-  if (settingsOpen) settingsEverOpened.current = true
 
   // Auto-start is the studio default: the print goes the moment THH's preflight
   // clears (idle printer, clean bed, passing checks). When it can't, THH parks
@@ -921,28 +923,17 @@ export function PrintPanel(props: PrintPanelProps) {
   const gates: ReactNode[] = []
   if (unplacedRoles.length > 0) {
     gates.push(
-      <div
-        key="unplaced-roles"
-        data-element="print-unplaced-roles-gate"
-        style={{
-          display: 'flex',
-          gap: 8,
-          padding: '8px 10px',
-          borderRadius: 8,
-          background: 'rgba(120,53,15,0.30)',
-          border: '1px solid rgba(251,191,36,0.45)',
-          color: 'rgba(254,243,199,0.96)',
-          lineHeight: 1.45,
-        }}
-      >
-        <span aria-hidden="true">🎯</span>
-        <span>
-          No loaded filament can print {listRoles(unplacedRoles)} —{' '}
-          {unplacedRoles.length === 1 ? 'it shows' : 'they show'} here in the color you chose, which
-          nothing on the printer can lay down. Load a closer spool, or recolor{' '}
-          {unplacedRoles.length === 1 ? 'it' : 'them'} to something you have.
+      <StudioNotice key="unplaced-roles" tone="warn" dataElement="print-unplaced-roles-gate">
+        <span style={{ display: 'flex', gap: 8 }}>
+          <span aria-hidden="true">🎯</span>
+          <span>
+            No loaded filament can print {listRoles(unplacedRoles)} —{' '}
+            {unplacedRoles.length === 1 ? 'it shows' : 'they show'} here in the color you chose,
+            which nothing on the printer can lay down. Load a closer spool, or recolor{' '}
+            {unplacedRoles.length === 1 ? 'it' : 'them'} to something you have.
+          </span>
         </span>
-      </div>
+      </StudioNotice>
     )
   }
   if (feetGate.missing.length > 0) {
@@ -951,18 +942,16 @@ export function PrintPanel(props: PrintPanelProps) {
         key="feet-support"
         data-element="print-feet-support-gate"
         data-grade={feetGate.blocked ? 'blocking' : 'advisory'}
+        // status either way: the gate recomputes with the print style/params, so
+        // an assertive role would interrupt on every edit
+        role="status"
+        // the `notice()` fragment rather than <StudioNotice>: this gate carries
+        // `data-grade`, which the primitive has no passthrough for
         style={{
+          ...notice(feetGate.blocked ? 'warn' : 'info'),
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
-          padding: '8px 10px',
-          borderRadius: 8,
-          background: feetGate.blocked ? 'rgba(120,53,15,0.30)' : 'rgba(30,58,138,0.28)',
-          border: feetGate.blocked
-            ? '1px solid rgba(251,191,36,0.45)'
-            : '1px solid rgba(96,165,250,0.45)',
-          color: feetGate.blocked ? 'rgba(254,243,199,0.96)' : 'rgba(219,234,254,0.96)',
-          lineHeight: 1.45,
         }}
       >
         <span>
@@ -987,19 +976,7 @@ export function PrintPanel(props: PrintPanelProps) {
               },
             })
           }
-          style={{
-            alignSelf: 'flex-start',
-            padding: '5px 11px',
-            borderRadius: 6,
-            border: feetGate.blocked
-              ? '1px solid rgba(251,191,36,0.5)'
-              : '1px solid rgba(96,165,250,0.5)',
-            background: feetGate.blocked ? 'rgba(254,243,199,0.12)' : 'rgba(219,234,254,0.12)',
-            color: feetGate.blocked ? 'rgba(254,243,199,0.98)' : 'rgba(219,234,254,0.98)',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
+          style={{ ...button('fix', { disabled: !style }), alignSelf: 'flex-start' }}
         >
           {feetGate.blocked ? 'Enable supports' : 'Keep supports off the model'}
         </button>
@@ -1008,25 +985,14 @@ export function PrintPanel(props: PrintPanelProps) {
   }
   if (twoStageOn && seamCheck?.misses) {
     gates.push(
-      <div
-        key="two-stage-seam"
-        data-element="two-stage-seam-warning"
-        style={{
-          padding: '8px 10px',
-          borderRadius: 8,
-          background: 'rgba(120,53,15,0.35)',
-          border: '1px solid rgba(251,191,36,0.5)',
-          color: 'rgba(254,243,199,0.96)',
-          lineHeight: 1.45,
-        }}
-      >
+      <StudioNotice key="two-stage-seam" tone="warn" dataElement="two-stage-seam-warning">
         The feet seam at {seamCheck.atZMm} mm doesn’t land between layers at{' '}
         {seamCheck.layerHeightMm} mm
         {seamCheck.firstLayerMm !== seamCheck.layerHeightMm &&
           ` (first layer ${seamCheck.firstLayerMm} mm)`}
         , and the print service can only split on a layer boundary. Pick a layer height that divides
         the feet stand-off, or change the stand-off in the editor.
-      </div>
+      </StudioNotice>
     )
   }
 
@@ -1036,29 +1002,37 @@ export function PrintPanel(props: PrintPanelProps) {
       data-embedded={embedded || undefined}
       style={{
         position: embedded ? 'static' : 'absolute',
-        ...(embedded ? {} : { top: 12, right: 12 }),
         width: embedded ? '100%' : settingsOpen ? 380 : 280,
-        maxHeight: embedded ? undefined : 'calc(100% - 24px)',
-        overflowY: embedded ? undefined : 'auto',
         display: visible ? 'flex' : 'none',
         flexDirection: 'column',
-        gap: 10,
-        padding: 12,
-        borderRadius: 12,
-        background: 'rgba(17,24,39,0.9)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        color: 'rgba(226,232,240,0.95)',
+        gap: STUDIO.space.section,
+        color: STUDIO.color.text2,
         fontSize: 12,
-        transition: 'width 0.15s ease',
+        // Embedded, the panel IS the rail: no second surface, no second border,
+        // no second padding — only the section rhythm. The floating shape (no
+        // caller today) keeps its own chrome, theme-backed.
+        ...(embedded
+          ? {}
+          : {
+              top: 12,
+              right: 12,
+              maxHeight: 'calc(100% - 24px)',
+              overflowY: 'auto',
+              padding: 12,
+              borderRadius: STUDIO.radius.panel,
+              background: STUDIO.color.rail,
+              border: `1px solid ${STUDIO.color.border}`,
+              transition: 'width 0.15s ease',
+            }),
       }}
     >
-      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ ...EYEBROW_RULED, display: 'flex', alignItems: 'center', gap: 6 }}>
         <span aria-hidden="true">🖨</span> Print service
         {ring.connected && (
           <span
             data-element="print-ring-live"
             title="Live job updates connected"
-            style={{ fontSize: 10, color: 'rgba(74,222,128,0.9)', fontWeight: 600 }}
+            style={{ color: STUDIO.color.tone.ok.bar }}
           >
             · live
           </span>
@@ -1066,14 +1040,14 @@ export function PrintPanel(props: PrintPanelProps) {
       </div>
 
       {unavailable !== null ? (
-        <div data-element="print-service-unavailable" style={{ color: 'rgba(148,163,184,0.95)' }}>
+        <div data-element="print-service-unavailable" style={{ color: STUDIO.color.muted }}>
           {UNAVAILABLE_COPY[unavailable]}
           {unavailable === 'refused' && unavailableDetail && (
             // The service's own words, marked as a quotation so it reads as the
             // printer talking rather than as our copy.
             <div
               data-element="print-plan-refusal-detail"
-              style={{ marginTop: 6, fontStyle: 'italic', color: 'rgba(203,213,225,0.92)' }}
+              style={{ marginTop: 6, fontStyle: 'italic', color: STUDIO.color.text2 }}
             >
               “{unavailableDetail}”
             </div>
@@ -1099,16 +1073,7 @@ export function PrintPanel(props: PrintPanelProps) {
                   type="button"
                   data-action="retry-print-service"
                   onClick={() => queryClient.invalidateQueries({ queryKey: abacusPrintKeys.all })}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 6,
-                    border: '1px solid rgba(148,163,184,0.4)',
-                    background: 'rgba(148,163,184,0.12)',
-                    color: 'rgba(226,232,240,0.95)',
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
+                  style={button('chip')}
                 >
                   Try again
                 </button>
@@ -1126,7 +1091,7 @@ export function PrintPanel(props: PrintPanelProps) {
                   style={{
                     fontSize: 12,
                     fontWeight: 600,
-                    color: 'rgba(196,181,253,0.95)',
+                    color: STUDIO.color.accentText,
                     textDecoration: 'underline',
                   }}
                 >
@@ -1147,7 +1112,7 @@ export function PrintPanel(props: PrintPanelProps) {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            color: 'rgba(148,163,184,0.95)',
+            color: STUDIO.color.muted,
             lineHeight: 1.5,
           }}
         >
@@ -1169,19 +1134,27 @@ export function PrintPanel(props: PrintPanelProps) {
         <div
           data-element="print-roster-empty"
           data-degrade={panelState.kind}
+          // status, not alert: the retry button inside flips Try again/Checking…
+          // on every fetch, which would re-announce this whole box
+          role="status"
+          // the `notice()` fragment rather than <StudioNotice>: this box carries
+          // `data-degrade`, which the primitive has no passthrough for
           style={{
+            ...notice('warn'),
             display: 'flex',
             flexDirection: 'column',
             gap: 10,
-            padding: '10px 12px',
-            borderRadius: 8,
-            background: 'rgba(120,53,15,0.30)',
-            border: '1px solid rgba(251,191,36,0.45)',
-            color: 'rgba(254,243,199,0.96)',
-            lineHeight: 1.5,
           }}
         >
-          <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div
+            style={{
+              ...STUDIO.type.strong,
+              color: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
             <span aria-hidden="true">
               {panelState.kind === 'external-unprintable' ? '🎨' : '🎞️'}
             </span>{' '}
@@ -1198,7 +1171,7 @@ export function PrintPanel(props: PrintPanelProps) {
                   ? 'The printer is connected, but its AMS reports no loaded spools. One-click print maps your designed colors onto the filaments that are actually loaded, so it needs at least one.'
                   : 'The printer is connected, but nothing is loaded — no AMS, and the external spool holder is empty. Load a spool and press Try again.'}
           </div>
-          <div style={{ color: 'rgba(254,243,199,0.82)' }}>
+          <div style={{ ...STUDIO.type.note, color: 'inherit', opacity: 0.85 }}>
             {panelState.kind === 'external-unprintable' ? (
               <>
                 Reload a recognized filament, or use <strong>Download 3MF to print</strong> above
@@ -1217,16 +1190,9 @@ export function PrintPanel(props: PrintPanelProps) {
             onClick={() => queryClient.invalidateQueries({ queryKey: abacusPrintKeys.all })}
             disabled={isFetching}
             style={{
+              ...button('fix', { disabled: isFetching }),
               alignSelf: 'flex-start',
-              padding: '5px 11px',
-              borderRadius: 6,
-              border: '1px solid rgba(251,191,36,0.5)',
-              background: 'rgba(254,243,199,0.12)',
-              color: 'rgba(254,243,199,0.98)',
-              fontSize: 12,
-              fontWeight: 600,
               cursor: isFetching ? 'progress' : 'pointer',
-              opacity: isFetching ? 0.7 : 1,
             }}
           >
             {isFetching ? 'Checking…' : 'Try again'}
@@ -1238,22 +1204,11 @@ export function PrintPanel(props: PrintPanelProps) {
             <div
               data-element="slow-first-layer-choice"
               data-active={slowFirstLayerActive || undefined}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 10,
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: slowFirstLayerActive ? 'rgba(8,145,178,0.22)' : 'rgba(30,41,59,0.48)',
-                border: slowFirstLayerActive
-                  ? '1px solid rgba(34,211,238,0.5)'
-                  : '1px solid rgba(148,163,184,0.3)',
-              }}
+              style={toggleRow(slowFirstLayerActive)}
             >
               <span style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.35 }}>
-                <strong style={{ color: 'rgba(226,232,240,0.98)' }}>Slow first layer</strong>
-                <span style={{ color: 'rgba(148,163,184,0.95)', fontSize: 11 }}>
+                <strong style={STUDIO.type.strong}>Slow first layer</strong>
+                <span style={STUDIO.type.note}>
                   {SLOW_FIRST_LAYER_PROCESS.initial_layer_speed} mm/s ·{' '}
                   {SLOW_FIRST_LAYER_PROCESS.initial_layer_acceleration} mm/s². Try this before
                   adding a brim.
@@ -1268,19 +1223,8 @@ export function PrintPanel(props: PrintPanelProps) {
                   style && handleStyleChange(withSlowFirstLayer(style, !slowFirstLayerActive))
                 }
                 style={{
+                  ...button('pill', { on: slowFirstLayerActive, disabled: !style }),
                   flex: '0 0 auto',
-                  padding: '5px 10px',
-                  borderRadius: 6,
-                  border: slowFirstLayerActive
-                    ? '1px solid rgba(34,211,238,0.7)'
-                    : '1px solid rgba(148,163,184,0.45)',
-                  background: slowFirstLayerActive
-                    ? 'rgba(34,211,238,0.16)'
-                    : 'rgba(255,255,255,0.06)',
-                  color: slowFirstLayerActive ? 'rgba(207,250,254,0.98)' : 'rgba(226,232,240,0.95)',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: style ? 'pointer' : 'not-allowed',
                 }}
               >
                 {slowFirstLayerActive ? 'Use preset speed' : 'Slow it down'}
@@ -1291,22 +1235,11 @@ export function PrintPanel(props: PrintPanelProps) {
             <div
               data-element="two-stage-choice"
               data-active={twoStageOn || undefined}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 10,
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: twoStageOn ? 'rgba(8,145,178,0.22)' : 'rgba(30,41,59,0.48)',
-                border: twoStageOn
-                  ? '1px solid rgba(34,211,238,0.5)'
-                  : '1px solid rgba(148,163,184,0.3)',
-              }}
+              style={toggleRow(twoStageOn)}
             >
               <span style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.35 }}>
-                <strong style={{ color: 'rgba(226,232,240,0.98)' }}>Two-stage feet</strong>
-                <span style={{ color: 'rgba(148,163,184,0.95)', fontSize: 11 }}>
+                <strong style={STUDIO.type.strong}>Two-stage feet</strong>
+                <span style={STUDIO.type.note}>
                   Below {twoStage.atZMm} mm from the external spool (soft {TWO_STAGE_FEED_FAMILY}),
                   the rest chained from the AMS — one slice, two jobs, a spool swap between.
                 </span>
@@ -1316,19 +1249,7 @@ export function PrintPanel(props: PrintPanelProps) {
                 data-action="toggle-two-stage"
                 aria-pressed={twoStageOn}
                 onClick={() => setTwoStageWanted((v) => !v)}
-                style={{
-                  flex: '0 0 auto',
-                  padding: '5px 10px',
-                  borderRadius: 6,
-                  border: twoStageOn
-                    ? '1px solid rgba(34,211,238,0.7)'
-                    : '1px solid rgba(148,163,184,0.45)',
-                  background: twoStageOn ? 'rgba(34,211,238,0.16)' : 'rgba(255,255,255,0.06)',
-                  color: twoStageOn ? 'rgba(207,250,254,0.98)' : 'rgba(226,232,240,0.95)',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
+                style={{ ...button('pill', { on: twoStageOn }), flex: '0 0 auto' }}
               >
                 {twoStageOn ? 'Print in one job' : 'Split at the feet'}
               </button>
@@ -1377,24 +1298,14 @@ export function PrintPanel(props: PrintPanelProps) {
           />
 
           {submit.isSuccess && (
-            <div
-              data-element="print-submit-success"
-              style={{
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: 'rgba(20,83,45,0.35)',
-                border: '1px solid rgba(74,222,128,0.5)',
-                color: 'rgba(220,252,231,0.96)',
-                lineHeight: 1.45,
-              }}
-            >
+            <StudioNotice tone="ok" dataElement="print-submit-success">
               {submit.variables === 'stage-a'
                 ? 'Stage A submitted — the feet print from the external spool first. When it completes, the hand-off below walks you to Stage B.'
                 : submit.variables === 'stage-b'
                   ? 'Stage B submitted and held — start it from its job card below once the spool swap is done.'
                   : 'Job submitted — it’ll start on its own once the printer’s ready, or show up below to resolve if the bed needs a look.'}
               {applied && ' Some settings were adjusted by the printer — see the editor.'}
-            </div>
+            </StudioNotice>
           )}
 
           {submit.isError && (
@@ -1424,36 +1335,20 @@ export function PrintPanel(props: PrintPanelProps) {
             />
           )}
 
-          {/* settings disclosure — the editor mounts once and stays mounted */}
-          <button
-            type="button"
-            data-action="toggle-print-settings"
-            aria-expanded={settingsOpen}
-            onClick={() => setSettingsOpen((v) => !v)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '6px 2px',
-              border: 'none',
-              background: 'transparent',
-              color: 'rgba(203,213,225,0.9)',
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
+          {/* settings disclosure — `keepMounted` IS the old `settingsEverOpened`:
+              the editor is expensive and holds unsaved edits, so it mounts on
+              first open and stays mounted (hidden) after. */}
+          <Disclosure
+            label="Print settings"
+            keepMounted
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            dataAction="toggle-print-settings"
+            dataElement="print-settings"
           >
-            <span>Print settings</span>
-            <span aria-hidden="true">{settingsOpen ? '▾' : '▸'}</span>
-          </button>
-
-          {settingsEverOpened.current && (
-            <div
-              data-element="print-settings-editor"
-              style={{ display: settingsOpen ? 'block' : 'none' }}
-            >
+            <div data-element="print-settings-editor">
               {caps.isError ? (
-                <div style={{ color: 'rgba(252,165,165,0.95)', lineHeight: 1.45 }}>
+                <div style={{ color: STUDIO.color.dangerInline, lineHeight: 1.45 }}>
                   Couldn&apos;t load the printer&apos;s settings schema.
                 </div>
               ) : caps.data && style ? (
@@ -1467,12 +1362,12 @@ export function PrintPanel(props: PrintPanelProps) {
                   commonKeys={COMMON_KEYS}
                 />
               ) : (
-                <div style={{ color: 'rgba(148,163,184,0.95)' }}>Loading settings…</div>
+                <div style={{ color: STUDIO.color.muted }}>Loading settings…</div>
               )}
             </div>
-          )}
+          </Disclosure>
 
-          {/* Support-interface routing (Gitea #23, THH#367) — visible whenever the
+          {/* Support-interface routing (Gitea #23, THH 367) — visible whenever the
               style enables supports, independent of the settings disclosure: the
               pick changes what the printer lays down, so it must never hide behind
               a collapsed editor. The recommendation ★ and any service caution
@@ -1491,7 +1386,7 @@ export function PrintPanel(props: PrintPanelProps) {
               {supportRec.data === undefined ? (
                 <span
                   data-element="print-supports-line"
-                  style={{ fontSize: 11, fontWeight: 600, color: 'rgba(148,163,184,0.95)' }}
+                  style={{ ...STUDIO.type.note, fontWeight: 600 }}
                 >
                   {supportRec.isError
                     ? "Couldn't reach the printer for a support-interface recommendation — the interface will print in the model's own filament."
@@ -1510,7 +1405,7 @@ export function PrintPanel(props: PrintPanelProps) {
               {supportRec.data?.reminder && (
                 <div
                   data-element="print-support-reminder"
-                  style={{ color: 'rgba(251,191,36,0.95)', lineHeight: 1.45 }}
+                  style={{ color: STUDIO.color.warnInline, lineHeight: 1.45 }}
                 >
                   <span aria-hidden="true">💡 </span>
                   Loading {supportRec.data.reminder.product} ({supportRec.data.reminder.family})
@@ -1526,16 +1421,7 @@ export function PrintPanel(props: PrintPanelProps) {
               data-element="print-jobs-list"
               style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
             >
-              <span
-                style={{
-                  fontSize: 10,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  color: 'rgba(148,163,184,0.9)',
-                }}
-              >
-                Jobs
-              </span>
+              <div style={{ ...STUDIO.type.eyebrow, marginBottom: 2 }}>Jobs</div>
               {jobRows.slice(0, 5).map((job) => {
                 const failure = job.error ? describeJobError(job.error) : null
                 const supportCollision = job.error?.context?.supportsEnabled === true
@@ -1544,12 +1430,12 @@ export function PrintPanel(props: PrintPanelProps) {
                     key={job.id}
                     data-element="print-job-row"
                     style={{
+                      ...CARD,
+                      padding: '8px 10px',
+                      borderRadius: STUDIO.radius.button,
                       display: 'flex',
                       flexDirection: 'column',
                       gap: 3,
-                      padding: '5px 8px',
-                      borderRadius: 6,
-                      background: 'rgba(255,255,255,0.05)',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
@@ -1572,7 +1458,7 @@ export function PrintPanel(props: PrintPanelProps) {
                           </span>
                         )}
                       </span>
-                      <span style={{ color: 'rgba(148,163,184,0.95)', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: STUDIO.color.muted, whiteSpace: 'nowrap' }}>
                         {job.phase}
                         {job.progress !== null && ` · ${Math.round(job.progress)}%`}
                       </span>
@@ -1582,7 +1468,7 @@ export function PrintPanel(props: PrintPanelProps) {
                         data-element="print-job-error"
                         role="alert"
                         style={{
-                          color: 'rgba(251,191,36,0.95)',
+                          color: STUDIO.color.warnInline,
                           whiteSpace: 'normal',
                           overflowWrap: 'anywhere',
                           display: 'flex',
@@ -1613,11 +1499,7 @@ export function PrintPanel(props: PrintPanelProps) {
                               }
                               disabled={submit.isPending}
                               style={{
-                                border: '1px solid rgba(251,191,36,0.55)',
-                                borderRadius: 5,
-                                background: 'rgba(251,191,36,0.08)',
-                                color: 'inherit',
-                                padding: '4px 8px',
+                                ...button('fix', { disabled: submit.isPending }),
                                 cursor: submit.isPending ? 'wait' : 'pointer',
                               }}
                             >
@@ -1629,7 +1511,7 @@ export function PrintPanel(props: PrintPanelProps) {
                               href={job.authoring.editUrl}
                               target="_blank"
                               rel="noreferrer"
-                              style={{ color: 'rgba(147,197,253,0.98)', padding: '4px 0' }}
+                              style={{ color: STUDIO.color.accentText, padding: '4px 0' }}
                             >
                               Edit in {job.authoring.editTool ?? 'Abacus Studio'} ↗
                             </a>

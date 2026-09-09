@@ -18,10 +18,11 @@
 // fabrication column (and, upstream, no three.js) is mounted at all.
 
 import { css } from '@styled/css'
-import { type ReactNode, useState } from 'react'
+import { type CSSProperties, type ReactNode, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { MobileDrawer } from '@/components/shared/MobileDrawer'
 import { useIsMobile } from '@/hooks/useMediaQuery'
+import { STUDIO } from './theme'
 
 export interface StudioShellProps {
   left: ReactNode
@@ -38,7 +39,29 @@ export interface StudioShellProps {
   autoSaveId?: string
 }
 
-const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
+// THE SHELL IS THE ONE STUDIO FILE PANDA COMPILES, and Panda extracts at BUILD
+// time from LITERALS: `css({ bg: STUDIO.color.rail })` reaches the extractor as
+// an expression it cannot fold, so the rule is silently dropped and the rail
+// loses its background (verified with `panda debug`). A module constant does not
+// help — it is still an import away from a literal.
+//
+// So the shell publishes theme.ts's chrome colours as custom properties on its
+// root and the css() calls name them. The values still live in exactly one
+// place, and `_hover` — which an inline style cannot express — still works.
+const SHELL_VARS = {
+  '--studio-rail': STUDIO.color.rail,
+  '--studio-bg': STUDIO.color.bg,
+  '--studio-hairline': STUDIO.color.hairline,
+  '--studio-grip': STUDIO.color.grip,
+  '--studio-accent-hover': STUDIO.color.accentHover,
+  '--studio-on-accent': STUDIO.color.onAccent,
+  '--studio-accent-gradient': STUDIO.gradient.accent,
+  '--studio-fab-shadow': STUDIO.shadow.fab,
+  // the FAB names the rails it opens, so it wears the rail heading's size
+  '--studio-fab-size': `${STUDIO.type.heading.fontSize}px`,
+} as CSSProperties
+
+const HAIRLINE = '1px solid var(--studio-hairline)'
 
 // The mobile affordance for the docked rails: on small screens the canvas owns
 // the whole viewport and the rails live in a slide-in drawer, opened by this
@@ -69,12 +92,12 @@ function StudioRailFab({ onClick }: { onClick: () => void }) {
         py: '12px',
         borderRadius: 'full',
         border: 'none',
-        color: '#fff',
-        fontSize: '14px',
+        color: 'var(--studio-on-accent)',
+        fontSize: 'var(--studio-fab-size)',
         fontWeight: 700,
         cursor: 'pointer',
-        background: CYAN_GRADIENT,
-        boxShadow: '0 6px 20px rgba(6,182,212,0.45)',
+        background: 'var(--studio-accent-gradient)',
+        boxShadow: 'var(--studio-fab-shadow)',
       })}
     >
       <span aria-hidden="true">⚙</span>
@@ -93,11 +116,11 @@ function StudioResizeHandle() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bg: '#0b0f14',
-        borderLeft: '1px solid rgba(148,163,184,0.14)',
-        borderRight: '1px solid rgba(148,163,184,0.14)',
+        bg: 'var(--studio-bg)',
+        borderLeft: HAIRLINE,
+        borderRight: HAIRLINE,
         transition: 'background-color 0.15s',
-        _hover: { bg: 'rgba(6,182,212,0.28)' },
+        _hover: { bg: 'var(--studio-accent-hover)' },
       })}
     >
       <div
@@ -116,7 +139,7 @@ function StudioResizeHandle() {
               width: '3px',
               height: '3px',
               borderRadius: 'full',
-              bg: 'rgba(148,163,184,0.65)',
+              bg: 'var(--studio-grip)',
             })}
           />
         ))}
@@ -135,8 +158,8 @@ const toolbarBar = css({
   justifyContent: 'center',
   px: '12px',
   py: '10px',
-  bg: '#0b0f14',
-  borderBottom: '1px solid rgba(148,163,184,0.14)',
+  bg: 'var(--studio-bg)',
+  borderBottom: HAIRLINE,
 })
 
 export function StudioShell({
@@ -148,12 +171,17 @@ export function StudioShell({
 }: StudioShellProps) {
   const isMobile = useIsMobile()
   const [railsOpen, setRailsOpen] = useState(false)
-  const railScroll = css({ h: 'full', overflow: 'auto', bg: '#0f1419' })
+  const railScroll = css({ h: 'full', overflow: 'auto', bg: 'var(--studio-rail)' })
   // The global MyAbacus dock is fixed bottom-RIGHT at z-102 and floats over this
   // rail — 100 px of button plus its 24 px inset on md+ — so without a floor of
   // padding it eats the last control in the column (the print submit, or a file
   // download). Only the right rail is under it; the left one is clear.
-  const rightRailScroll = css({ h: 'full', overflow: 'auto', bg: '#0f1419', pb: '124px' })
+  const rightRailScroll = css({
+    h: 'full',
+    overflow: 'auto',
+    bg: 'var(--studio-rail)',
+    pb: '124px',
+  })
 
   if (isMobile) {
     // Small screens: the canvas (or marker sheet) owns the whole viewport as the
@@ -166,6 +194,7 @@ export function StudioShell({
       <div
         data-component="studio-shell"
         data-mobile="true"
+        style={SHELL_VARS}
         className={css({
           position: 'relative',
           h: 'full',
@@ -195,17 +224,14 @@ export function StudioShell({
             className={css({
               display: 'flex',
               flexDirection: 'column',
-              bg: '#0f1419',
+              bg: 'var(--studio-rail)',
               borderRadius: 'md',
               overflow: 'hidden',
             })}
           >
             <div data-element="studio-rail-left">{left}</div>
             {right != null && (
-              <div
-                data-element="studio-rail-right"
-                className={css({ borderTop: '1px solid rgba(148,163,184,0.14)' })}
-              >
+              <div data-element="studio-rail-right" className={css({ borderTop: HAIRLINE })}>
                 {right}
               </div>
             )}
@@ -216,7 +242,11 @@ export function StudioShell({
   }
 
   return (
-    <div data-component="studio-shell" className={css({ h: 'full', minHeight: 0 })}>
+    <div
+      data-component="studio-shell"
+      style={SHELL_VARS}
+      className={css({ h: 'full', minHeight: 0 })}
+    >
       <PanelGroup direction="horizontal" autoSaveId={autoSaveId} className={css({ h: 'full' })}>
         <Panel id="left" order={1} defaultSize={24} minSize={16} maxSize={38} collapsible>
           <div data-element="studio-rail-left" className={railScroll}>

@@ -6,6 +6,7 @@
 // plus the roster row it points at), so every failure state is reproducible in
 // Storybook without staging a live print service.
 
+import { notice, STUDIO } from '@/components/studio/theme'
 import type { JobRow } from './print-jobs'
 import type { SubmitFailure } from './print-submit-failure'
 
@@ -30,25 +31,24 @@ export function PrintSubmitErrorNotice({
     <div
       data-element="print-submit-error"
       data-error-code={failure?.code}
+      role="alert"
       style={{
+        ...notice('danger'),
         display: 'flex',
         flexDirection: 'column',
         gap: 4,
-        padding: '8px 10px',
-        borderRadius: 8,
-        background: 'rgba(127,29,29,0.35)',
-        border: '1px solid rgba(248,113,113,0.5)',
-        color: 'rgba(254,226,226,0.96)',
-        lineHeight: 1.45,
       }}
     >
-      <div data-element="print-submit-error-headline" style={{ fontWeight: 600 }}>
+      <div
+        data-element="print-submit-error-headline"
+        style={{ ...STUDIO.type.strong, color: 'inherit' }}
+      >
         {failure ? failure.headline : fallbackMessage}
       </div>
       {blockingJob && (
         <div
           data-element="print-submit-error-blocking"
-          style={{ color: 'rgba(251,191,36,0.95)', overflowWrap: 'anywhere' }}
+          style={{ color: STUDIO.color.warnInline, overflowWrap: 'anywhere' }}
         >
           On the printer now: “{blockingJob.name}” ({blockingJob.phase}
           {blockingJob.progress !== null ? ` · ${Math.round(blockingJob.progress)}%` : ''}).
@@ -57,7 +57,7 @@ export function PrintSubmitErrorNotice({
       {failure?.remediation && (
         <div
           data-element="print-submit-error-remediation"
-          style={{ color: 'rgba(254,226,226,0.82)' }}
+          style={{ ...STUDIO.type.note, color: 'inherit', opacity: 0.85 }}
         >
           {failure.remediation}
         </div>

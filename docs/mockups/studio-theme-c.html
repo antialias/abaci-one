@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Abacus Studio — pass C proposal: one theme, studio primitives</title>
+<style>
+  /* ---------- page chrome (not part of the proposal) ---------- */
+  html, body { margin: 0; background: #06090d; color: #e5e7eb; font: 14px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  a { color: #67e8f9; }
+  main { max-width: 1280px; margin: 0 auto; padding: 24px 24px 96px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 40px 0 12px; padding-top: 16px; border-top: 1px solid rgba(148,163,184,0.18); }
+  h3 { font-size: 13px; margin: 20px 0 8px; color: rgba(148,163,184,0.95); text-transform: uppercase; letter-spacing: .05em; }
+  p.lead { color: rgba(203,213,225,0.9); max-width: 70ch; margin: 0 0 10px; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; position: sticky; top: 0; z-index: 5; background: rgba(6,9,13,0.92); backdrop-filter: blur(8px); padding: 12px 0; border-bottom: 1px solid rgba(148,163,184,0.18); }
+  .switch { display: inline-flex; border: 1px solid rgba(148,163,184,0.35); border-radius: 8px; overflow: hidden; }
+  .switch label { padding: 8px 14px; font-weight: 600; cursor: pointer; color: rgba(203,213,225,0.9); }
+  .switch input { display: none; }
+  .switch input:checked + label { background: linear-gradient(135deg,#06b6d4 0%,#0891b2 100%); color: #fff; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .pair > .skin::before { content: attr(data-title); display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: rgba(148,163,184,0.8); margin: -6px 0 10px; }
+  .pair.trio { grid-template-columns: 1fr 1fr 1fr; }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+  .sw-card { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: center; padding: 8px; border: 1px solid rgba(148,163,184,0.18); border-radius: 8px; background: #0f1419; }
+  .sw-card .chip { width: 40px; height: 40px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); }
+  .sw-card b { display: block; font-size: 12px; }
+  .sw-card code { font-size: 11px; color: rgba(148,163,184,0.95); }
+  .sw-card small { display: block; font-size: 11px; color: rgba(203,213,225,0.8); }
+  .rails { display: flex; gap: 24px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+  table.rules { border-collapse: collapse; font-size: 13px; }
+  table.rules td, table.rules th { text-align: left; padding: 6px 12px 6px 0; border-bottom: 1px solid rgba(148,163,184,0.14); vertical-align: top; }
+  table.rules th { color: rgba(148,163,184,0.95); font-weight: 600; }
+  .callout { border-left: 3px solid #06b6d4; padding: 6px 12px; color: rgba(203,213,225,0.9); background: rgba(6,182,212,0.06); border-radius: 0 8px 8px 0; margin: 12px 0; max-width: 80ch; }
+  .diff { font-size: 12px; color: rgba(148,163,184,0.95); margin: 6px 0 0; }
+
+  /* ---------- THE THEME: `.skin` = proposed values. `.skin.today` = what ships now. ---------- */
+  .skin {
+    --bg: #0b0f14;
+    --rail: #0f1419;
+    --surface: rgba(255,255,255,0.04);
+    --surface-raised: rgba(255,255,255,0.07);
+    --surface-border: rgba(148,163,184,0.18);
+    --border: rgba(148,163,184,0.18);
+    --border-strong: rgba(148,163,184,0.35);
+    --text: #f3f4f6;
+    --text-2: rgba(203,213,225,0.9);
+    --muted: rgba(148,163,184,0.95);
+    --muted-2: rgba(148,163,184,0.85);
+    --accent: #06b6d4;
+    --accent-soft: rgba(6,182,212,0.12);
+    --accent-border: rgba(6,182,212,0.45);
+    --accent-text: #67e8f9;
+    --gradient: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    --primary-shadow: 0 4px 14px rgba(6,182,212,0.35);
+    --ok: rgba(134,239,172,0.95);  --ok-bg: rgba(6,78,59,0.30);     --ok-border: rgba(52,211,153,0.45);
+    --warn: rgba(254,243,199,0.96); --warn-bg: rgba(120,53,15,0.30); --warn-border: rgba(251,191,36,0.45); --warn-inline: rgba(251,191,36,0.92);
+    --danger: rgba(254,226,226,0.96); --danger-bg: rgba(127,29,29,0.35); --danger-border: rgba(248,113,113,0.5);
+    --info: rgba(219,234,254,0.96); --info-bg: rgba(30,58,138,0.28); --info-border: rgba(96,165,250,0.45);
+    --r-panel: 12px; --r-card: 8px; --r-control: 6px; --r-pill: 999px;
+    --t-heading: 13px; --t-body: 12px; --t-label: 12px; --t-note: 11px; --t-eyebrow: 10px;
+    --w-label: 500; --label-color: var(--text-2);
+    --control-bg: rgba(255,255,255,0.06); --control-border: rgba(255,255,255,0.14); --control-pad: 6px 8px;
+    --slider-thumb: var(--accent); --slider-fill: rgba(6,182,212,0.8); --check-accent: var(--accent); --val-color: var(--text); --val-opacity: 1;
+    --t-card-h: 12px; --w-card-h: 600; --card-h-color: var(--text-2); --t-dt: 11px; --t-card-note: 11px;
+    --gates-size: 10px; --gates-transform: uppercase; --gates-color: var(--muted); --gates-spacing: .04em; --gates-weight: 600;
+    --t-group: 10px; --t-hint: 11px; --t-caveat: 11px;
+    --rail-gap: 14px;
+    --seg-radius: 8px;
+    --submit-shadow: var(--primary-shadow);
+  }
+  .skin.today {
+    --t-label: 11px; --label-color: inherit;
+    --control-bg: rgba(255,255,255,0.08); --control-border: rgba(255,255,255,0.15); --r-control: 4px; --control-pad: 4px 6px;
+    --slider-thumb: #818cf8; --slider-fill: rgba(129,140,248,0.8); --check-accent: #818cf8; --val-color: inherit; --val-opacity: 0.8;
+    --warn-inline: #b45309;
+    --surface: rgba(255,255,255,0.03); --surface-border: rgba(255,255,255,0.08);
+    --t-card-h: 11px; --w-card-h: 500; --card-h-color: inherit; --t-dt: 10px; --t-card-note: 10px;
+    --gates-size: 12px; --gates-transform: none; --gates-color: inherit; --gates-spacing: 0; --gates-weight: 400;
+    --t-group: 9.5px; --t-hint: 10.5px; --t-caveat: 10px;
+    --rail-gap: 16px;
+    --seg-radius: 7px;
+    --submit-shadow: none;
+  }
+
+  /* ---------- PROPOSED + : the bolder option. Same tokens, plus structure. ---------- */
+  .skin.plus {
+    --control-bg: rgba(255,255,255,0.06); --control-border: rgba(148,163,184,0.22); --r-control: 8px; --control-pad: 8px 10px;
+    --label-color: var(--muted);
+    --rail-gap: 20px;
+    --surface: rgba(255,255,255,0.035); --surface-border: rgba(148,163,184,0.16);
+    --seg-radius: 10px;
+  }
+  .skin.plus .h { font-size: 14px; }
+  .skin.plus .section-label, .skin.plus .disc { font-size: 10px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .skin.plus .section { gap: 14px; }
+  .skin.plus .field { gap: 5px; }
+  .skin.plus .notice { border: none; border-left: 3px solid; border-radius: 6px; padding: 8px 10px 8px 12px; }
+  .skin.plus .notice.warn { border-left-color: rgba(251,191,36,.9); background: rgba(120,53,15,0.22); }
+  .skin.plus .notice.danger { border-left-color: rgba(248,113,113,.9); background: rgba(127,29,29,0.22); }
+  .skin.plus .notice.info { border-left-color: rgba(96,165,250,.9); background: rgba(30,58,138,0.20); }
+  .skin.plus .notice.ok { border-left-color: rgba(52,211,153,.9); background: rgba(6,78,59,0.20); }
+  .skin.plus .notice .fix { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18); }
+  .skin.plus .panel.service { background: transparent; border: none; padding: 0; }
+  .skin.plus .svc-h { font-size: 10px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); padding: 6px 0; border-bottom: 1px solid var(--border); font-weight: 600 !important; }
+  .skin.plus .trow { background: var(--surface); border-color: var(--surface-border); border-radius: 10px; padding: 10px 12px; }
+  .skin.plus .trow.on { background: var(--accent-soft); border-color: var(--accent-border); }
+  .skin.plus .trow .tb { background: rgba(255,255,255,0.06); border-color: rgba(148,163,184,0.35); border-radius: 999px; padding: 6px 12px; }
+  .skin.plus .trow.on .tb { background: rgba(6,182,212,0.2); border-color: rgba(6,182,212,0.6); }
+  .skin.plus .track { height: 4px; } .skin.plus .thumb { width: 16px; height: 16px; margin: -8px 0 0 -8px; box-shadow: 0 0 0 4px rgba(6,182,212,0.18); }
+  .skin.plus .btn { background: transparent; border-color: var(--border-strong); padding: 10px 12px; border-radius: 8px; }
+  .skin.plus .btn-primary, .skin.plus .btn-submit { padding: 12px; border-radius: 10px; }
+  .skin.plus .btn-primary.disabled, .skin.plus .btn-submit.disabled { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+  .skin.plus .chip { border-radius: 999px; padding: 4px 10px; }
+  .skin.plus .opt { border-radius: 10px; padding: 9px 12px 9px 10px; }
+  .skin.plus .map-h { font-size: 10px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .skin.plus .map-group { padding: 10px 6px 4px; letter-spacing: .09em; color: var(--muted-2); }
+  .skin.plus .map-row { padding: 6px; font-size: 12px; }
+  .skin.plus .sw { width: 22px; height: 22px; border-radius: 6px; }
+  .skin.plus .map-foot { padding-top: 8px; border-top: 1px solid var(--border); margin-top: 6px; }
+  .skin.plus .card { border-radius: 10px; padding: 12px 14px; }
+  .skin.plus .card .ch { font-size: 10px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); margin-bottom: 10px; }
+  .skin.plus .card dl { row-gap: 8px; }
+  .skin.plus .job { padding: 8px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--surface-border); }
+  .skin.plus .preview { border: 1px solid var(--border); height: 72px; }
+  .skin.plus .seg > span { padding: 10px; }
+
+  /* ---------- components, written once against the variables ---------- */
+  .rail { background: var(--rail); color: var(--text); font-size: var(--t-body); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; padding: 16px; display: flex; flex-direction: column; gap: var(--rail-gap); width: 300px; border-radius: 10px; border: 1px solid rgba(148,163,184,0.12); }
+  .panel { background: var(--rail); color: var(--text); font-size: var(--t-body); font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; padding: 14px; display: flex; flex-direction: column; gap: 12px; border-radius: 10px; border: 1px solid rgba(148,163,184,0.12); }
+  .h { font-weight: 700; font-size: var(--t-heading); letter-spacing: .02em; }
+  .panel.service { padding: 12px; border-radius: var(--r-panel); background: rgba(17,24,39,0.9); border: 1px solid rgba(255,255,255,0.08); gap: 10px; }
+  .svc-h { font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .svc-h .live { font-size: 10px; color: rgba(74,222,128,.9); font-weight: 600; }
+  .section { display: flex; flex-direction: column; gap: 12px; }
+  .section-label, .disc { padding: 6px 2px; color: var(--text-2); font-size: 12px; font-weight: 600; }
+  .disc { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .label { font-size: var(--t-label); font-weight: var(--w-label); color: var(--label-color); }
+  .select, .input { background: var(--control-bg); color: inherit; border: 1px solid var(--control-border); border-radius: var(--r-control); padding: var(--control-pad); font-size: var(--t-body); font-family: inherit; width: 100%; box-sizing: border-box; }
+  .select { appearance: none; -webkit-appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 14px) 55%, calc(100% - 9px) 55%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 26px; }
+  .input.disabled { background: transparent; font-style: italic; opacity: .65; }
+  .note { font-size: var(--t-note); line-height: 1.5; color: var(--muted); }
+  .note.warn { color: var(--warn-inline); }
+  .eyebrow { font-size: var(--t-eyebrow); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  /* slider */
+  .slider { display: flex; flex-direction: column; gap: 4px; }
+  .slider .row { display: flex; justify-content: space-between; font-size: var(--t-label); font-weight: var(--w-label); color: var(--label-color); }
+  .slider .val { font-variant-numeric: tabular-nums; color: var(--val-color); opacity: var(--val-opacity); }
+  .track { position: relative; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.2); margin: 7px 0; }
+  .fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; background: var(--slider-fill); }
+  .thumb { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--slider-thumb); border: 2px solid rgba(255,255,255,0.6); box-sizing: border-box; }
+  /* checkbox / color */
+  .check, .color { display: flex; align-items: center; gap: 8px; font-size: var(--t-label); font-weight: var(--w-label); color: var(--label-color); cursor: pointer; }
+  .check input { accent-color: var(--check-accent); width: 14px; height: 14px; margin: 0; }
+  .color .swatch { width: 24px; height: 18px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); background: #f5f5f5; }
+  .color .hex { margin-left: auto; opacity: .55; font-variant-numeric: tabular-nums; }
+  /* segmented */
+  .seg { display: flex; border-radius: var(--seg-radius); overflow: hidden; border: 1px solid var(--border-strong); }
+  .seg > span { flex: 1; text-align: center; padding: 9px 10px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+  .seg > span.on { background: var(--gradient); color: #fff; }
+  /* choice */
+  .choice { display: flex; flex-direction: column; gap: 4px; }
+  .opt { border-radius: 8px; border: 1px solid transparent; padding: 7px 10px 7px 8px; display: grid; grid-template-columns: 14px 1fr; column-gap: 10px; align-items: start; }
+  .opt.on { background: var(--accent-soft); border-color: var(--accent-border); }
+  .opt .radio { width: 14px; height: 14px; margin-top: 2px; accent-color: var(--accent); }
+  .opt .title { font-size: 12px; font-weight: 600; line-height: 1.3; color: var(--text); }
+  .opt .desc { font-size: var(--t-note); line-height: 1.45; color: var(--muted); }
+  .opt .details { grid-column: 2; display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+  /* notices */
+  .notice { padding: 8px 10px; border-radius: var(--r-card); line-height: 1.45; display: flex; flex-direction: column; gap: 8px; }
+  .notice.warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn); }
+  .notice.danger { background: var(--danger-bg); border: 1px solid var(--danger-border); color: var(--danger); }
+  .notice.info { background: var(--info-bg); border: 1px solid var(--info-border); color: var(--info); }
+  .notice.ok { background: var(--ok-bg); border: 1px solid var(--ok-border); color: var(--ok); }
+  .notice b { display: flex; align-items: center; gap: 6px; }
+  .notice .fix { align-self: flex-start; padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 600; border: 1px solid; background: rgba(255,255,255,0.10); color: inherit; }
+  .notice .fixes { display: flex; flex-wrap: wrap; gap: 6px; }
+  .notice .fixes .fix { font-size: 11px; padding: 5px 9px; }
+  /* buttons */
+  .btn-primary { padding: 11px 12px; border-radius: 8px; border: none; background: var(--gradient); color: #fff; font-size: 13px; font-weight: 700; text-align: center; box-shadow: var(--primary-shadow); }
+  .btn-submit { padding: 10px 12px; border-radius: 8px; border: none; background: var(--gradient); color: #fff; font-size: 13px; font-weight: 700; text-align: center; box-shadow: var(--submit-shadow); }
+  .btn-primary.disabled, .btn-submit.disabled { background: rgba(75,85,99,0.55); color: rgba(209,213,219,0.7); box-shadow: none; }
+  .btn { padding: 8px 10px; border-radius: 7px; border: 1px solid rgba(148,163,184,0.4); background: rgba(30,41,59,0.85); color: var(--text); font-size: 12px; font-weight: 600; text-align: center; }
+  .btn.disabled { opacity: .5; }
+  .chip { display: inline-block; padding: 3px 8px; border-radius: 5px; border: 1px solid rgba(148,163,184,0.5); color: rgba(226,232,240,1); font-size: 11px; background: transparent; }
+  .chip.accent { border-color: rgba(6,182,212,0.6); background: rgba(6,182,212,0.15); color: rgba(165,243,252,1); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  /* commitment card + gates */
+  .card { background: var(--surface); border: 1px solid var(--surface-border); border-radius: var(--r-card); padding: 10px 12px; }
+  .card .ch { font-size: var(--t-card-h); font-weight: var(--w-card-h); color: var(--card-h-color); margin-bottom: 8px; }
+  .card dl { display: grid; grid-template-columns: 64px 1fr; row-gap: 6px; column-gap: 10px; margin: 0; }
+  .card dt { font-size: var(--t-dt); color: var(--muted); }
+  .card dd { margin: 0; font-size: 12px; color: var(--text); line-height: 1.4; }
+  .card .n { font-size: var(--t-card-note); color: var(--muted-2); }
+  .gates { display: flex; flex-direction: column; gap: 8px; }
+  .gates-h { font-size: var(--gates-size); text-transform: var(--gates-transform); letter-spacing: var(--gates-spacing); color: var(--gates-color); font-weight: var(--gates-weight); }
+  /* toggle rows (slow first layer / two-stage) */
+  .trow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(30,41,59,0.48); border: 1px solid rgba(148,163,184,0.3); }
+  .trow.on { background: rgba(8,145,178,0.22); border-color: rgba(34,211,238,0.5); }
+  .trow .txt { display: flex; flex-direction: column; gap: 2px; line-height: 1.35; }
+  .trow strong { color: rgba(226,232,240,0.98); }
+  .trow .sub { color: var(--muted); font-size: var(--t-note); }
+  .trow .tb { flex: 0 0 auto; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; border: 1px solid rgba(148,163,184,0.45); background: rgba(255,255,255,0.06); color: rgba(226,232,240,0.95); }
+  .trow.on .tb { border-color: rgba(34,211,238,0.7); background: rgba(34,211,238,0.16); color: rgba(207,250,254,0.98); }
+  /* filament mapping */
+  .map-h { display: flex; justify-content: space-between; align-items: center; padding: 2px 6px 4px; font-size: 12px; font-weight: 600; color: var(--text-2); }
+  .map-group { font-size: var(--t-group); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: rgba(148,163,184,0.9); padding: 6px 6px 2px; }
+  .map-row { display: flex; align-items: center; gap: 7px; padding: 5px 6px; border-radius: 6px; border-left: 2px solid transparent; font-size: var(--t-note); color: var(--text-2); }
+  .map-row.pinned { border-left-color: rgba(103,232,249,0.95); }
+  .sw { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.25); position: relative; flex: 0 0 auto; overflow: hidden; }
+  .sw.miss { border: 1px dashed rgba(248,113,113,0.95); }
+  .sw .fleck { position: absolute; right: 0; bottom: 0; width: 0; height: 0; border-style: solid; border-width: 0 0 9px 9px; border-color: transparent transparent #f97316 transparent; }
+  .map-row .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .map-hint { font-size: var(--t-hint); line-height: 1.4; color: var(--muted-2); padding: 0 6px 4px; }
+  .map-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; padding: 4px 6px 0; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: rgba(148,163,184,0.9); }
+  .map-foot .shift { color: rgba(251,191,36,0.92); }
+  /* jobs */
+  .job { display: flex; justify-content: space-between; gap: 8px; padding: 5px 8px; border-radius: 6px; background: rgba(255,255,255,0.05); }
+  .job .ph { color: var(--muted); white-space: nowrap; }
+  .job .stage { margin-left: 6px; color: rgba(103,232,249,0.95); font-size: 11px; font-weight: 700; }
+  /* canvas pills */
+  .canvas { background: #0b0f14; border-radius: 10px; padding: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border: 1px solid rgba(148,163,184,0.12); }
+  .pill { display: inline-block; padding: 5px 12px; border-radius: var(--r-pill); border: 1px solid rgba(148,163,184,0.18); background: rgba(17,24,39,0.7); color: rgba(209,213,219,0.95); font-size: 12px; font-weight: 600; letter-spacing: .2px; }
+  .pill.on { border-color: rgba(103,232,249,0.5); background: rgba(8,22,30,0.85); color: #e6faff; box-shadow: 0 2px 14px rgba(6,182,212,0.22); }
+  .pill.caption { font-weight: 500; color: rgba(148,163,184,0.92); }
+  .hud { font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; padding: 6px 10px; border-radius: 6px; background: rgba(17,24,39,0.82); color: rgba(209,213,219,0.95); }
+  .preview { display: flex; justify-content: center; align-items: center; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 12px 8px; height: 56px; color: var(--muted); font-size: 11px; }
+  .owner { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .type-specimen { display: grid; grid-template-columns: 90px 1fr; gap: 6px 12px; align-items: baseline; }
+  .type-specimen code { color: var(--muted); font-size: 11px; }
+  .kill { text-decoration: line-through; color: rgba(248,113,113,0.8); }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <h1>Abacus Studio — pass C proposal</h1>
+      <div style="color:rgba(148,163,184,.95);font-size:13px">One theme file, studio-owned primitives, one disclosure, one notice style. Gitea #43. Nothing here moves a control; that was A and B.</div>
+    </div>
+    <div class="switch" role="radiogroup" aria-label="skin">
+      <input type="radio" name="skin" id="sk-today" value="today"><label for="sk-today">Today</label>
+      <input type="radio" name="skin" id="sk-proposed" value="proposed" checked><label for="sk-proposed">Proposed</label>
+      <input type="radio" name="skin" id="sk-plus" value="plus"><label for="sk-plus">Proposed +</label>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top:16px">Every component below is one piece of markup styled from CSS variables. <b>Today</b> plugs in the literals the studio ships now. <b>Proposed</b> is Gitea #43 as written: the same look, made consistent — one accent, one type scale, one notice, one disclosure. Honest warning: on the assembled rails it is nearly invisible. <b>Proposed +</b> keeps those tokens and adds structure: section headers as ruled eyebrows so the rail scans in blocks, taller controls with one radius, notices as left-bar tints instead of outlined boxes, the nested print-service panel flattened into the rail, and a primary button that looks like the one thing to press. Flip the switch on the assembled rails at the bottom; the primitives section shows all three side by side.</p>
+
+  <!-- ======================= 1. THE THEME ======================= -->
+  <h2 id="theme">1 · The theme (<code>components/studio/theme.ts</code>)</h2>
+  <p class="lead">Plain TS constants, not Panda tokens; the studio is inline-styled on purpose. The palette is what's already there, deduplicated: fifteen alpha steps of slate become three, fourteen cyans become one accent with three companions, and indigo leaves.</p>
+  <div class="swatches" id="swatches"></div>
+
+  <div class="pair" style="margin-top:16px">
+    <div>
+      <h3>Type scale</h3>
+      <div class="skin rail" style="width:auto">
+        <div class="type-specimen">
+          <code>heading 13/700</code><div class="h">3D print</div>
+          <code>body 12</code><div>Standard — frame and beads</div>
+          <code>label 12/500</code><div class="label">printer profile</div>
+          <code>section 12/600</code><div class="section-label" style="padding:0">Print options</div>
+          <code>note 11</code><div class="note">Facets per curve. Higher is smoother, and slower to preview and slice.</div>
+          <code>eyebrow 10</code><div class="eyebrow">Before you can print</div>
+        </div>
+        <div class="note" style="margin-top:8px">Retired: <span class="kill">10.5</span> <span class="kill">9.5</span> <span class="kill">8.5</span> <span class="kill">8</span> <span class="kill">14</span>. Today there are nine sizes in use across 91 declarations; 11 px alone appears 46 times, mostly as labels sitting above 12 px values.</div>
+      </div>
+    </div>
+    <div>
+      <h3>Radii, surfaces, shadow</h3>
+      <div class="skin rail" style="width:auto">
+        <div class="type-specimen">
+          <code>panel 12</code><div style="height:28px;border-radius:12px;background:var(--surface-raised);border:1px solid var(--border)"></div>
+          <code>card / notice 8</code><div style="height:28px;border-radius:8px;background:var(--surface);border:1px solid var(--surface-border)"></div>
+          <code>control / chip 6</code><div style="height:28px;border-radius:6px;background:var(--control-bg);border:1px solid var(--control-border)"></div>
+          <code>pill 999</code><div style="height:28px;border-radius:999px;background:rgba(17,24,39,0.7);border:1px solid var(--border)"></div>
+          <code>gradient</code><div style="height:28px;border-radius:8px;background:var(--gradient);box-shadow:var(--primary-shadow)"></div>
+        </div>
+        <div class="note" style="margin-top:8px">One gradient constant. Today it is declared verbatim in three files and inlined in a fourth, and the submit button lacks the shadow the other primary buttons carry.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= 2. PRIMITIVES ======================= -->
+  <h2 id="primitives">2 · Primitives, today vs proposed</h2>
+  <p class="lead">Same markup in both columns. Left is what ships; right is the theme applied. The visible moves: cyan replaces indigo on every interactive part, labels stop being smaller than their values, controls share one radius and one fill, and the two amber texts stop being brown.</p>
+
+  <div id="demos">
+
+    <div class="demo" data-title="StudioSlider, StudioCheckbox, StudioColor — replace the borrowed Debug* controls">
+      <div class="slider"><div class="row"><span>size ×</span><span class="val">1.00</span></div><div class="track"><div class="fill" style="width:45%"></div><div class="thumb" style="left:45%"></div></div></div>
+      <div class="slider"><div class="row"><span>columns</span><span class="val">4</span></div><div class="track"><div class="fill" style="width:12%"></div><div class="thumb" style="left:12%"></div></div></div>
+      <label class="check"><input type="checkbox" checked> camera markers</label>
+      <div class="note">ArUco corners so the camera can read the abacus.</div>
+      <label class="color"><span class="swatch"></span> text color <span class="hex">#f5f5f5</span></label>
+      <p class="diff">Thumb and fill go from indigo <code>#818cf8</code> to the accent. Label 11 → 12 in the secondary text color; the value reads in the primary color at full opacity instead of the label's color at 80 %.</p>
+    </div>
+
+    <div class="demo" data-title="StudioSelect, StudioTextInput">
+      <div class="field"><span class="label">printer profile</span><select class="select"><option>Common (0.4 mm nozzle)</option></select></div>
+      <div class="field"><span class="label">infill</span><select class="select"><option>Standard</option></select></div>
+      <div class="note">The printer's usual density. Rigid enough for everyday use. Ordinary bead weight and click. The baseline print time.</div>
+      <div class="field"><span class="label">top rail text</span><input class="input" value="ANNA"></div>
+      <div class="field"><span class="label">left wall text</span><input class="input disabled" value="modules carry no wall text" disabled></div>
+      <p class="diff">Label 11 → 12. Control fill and border become the shared <code>control</code> pair, radius 4 → 6, padding 4/6 → 6/8 so the select clears its text. The disabled text input keeps its "reason instead of a value" behaviour.</p>
+    </div>
+
+    <div class="demo" data-title="StudioSection, Disclosure (one implementation, with keepMounted)">
+      <div class="section-label">Shape</div>
+      <div class="disc"><span>Writing</span><span>▸</span></div>
+      <div class="disc"><span>Advanced</span><span>▾</span></div>
+      <div class="field" style="padding-left:2px"><span class="label">bead clearance (mm)</span><input class="input" value="0.25"></div>
+      <div class="disc"><span>Print settings</span><span>▸</span></div>
+      <p class="diff">Visually unchanged on purpose: the section label and the disclosure header are already the same 12/600 row. The change is one component. PrintPanel's hand-rolled ▸/▾ toggle for the settings editor becomes <code>&lt;Disclosure keepMounted&gt;</code>.</p>
+    </div>
+
+    <div class="demo" data-title="SegmentedControl, StudioChoice">
+      <div class="seg"><span>🏷️ Paper markers</span><span class="on">🖨️ 3D print</span></div>
+      <div class="choice">
+        <span class="label">construction</span>
+        <div class="opt on"><input class="radio" type="radio" checked><div><div class="title">One piece</div><div class="desc">One solid frame, 75.5 × 100.5 mm.</div></div></div>
+        <div class="opt"><input class="radio" type="radio"><div><div class="title">Column modules</div><div class="desc">Columns that join and come apart, each on its own feet — any subset stands. 7.5 mm wider, 83.0 × 100.5 mm.</div></div></div>
+      </div>
+      <p class="diff">Both already use the accent; they only pick up the tokens. Segmented radius 7 → 8 to match the card radius it sits near.</p>
+    </div>
+
+    <div class="demo" data-title="StudioNotice — one component, four tones">
+      <div class="notice warn">Printed TPU feet stand the abacus off the bed, so the bottom face needs supports — turn them on to print.<span class="fix">Enable supports</span></div>
+      <div class="notice info">Supports are on. Keep them off the model too, or they can grow inside the bead channels where you cannot reach them.<span class="fix">Keep supports off the model</span></div>
+      <div class="notice danger"><b>⛔ Won't print on Common (0.4 mm nozzle)</b><span>Bead clearance 0.10 mm is under the 0.25 mm this nozzle can hold.</span><div class="fixes"><span class="fix">↕ Raise bead clearance to 0.25</span><span class="fix">Wider nozzle</span></div></div>
+      <div class="notice ok">Fit holds: the 0.10 mm joint sits inside the 0.4 mm nozzle's window.</div>
+      <div class="note warn">The crossbar needs a 6.5 mm frame border; standard is 5.25 mm.</div>
+      <div class="note">Feet always print solid.</div>
+      <p class="diff">The boxes already agree on tone colours; they become one component instead of five hand-built divs. The inline amber note is the real change: today it is <code>#b45309</code>, a brown that reads at 3.2 : 1 on the rail. Proposed uses the notice amber at 92 %.</p>
+    </div>
+
+    <div class="demo" data-title="Buttons, chips">
+      <div class="btn-primary">⬇ 3MF</div>
+      <div class="btn-submit">🖨 Print this abacus</div>
+      <div class="btn-submit disabled">🖨 Print this abacus</div>
+      <div class="btn">⬇ plain STL</div>
+      <div class="btn disabled">⬇ Seam coupon (STL)</div>
+      <div class="chips"><span class="chip">🔗 Copy design link</span><span class="chip">reset to my abacus</span><span class="chip accent">make this Anna's abacus</span></div>
+      <p class="diff">Two primary styles today (export button with shadow, submit button without) become one <code>primary</code>. Secondary and chip styles are already consistent; they move to the theme unchanged.</p>
+    </div>
+
+    <div class="demo" data-title="PrintCommitmentCard + the gates list (from B)">
+      <div class="card">
+        <div class="ch">What you'll print</div>
+        <dl>
+          <dt>pieces</dt><dd>One piece · 75.5 × 100.5 mm on a 256 × 256 mm bed</dd>
+          <dt>filaments</dt><dd>8 filaments loaded · prints true</dd>
+          <dt>supports</dt><dd>on · interface in PLA Support<div class="n">Allowed to touch the model — see below.</div></dd>
+          <dt>feet</dt><dd>printed TPU feet · always solid</dd>
+          <dt>infill</dt><dd>Standard — frame and beads</dd>
+          <dt>jobs</dt><dd>one job</dd>
+          <dt>time</dt><dd>Baseline print time.</dd>
+        </dl>
+      </div>
+      <div class="gates">
+        <div class="gates-h">Before you can print</div>
+        <div class="notice info">Supports are on. Keep them off the model too, or they can grow inside the bead channels where you cannot reach them.<span class="fix">Keep supports off the model</span></div>
+      </div>
+      <p class="diff">Card heading 11/500 → 12/600 in the section colour, so it reads as a heading. Row labels 10 → 11, notes 10 → 11. The "Before you can print" heading is unstyled today; proposed it is the same eyebrow as "Jobs".</p>
+    </div>
+
+    <div class="demo" data-title="FilamentPlanPanel rows and footer">
+      <div class="map-h"><span>Filament mapping</span><span class="chip">reset</span></div>
+      <div class="map-group">Beads</div>
+      <div class="map-row"><span class="sw" style="background:#3b82f6"></span><span class="nm">Bambu PLA Basic Blue</span><span style="color:var(--muted)">tens</span></div>
+      <div class="map-row pinned"><span class="sw" style="background:#22c55e"><span class="fleck"></span></span><span class="nm">Bambu PLA Basic Green</span><span style="color:var(--muted)">ones</span></div>
+      <div class="map-row"><span class="sw miss" style="background:#a855f7"></span><span class="nm">no match for violet</span><span style="color:var(--muted)">hundreds</span></div>
+      <div class="map-hint">One filament loaded: the whole abacus prints in it.</div>
+      <div class="map-foot"><span>8 filaments loaded</span><span class="shift">1 color shifts</span></div>
+      <p class="diff">Rows are fine and stay. Group labels 9.5 → 10 (the eyebrow), the one-filament hint 10.5 → 11 (the note). The injected <code>MAPPING_CSS</code> string moves to a CSS module; its hover, pulse and picker-reveal rules are unchanged.</p>
+    </div>
+
+    <div class="demo" data-title="Canvas overlays (viewer)">
+      <div class="canvas"><span class="pill on">Take it apart</span><span class="pill">Put it back together</span><span class="pill caption">Print preview · hover a swatch for your design</span></div>
+      <div class="canvas"><span class="hud">Rendering…</span><span class="hud" style="color:#ff7b72">render failed: ECHILD</span></div>
+      <p class="diff">Unchanged in look; they already sit on the accent and slate families and just read from the theme. The three.js scene constants stay hex and are allow-listed by the guard test.</p>
+    </div>
+
+  </div>
+
+  <!-- ======================= 3. THE RAILS ======================= -->
+  <h2 id="rails">3 · The rails, assembled</h2>
+  <p class="lead">The design rail and the print rail as they will be after C, with the print service paired and live. Use the switch at the top to flip both between today and proposed. The layout is A and B, untouched.</p>
+
+  <div class="rails">
+    <div class="skin rail" data-rail>
+      <div class="h">Your abacus</div>
+      <div class="preview">live mini-preview</div>
+      <div class="owner">Anna's abacus</div>
+      <div class="chips"><span class="chip">🔗 Copy design link</span><span class="chip">reset to my abacus</span></div>
+      <div class="disc"><span>My abacuses (8)</span><span>▸</span></div>
+
+      <div class="section">
+        <div class="section-label">Shape</div>
+        <div class="slider"><div class="row"><span>size ×</span><span class="val">1.00</span></div><div class="track"><div class="fill" style="width:45%"></div><div class="thumb" style="left:45%"></div></div></div>
+        <div class="slider"><div class="row"><span>columns</span><span class="val">4</span></div><div class="track"><div class="fill" style="width:12%"></div><div class="thumb" style="left:12%"></div></div></div>
+        <div class="choice">
+          <span class="label">construction</span>
+          <div class="opt on"><input class="radio" type="radio" checked><div><div class="title">One piece</div><div class="desc">One solid frame, 75.5 × 100.5 mm.</div></div></div>
+          <div class="opt"><input class="radio" type="radio"><div><div class="title">Column modules</div><div class="desc">Columns that join and come apart, each on its own feet — any subset stands. 7.5 mm wider, 83.0 × 100.5 mm.</div></div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Colors</div>
+        <div class="field"><span class="label">color scheme</span><select class="select"><option>place-value</option></select></div>
+        <div class="field"><span class="label">palette</span><select class="select"><option>default</option></select></div>
+        <div class="field"><span class="label">text ink</span><select class="select"><option>rainbow (up to 5 filaments)</option></select></div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Feet</div>
+        <div class="field"><span class="label">feet</span><select class="select"><option>printed TPU feet</option></select></div>
+        <div class="field"><span class="label">how feet attach</span><select class="select"><option>linked crossbar (strongest)</option></select></div>
+        <div class="note warn">The crossbar needs a 6.5 mm frame border; standard is 5.25 mm.</div>
+        <div class="field"><span class="label">frame border</span><select class="select"><option>standard — 5.25 mm</option></select></div>
+        <div class="note">The flat band around the bead field. The feet seat in it.</div>
+      </div>
+
+      <div class="disc"><span>Writing</span><span>▸</span></div>
+      <div class="field">
+        <label class="check"><input type="checkbox" checked> camera markers</label>
+        <div class="note">ArUco corners so the camera can read the abacus.</div>
+      </div>
+    </div>
+
+    <div class="skin rail" data-rail>
+      <div class="h">3D print</div>
+      <div>
+        <div class="map-h"><span>Filament mapping</span></div>
+        <div class="map-group">Beads</div>
+        <div class="map-row"><span class="sw" style="background:#3b82f6"></span><span class="nm">Bambu PLA Basic Blue</span><span style="color:var(--muted)">tens</span></div>
+        <div class="map-row pinned"><span class="sw" style="background:#22c55e"><span class="fleck"></span></span><span class="nm">Bambu PLA Basic Green</span><span style="color:var(--muted)">ones</span></div>
+        <div class="map-group">Structure <span style="font-weight:400;color:rgba(148,163,184,.5)">· rarely changed</span></div>
+        <div class="map-row"><span class="sw" style="background:#d6b48a"></span><span class="nm">Bambu PLA Wood</span><span style="color:var(--muted)">frame</span></div>
+        <div class="map-foot"><span>8 filaments loaded</span><span class="shift">1 color shifts</span></div>
+      </div>
+      <div class="field"><span class="label">printer profile</span><select class="select"><option>Common (0.4 mm nozzle)</option></select></div>
+
+      <div class="section">
+        <div class="section-label">Print options</div>
+        <div class="field"><span class="label">infill</span><select class="select"><option>Standard</option></select></div>
+        <div class="note">The printer's usual density. Rigid enough for everyday use. Ordinary bead weight and click. The baseline print time.</div>
+        <label class="check"><input type="checkbox"> Set beads separately</label>
+        <div class="note">Feet always print solid.</div>
+        <div class="disc"><span>Advanced</span><span>▸</span></div>
+      </div>
+
+      <div class="field"><span class="label">print service</span><select class="select"><option>localhost:8099</option></select></div>
+
+      <div class="panel service">
+        <div class="svc-h">🖨 Print service <span class="live">· live</span></div>
+        <div class="trow"><div class="txt"><strong>Slow first layer</strong><span class="sub">12 mm/s · 300 mm/s². Try this before adding a brim.</span></div><span class="tb">Slow it down</span></div>
+        <div class="trow on"><div class="txt"><strong>Two-stage feet</strong><span class="sub">Below 1.6 mm from the external spool (soft TPU), the rest chained from the AMS — one slice, two jobs, a spool swap between.</span></div><span class="tb">Print in one job</span></div>
+        <div class="card">
+          <div class="ch">What you'll print</div>
+          <dl>
+            <dt>pieces</dt><dd>One piece · 75.5 × 100.5 mm on a 256 × 256 mm bed</dd>
+            <dt>filaments</dt><dd>8 filaments loaded · 1 color shifts</dd>
+            <dt>supports</dt><dd>on · interface in the feet filament (TPU 95A), printed in the feet stage<div class="n">Its floor is a sparse comb against the plate, so it peels off instead of bonding.</div></dd>
+            <dt>feet</dt><dd>printed TPU feet · always solid</dd>
+            <dt>infill</dt><dd>Standard — frame and beads</dd>
+            <dt>jobs</dt><dd>two jobs · feet first from the external spool, then the body after a spool swap</dd>
+            <dt>time</dt><dd>Baseline print time. Two jobs, with a spool swap between.</dd>
+          </dl>
+        </div>
+        <div class="gates">
+          <div class="gates-h">Before you can print</div>
+          <div class="notice warn">The feet seam at 1.6 mm doesn't land between layers at 0.3 mm, and the print service can only split on a layer boundary. Pick a layer height that divides the feet stand-off, or change the stand-off in the editor.</div>
+        </div>
+        <div class="btn-submit disabled">🖨 Print Stage A (feet)</div>
+        <div class="disc"><span>Print settings</span><span>▸</span></div>
+        <div>
+          <div class="eyebrow" style="margin-bottom:4px">Jobs</div>
+          <div class="job"><span>anna-abacus-4col<span class="stage">Stage B</span></span><span class="ph">printing · 41 %</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Files</div>
+        <div class="btn">⬇ 3MF</div>
+        <div class="btn">⬇ plain STL</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= 4. RULES ======================= -->
+  <h2 id="rules">4 · What the sweep enforces</h2>
+  <table class="rules">
+    <tr><th>Rule</th><th>Today</th><th>Proposed</th></tr>
+    <tr><td>Accent</td><td>Cyan everywhere except the slider, checkbox and colour picker, which are indigo (borrowed from the toys' debug panel)</td><td>One accent. <code>StudioSlider</code>, <code>StudioCheckbox</code>, <code>StudioColor</code> live in <code>components/studio/</code>; <code>ToyDebugPanel</code> keeps its own for the toys.</td></tr>
+    <tr><td>Labels vs values</td><td>Labels 11 px above 12 px values in select, text input, slider, checkbox</td><td>Label 12/500 in the secondary colour; value 12 in the primary colour. Hierarchy by colour and weight, never by shrinking the label.</td></tr>
+    <tr><td>Type scale</td><td>13 · 12 · 11 · 10.5 · 10 · 9.5 · 8.5 · 8 · 14</td><td>13 heading · 12 body/label · 11 note · 10 eyebrow. A guard test fails on any other <code>fontSize</code> in the swept files.</td></tr>
+    <tr><td>Colours</td><td>~120 distinct literals across 18 files; <code>rgba(148,163,184,·)</code> at 15 alphas</td><td>All from <code>theme.ts</code>. A guard test fails on any <code>rgba(</code> / hex literal outside the theme, with an allow-list for the three.js scene constants.</td></tr>
+    <tr><td>Gradient</td><td>Declared in StudioShell, SegmentedControl, ModularSeamPanel; inlined in PrintDecision; shadow on some primaries, not others</td><td><code>STUDIO.gradient.accent</code> plus one <code>primary</code> button style with the shadow.</td></tr>
+    <tr><td>Warnings</td><td>Boxes agree on amber/red/blue; three inline notes use brown <code>#b45309</code></td><td><code>StudioNotice tone="warn|danger|info|ok"</code> for boxes; inline warnings use the amber text colour.</td></tr>
+    <tr><td>Disclosure</td><td><code>Disclosure.tsx</code>, a hand-rolled toggle in PrintPanel (mount-once), a Panda one in AbacusMarkerSheet</td><td>One <code>Disclosure</code> with <code>keepMounted</code>. The marker sheet's adopts it if the dark chrome suits the paper lane; otherwise noted and left.</td></tr>
+    <tr><td>Rail rhythm</td><td>Design rail gap 16, print rail gap 14; control radius 4, cards 8, panel 12, segmented 7</td><td>Gap 14 in both; radii 12 / 8 / 6 / 999.</td></tr>
+    <tr><td>Untouched</td><td colspan="2"><code>@eink/print-dialog/ui</code> internals (pairing form, settings editor, support-role editor) keep their own stylesheet; the studio wraps their container so surface and spacing match. Re-skinning them is a package publish.</td></tr>
+  </table>
+
+  <h3>What Proposed + adds on top</h3>
+  <table class="rules">
+    <tr><th>Move</th><th>Why</th></tr>
+    <tr><td>Section headers become ruled eyebrows (10 px caps over a hairline)</td><td>The rail scans as blocks: Shape · Colors · Feet · Print options · Files. Today every header is a 12 px bold line that looks like a label.</td></tr>
+    <tr><td>Controls 32 px tall, radius 8, one fill</td><td>The 4 px-padded selects read as debug widgets. Same height for select, input, and button rows gives the rail a rhythm.</td></tr>
+    <tr><td>Notices as left-bar tints, not outlined boxes</td><td>Four outlined boxes in a 280 px column is a wall of frames. A 3 px tone bar keeps the meaning, loses the noise.</td></tr>
+    <tr><td>The print-service panel flattens into the rail</td><td>Today it is a bordered panel inside a rail inside a page, holding cards holding notices: four nesting levels. The rail is the frame.</td></tr>
+    <tr><td>Toggle rows and chips go pill-shaped; the primary button gets taller</td><td>Choices look like choices, the one thing to press looks like the one thing to press.</td></tr>
+    <tr><td>Mapping swatches 22 px, groups ruled, footer ruled</td><td>The filament block is the densest thing on screen; give its structure lines instead of smaller type.</td></tr>
+  </table>
+  <div class="callout">The call I need: <b>Proposed</b> (the ticket: tokens, primitives, invisible), <b>Proposed +</b> (tokens plus the structural moves above; same files, one more day), or a mix. Then the small ones: label size 12 to match values; notice text 12; rail gap 14 (Proposed) or 20 (Proposed +).</div>
+</main>
+
+<script>
+  // Clone each primitive demo into a today/proposed pair.
+  const demos = document.getElementById('demos');
+  for (const demo of [...demos.querySelectorAll('.demo')]) {
+    const pair = document.createElement('div');
+    pair.className = 'pair';
+    const title = document.createElement('h3');
+    title.textContent = demo.dataset.title;
+    demos.insertBefore(title, demo);
+    const diff = demo.querySelector('.diff');
+    if (diff) demo.removeChild(diff);
+    pair.classList.add('trio');
+    for (const skin of ['today', 'proposed', 'plus']) {
+      const col = document.createElement('div');
+      col.className = 'skin panel' + (skin === 'today' ? ' today' : skin === 'plus' ? ' plus' : '');
+      col.dataset.title = skin === 'plus' ? 'proposed +' : skin;
+      for (const child of [...demo.childNodes]) col.appendChild(child.cloneNode(true));
+      pair.appendChild(col);
+    }
+    demos.replaceChild(pair, demo);
+    if (diff) pair.after(diff);
+  }
+  // Global switch drives the assembled rails.
+  const rails = document.querySelectorAll('[data-rail]');
+  for (const input of document.querySelectorAll('input[name="skin"]')) {
+    input.addEventListener('change', () => {
+      if (!input.checked) return;
+      for (const r of rails) {
+        r.classList.toggle('today', input.value === 'today');
+        r.classList.toggle('plus', input.value === 'plus');
+      }
+    });
+  }
+  // Swatches from the proposed palette.
+  const TOKENS = [
+    ['color.bg', '#0b0f14', 'toolbar, resize handles, canvas backdrop'],
+    ['color.rail', '#0f1419', 'both rails'],
+    ['color.surface', 'rgba(255,255,255,0.04)', 'cards, the mini-preview'],
+    ['color.surfaceRaised', 'rgba(255,255,255,0.07)', 'job rows, hovered mapping rows'],
+    ['color.border', 'rgba(148,163,184,0.18)', 'hairlines, pills, cards'],
+    ['color.borderStrong', 'rgba(148,163,184,0.35)', 'segmented control, secondary buttons'],
+    ['color.text.primary', '#f3f4f6', 'values, titles'],
+    ['color.text.secondary', 'rgba(203,213,225,0.9)', 'labels, section headers'],
+    ['color.text.muted', 'rgba(148,163,184,0.95)', 'notes, eyebrows, descriptions'],
+    ['color.accent', '#06b6d4', 'thumb, checkbox, radio, active segment'],
+    ['color.accentSoft', 'rgba(6,182,212,0.12)', 'selected option fill'],
+    ['color.accentText', '#67e8f9', 'pinned marks, stage tags, links'],
+    ['color.ok', 'rgba(134,239,172,0.95)', 'synced, fit holds'],
+    ['color.warn', 'rgba(251,191,36,0.92)', 'inline warnings, colour shifts'],
+    ['color.warnBg', 'rgba(120,53,15,0.30)', 'warn notice fill'],
+    ['color.danger', 'rgba(248,113,113,0.9)', 'refusals, errors'],
+    ['color.dangerBg', 'rgba(127,29,29,0.35)', 'danger notice fill'],
+    ['color.info', 'rgba(96,165,250,0.9)', 'advisories'],
+    ['color.infoBg', 'rgba(30,58,138,0.28)', 'info notice fill'],
+    ['gradient.accent', 'linear-gradient(135deg,#06b6d4 0%,#0891b2 100%)', 'the one primary'],
+  ];
+  const sw = document.getElementById('swatches');
+  for (const [name, value, use] of TOKENS) {
+    const el = document.createElement('div');
+    el.className = 'sw-card';
+    el.innerHTML = `<div class="chip" style="background:${value}"></div><div><b>${name}</b><code>${value}</code><small>${use}</small></div>`;
+    sw.appendChild(el);
+  }
+</script>
+</body>
+</html>

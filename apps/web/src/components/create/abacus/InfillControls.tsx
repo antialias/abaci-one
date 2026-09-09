@@ -13,16 +13,13 @@
 // split exists for the one combination worth asking for — heavy beads on a light
 // frame — so the second select stays out of the way until it's asked for.
 
+import { StudioCheckbox } from '@/components/studio/StudioCheckbox'
 import { StudioSelect } from '@/components/studio/StudioSelect'
-import { DebugCheckbox } from '@/components/toys/ToyDebugPanel'
+import { STUDIO } from '@/components/studio/theme'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { INFILL_OPTIONS, type InfillLevel, infillOption } from './abacus-infill'
 
-const NOTE = {
-  fontSize: 11,
-  lineHeight: 1.5,
-  color: 'rgba(226,232,240,0.75)',
-} as const
+const NOTE = STUDIO.type.note
 
 export function InfillControls() {
   const { params, set } = useAbacusStudio()
@@ -49,7 +46,7 @@ export function InfillControls() {
         {infillOption(params.infill_frame).time}
       </div>
       <div data-element="abacus-infill-link">
-        <DebugCheckbox
+        <StudioCheckbox
           label="Set beads separately"
           checked={!params.infill_linked}
           onChange={(separate) => set('infill_linked', !separate)}
@@ -76,7 +73,7 @@ export function InfillControls() {
             <div
               data-component="InfillControls"
               data-element="abacus-infill-monochrome-note"
-              style={{ fontSize: 11, lineHeight: 1.5, color: '#b45309' }}
+              style={{ ...NOTE, color: STUDIO.color.warnInline }}
             >
               In the monochrome scheme the beads print in the frame&apos;s filament, so they take
               the frame&apos;s infill.
@@ -85,11 +82,7 @@ export function InfillControls() {
         </>
       )}
       {params.feet_mode === 'printed' && (
-        <div
-          data-component="InfillControls"
-          data-element="abacus-infill-feet-note"
-          style={{ fontSize: 11, lineHeight: 1.5, color: 'rgba(148,163,184,0.95)' }}
-        >
+        <div data-component="InfillControls" data-element="abacus-infill-feet-note" style={NOTE}>
           Feet always print solid.
         </div>
       )}

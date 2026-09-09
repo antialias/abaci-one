@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
+import { STUDIO } from '@/components/studio/theme'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { useAbacusStudio } from './AbacusStudioContext'
 import {
@@ -52,6 +53,9 @@ import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
 // beads, the inset text, and the marker decals all fade to this while one role stays
 // opaque (Gitea #17). One tuning knob so the three ghosts stay in lockstep.
 const XRAY_OPACITY = 0.14
+
+// The hero's glass chrome (pills, caption, HUD) — one palette, from theme.ts.
+const CANVAS = STUDIO.color.canvas
 
 type DrawApi = {
   /** parse + shell-classify + recolor a fresh geometry STL; returns tri count */
@@ -144,10 +148,10 @@ export function AbacusStudioViewer() {
     )
     el.textContent = text
     el.dataset.active = active ? 'true' : 'false'
-    el.style.color = active ? '#e6faff' : 'rgba(148,163,184,0.92)'
-    el.style.background = active ? 'rgba(8,22,30,0.85)' : 'rgba(17,24,39,0.7)'
-    el.style.borderColor = active ? 'rgba(103,232,249,0.5)' : 'rgba(148,163,184,0.18)'
-    el.style.boxShadow = active ? '0 2px 14px rgba(6,182,212,0.22)' : 'none'
+    el.style.color = active ? CANVAS.textOn : STUDIO.color.muted
+    el.style.background = active ? CANVAS.chromeOn : CANVAS.chrome
+    el.style.borderColor = active ? CANVAS.chromeBorderOn : STUDIO.color.border
+    el.style.boxShadow = active ? STUDIO.shadow.canvasOn : 'none'
   }, [])
 
   const scad = useAbacusScad({
@@ -438,8 +442,8 @@ export function AbacusStudioViewer() {
       // filaments they snap to (whose contrast the plan warns about when it drops
       // below the camera's floor); the intrinsic-reveal hover shows the ideal pair.
       const fm = revealIntrinsicRef.current ? null : filamentMapRef.current
-      const white = fm ? fm.slots[fm.markerWhite] : '#ffffff'
-      const black = fm ? fm.slots[fm.markerBlack] : '#000000'
+      const white = fm ? fm.slots[fm.markerWhite] : '#ffffff' // theme-guard: allow — canvas-2D fillStyle for the marker CanvasTexture
+      const black = fm ? fm.slots[fm.markerBlack] : '#000000' // theme-guard: allow — canvas-2D fillStyle for the marker CanvasTexture
       // markers are decals on the frame's top face — fade them with the frame during
       // an x-ray (Gitea #17) so they don't hang solid over a ghosted board. xrayOn is
       // fresh here: applyParams runs recolor (which sets it) before updateMarkers.
@@ -512,7 +516,7 @@ export function AbacusStudioViewer() {
       // to the frame slot exactly like planToFilamentMap's no-TPU fallback; the
       // intrinsic-reveal hover shows the plan's designed feet hex instead.
       const fm = revealIntrinsicRef.current ? null : filamentMapRef.current
-      const hex = fm ? fm.slots[fm.feet ?? fm.frame] : '#1f2937'
+      const hex = fm ? fm.slots[fm.feet ?? fm.frame] : '#1f2937' // three.js
       // feet are their own filament role, so they ghost with the rest of the
       // board unless the feet row itself is the emphasis. xrayOn is fresh here:
       // applyParams runs recolor before updateFeet (same contract as markers).
@@ -914,10 +918,10 @@ export function AbacusStudioViewer() {
           transform: 'translateX(-50%)',
           maxWidth: 'calc(100% - 24px)',
           padding: '5px 12px',
-          borderRadius: 999,
-          border: '1px solid rgba(148,163,184,0.18)',
-          background: 'rgba(17,24,39,0.7)',
-          color: 'rgba(148,163,184,0.92)',
+          borderRadius: STUDIO.radius.pill,
+          border: `1px solid ${STUDIO.color.border}`,
+          background: CANVAS.chrome,
+          color: STUDIO.color.muted,
           font: '12px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif',
           fontWeight: 500,
           letterSpacing: 0.2,
@@ -948,18 +952,16 @@ export function AbacusStudioViewer() {
             top: 12,
             left: 12,
             padding: '5px 12px',
-            borderRadius: 999,
-            border: exploded
-              ? '1px solid rgba(103,232,249,0.5)'
-              : '1px solid rgba(148,163,184,0.18)',
-            background: exploded ? 'rgba(8,22,30,0.85)' : 'rgba(17,24,39,0.7)',
-            color: exploded ? '#e6faff' : 'rgba(209,213,219,0.95)',
+            borderRadius: STUDIO.radius.pill,
+            border: `1px solid ${exploded ? CANVAS.chromeBorderOn : STUDIO.color.border}`,
+            background: exploded ? CANVAS.chromeOn : CANVAS.chrome,
+            color: exploded ? CANVAS.textOn : STUDIO.color.text2,
             font: '12px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif',
             fontWeight: 600,
             letterSpacing: 0.2,
             cursor: 'pointer',
             backdropFilter: 'blur(6px)',
-            boxShadow: exploded ? '0 2px 14px rgba(6,182,212,0.22)' : 'none',
+            boxShadow: exploded ? STUDIO.shadow.canvasOn : 'none',
             transition: 'color 120ms, background 120ms, border-color 120ms, box-shadow 120ms',
             zIndex: 2,
           }}
@@ -982,9 +984,9 @@ export function AbacusStudioViewer() {
             bottom: 12,
             left: 12,
             padding: '6px 10px',
-            borderRadius: 6,
-            background: 'rgba(17,24,39,0.82)',
-            color: status.error ? '#ff7b72' : 'rgba(209,213,219,0.95)',
+            borderRadius: STUDIO.radius.notice,
+            background: CANVAS.chromeStrong,
+            color: status.error ? CANVAS.error : STUDIO.color.text2,
             font: '12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace',
             whiteSpace: 'pre-wrap',
             maxWidth: 'calc(100% - 24px)',

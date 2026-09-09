@@ -13,6 +13,7 @@
 // while the rest of the studio (the design controls above all) keeps working.
 
 import { Component, type ReactNode } from 'react'
+import { button, notice, STUDIO } from '@/components/studio/theme'
 
 interface Props {
   /** Named in the fallback + console so a caught error says which pane broke. */
@@ -45,45 +46,31 @@ export class FabricationErrorBoundary extends Component<Props, State> {
         data-component="fabrication-error-boundary"
         data-error-pane={this.props.label}
         style={{
+          ...notice('danger'),
           display: 'flex',
           flexDirection: 'column',
           gap: 10,
           padding: 16,
           margin: 12,
-          borderRadius: 12,
-          background: 'rgba(127,29,29,0.30)',
-          border: '1px solid rgba(248,113,113,0.5)',
-          color: 'rgba(254,226,226,0.96)',
-          fontSize: 12,
-          lineHeight: 1.5,
+          borderRadius: STUDIO.radius.panel,
         }}
       >
         <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
           <span aria-hidden="true">⛔</span> The {this.props.label} hit an error
         </div>
-        <div style={{ color: 'rgba(254,226,226,0.85)' }}>
-          The rest of the studio still works — your design and the other panels are unaffected. Retry
-          this panel, or keep designing and try again.
+        <div style={{ opacity: 0.85 }}>
+          The rest of the studio still works — your design and the other panels are unaffected.
+          Retry this panel, or keep designing and try again.
         </div>
         <button
           type="button"
           data-action="retry-fabrication-pane"
           onClick={this.reset}
-          style={{
-            alignSelf: 'flex-start',
-            padding: '6px 12px',
-            borderRadius: 6,
-            border: '1px solid rgba(248,113,113,0.6)',
-            background: 'rgba(254,226,226,0.12)',
-            color: 'rgba(254,226,226,0.98)',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
+          style={{ ...button('fix'), alignSelf: 'flex-start' }}
         >
           Try again
         </button>
-        <details style={{ color: 'rgba(254,226,226,0.7)' }}>
+        <details style={{ opacity: 0.7 }}>
           <summary style={{ cursor: 'pointer', fontSize: 11 }}>Technical details</summary>
           <div style={{ marginTop: 6, fontWeight: 600 }}>{error.message}</div>
           {error.stack && (

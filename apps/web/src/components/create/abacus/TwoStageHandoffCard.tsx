@@ -4,6 +4,7 @@
 // what Stage A is doing, the operator's steps between the stages, the Stage B
 // submit, and the way out. Pure presentation — the panel owns the record, the
 // job roster and the submit; this only renders what `handoffView` decided.
+import { button, CARD, STUDIO } from '@/components/studio/theme'
 import { type HandoffView, STAGE_B_HANDOFF_STEPS } from './two-stage-print'
 
 export interface TwoStageHandoffCardProps {
@@ -35,17 +36,17 @@ export function TwoStageHandoffCard({
       data-element="two-stage-handoff"
       data-handoff={view.kind}
       style={{
+        ...CARD,
+        // the one card that is a live thread rather than a summary — it keeps the
+        // accent edge so the hand-off reads as the thing currently happening
+        border: `1px solid ${STUDIO.color.accentBorder}`,
         display: 'flex',
         flexDirection: 'column',
-        gap: 8,
-        padding: '10px 12px',
-        borderRadius: 8,
-        background: 'rgba(30,41,59,0.6)',
-        border: '1px solid rgba(34,211,238,0.45)',
+        gap: STUDIO.space.card,
         lineHeight: 1.45,
       }}
     >
-      <strong style={{ color: 'rgba(226,232,240,0.98)' }}>Two-stage print — {name}</strong>
+      <strong style={STUDIO.type.strong}>Two-stage print — {name}</strong>
       {view.kind === 'stage-a-running' ? (
         <span>
           Stage A (feet) is {view.phase ?? 'not in the job list yet'} — Stage B unlocks when it
@@ -78,7 +79,7 @@ export function TwoStageHandoffCard({
               display: 'flex',
               flexDirection: 'column',
               gap: 3,
-              color: 'rgba(203,213,225,0.96)',
+              color: STUDIO.color.text2,
             }}
           >
             {STAGE_B_HANDOFF_STEPS.map((step) => (
@@ -91,18 +92,7 @@ export function TwoStageHandoffCard({
             onClick={onSubmitStageB}
             disabled={disabled}
             title={disabledReason ?? 'Chain the body onto the feet Stage A printed'}
-            style={{
-              padding: '10px 12px',
-              borderRadius: 8,
-              border: 'none',
-              background: disabled
-                ? 'rgba(75,85,99,0.55)'
-                : 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-              color: disabled ? 'rgba(209,213,219,0.7)' : '#fff',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: disabled ? 'not-allowed' : 'pointer',
-            }}
+            style={button('primary', { disabled })}
           >
             {submitting
               ? 'Rendering & submitting…'
@@ -116,16 +106,7 @@ export function TwoStageHandoffCard({
         type="button"
         data-action="forget-two-stage"
         onClick={onForget}
-        style={{
-          alignSelf: 'flex-start',
-          padding: '3px 8px',
-          borderRadius: 6,
-          border: '1px solid rgba(148,163,184,0.45)',
-          background: 'transparent',
-          color: 'rgba(203,213,225,0.9)',
-          fontSize: 11,
-          cursor: 'pointer',
-        }}
+        style={{ ...button('chip'), alignSelf: 'flex-start' }}
       >
         Forget this two-stage print
       </button>

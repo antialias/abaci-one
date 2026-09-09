@@ -4,13 +4,20 @@
 // had Disclosure, SegmentedControl and StudioSelect but no input at all, which
 // is why nothing in the studio could WRITE anything: the abacus has eight
 // engravable slots (Gitea #28) and until now a user could only pick from two
-// canned presets. Styled off the inline rename field in MyDesignsList, the only
-// working text input in the studio, so the two read as the same control.
+// canned presets.
+//
+// Styled from theme.ts, and column-shaped like every other control: the label
+// sits above in muted label-type and the input is the shared `CONTROL` box at
+// full width. The old beside-the-label layout capped the field at whatever was
+// left of 4.5em of label, which on the engraving slots meant a text input you
+// could not read your own text in.
 //
 // `disabled` keeps the field VISIBLE with `disabledReason` standing in for the
 // value — the same house rule StudioSelect's greyed options follow. A slot held
 // by a teaching aid is not a slot we don't support; hiding it would say that,
 // while "showing Friends of 10" says what is true and names what to move.
+
+import { CONTROL, STUDIO } from './theme'
 
 export interface StudioTextInputProps {
   label: string
@@ -42,14 +49,12 @@ export function StudioTextInput({
       data-disabled={disabled || undefined}
       style={{
         display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        fontSize: 11,
-        fontWeight: 500,
+        flexDirection: 'column',
+        gap: STUDIO.space.field,
         opacity: disabled ? 0.65 : 1,
       }}
     >
-      <span style={{ flex: '0 0 4.5em', color: 'rgba(203,213,225,0.9)' }}>{label}</span>
+      <span style={STUDIO.type.label}>{label}</span>
       <input
         type="text"
         value={disabled ? '' : value}
@@ -60,14 +65,11 @@ export function StudioTextInput({
         data-action={dataAction}
         onChange={(e) => onChange(e.target.value)}
         style={{
-          flex: 1,
+          ...CONTROL,
+          width: '100%',
           minWidth: 0,
-          padding: '2px 5px',
-          borderRadius: 4,
-          border: '1px solid rgba(255,255,255,0.15)',
-          background: disabled ? 'transparent' : 'rgba(255,255,255,0.08)',
-          color: 'inherit',
-          fontSize: 12,
+          boxSizing: 'border-box',
+          background: disabled ? 'transparent' : CONTROL.background,
           fontStyle: disabled ? 'italic' : 'normal',
         }}
       />

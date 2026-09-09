@@ -1,0 +1,91 @@
+/* FilamentPlanPanel.module.css — the mapping list's stateful styling: row hover,
+   the focus ring, the chevron rotate, the "asking your printer…" pulse and the
+   in-place row expansion (grid 0fr→1fr, so an opening picker pushes the rows
+   below it down instead of floating over the WebGL canvas), plus the
+   reduced-motion opt-out. None of that can be expressed by an inline style,
+   which is why the one studio file that owns a stylesheet is this one.
+
+   A stylesheet cannot import theme.ts, so the two colours below are the theme's
+   values BY COPY — keep them in step with studio/theme.ts:
+     row hover background = STUDIO.color.surface    rgba(255,255,255,0.035)
+     focus ring           = STUDIO.color.accentText #67e8f9
+   This file is listed in the guard's ALLOWED_CSS because a stylesheet cannot
+   import theme.ts; the values are copies of STUDIO.color.surface /
+   STUDIO.color.accentText. Every other stylesheet in these two directories IS
+   scanned, so a second one cannot become a back door. */
+
+.mapRow {
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.mapRow:hover {
+  background: rgba(255, 255, 255, 0.035); /* STUDIO.color.surface */
+}
+
+.mapRow:focus-visible {
+  outline: 2px solid #67e8f9; /* STUDIO.color.accentText */
+  outline-offset: -2px;
+}
+
+.swatch:focus-visible {
+  outline: 2px solid #67e8f9; /* STUDIO.color.accentText */
+  outline-offset: 2px;
+}
+
+.chevron {
+  transition: transform 200ms ease;
+}
+
+.planPending {
+  animation: planPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes planPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.pickerWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pickerWrap[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+
+.pickerInner {
+  overflow: hidden;
+  min-height: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 300ms ease-out,
+    transform 300ms ease-out;
+}
+
+.pickerWrap[data-open="true"] .pickerInner {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mapRow,
+  .chevron {
+    transition: none;
+  }
+  .planPending {
+    animation: none;
+  }
+  .pickerWrap,
+  .pickerInner {
+    transition-duration: 0.001ms;
+  }
+}
