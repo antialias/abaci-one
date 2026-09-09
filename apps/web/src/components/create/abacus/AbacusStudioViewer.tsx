@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
+import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { useAbacusStudio } from './AbacusStudioContext'
 import {
   analyzeShells,
@@ -108,7 +109,13 @@ export function AbacusStudioViewer() {
   // names what a hover is emphasizing; updated imperatively via paintCaption below.
   const captionRef = useRef<HTMLDivElement | null>(null)
 
-  const [status, setStatus] = useState<StatusUpdate>({ text: 'booting…' })
+  // The render readout is developer instrumentation, not product: it only paints
+  // when visual debug is on (Ctrl+Shift+D / ?debug=1). With the flag off the HUD
+  // keeps two things every user needs: that a render is in flight (`busy`, or the
+  // grid sits empty for seconds with no account of why) and that one FAILED.
+  const { isVisualDebugEnabled: showHud } = useVisualDebugSafe()
+
+  const [status, setStatus] = useState<StatusUpdate>({ text: 'booting…', busy: 'loading' })
   const [meta, setMeta] = useState<{ ms?: number; tris?: number }>({})
   // "take it apart" toggle: pure VIEW state, never a Param — explode rides the
   // render call (and the shell classifier) but stays out of snapshots, content
@@ -961,28 +968,39 @@ export function AbacusStudioViewer() {
         </button>
       )}
 
-      {/* status HUD */}
-      <div
-        data-element="abacus-studio-hud"
-        style={{
-          position: 'absolute',
-          bottom: 12,
-          left: 12,
-          padding: '6px 10px',
-          borderRadius: 6,
-          background: 'rgba(17,24,39,0.82)',
-          color: status.error ? '#ff7b72' : 'rgba(209,213,219,0.95)',
-          font: '12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace',
-          whiteSpace: 'pre-wrap',
-          maxWidth: 'calc(100% - 24px)',
-          pointerEvents: 'none',
-        }}
-      >
-        {status.text}
-        {meta.tris != null && !status.error
-          ? `  ·  ${meta.tris.toLocaleString()} tris  ·  clearance ${params.clearance}mm`
-          : ''}
-      </div>
+      {/* status HUD — a DEV readout ("#7 1346ms · 48,598 tris · clearance
+          0.25mm") that used to ship to every user in the product. It is gated on
+          the app's visual-debug flag now. Two things are not developer trivia and
+          stay, flag or no flag: a render in flight (as plain "Rendering…" /
+          "Loading…", not the request counter) and a FAILED render, which is the
+          only on-screen account of why the hero went stale. */}
+      {(showHud || status.error === true || status.busy != null) && (
+        <div
+          data-element="abacus-studio-hud"
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            left: 12,
+            padding: '6px 10px',
+            borderRadius: 6,
+            background: 'rgba(17,24,39,0.82)',
+            color: status.error ? '#ff7b72' : 'rgba(209,213,219,0.95)',
+            font: '12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace',
+            whiteSpace: 'pre-wrap',
+            maxWidth: 'calc(100% - 24px)',
+            pointerEvents: 'none',
+          }}
+        >
+          {showHud || status.error
+            ? status.text
+            : status.busy === 'loading'
+              ? 'Loading the 3D preview…'
+              : 'Rendering…'}
+          {showHud && meta.tris != null && !status.error
+            ? `  ·  ${meta.tris.toLocaleString()} tris  ·  clearance ${params.clearance}mm`
+            : ''}
+        </div>
+      )}
     </div>
   )
 }

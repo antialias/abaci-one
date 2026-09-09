@@ -48,7 +48,6 @@ import { api } from '@/lib/queryClient'
 import { abacusPrintKeys } from '@/lib/queryKeys'
 import { type AbacusExportParts, bedSizeFromThh, buildAbacusThreeMf } from './abacus-3mf'
 import { type FilamentCatalog, spoolSupportKind } from './abacus-catalog'
-import { infillOption, resolveInfill } from './abacus-infill'
 import { buildKitPlateThreeMf, KitPlateFitError, kitPlateSignature } from './abacus-kit-plate'
 import type { FilamentMap, Params } from './abacus-model'
 import type { ModuleExportParts } from './abacus-module-kit'
@@ -208,8 +207,8 @@ const COMMON_KEYS = [
   // NOT `sparse_infill_density`: the design's infill (abacus-infill.ts) now rides
   // every body as per-part config, and a part's own keys beat the project's. A
   // plate-wide density here would be a live-looking control that changes nothing
-  // about the print — worse than no control. The read-only summary below says
-  // what the design chose and where to change it.
+  // about the print — worse than no control. The infill control sits in the
+  // rail's Print options block above this panel.
   'wall_loops',
   'enable_support',
   // Printed feet make this one first-screen material: the whole bottom face
@@ -829,10 +828,6 @@ export function PrintPanel(props: PrintPanelProps) {
   // would print a floating first layer. Blocked with a one-click fix (below),
   // never a silent style injection (see feetSupportGate).
   const feetGate = feetSupportGate(params, style)
-  // Read-only here: the design owns the density and it rides the bodies as
-  // per-part config (abacus-infill.ts), so this panel reports rather than sets it.
-  const infill = resolveInfill(params)
-
   // The two-stage hand-off (Gitea #38): what Stage A is doing, and whether Stage
   // B can go. Phases come from the same roster the rows render from.
   const handoff = twoStageRecord
@@ -1442,18 +1437,6 @@ export function PrintPanel(props: PrintPanelProps) {
             <span>Print settings</span>
             <span aria-hidden="true">{settingsOpen ? '▾' : '▸'}</span>
           </button>
-
-          {/* Infill is the design's, not the ticket's — it rides every body as
-              per-part config, so there is nothing to set here. Say what it is and
-              where it lives, the way the feet/two-stage notes do. */}
-          <div
-            data-element="print-infill-note"
-            style={{ fontSize: 11, color: 'rgba(148,163,184,0.95)', lineHeight: 1.45 }}
-          >
-            Infill: frame {infillOption(infill.frame).label}, beads{' '}
-            {infillOption(infill.beads).label} (set in the design rail)
-            {params.feet_mode === 'printed' ? '; feet always solid.' : '.'}
-          </div>
 
           {settingsEverOpened.current && (
             <div
