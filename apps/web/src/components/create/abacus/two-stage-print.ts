@@ -13,18 +13,24 @@
  * tray loaded the single-job path stays the default, and the feet geometry is
  * the same either way — only the feed source differs.
  */
-import type { ParamScalarValue, TicketStyle } from '@eink/print-dialog'
+import type {
+  ParamScalarValue,
+  TicketChain,
+  TicketSplit,
+  TicketSplitPartition,
+  TicketStyle,
+} from '@eink/print-dialog'
 import { coPrintGroup, type FilamentCatalog, type FilamentSpool } from './abacus-catalog'
 import type { FilamentMap, Params } from './abacus-model'
 
-/** How the gateway cuts the layers below the seam — a mirror of
- *  `@eink/print-dialog`'s `TicketSplitPartition` (things-haunt-house#465), local
- *  until the pin passes the release that carries it. */
-export type TwoStagePartition = 'layer' | 'seam-tool-model'
+/** How the gateway cuts the layers below the seam (things-haunt-house#465). */
+export type TwoStagePartition = TicketSplitPartition
 
-/** Stage A: split the slice at the seam; the below-seam half prints from the external feed. */
-export interface TwoStageSplit {
-  readonly atZMm: number
+/** Stage A: split the slice at the seam; the below-seam half prints from the
+ *  external feed. The package leaves `feed` optional (single-filament splits
+ *  need none); an abacus always lists more than one filament, so here it is
+ *  required. */
+export interface TwoStageSplit extends TicketSplit {
   readonly feed: { readonly external: true; readonly family: string }
   /** Absent = `'layer'`: Stage A is every layer below the seam. The feet-only
    *  variant sends `'seam-tool-model'`: Stage A keeps only filament 0's model
@@ -50,9 +56,7 @@ export type TwoStageVariant = 'tpu-floor' | 'feet-only'
 export const DEFAULT_TWO_STAGE_VARIANT: TwoStageVariant = 'tpu-floor'
 
 /** Stage B: consume the half Stage A retained. */
-export interface TwoStageChain {
-  readonly continuesJobId: string
-}
+export type TwoStageChain = TicketChain
 
 /** A filament-class overlay for one ticket entry: vector keys carry exactly one
  *  element (each `filament_{i}.json` describes one filament). */
