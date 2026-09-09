@@ -4,12 +4,19 @@
 // feed swap the operator does at the printer BEFORE the feet stage. The steps
 // live in `two-stage-print.ts` next to the Stage B hand-off steps so the two
 // lists stay in one place; this is the presentation.
-import { STAGE_A_PREP_STEPS } from './two-stage-print'
+import { STAGE_A_PREP_STEPS, TWO_STAGE_VARIANT_COPY, type TwoStageVariant } from './two-stage-print'
 
-export function StageAPrepCard() {
+export interface StageAPrepCardProps {
+  /** Which two-stage print this is (Gitea #45); the feed swap is the same, the
+   *  copy for what Stage A then prints is not. */
+  variant?: TwoStageVariant
+}
+
+export function StageAPrepCard({ variant = 'tpu-floor' }: StageAPrepCardProps = {}) {
   return (
     <div
       data-element="two-stage-prep"
+      data-variant={variant}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -39,6 +46,12 @@ export function StageAPrepCard() {
           <li key={step}>{step}</li>
         ))}
       </ol>
+      {variant === 'feet-only' && (
+        <span data-element="two-stage-prep-variant" style={{ color: 'rgba(253,230,138,0.95)' }}>
+          Feet-only (experimental): Stage A {TWO_STAGE_VARIANT_COPY['feet-only'].stageA}. Stage B{' '}
+          {TWO_STAGE_VARIANT_COPY['feet-only'].stageB}.
+        </span>
+      )}
       <span style={{ color: 'rgba(148,163,184,0.95)', fontSize: 11 }}>
         If an AMS tray is still at the nozzle when you submit, the print service parks Stage A until
         you swap the feed. It can’t see what is on the external spool, so check the material

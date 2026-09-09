@@ -68,12 +68,12 @@ describe('two-stage idempotency (Gitea #38)', () => {
     const single = abacusPrintSignature(base)
     const a = abacusPrintSignature({
       ...base,
-      twoStage: { stage: 'A', atZMm: 1.6, feedFamily: 'TPU' },
+      twoStage: { stage: 'A', atZMm: 1.6, feedFamily: 'TPU', variant: 'tpu-floor' },
     })
     const b = abacusPrintSignature({
       ...base,
       startPolicy: 'hold',
-      twoStage: { stage: 'B', continuesJobId: 'job-a' },
+      twoStage: { stage: 'B', continuesJobId: 'job-a', variant: 'tpu-floor' },
     })
     expect(new Set([single, a, b]).size).toBe(3)
     expect(abacusPrintSignature({ ...base, twoStage: null })).toBe(single)
@@ -82,7 +82,21 @@ describe('two-stage idempotency (Gitea #38)', () => {
       abacusPrintSignature({
         ...base,
         startPolicy: 'hold',
-        twoStage: { stage: 'B', continuesJobId: 'job-a2' },
+        twoStage: { stage: 'B', continuesJobId: 'job-a2', variant: 'tpu-floor' },
+      })
+    ).not.toBe(b)
+    // The feet-only variant (Gitea #45) is a different Stage A, and a different Stage B.
+    expect(
+      abacusPrintSignature({
+        ...base,
+        twoStage: { stage: 'A', atZMm: 1.6, feedFamily: 'TPU', variant: 'feet-only' },
+      })
+    ).not.toBe(a)
+    expect(
+      abacusPrintSignature({
+        ...base,
+        startPolicy: 'hold',
+        twoStage: { stage: 'B', continuesJobId: 'job-a', variant: 'feet-only' },
       })
     ).not.toBe(b)
   })

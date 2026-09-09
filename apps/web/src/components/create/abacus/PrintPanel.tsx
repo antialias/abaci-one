@@ -85,17 +85,22 @@ import { TwoStageHandoffCard } from './TwoStageHandoffCard'
 import {
   checkSeam,
   clearTwoStageRecord,
+  FEET_ONLY_UNAVAILABLE_COPY,
+  feetOnlyAvailability,
   handoffView,
   jobIdFromSubmitBody,
   loadTwoStageRecord,
+  recordVariant,
   safeStorage,
   saveTwoStageRecord,
   sha256Hex,
   TWO_STAGE_FEED_FAMILY,
   TWO_STAGE_REAR_BAND_MM,
   TWO_STAGE_SEAM_TOOL_OVERRIDES,
+  TWO_STAGE_VARIANT_COPY,
   TwoStageDriftError,
   type TwoStageRecord,
+  type TwoStageVariant,
   twoStageAvailability,
   withTwoStageProcess,
 } from './two-stage-print'
@@ -445,12 +450,24 @@ export function PrintPanel(props: PrintPanelProps) {
     if (printerId) clearTwoStageRecord(safeStorage(), printerId)
     setTwoStageRecord(null)
   }
+  // The experimental feet-only variant (Gitea #45): Stage A prints ONLY the feet
+  // and Stage B prints PLA supports around them from layer 1. A checkbox beside
+  // the mode, off by default. Stage B never reads it — the record carries the
+  // variant Stage A shipped, since THH admits Stage B only on Stage A's plan.
+  const feetOnly = feetOnlyAvailability({ filamentMap, kit: !!kit })
+  const [feetOnlyWanted, setFeetOnlyWanted] = useState(false)
+  const feetOnlyOn = twoStageOn && feetOnlyWanted && feetOnly.ok
+  const stageAVariant: TwoStageVariant = feetOnlyOn ? 'feet-only' : 'tpu-floor'
 
-  // In two-stage mode the support interface prints in filament 0: its layers sit
-  // right under the frame — under the seam — so routing it to another spool is a
-  // tool change inside Stage A, which THH refuses as `split_failed`.
+  // In the TPU-floor two-stage mode the support interface prints in filament 0:
+  // its layers sit right under the frame — under the seam — so routing it to
+  // another spool is a tool change inside Stage A, which THH refuses as
+  // `split_failed`. The feet-only variant partitions Stage A by role instead (the
+  // interface prints in Stage B), so there the pick stands.
   const supportPick =
-    !twoStageOn && supportsWanted && supportRoster.some((r) => r.slotId === supportSlotId)
+    (!twoStageOn || feetOnlyOn) &&
+    supportsWanted &&
+    supportRoster.some((r) => r.slotId === supportSlotId)
       ? supportSlotId
       : null
 
@@ -525,8 +542,29 @@ export function PrintPanel(props: PrintPanelProps) {
       if (stage === 'stage-b' && !priorStage) {
         throw new Error('No Stage A on record for this printer — print Stage A first')
       }
-      const ticketStyle = staged ? withTwoStageProcess(style) : style
-      const interfacePick = staged ? null : supportPick
+      // The variant is Stage A's choice and Stage B's inheritance (the record).
+      const variant: TwoStageVariant = priorStage ? recordVariant(priorStage) : stageAVariant
+      const feetOnlyStage = staged && variant === 'feet-only'
+      // The TPU-floor mode prints its interface in filament 0 (no pick); the
+      // feet-only variant carries one, and Stage B repeats Stage A's rather than
+      // the editor's current pick — THH admits Stage B only on the same plan.
+      const interfacePick = !staged
+        ? supportPick
+        : !feetOnlyStage
+          ? null
+          : priorStage
+            ? (priorStage.supportInterfaceSlotId ?? null)
+            : supportPick
+      const ticketStyle = staged
+        ? withTwoStageProcess(style, { variant, dedicatedInterface: interfacePick !== null })
+        : style
+      // The support body (things-haunt-house#466): the frame's own spool, tagged
+      // on its existing ticket entry.
+      const frameSpool = catalog.spools[filamentMap.frame]
+      if (feetOnlyStage && !frameSpool) {
+        throw new Error('The frame has no loaded spool to print the supports in')
+      }
+      const supportBodySlotId = feetOnlyStage && frameSpool ? frameSpool.id : null
       // Stage B is held, never auto-started: the operator has to have swapped the
       // spool and left the plate alone, and the chained-start park reasons (bed
       // check, spool swap) are theirs to acknowledge on the job card.
@@ -611,6 +649,7 @@ export function PrintPanel(props: PrintPanelProps) {
             bed,
             wipeTower: wipeTower ?? undefined,
             extraFilaments,
+            feetOnlyStageA: feetOnlyStage,
           })
       const designId = await snapshot
 
@@ -633,8 +672,8 @@ export function PrintPanel(props: PrintPanelProps) {
           kitLayout,
           twoStage: seam
             ? priorStage
-              ? { stage: 'B', continuesJobId: priorStage.stageAJobId }
-              : { stage: 'A', atZMm: seam.atZMm, feedFamily: seam.feedFamily }
+              ? { stage: 'B', continuesJobId: priorStage.stageAJobId, variant }
+              : { stage: 'A', atZMm: seam.atZMm, feedFamily: seam.feedFamily, variant }
             : null,
         }),
         () => crypto.randomUUID()
@@ -675,6 +714,7 @@ export function PrintPanel(props: PrintPanelProps) {
         startPolicy: policy,
         idempotencyKey: idem.key,
         supportInterfaceSlotId: interfacePick,
+        supportBodySlotId,
         ...(seam
           ? {
               seamToolOverrides: TWO_STAGE_SEAM_TOOL_OVERRIDES,
@@ -684,6 +724,7 @@ export function PrintPanel(props: PrintPanelProps) {
                     split: {
                       atZMm: seam.atZMm,
                       feed: { external: true as const, family: seam.feedFamily },
+                      ...(feetOnlyStage ? { partition: 'seam-tool-model' as const } : {}),
                     },
                   }),
             }
@@ -760,6 +801,8 @@ export function PrintPanel(props: PrintPanelProps) {
               feedFamily: seam.feedFamily,
               name: baseName,
               submittedAt: Date.now(),
+              variant,
+              supportInterfaceSlotId: interfacePick,
             }
         saveTwoStageRecord(safeStorage(), record)
         setTwoStageRecord(record)
@@ -872,7 +915,11 @@ export function PrintPanel(props: PrintPanelProps) {
             interface: supportRoster.find((entry) => entry.slotId === supportPick)?.product ?? null,
           },
           feetGate,
-          twoStage: { on: twoStageOn, feetSpool: twoStage.ok ? twoStage.feetSlot.name : null },
+          twoStage: {
+            on: twoStageOn,
+            feetSpool: twoStage.ok ? twoStage.feetSlot.name : null,
+            feetOnly: feetOnlyOn,
+          },
           // 'spills' only on a real refusal; an idle or failed plate query has no
           // fit result, so the line falls back to the plain piece count
           kit: !kit
@@ -897,6 +944,7 @@ export function PrintPanel(props: PrintPanelProps) {
       supportPick,
       feetGate,
       twoStageOn,
+      feetOnlyOn,
       twoStage,
       kit,
       kitPlate,
@@ -1334,6 +1382,48 @@ export function PrintPanel(props: PrintPanelProps) {
               </button>
             </div>
           )}
+          {twoStageOn && (
+            <label
+              data-element="two-stage-feet-only"
+              data-active={feetOnlyOn || undefined}
+              data-unavailable={feetOnly.ok ? undefined : feetOnly.reason}
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 8,
+                padding: '6px 10px',
+                borderRadius: 8,
+                background: feetOnlyOn ? 'rgba(217,119,6,0.16)' : 'rgba(30,41,59,0.35)',
+                border: feetOnlyOn
+                  ? '1px solid rgba(251,191,36,0.5)'
+                  : '1px solid rgba(148,163,184,0.25)',
+                color: feetOnly.ok ? 'rgba(226,232,240,0.95)' : 'rgba(148,163,184,0.8)',
+                cursor: feetOnly.ok ? 'pointer' : 'default',
+                fontSize: 11,
+                lineHeight: 1.35,
+              }}
+            >
+              <input
+                type="checkbox"
+                data-action="toggle-feet-only"
+                checked={feetOnlyOn}
+                disabled={!feetOnly.ok}
+                onChange={(e) => setFeetOnlyWanted(e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span>
+                  <strong>Experimental</strong> — feet-only Stage A: Stage B prints PLA supports
+                  around the feet
+                </span>
+                <span style={{ color: 'rgba(148,163,184,0.95)' }}>
+                  {feetOnly.ok
+                    ? `Stage A ${TWO_STAGE_VARIANT_COPY['feet-only'].stageA}; Stage B ${TWO_STAGE_VARIANT_COPY['feet-only'].stageB}. Nothing but the feet is TPU on the plate.`
+                    : FEET_ONLY_UNAVAILABLE_COPY[feetOnly.reason]}
+                </span>
+              </span>
+            </label>
+          )}
           <PrintDecision
             summary={summary}
             plate={
@@ -1352,7 +1442,9 @@ export function PrintPanel(props: PrintPanelProps) {
               ) : undefined
             }
             gates={gates}
-            prep={twoStageOn && !twoStageRecord ? <StageAPrepCard /> : undefined}
+            prep={
+              twoStageOn && !twoStageRecord ? <StageAPrepCard variant={stageAVariant} /> : undefined
+            }
             submit={{
               label: submit.isPending
                 ? 'Rendering & submitting…'
@@ -1409,6 +1501,7 @@ export function PrintPanel(props: PrintPanelProps) {
           {twoStageRecord && handoff && (
             <TwoStageHandoffCard
               name={twoStageRecord.name}
+              variant={recordVariant(twoStageRecord)}
               view={handoff}
               disabled={stageBBlocked}
               disabledReason={

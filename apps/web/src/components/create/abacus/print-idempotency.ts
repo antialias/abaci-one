@@ -22,6 +22,7 @@ import type { ThhBedGeometry, ThhWipeTowerCapability } from '@/lib/abacus/print/
 import { fnv1a32Hex } from '@/lib/fnv1a'
 import { stableStringify } from '@/lib/stable-stringify'
 import type { FilamentMap, Params } from './abacus-model'
+import type { TwoStageVariant } from './two-stage-print'
 
 /** A minted key paired with the content signature it was minted for. */
 export interface IdempotencyToken {
@@ -29,10 +30,17 @@ export interface IdempotencyToken {
   readonly key: string
 }
 
-/** Which stage of a two-stage feet print (Gitea #38) a submit is. */
+/** Which stage of a two-stage feet print (Gitea #38) a submit is, and which
+ *  variant (Gitea #45) — the feet-only Stage A is a different job from the
+ *  TPU-floor one off the same design. */
 export type TwoStageSignature =
-  | { readonly stage: 'A'; readonly atZMm: number; readonly feedFamily: string }
-  | { readonly stage: 'B'; readonly continuesJobId: string }
+  | {
+      readonly stage: 'A'
+      readonly atZMm: number
+      readonly feedFamily: string
+      readonly variant: TwoStageVariant
+    }
+  | { readonly stage: 'B'; readonly continuesJobId: string; readonly variant: TwoStageVariant }
 
 /** Everything a submit encodes that changes the physical artifact. `slotLabels`
  *  are the catalog spool names the model embeds; the rest are the user's knobs. */

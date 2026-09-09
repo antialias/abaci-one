@@ -38,3 +38,7 @@ type Story = StoryObj<typeof StageAPrepCard>
  *  check for itself (it parks Stage A while an AMS tray is at the nozzle; it
  *  cannot see what sits on the external spool). */
 export const BeforeStageA: Story = {}
+
+/** The experimental feet-only variant (Gitea #45): the same feed swap, plus the
+ *  line saying Stage A prints only the feet and Stage B prints the supports. */
+export const FeetOnlyBeforeStageA: Story = { args: { variant: 'feet-only' } }

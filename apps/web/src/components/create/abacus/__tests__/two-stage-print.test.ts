@@ -4,16 +4,24 @@ import type { FilamentCatalog } from '../abacus-catalog'
 import {
   checkSeam,
   clearTwoStageRecord,
+  DEFAULT_TWO_STAGE_VARIANT,
   effectiveLayerHeightMm,
+  FEET_ONLY_DEDICATED_INTERFACE_PROCESS,
+  FEET_ONLY_PROCESS,
+  FEET_ONLY_UNAVAILABLE_COPY,
+  feetOnlyAvailability,
   handoffView,
   jobIdFromSubmitBody,
   loadTwoStageRecord,
+  recordVariant,
   STAGE_A_PREP_STEPS,
   STAGE_B_HANDOFF_STEPS,
   saveTwoStageRecord,
   sha256Hex,
+  stageBHandoffSteps,
   TWO_STAGE_PROCESS,
   TWO_STAGE_SEAM_TOOL_OVERRIDES,
+  TWO_STAGE_VARIANT_COPY,
   type TwoStageRecord,
   twoStageAvailability,
   twoStageStorageKey,
@@ -170,6 +178,123 @@ describe('the Stage A record', () => {
     expect(loadTwoStageRecord(s, 'x1c')).toBeNull()
     expect(loadTwoStageRecord(null, 'x1c')).toBeNull()
     expect(() => saveTwoStageRecord(undefined, rec)).not.toThrow()
+  })
+  it('carries the variant and the interface pick; a pre-#45 record is the TPU floor (Gitea #45)', () => {
+    const s = store()
+    const feetOnly: TwoStageRecord = { ...rec, variant: 'feet-only', supportInterfaceSlotId: '0.3' }
+    saveTwoStageRecord(s, feetOnly)
+    const back = loadTwoStageRecord(s, 'x1c')
+    expect(back).toEqual(feetOnly)
+    expect(recordVariant(back as TwoStageRecord)).toBe('feet-only')
+    expect(recordVariant(rec)).toBe('tpu-floor')
+    expect(DEFAULT_TWO_STAGE_VARIANT).toBe('tpu-floor')
+    // an unknown variant is not a record this build can chain from
+    s.setItem(twoStageStorageKey('x1c'), JSON.stringify({ ...rec, variant: 'by-object' }))
+    expect(loadTwoStageRecord(s, 'x1c')).toBeNull()
+  })
+})
+
+describe('withTwoStageProcess — the feet-only variant (Gitea #45)', () => {
+  const style: TicketStyle = {
+    basePreset: '0.20mm-standard',
+    process: {
+      wall_loops: 3,
+      brim_type: 'auto_brim',
+      support_top_z_distance: 0.2,
+      outer_wall_speed: 200,
+    },
+  }
+  it('the default is the TPU-floor mode — the one-argument call, unchanged', () => {
+    expect(withTwoStageProcess(style, { variant: 'tpu-floor' })).toEqual(withTwoStageProcess(style))
+    expect(withTwoStageProcess(style, {})).toEqual(withTwoStageProcess(style))
+    expect(withTwoStageProcess(style).process).toMatchObject(TWO_STAGE_PROCESS)
+  })
+  it('feet-only: PLA supports at normal speed, a 90 % unexpanded base, no brim, the preset support gap', () => {
+    const out = withTwoStageProcess(style, { variant: 'feet-only' })
+    expect(out.basePreset).toBe('0.20mm-standard')
+    expect(out.process.wall_loops).toBe(3)
+    expect(out.process.interface_shells).toBe(true)
+    expect(out.process.raft_first_layer_density).toBe(90)
+    expect(out.process.raft_first_layer_expansion).toBe(0)
+    expect(out.process.brim_type).toBe('no_brim')
+    expect(out.process.independent_support_layer_height).toBe(false)
+    // no dedicated interface: PLA on PLA keeps the operator's / preset gap
+    expect(out.process.support_top_z_distance).toBe(0.2)
+    expect('support_interface_spacing' in out.process).toBe(false)
+    // the plate-wide slow-TPU95 speeds belong to the TPU-floor mode
+    expect(out.process.outer_wall_speed).toBe(200)
+    for (const key of [
+      'initial_layer_speed',
+      'initial_layer_infill_speed',
+      'initial_layer_acceleration',
+      'inner_wall_speed',
+      'sparse_infill_speed',
+      'internal_solid_infill_speed',
+      'top_surface_speed',
+      'gap_infill_speed',
+    ]) {
+      expect(key in out.process).toBe(false)
+    }
+    expect(out.process).toMatchObject(FEET_ONLY_PROCESS)
+  })
+  it('feet-only with a dedicated interface spool: zero gap on a solid interface — a floor, not a bridge', () => {
+    const out = withTwoStageProcess(style, { variant: 'feet-only', dedicatedInterface: true })
+    expect(out.process.support_top_z_distance).toBe(0)
+    expect(out.process.support_interface_spacing).toBe(0)
+    expect(out.process).toMatchObject({
+      ...FEET_ONLY_PROCESS,
+      ...FEET_ONLY_DEDICATED_INTERFACE_PROCESS,
+    })
+    // the TPU-floor mode never reads the flag
+    expect(withTwoStageProcess(style, { variant: 'tpu-floor', dedicatedInterface: true })).toEqual(
+      withTwoStageProcess(style)
+    )
+  })
+  it('the brim rule per mode: only the variant sets a brim key, and it is no_brim', () => {
+    expect(Object.keys(TWO_STAGE_PROCESS).some((k) => k.startsWith('brim'))).toBe(false)
+    expect(Object.keys(FEET_ONLY_PROCESS).filter((k) => k.startsWith('brim'))).toEqual([
+      'brim_type',
+    ])
+    expect(withTwoStageProcess(style).process.brim_type).toBe('auto_brim')
+  })
+})
+
+describe('feetOnlyAvailability (Gitea #45)', () => {
+  it('needs a one-piece abacus whose frame prints from a spool other than the feet', () => {
+    expect(feetOnlyAvailability({ filamentMap: { frame: 1, feet: 0 }, kit: false })).toEqual({
+      ok: true,
+    })
+    expect(feetOnlyAvailability({ filamentMap: { frame: 1, feet: 0 }, kit: true })).toEqual({
+      ok: false,
+      reason: 'kit',
+    })
+    expect(feetOnlyAvailability({ filamentMap: { frame: 0, feet: 0 }, kit: false })).toEqual({
+      ok: false,
+      reason: 'frame-shares-feet-slot',
+    })
+    expect(feetOnlyAvailability({ filamentMap: { frame: 1 }, kit: false })).toEqual({
+      ok: false,
+      reason: 'frame-shares-feet-slot',
+    })
+  })
+  it('every reason has words for the muted checkbox', () => {
+    for (const reason of ['kit', 'frame-shares-feet-slot'] as const) {
+      expect(FEET_ONLY_UNAVAILABLE_COPY[reason].length).toBeGreaterThan(20)
+    }
+  })
+})
+
+describe('the hand-off per variant (Gitea #45)', () => {
+  it('feet-only says Stage B goes back around the standing feet; the spool swap is shared', () => {
+    expect(stageBHandoffSteps('tpu-floor')).toBe(STAGE_B_HANDOFF_STEPS)
+    const feetOnly = stageBHandoffSteps('feet-only')
+    expect(feetOnly).toHaveLength(STAGE_B_HANDOFF_STEPS.length)
+    expect(feetOnly[0]).toMatch(/around the standing feet/)
+    expect(feetOnly.slice(1)).toEqual(STAGE_B_HANDOFF_STEPS.slice(1))
+    expect(TWO_STAGE_VARIANT_COPY['feet-only'].stageA).toMatch(/only the feet/)
+    expect(TWO_STAGE_VARIANT_COPY['feet-only'].stageB).toMatch(
+      /PLA supports around the feet, then the abacus/
+    )
   })
 })
 
