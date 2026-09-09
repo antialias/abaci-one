@@ -390,8 +390,9 @@ export function AbacusStudioViewer() {
         now: performance.now(),
         reducedMotion: reducedMotion(),
       })
-      // reduced motion (and mono) → 0 ms: land the end pose now, never start a
-      // play, never touch React state.
+      // reduced motion (or nothing to stagger) → 0 ms: land the end pose now,
+      // never start a play, never touch React state — so Replay, which only
+      // exists once a play has actually run, never appears for a jump.
       if (m.durationMs <= 0) {
         if (motion) endMotion()
         pose.assembled = to
@@ -400,6 +401,7 @@ export function AbacusStudioViewer() {
       }
       motion = m
       setMoving(true)
+      setPlayedOnce(true)
     }
 
     function recolor() {
@@ -1239,7 +1241,6 @@ export function AbacusStudioViewer() {
             aria-disabled={moving}
             onClick={() => {
               if (moving) return
-              setPlayedOnce(true)
               setExploded((v) => !v)
             }}
             style={canvasPill(exploded, moving)}
