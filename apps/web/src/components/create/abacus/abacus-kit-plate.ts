@@ -72,6 +72,7 @@ import {
   TOWER_GAP,
   type WipeTowerProfileGeometry,
 } from './abacus-3mf-assembly'
+import { resolveInfill } from './abacus-infill'
 import { type FilamentMap, isModular, type Params } from './abacus-model'
 import {
   type ModuleExportParts,
@@ -1177,6 +1178,9 @@ export function buildKitPlateThreeMf(
     // the tower where the reservation is rather than beside the plate's box.
     placedOnBed: { towerPinMm: { x: layout.tower.pinXMm, y: layout.tower.pinYMm } },
     extraFilaments,
+    // Every module on the plate is the same design, so one resolve covers the
+    // lot — the per-role split happens per emitted body, downstream.
+    infill: resolveInfill(args.parts.params),
   })
 
   return { ...layout, bytes: built.bytes, bodies: built.bodies, wipeTower: built.wipeTower }

@@ -56,6 +56,7 @@ import {
   FEET_PART_PROCESS,
   type WipeTowerProfileGeometry,
 } from './abacus-3mf-assembly'
+import { type InfillLevel, infillPartProcess, resolveInfill } from './abacus-infill'
 import {
   analyzeShells,
   anyTokens,
@@ -331,6 +332,7 @@ export function buildAbacusThreeMf(args: {
     bed,
     wipeTower,
     extraFilaments,
+    infill: resolveInfill(params),
   })
 }
 
@@ -365,6 +367,11 @@ export function emitThreeMfBodies(args: {
    *  support-interface spool, so 0 or 1. Added to the emitted body count to pick
    *  the tower's envelope row and to report `packedForFilaments`. */
   extraFilaments?: number
+  /** The design's resolved frame/bead densities (`resolveInfill`). Every body
+   *  gets its role's keys as per-part config — the one channel THH's
+   *  `--load-settings` leaves alone. Optional so a caller with no design in hand
+   *  emits nothing beyond the feet rule. */
+  infill?: { frame: InfillLevel; beads: InfillLevel }
 }): AbacusThreeMf {
   const {
     mesh,
@@ -379,6 +386,7 @@ export function emitThreeMfBodies(args: {
     wipeTower,
     placedOnBed,
     extraFilaments = 0,
+    infill,
   } = args
 
   // Count triangles per slot, then bucket the position soup (9 floats/tri).
@@ -437,6 +445,24 @@ export function emitThreeMfBodies(args: {
   )
   const feetAlone = feetSlot !== undefined && feetTris > 0 && triCount.get(feetSlot) === feetTris
 
+  // Per-part infill, by the ROLE a slot's body carries (abacus-infill.ts).
+  //
+  // Bodies are per filament SLOT, and the plan's quantizer is free to put the
+  // frame and a bead role on ONE slot (the monochrome scheme always does) — so
+  // when they share, the frame's density wins: it is the structural part, and a
+  // body can only have one. Everything else on a slot of its own (markers, inset
+  // text, feet merged into a slot that isn't feet-alone) is a surface feature of
+  // the frame, so it takes the frame's density rather than nothing — a body with
+  // no keys falls back to the ticket style's plate-wide value, which is exactly
+  // the number this feature took out of the operator's hands.
+  const processFor = (slot: number): Readonly<Record<string, string>> | undefined => {
+    if (feetAlone && slot === feetSlot) return FEET_PART_PROCESS
+    if (!infill) return undefined
+    if (slot === filamentMap.frame) return infillPartProcess(infill.frame)
+    if (filamentMap.beadRoles.includes(slot)) return infillPartProcess(infill.beads)
+    return infillPartProcess(infill.frame)
+  }
+
   const bodies: SpoolBodySummary[] = []
   const assemblyBodies: AssemblyBody[] = []
   for (const slot of slots) {
@@ -449,12 +475,13 @@ export function emitThreeMfBodies(args: {
     // extruder = emission order (feet first, then ascending slot), 1-based — the
     // same color→filament convention `meshesToThreeMf` uses, so the print ticket
     // stays correct.
+    const process = processFor(slot)
     assemblyBodies.push({
       positions: bucket.positions,
       colorHex,
       label,
       extruder: assemblyBodies.length + 1,
-      ...(feetAlone && slot === feetSlot ? { process: FEET_PART_PROCESS } : {}),
+      ...(process ? { process } : {}),
     })
   }
 

@@ -867,20 +867,56 @@ describe('buildKitPlateThreeMf (the whole kit as one plate)', () => {
     expect([...plate.bytes.slice(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04])
   })
 
-  it('gives the plate’s feet body its own solid-infill keys, once, and nothing else', () => {
+  it('gives the plate’s feet body the solid keys, once, and every other body the design’s', () => {
     // Every module's feet bucket into ONE body (per slot), so the plate carries the
-    // keys once, on the feet's extruder 1; the frame and bead parts keep the
-    // operator's infill.
+    // solid keys once, on the feet's extruder 1; the frame and bead bodies carry
+    // the design's own density (abacus-infill.ts) instead of nothing.
     const feetParams = p({ color_scheme: 'heaven-earth', feet_mode: 'printed' })
     const plate = buildKitPlateThreeMf({
       parts: kitParts(feetParams, true),
       filamentMap: { ...fmHeavenEarth, feet: 2 },
     })
     const modelSettings = strFromU8(unzipSync(plate.bytes)['Metadata/model_settings.config'])
-    expect(modelSettings.match(/sparse_infill_density/g)).toHaveLength(1)
+    expect(modelSettings.match(/sparse_infill_density" value="100%"/g)).toHaveLength(1)
     expect(modelSettings).toContain(
       '<metadata key="extruder" value="1"/><metadata key="sparse_infill_density" value="100%"/>'
     )
+    expect(modelSettings).toContain(
+      '<metadata key="extruder" value="2"/><metadata key="sparse_infill_density" value="15%"/>'
+    )
+  })
+
+  it('carries per-ROLE infill across the plate, frame first when a slot is shared', () => {
+    // Same law as the mono build (abacus-3mf.test.ts), pinned on the plate because
+    // it runs the emit tail through a different caller: the frame body takes
+    // `infill_frame`, the bead bodies `infill_beads`, and a slot carrying both
+    // takes the frame's.
+    const split = p({
+      color_scheme: 'heaven-earth',
+      infill_frame: 'sturdy',
+      infill_beads: 'light',
+      infill_linked: false,
+    })
+    const modelSettings = (fm: FilamentMap, over: Partial<Params> = {}) =>
+      strFromU8(
+        unzipSync(
+          buildKitPlateThreeMf({ parts: kitParts({ ...split, ...over }), filamentMap: fm }).bytes
+        )['Metadata/model_settings.config']
+      )
+    // frame slot 0 → extruder 1 (sturdy), earth slot 1 → 2 (light), heaven slot 3 → 3 (light)
+    const perRole = modelSettings(fmHeavenEarth)
+    expect(perRole).toContain(
+      '<metadata key="extruder" value="1"/><metadata key="sparse_infill_density" value="30%"/>'
+    )
+    expect(perRole.match(/sparse_infill_density" value="10%"/g)).toHaveLength(2)
+    // one slot for everything: the frame is the structural part, so it wins
+    const shared = modelSettings({ ...fmHeavenEarth, beadRoles: [0, 0] })
+    expect(shared.match(/sparse_infill_density/g)).toHaveLength(1)
+    expect(shared).toContain('<metadata key="sparse_infill_density" value="30%"/>')
+    // linked → the beads follow the frame and the stored bead level is ignored
+    const linked = modelSettings(fmHeavenEarth, { infill_linked: true })
+    expect(linked.match(/sparse_infill_density" value="30%"/g)).toHaveLength(3)
+    expect(linked).not.toContain('value="10%"')
   })
 
   it('declares the filament count it reserved for — bodies plus what routing adds', () => {

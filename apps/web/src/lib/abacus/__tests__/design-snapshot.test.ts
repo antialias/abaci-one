@@ -168,6 +168,26 @@ describe('legacy feet params (pre-#23 snapshots)', () => {
   })
 })
 
+describe('pre-infill snapshots', () => {
+  it('loads a design saved before the infill knobs existed at the standard, linked defaults', () => {
+    // The keys are new (abacus-infill.ts), so every design saved before them is
+    // missing all three. The typeof pass defaults them, which is the behaviour the
+    // rollout depends on: a legacy abacus reprints at the density it always did.
+    const params: Record<string, unknown> = { ...defaultParams }
+    for (const key of ['infill_frame', 'infill_beads', 'infill_linked']) delete params[key]
+    const parsed = parseDesignSnapshot({
+      v: 1,
+      params,
+      overrides: {},
+      profileId: DEFAULT_PROFILE_ID,
+    })
+    expect(parsed).not.toBeNull()
+    expect(parsed!.params.infill_frame).toBe('standard')
+    expect(parsed!.params.infill_beads).toBe('standard')
+    expect(parsed!.params.infill_linked).toBe(true)
+  })
+})
+
 describe('legacy rail presets (pre-#28 snapshots)', () => {
   // These CANNOT just be dropped the way the feet keys were. The feet knobs had
   // no UI, so every stored design carried the same values; `<rail>_preset` had a
