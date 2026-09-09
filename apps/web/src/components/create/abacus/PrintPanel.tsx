@@ -1484,7 +1484,8 @@ export function PrintPanel(props: PrintPanelProps) {
               Support interface prints in the feet filament ({twoStage.feetSlot.name}): in a
               two-stage print the interface layers sit under the seam, where only the feet spool
               runs. It prints as a solid floor with no gap — the rigid seam layer lands on it
-              directly, and TPU releases from it.
+              directly, and TPU releases from it. Against the plate it is a sparse first layer
+              rather than a sheet, so the floor peels off the plate instead of bonding to it.
             </div>
           )}
           {supportsWanted && !twoStageOn && (

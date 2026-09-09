@@ -119,6 +119,11 @@ describe('withTwoStageProcess', () => {
     expect(out.process.support_top_z_distance).toBe(0)
     expect(out.process.support_interface_spacing).toBe(0)
     expect(out.process.independent_support_layer_height).toBe(false)
+    // The plate sees support layer 0, which Orca prints at `raft_first_layer_density`
+    // grown by `raft_first_layer_expansion` (preset: 90 % / 2 mm = a TPU sheet that
+    // will not leave smooth PEI). Sparse and unexpanded, it peels.
+    expect(out.process.raft_first_layer_density).toBe(30)
+    expect(out.process.raft_first_layer_expansion).toBe(0)
     expect(out.process).toMatchObject(TWO_STAGE_PROCESS)
   })
   it('the overlay is filament-class, vector keys as one-element arrays, no brim', () => {
