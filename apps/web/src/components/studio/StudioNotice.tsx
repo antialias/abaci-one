@@ -25,6 +25,8 @@ export interface StudioNoticeProps {
   /** buttons — use `button('fix')` so they read as neutral on the tone wash */
   actions?: ReactNode
   dataElement?: string
+  /** extra `data-*` attributes (e.g. `data-variant`) for tests and tooling */
+  dataAttrs?: Record<`data-${string}`, string | undefined>
   role?: string
 }
 
@@ -41,10 +43,12 @@ export function StudioNotice({
   title,
   actions,
   dataElement = 'studio-notice',
+  dataAttrs,
   role,
 }: StudioNoticeProps) {
   return (
     <div
+      {...dataAttrs}
       data-component="studio-notice"
       data-element={dataElement}
       data-tone={tone}

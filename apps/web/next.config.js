@@ -23,17 +23,26 @@ const nextConfig = {
 
   // Configure cache headers for static assets
   async headers() {
+    // Only production chunk names carry a content hash. In dev the same URL is
+    // re-emitted on every edit, so an immutable header makes the browser keep
+    // executing stale code across edits and even server restarts.
+    const immutableStatic =
+      process.env.NODE_ENV === 'production'
+        ? [
+            {
+              // Static assets with content hash - cache forever (immutable)
+              source: '/_next/static/:path*',
+              headers: [
+                {
+                  key: 'Cache-Control',
+                  value: 'public, max-age=31536000, immutable',
+                },
+              ],
+            },
+          ]
+        : []
     return [
-      {
-        // Static assets with content hash - cache forever (immutable)
-        source: '/_next/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
+      ...immutableStatic,
       {
         // Build manifest and other _next files without hash
         source: '/_next/:path((?!static).*)',

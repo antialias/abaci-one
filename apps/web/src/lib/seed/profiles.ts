@@ -1,5 +1,10 @@
 import { MAX_RESPONSE_TIME_CAP_MS } from '../curriculum/timing/constants'
-import type { ProfileCategory, ProfileInfo, TestStudentProfile } from './types'
+import type {
+  ProfileCategory,
+  ProfileInfo,
+  TargetClassification,
+  TestStudentProfile,
+} from './types'
 
 // =============================================================================
 // Realistic Curriculum Skill Progressions
@@ -51,6 +56,176 @@ const L2_ADD_SKILLS = [
 // =============================================================================
 // All test student profiles
 // =============================================================================
+
+// =============================================================================
+// Skill ladder: four rungs, each as a steady learner and a slow & inaccurate twin
+// =============================================================================
+
+type LadderSkill = [skillId: string, classification: TargetClassification, problems: number]
+
+interface LadderRung {
+  /** Rung label; also the `-n` substring that seeds the rung and its 🐢 twin together */
+  label: string
+  emoji: string
+  color: string
+  currentPhaseId: string
+  summary: string
+  /** Steady response-time band; the slow twin uses SLOW_RESPONSE_MS instead */
+  responseTimeMsRange: { min: number; max: number }
+  skills: LadderSkill[]
+  minSessions: number
+  sessionSpreadDays: number
+}
+
+/** One band for every slow twin: well over any speed threshold, under the idle cap */
+const SLOW_RESPONSE_MS = { min: 14_000, max: 28_000 }
+
+const strongAll = (skills: string[], problems: number): LadderSkill[] =>
+  skills.map((skillId): LadderSkill => [skillId, 'strong', problems])
+
+const LADDER_RUNGS: LadderRung[] = [
+  {
+    label: 'Beginner',
+    emoji: '🌱',
+    color: '#22c55e',
+    currentPhaseId: 'L1.add.+3.direct',
+    summary: 'early L1 — direct addition landed, heaven bead still forming',
+    responseTimeMsRange: { min: 5_000, max: 9_000 },
+    skills: [
+      ['basic.directAddition', 'strong', 20],
+      ['basic.heavenBead', 'developing', 12],
+    ],
+    minSessions: 3,
+    sessionSpreadDays: 10,
+  },
+  {
+    label: 'Intermediate',
+    emoji: '🌿',
+    color: '#3b82f6',
+    currentPhaseId: 'L1.add.+3.five',
+    summary: 'mid L1 — basics solid, working through the five-complements',
+    responseTimeMsRange: { min: 4_000, max: 7_000 },
+    skills: [
+      ...strongAll(['basic.directAddition', 'basic.heavenBead', 'basic.simpleCombinations'], 22),
+      ['fiveComplements.4=5-1', 'strong', 18],
+      ['fiveComplements.3=5-2', 'developing', 12],
+    ],
+    minSessions: 5,
+    sessionSpreadDays: 21,
+  },
+  {
+    label: 'Upper Intermediate',
+    emoji: '🌾',
+    color: '#8b5cf6',
+    currentPhaseId: 'L1.sub.-3.five',
+    summary: 'late L1 — all addition strong, five-complement subtraction in progress',
+    responseTimeMsRange: { min: 3_000, max: 6_000 },
+    skills: [
+      ...strongAll(LATE_L1_ADD_SKILLS, 18),
+      ...strongAll(
+        ['basic.directSubtraction', 'basic.heavenBeadSubtraction', 'basic.simpleCombinationsSub'],
+        16
+      ),
+      ['fiveComplementsSub.-4=-5+1', 'strong', 14],
+      ['fiveComplementsSub.-3=-5+2', 'developing', 12],
+      ['fiveComplementsSub.-2=-5+3', 'developing', 10],
+      ['fiveComplementsSub.-1=-5+4', 'developing', 10],
+    ],
+    minSessions: 6,
+    sessionSpreadDays: 30,
+  },
+  {
+    label: 'Advanced',
+    emoji: '🌳',
+    color: '#f59e0b',
+    currentPhaseId: 'L2.add.+9.ten',
+    summary: 'L2 — all of L1 mastered, ten-complements underway',
+    responseTimeMsRange: { min: 2_500, max: 5_000 },
+    skills: [
+      // 24 > the 20-opportunity readiness floor, so the basic stage is solid and
+      // this rung is the one linear-ready student in the ladder
+      ...strongAll(COMPLETE_L1_SKILLS, 24),
+      ['tenComplements.9=10-1', 'strong', 20],
+      ['tenComplements.8=10-2', 'strong', 16],
+      ['tenComplements.7=10-3', 'developing', 12],
+      ['tenComplements.6=10-4', 'developing', 10],
+    ],
+    minSessions: 8,
+    sessionSpreadDays: 45,
+  },
+]
+
+/** The slow twin is one notch less accurate on every skill (accuracy is only expressible via classification) */
+const DEMOTE: Record<TargetClassification, TargetClassification> = {
+  strong: 'developing',
+  developing: 'weak',
+  weak: 'weak',
+}
+
+function ladderProfile(rung: LadderRung, variant: 'steady' | 'slow'): TestStudentProfile {
+  const slow = variant === 'slow'
+  // Avatar carries the emoji; the name stays plain so cards don't show it twice
+  const name = slow ? `${rung.label} (slow & inaccurate)` : rung.label
+  const responseTimeMsRange = slow ? SLOW_RESPONSE_MS : rung.responseTimeMsRange
+  const skillHistory = rung.skills.map(([skillId, classification, problems]) => ({
+    skillId,
+    targetClassification: slow ? DEMOTE[classification] : classification,
+    problems,
+    responseTimeMsRange,
+  }))
+  const practicingSkills = rung.skills.map(([skillId]) => skillId)
+  const count = (c: TargetClassification) =>
+    skillHistory.filter((s) => s.targetClassification === c).length
+  const sec = (ms: number) => `${ms / 1000}`
+
+  return {
+    name,
+    emoji: slow ? '🐢' : rung.emoji,
+    color: rung.color,
+    category: 'bkt',
+    description: slow
+      ? `SKILL LADDER - ${rung.label}, slow (${sec(responseTimeMsRange.min)}-${sec(responseTimeMsRange.max)} s) and one notch less accurate on every skill`
+      : `SKILL LADDER - ${rung.label}: ${rung.summary}`,
+    currentPhaseId: rung.currentPhaseId,
+    practicingSkills,
+    ensureAllPracticingHaveHistory: true,
+    tutorialCompletedSkills: practicingSkills,
+    minSessions: rung.minSessions,
+    sessionSpreadDays: rung.sessionSpreadDays,
+    interleaveSkillsAcrossSessions: true,
+    intentionNotes: `INTENTION: ${name}
+
+One half of the "${rung.label}" rung of the SKILL LADDER (Beginner → Intermediate → Upper Intermediate → Advanced). Every rung comes as a steady learner and a 🐢 slow & inaccurate twin at the SAME curriculum position with the SAME practicing skills, so the practice app can be compared rung by rung, and against a struggling learner, without changing what is being practised.
+
+Curriculum position: ${rung.currentPhaseId} (${rung.summary})
+Practicing skills (${practicingSkills.length}): ${practicingSkills.join(', ')}
+Response time: ${sec(responseTimeMsRange.min)}-${sec(responseTimeMsRange.max)} s per problem${slow ? ' — slow twin' : ' — steady'}
+Accuracy: ${
+      slow
+        ? 'every skill one notch below the steady twin (strong → developing, developing → weak)'
+        : 'as designed for the rung; no weak skills'
+    }
+Mastery mix: ${count('strong')} strong, ${count('developing')} developing, ${count('weak')} weak
+
+What to expect in the practice app:
+${
+  slow
+    ? `- Weak skills are present, so the session is likely to open in remediation on the demoted skills
+- Long response times push the progressive-assistance thresholds up; slow-response prompts and hints should appear
+- Compare directly with "${rung.label}" — same skills, same position, only speed and accuracy differ`
+    : `- No weak skills, so the session should not open in remediation; expect progression/maintenance on the developing skills
+- Response times sit inside the normal band, so no slow-response prompts
+- Compare directly with "${rung.label} (slow & inaccurate)" — same skills, same position, only speed and accuracy differ`
+}`,
+    skillHistory,
+  }
+}
+
+/** Eight students: four rungs × {steady, slow & inaccurate}. Seed all with -n Beginner -n Intermediate -n Advanced */
+const SKILL_LADDER_PROFILES: TestStudentProfile[] = LADDER_RUNGS.flatMap((rung) => [
+  ladderProfile(rung, 'steady'),
+  ladderProfile(rung, 'slow'),
+])
 
 export const TEST_PROFILES: TestStudentProfile[] = [
   {
@@ -1734,6 +1909,7 @@ Use this to test:
       },
     ],
   },
+  ...SKILL_LADDER_PROFILES,
 ]
 
 // =============================================================================

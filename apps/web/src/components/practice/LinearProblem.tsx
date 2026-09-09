@@ -1,5 +1,6 @@
 'use client'
 
+import { type CSSProperties, Fragment } from 'react'
 import { css } from '../../../styled-system/css'
 
 export interface LinearProblemProps {
@@ -34,6 +35,22 @@ export interface LinearProblemProps {
 }
 
 /**
+ * Fit-to-width sizing.
+ *
+ * The sentence never wraps on its own: its font size is `2rem` at most and shrinks
+ * so that `terms + operator + answer box` fit the nearest `container-type: inline-size`
+ * ancestor (ActiveSession's `problem-with-help`). Without such an ancestor, `cqw`
+ * falls back to the viewport width. Below the 1rem floor the row wraps as a last
+ * resort: the answer box drops under the sentence and the sentence itself can only
+ * break in front of an operator (each "+ 41" chunk is `nowrap`).
+ */
+const MONO_ADVANCE_EM = 0.62 // widest common monospace advance (Menlo/Courier ≈ 0.60)
+const ANSWER_BOX_MIN_DIGITS = 4
+const ANSWER_BOX_CHROME_EM = 1.5 // 0.5em padding on each side + 0.5em column gap
+// The answer box's 2px borders are the only non-em width; they are subtracted as 4px
+// inside the fontSize clamp() below.
+
+/**
  * Horizontal number-sentence problem display ("45 + 27 = ?").
  *
  * Structural sibling of {@link VerticalProblem}. Linear practice problems are
@@ -52,17 +69,22 @@ export function LinearProblem({
   showCorrectAnswerOnIncorrect = true,
   detectedPrefixIndex,
 }: LinearProblemProps) {
-  // Build the equation string
-  const equation = terms
-    .map((term, i) => {
-      if (i === 0) return String(term)
-      return term < 0 ? ` - ${Math.abs(term)}` : ` + ${term}`
-    })
-    .join('')
+  // One chunk per term ("58", "+ 41", "- 24"); chunks are joined by breakable spaces
+  // and each chunk is nowrap, so a fallback wrap can only happen before an operator.
+  const chunks = terms.map((term, i) => {
+    if (i === 0) return String(term)
+    return term < 0 ? `- ${Math.abs(term)}` : `+ ${term}`
+  })
 
   // Use "..." for prefix sums (mathematically incomplete), "=" for final answer
   const isPrefixSum = detectedPrefixIndex !== undefined
   const operator = isPrefixSum ? '…' : '='
+
+  // Width budget in em: every monospace column of the sentence plus the answer box.
+  const sentenceChars = chunks.join(' ').length + 1 + operator.length
+  const answerDigits = Math.max(ANSWER_BOX_MIN_DIGITS, String(correctAnswer ?? '').length)
+  const fitColumns = (sentenceChars + answerDigits) * MONO_ADVANCE_EM + ANSWER_BOX_CHROME_EM
+  const sentenceStyle = { '--linear-fit-columns': fitColumns } as CSSProperties
 
   // Use numeric comparison so "09" equals 9
   const numericUserAnswer = parseInt(userAnswer, 10)
@@ -90,20 +112,29 @@ export function LinearProblem({
     >
       <div
         data-element="linear-sentence"
+        style={sentenceStyle}
         className={css({
           display: 'flex',
+          flexWrap: 'wrap',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '1rem',
+          columnGap: '0.5em',
+          rowGap: '0.25em',
           fontFamily: 'monospace',
-          fontSize: '2rem',
+          fontSize: 'clamp(1rem, calc((100cqw - 4px) / var(--linear-fit-columns)), 2rem)',
           fontWeight: 'bold',
         })}
       >
-        <span className={css({ color: isDark ? 'gray.200' : 'gray.800' })}>
-          {equation}{' '}
+        <span className={css({ color: isDark ? 'gray.200' : 'gray.800', textAlign: 'center' })}>
+          {chunks.map((chunk, i) => (
+            <Fragment key={i}>
+              {i > 0 && ' '}
+              <span className={css({ whiteSpace: 'nowrap' })}>{chunk}</span>
+            </Fragment>
+          ))}{' '}
           <span
             className={css({
+              whiteSpace: 'nowrap',
               color: isPrefixSum
                 ? isDark
                   ? 'yellow.400'
@@ -119,8 +150,8 @@ export function LinearProblem({
         <span
           data-element="answer-box"
           className={css({
-            minWidth: '80px',
-            padding: '0.5rem 1rem',
+            minWidth: '2.5em',
+            padding: '0.25em 0.5em',
             borderRadius: '8px',
             textAlign: 'center',
             backgroundColor: isCompleted

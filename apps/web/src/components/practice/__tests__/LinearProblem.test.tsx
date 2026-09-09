@@ -84,4 +84,31 @@ describe('LinearProblem', () => {
     ).toBe('correct')
     expect(container.querySelector('[data-element="user-answer"]')).toBeNull()
   })
+  it('publishes a fit-to-width column budget that grows with the sentence', () => {
+    const fitColumns = (terms: number[], correctAnswer: number) => {
+      const { container } = render(
+        <LinearProblem terms={terms} correctAnswer={correctAnswer} isDark={false} />
+      )
+      const sentence = container.querySelector<HTMLElement>('[data-element="linear-sentence"]')
+      return Number(sentence?.style.getPropertyValue('--linear-fit-columns'))
+    }
+    const short = fitColumns([45, 27], 72)
+    const long = fitColumns([58, 41, -24, 1, -26, 34], 84)
+    expect(short).toBeGreaterThan(0)
+    expect(long).toBeGreaterThan(short)
+    // A 5-digit answer widens the budget beyond the 4-digit answer-box reserve.
+    expect(fitColumns([45, 27], 12345)).toBeGreaterThan(short)
+  })
+
+  it('keeps each "+ term" chunk unbreakable while the joins stay breakable spaces', () => {
+    const { container } = render(
+      <LinearProblem terms={[58, 41, -24]} correctAnswer={75} isDark={false} />
+    )
+    const sentence = container.querySelector('[data-element="linear-sentence"]')
+    expect(sentence?.textContent).toContain('58 + 41 - 24 =')
+    const chunks = Array.from(sentence?.querySelectorAll('span span') ?? []).map(
+      (el) => el.textContent
+    )
+    expect(chunks).toEqual(['58', '+ 41', '- 24', '='])
+  })
 })

@@ -1,26 +1,25 @@
 'use client'
 
+import { useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { useRouter } from 'next/navigation'
+import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
+import { DEFAULT_GAME_BREAK_SETTINGS, DEFAULT_PLAN_CONFIG } from '@/db/schema/session-plan-helpers'
 import type {
-  SessionPlan,
   GameBreakSelectionMode,
   PracticeBreakGameConfig,
+  SessionPlan,
+  SkippedPart,
 } from '@/db/schema/session-plans'
-import { DEFAULT_PLAN_CONFIG, DEFAULT_GAME_BREAK_SETTINGS } from '@/db/schema/session-plan-helpers'
-import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
-import { getPracticeApprovedGames } from '@/lib/arcade/practice-approved-games'
-import type { PracticeBreakConfig } from '@/lib/arcade/manifest-schema'
 import {
   ActiveSessionExistsClientError,
   NoSkillsEnabledClientError,
@@ -31,18 +30,20 @@ import {
   useGenerateSessionPlan,
   useStartSessionPlan,
 } from '@/hooks/useSessionPlan'
-import type { SessionMode } from '@/lib/curriculum/session-mode'
+import type { PracticeBreakConfig } from '@/lib/arcade/manifest-schema'
+import { getPracticeApprovedGames } from '@/lib/arcade/practice-approved-games'
 import { computeTermCountRange } from '@/lib/curriculum/config/term-count-scaling'
+import type { SessionMode } from '@/lib/curriculum/session-mode'
+import {
+  getSkillTutorialConfig,
+  type SkillTutorialConfig,
+} from '@/lib/curriculum/skill-tutorial-config'
 import {
   convertSecondsPerProblemToSpt,
   estimateSessionProblemCount,
   TIME_ESTIMATION_DEFAULTS,
 } from '@/lib/curriculum/time-estimation'
 import type { PaceAssessment } from '@/lib/curriculum/timing/pace-estimation'
-import {
-  getSkillTutorialConfig,
-  type SkillTutorialConfig,
-} from '@/lib/curriculum/skill-tutorial-config'
 
 // Problem length preference type and comfort adjustments
 export type ProblemLengthPreference = 'shorter' | 'recommended' | 'longer'
@@ -62,7 +63,7 @@ export const PART_TYPES = [
     label: 'Visualize',
     defaultWeight: 1,
   },
-  { type: 'linear' as const, emoji: '💭', label: 'Linear', defaultWeight: 0 },
+  { type: 'linear' as const, emoji: '📝', label: 'Linear', defaultWeight: 0 },
 ] as const
 
 // Purpose types configuration
@@ -117,8 +118,19 @@ interface StartPracticeModalContextValue {
   durationMinutes: number
   setDurationMinutes: (min: number) => void
   enabledParts: EnabledParts
+  /** Effective weights: the saved weights with locked parts forced to 0 */
   partWeights: PartWeights
-  /** Tap on segment: 0→1, 1→2, 2→1 (never disables) */
+  /**
+   * Number sentences are gated by derived readiness (L3) and nothing is ready.
+   * The linear segment renders locked and never reaches the planner.
+   */
+  linearLocked: boolean
+  /**
+   * Close the modal (flushing pending preferences). Used by in-modal links that
+   * navigate within the page the modal is mounted on, e.g. "See what's needed".
+   */
+  closeModal: () => void
+  /** Tap on segment: 0→1, 1→2, 2→1 (never disables; no-op on a locked part) */
   cyclePartWeight: (partType: keyof PartWeights) => void
   /** Explicit disable via × button (blocked if last active) */
   disablePart: (partType: keyof PartWeights) => void
@@ -221,6 +233,8 @@ interface StartPracticeModalContextValue {
   generationProgress: number
   /** Human-readable progress message during plan generation */
   generationProgressMessage: string | null
+  /** Requested parts the planner's readiness gates dropped (from `plan_structure_ready`) */
+  generationSkippedParts: SkippedPart[]
 
   // Skill selector (for "no skills" error remediation)
   showSkillSelector: boolean
@@ -267,6 +281,23 @@ interface StartPracticeModalProviderProps {
   savedPreferences?: PlayerSessionPreferencesConfig | null
   /** Callback fired when settings change (caller should debounce) */
   onSavePreferences?: (prefs: PlayerSessionPreferencesConfig) => void
+  /** See `StartPracticeModalContextValue.linearLocked` */
+  linearLocked?: boolean
+  /** See `StartPracticeModalContextValue.closeModal` */
+  onClose?: () => void
+}
+
+const DEFAULT_PART_WEIGHTS: PartWeights = { abacus: 2, visualization: 1, linear: 0 }
+
+/**
+ * Effective weights: the saved weights with a locked linear part forced to 0. If that
+ * leaves nothing active (the student had only Linear on before it locked), fall back
+ * to the defaults rather than hand the planner a zero-part request.
+ */
+export function applyLinearLock(raw: PartWeights, linearLocked: boolean): PartWeights {
+  if (!linearLocked) return raw
+  const effective = { ...raw, linear: 0 }
+  return effective.abacus + effective.visualization > 0 ? effective : DEFAULT_PART_WEIGHTS
 }
 
 export function StartPracticeModalProvider({
@@ -287,6 +318,8 @@ export function StartPracticeModalProvider({
   practiceApprovedGamesOverride,
   savedPreferences,
   onSavePreferences,
+  linearLocked = false,
+  onClose,
 }: StartPracticeModalProviderProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -301,8 +334,15 @@ export function StartPracticeModalProvider({
   const [includeTutorial, setIncludeTutorial] = useState(
     sessionMode.type === 'progression' && sessionMode.tutorialRequired
   )
-  const [partWeights, setPartWeights] = useState<PartWeights>(
+  // Raw weights are what the user chose (and what we persist); the effective weights
+  // force a locked part to 0 so nothing downstream (time split, problem counts, the
+  // plan request) ever allocates to it. The saved intent survives the lock.
+  const [rawPartWeights, setPartWeights] = useState<PartWeights>(
     savedPreferences?.partWeights ?? { abacus: 2, visualization: 1, linear: 0 }
+  )
+  const partWeights = useMemo<PartWeights>(
+    () => applyLinearLock(rawPartWeights, linearLocked),
+    [rawPartWeights, linearLocked]
   )
   const enabledParts = useMemo<EnabledParts>(
     () => ({
@@ -343,29 +383,38 @@ export function StartPracticeModalProvider({
   )
 
   // Tap on segment: 0→1, 1→2, 2→1 (never disables; no-op if sole active mode)
-  const cyclePartWeight = useCallback((partType: keyof PartWeights) => {
-    setPartWeights((prev) => {
-      const current = prev[partType]
-      if (current === 0) return { ...prev, [partType]: 1 }
-      // If this is the only active mode, weight is meaningless — don't toggle
-      const activeCount = Object.values(prev).filter((w) => w > 0).length
-      if (activeCount === 1) return prev
-      if (current === 1) return { ...prev, [partType]: 2 }
-      // current === 2 → back to 1
-      return { ...prev, [partType]: 1 }
-    })
-  }, [])
+  const cyclePartWeight = useCallback(
+    (partType: keyof PartWeights) => {
+      if (partType === 'linear' && linearLocked) return
+      setPartWeights((prev) => {
+        const current = prev[partType]
+        if (current === 0) return { ...prev, [partType]: 1 }
+        // If this is the only active mode, weight is meaningless — don't toggle
+        const effective = applyLinearLock(prev, linearLocked)
+        const activeCount = Object.values(effective).filter((w) => w > 0).length
+        if (activeCount === 1) return prev
+        if (current === 1) return { ...prev, [partType]: 2 }
+        // current === 2 → back to 1
+        return { ...prev, [partType]: 1 }
+      })
+    },
+    [linearLocked]
+  )
 
   // Explicit disable via × button (blocked if last active)
-  const disablePart = useCallback((partType: keyof PartWeights) => {
-    setPartWeights((prev) => {
-      const othersTotal = Object.entries(prev)
-        .filter(([k]) => k !== partType)
-        .reduce((sum, [, v]) => sum + v, 0)
-      if (othersTotal === 0) return prev // can't disable the last active part
-      return { ...prev, [partType]: 0 }
-    })
-  }, [])
+  const disablePart = useCallback(
+    (partType: keyof PartWeights) => {
+      setPartWeights((prev) => {
+        const effective = applyLinearLock(prev, linearLocked)
+        const othersTotal = Object.entries(effective)
+          .filter(([k]) => k !== partType)
+          .reduce((sum, [, v]) => sum + v, 0)
+        if (othersTotal === 0) return prev // can't disable the last active part
+        return { ...prev, [partType]: 0 }
+      })
+    },
+    [linearLocked]
+  )
 
   // Purpose weight state
   const [purposeWeights, setPurposeWeights] = useState<PurposeWeights>(
@@ -535,7 +584,7 @@ export function StartPracticeModalProvider({
     const config = {
       durationMinutes,
       problemLengthPreference,
-      partWeights,
+      partWeights: rawPartWeights,
       purposeWeights,
       shufflePurposes,
       gameBreakEnabled,
@@ -563,7 +612,7 @@ export function StartPracticeModalProvider({
   }, [
     durationMinutes,
     problemLengthPreference,
-    partWeights,
+    rawPartWeights,
     purposeWeights,
     shufflePurposes,
     gameBreakEnabled,
@@ -718,6 +767,19 @@ export function StartPracticeModalProvider({
     if (startPlan.error) return startPlan.error
     return null
   }, [generatePlan.error, generatePlan.taskError, approvePlan.error, startPlan.error])
+
+  // The planner reports which requested parts its readiness gates dropped in the
+  // `plan_structure_ready` event; surface them so "I picked linear" never fails silently.
+  const generationSkippedParts = useMemo<SkippedPart[]>(() => {
+    const events = generatePlan.taskState?.events ?? []
+    for (let i = events.length - 1; i >= 0; i--) {
+      const event = events[i]
+      if (event.eventType !== 'plan_structure_ready') continue
+      const payload = event.payload as { skippedParts?: SkippedPart[] } | null
+      return payload?.skippedParts ?? []
+    }
+    return []
+  }, [generatePlan.taskState?.events])
 
   const isNoSkillsError =
     displayError instanceof NoSkillsEnabledClientError ||
@@ -888,6 +950,10 @@ export function StartPracticeModalProvider({
     resetMutations,
   ])
 
+  const closeModal = useCallback(() => {
+    onClose?.()
+  }, [onClose])
+
   const value: StartPracticeModalContextValue = {
     // Read-only props
     studentId,
@@ -901,6 +967,8 @@ export function StartPracticeModalProvider({
     setDurationMinutes,
     enabledParts,
     partWeights,
+    linearLocked,
+    closeModal,
     cyclePartWeight,
     disablePart,
     problemLengthPreference,
@@ -970,6 +1038,7 @@ export function StartPracticeModalProvider({
     isSessionLimitError,
     generationProgress: generatePlan.progress,
     generationProgressMessage: generatePlan.progressMessage,
+    generationSkippedParts,
 
     // Skill selector
     showSkillSelector,

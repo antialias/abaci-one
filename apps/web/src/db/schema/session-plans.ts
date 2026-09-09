@@ -165,6 +165,15 @@ export interface PartSummary {
   estimatedMinutes: number
 }
 
+/** Why a requested part type was left out of the plan */
+export type SkippedPartReason = 'not-ready' | 'vetoed' | 'no-visual-skills'
+
+/** A part type the caller asked for that the planner's readiness gates dropped */
+export interface SkippedPart {
+  type: SessionPartType
+  reason: SkippedPartReason
+}
+
 /**
  * Human-readable summary for display
  */
@@ -177,6 +186,8 @@ export interface SessionSummary {
   estimatedMinutes: number
   /** Summary for each part */
   parts: PartSummary[]
+  /** Requested parts the readiness gates dropped (absent on plans saved before this field existed) */
+  skippedParts?: SkippedPart[]
 }
 
 /**
@@ -702,25 +713,24 @@ export type NewSessionPlan = typeof sessionPlans.$inferInsert
 // to avoid pulling drizzle-orm into the browser bundle.
 // ============================================================================
 
+export type { PlanGenerationConfig } from './session-plan-helpers'
 export {
+  calculateMasteryWeight,
+  calculateSessionHealth,
+  calculateTotalProblemsWithRetries,
   DEFAULT_GAME_BREAK_SETTINGS,
   DEFAULT_PLAN_CONFIG,
-  MAX_RETRY_EPOCHS,
-  getSessionPlanAccuracy,
-  getCurrentPart,
-  getNextSlot,
-  getTotalProblemCount,
   getCompletedProblemCount,
+  getCurrentPart,
+  getCurrentProblemInfo,
+  getNextSlot,
+  getSessionPlanAccuracy,
+  getSlotRetryStatus,
+  getTotalProblemCount,
+  initRetryState,
+  isInRetryEpoch,
   isPartComplete,
   isSessionComplete,
-  calculateSessionHealth,
-  calculateMasteryWeight,
-  isInRetryEpoch,
-  getCurrentProblemInfo,
-  initRetryState,
-  getSlotRetryStatus,
-  calculateTotalProblemsWithRetries,
+  MAX_RETRY_EPOCHS,
   needsRetryTransition,
 } from './session-plan-helpers'
-
-export type { PlanGenerationConfig } from './session-plan-helpers'

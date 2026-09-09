@@ -91,7 +91,9 @@ export type CommitmentPrinter =
       monochromeExternal: boolean
       supports: { enabled: boolean; interface: string | null }
       feetGate: FeetSupportGate
-      twoStage: { on: boolean; feetSpool: string | null }
+      /** `feetOnly`: the experimental variant (Gitea #45) — Stage A prints only
+       *  the feet, Stage B prints PLA supports around them. */
+      twoStage: { on: boolean; feetSpool: string | null; feetOnly?: boolean }
       kit: 'none' | 'pending' | 'fits' | 'spills'
     }
 export interface CommitmentInput {
@@ -163,6 +165,11 @@ export function commitmentSummary({
     }
   else if (printer.feetGate.blocked) supports = { value: 'off — needed for printed feet' }
   else if (!printer.supports.enabled) supports = { value: 'off' }
+  else if (printer.twoStage.on && printer.twoStage.feetOnly)
+    supports = {
+      value: `on · PLA from the frame spool, printed in the body stage around the standing feet${printer.supports.interface ? `, interface in ${printer.supports.interface}` : ''}`,
+      note: 'Experimental: nothing but the feet is TPU on the plate — the supports pop off and the feet peel.',
+    }
   else if (printer.twoStage.on)
     supports = {
       value: `on · interface in the feet filament${printer.twoStage.feetSpool ? ` (${printer.twoStage.feetSpool})` : ''}, printed in the feet stage`,
@@ -203,9 +210,11 @@ export function commitmentSummary({
   const jobs =
     printer.kind === 'unpaired'
       ? 'set in your slicer'
-      : printer.twoStage.on
-        ? 'two jobs · feet first from the external spool, then the body after a spool swap'
-        : 'one job'
+      : printer.twoStage.on && printer.twoStage.feetOnly
+        ? 'two jobs · only the feet from the external spool, then supports and the body after a spool swap'
+        : printer.twoStage.on
+          ? 'two jobs · feet first from the external spool, then the body after a spool swap'
+          : 'one job'
   let time = TIME_BAND[infill.frame]
   if (modular) time += ' Many small pieces add travel.'
   if (printer.kind === 'paired' && printer.twoStage.on)

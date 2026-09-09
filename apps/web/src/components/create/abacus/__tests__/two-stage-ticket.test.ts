@@ -109,3 +109,79 @@ describe('buildAbacusTicket — two-stage feet (Gitea #38 / THH #456)', () => {
     expect(t.filaments.some((f) => 'role' in f && f.role === 'support-interface')).toBe(false)
   })
 })
+
+describe('buildAbacusTicket — the feet-only variant (Gitea #45 / THH #465 + #466)', () => {
+  const partitioned = { ...split, partition: 'seam-tool-model' as const }
+  it('Stage A: the partition on split, and role "support" on the frame’s own entry', () => {
+    const t = buildAbacusTicket({
+      ...base,
+      split: partitioned,
+      supportBodySlotId: '0.2',
+      seamToolOverrides: TWO_STAGE_SEAM_TOOL_OVERRIDES,
+    })
+    expect(t.split).toEqual(partitioned)
+    expect(t.chain).toBeUndefined()
+    expect(t.filaments).toEqual([
+      { slotId: '0.1', overrides: TWO_STAGE_SEAM_TOOL_OVERRIDES },
+      { slotId: '0.2', role: 'support' },
+    ])
+  })
+  it('Stage B: the same list with the body role, chain, no split', () => {
+    const t = buildAbacusTicket({
+      ...base,
+      chain: { continuesJobId: 'job-a' },
+      supportBodySlotId: '0.2',
+      seamToolOverrides: TWO_STAGE_SEAM_TOOL_OVERRIDES,
+    })
+    expect(t.chain).toEqual({ continuesJobId: 'job-a' })
+    expect(t.split).toBeUndefined()
+    expect(t.filaments).toEqual([
+      { slotId: '0.1', overrides: TWO_STAGE_SEAM_TOOL_OVERRIDES },
+      { slotId: '0.2', role: 'support' },
+    ])
+  })
+  it('lifts the filament-0 interface rule — the interface prints in Stage B, appended last', () => {
+    const t = buildAbacusTicket({
+      ...base,
+      split: partitioned,
+      supportBodySlotId: '0.2',
+      supportInterfaceSlotId: '0.3',
+    })
+    expect(t.filaments).toEqual([
+      { slotId: '0.1' },
+      { slotId: '0.2', role: 'support' },
+      { slotId: '0.3', role: 'support-interface' },
+    ])
+    // and only there: the TPU-floor mode still refuses a routed interface
+    expect(() => buildAbacusTicket({ ...base, split, supportInterfaceSlotId: '0.3' })).toThrow(
+      /filament 0/
+    )
+  })
+  it('the TPU-floor ticket is untouched: no partition, no body role', () => {
+    const t = buildAbacusTicket({ ...base, split })
+    expect(t.split).toEqual(split)
+    expect(t.filaments.some((f) => 'role' in f && f.role !== undefined)).toBe(false)
+  })
+  it('refuses half a variant: a partition without a body, a body without the partition', () => {
+    expect(() => buildAbacusTicket({ ...base, split: partitioned })).toThrow(
+      /names no support body/
+    )
+    expect(() => buildAbacusTicket({ ...base, split, supportBodySlotId: '0.2' })).toThrow(
+      /needs both/
+    )
+  })
+  it('refuses a body that is the seam tool, the external spool, an unloaded slot, or a spool with no model body', () => {
+    expect(() =>
+      buildAbacusTicket({ ...base, split: partitioned, supportBodySlotId: '0.1' })
+    ).toThrow(/seam tool cannot be the support body/)
+    expect(() =>
+      buildAbacusTicket({ ...base, split: partitioned, supportBodySlotId: 'ext' })
+    ).toThrow(/never the external spool/)
+    expect(() =>
+      buildAbacusTicket({ ...base, split: partitioned, supportBodySlotId: '9.9' })
+    ).toThrow(/not in the loaded roster/)
+    expect(() =>
+      buildAbacusTicket({ ...base, split: partitioned, supportBodySlotId: '0.3' })
+    ).toThrow(/prints no model body/)
+  })
+})

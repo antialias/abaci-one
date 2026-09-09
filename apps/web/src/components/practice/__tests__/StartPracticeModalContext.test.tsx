@@ -1,15 +1,15 @@
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { vi, describe, it, expect, beforeEach } from 'vitest'
-import type { SessionMode } from '@/lib/curriculum/session-mode'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferences'
 import type { CurriculumPhase } from '@/lib/curriculum/definitions'
+import type { SessionMode } from '@/lib/curriculum/session-mode'
 import {
-  StartPracticeModalProvider,
-  useStartPracticeModal,
   PART_TYPES,
   PURPOSE_TYPES,
+  StartPracticeModalProvider,
+  useStartPracticeModal,
 } from '../StartPracticeModalContext'
-import { DEFAULT_SESSION_PREFERENCES } from '@/db/schema/player-session-preferences'
 
 // Mock hooks and dependencies
 vi.mock('next/navigation', () => ({
@@ -624,7 +624,7 @@ describe('StartPracticeModalContext', () => {
       })
       expect(PART_TYPES[2]).toEqual({
         type: 'linear',
-        emoji: '💭',
+        emoji: '📝',
         label: 'Linear',
         defaultWeight: 0,
       })

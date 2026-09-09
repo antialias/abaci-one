@@ -17,9 +17,14 @@ import {
   DEFAULT_WIPE_TOWER_PROFILE,
   envelopeForFilaments,
   FEET_PART_PROCESS,
+  SUPPORT_BLOCKER_ID_BASE,
+  SUPPORT_BLOCKER_NAME,
   SUPPORT_TRANSITION_HEIGHT_MM,
   SUPPORT_TRANSITION_NAME,
   SUPPORT_TRANSITION_SPEED_MM_S,
+  type SupportBlocker,
+  supportBlockerProfile,
+  supportBlockerRadius,
   THREE_MF_ZIP_MTIME,
   type WipeTowerProfileGeometry,
 } from '../abacus-3mf-assembly'
@@ -454,5 +459,79 @@ describe('assembleAbacus3mf — reproducible bytes (THH #456 chain identity, aba
     expect(stamps).toHaveLength(5) // content types, rels, model, model + project settings
     // 1980-01-01 00:00:00 → time 0x0000, date 0x0021 (day 1 | month 1 << 5 | year 0 << 9)
     for (const stamp of stamps) expect(stamp).toEqual([0x0000, 0x0021])
+  })
+})
+
+describe('assembleAbacus3mf — per-foot support blockers (feet-only variant, Gitea #45)', () => {
+  it('the void follows the nozzle cone down to the foot: 7.9 → 7.3 → 6.5 mm for 1.6 mm feet', () => {
+    expect(supportBlockerRadius(0.2, 1.6, 4.5)).toBeCloseTo(7.9, 6)
+    expect(supportBlockerRadius(0.8, 1.6, 4.5)).toBeCloseTo(7.3, 6)
+    expect(supportBlockerRadius(1.6, 1.6, 4.5)).toBeCloseTo(6.5, 6)
+    // the cone's full radius caps it: tall feet see a cylinder below the knee
+    expect(supportBlockerRadius(0, 5, 4.5)).toBeCloseTo(11, 6)
+    expect(supportBlockerRadius(0.5, 5, 4.5)).toBeCloseTo(11, 6)
+    expect(supportBlockerRadius(5, 5, 4.5)).toBeCloseTo(6.5, 6)
+  })
+
+  it('the profile is a frustum for stock feet, a cylinder under a frustum past the cone height', () => {
+    const rounded = (h: number, r: number) =>
+      supportBlockerProfile(h, r).map((k) => [k.z, +k.r.toFixed(6)])
+    expect(rounded(1.6, 4.5)).toEqual([
+      [0, 8.1],
+      [1.6, 6.5],
+    ])
+    expect(rounded(5, 4.5)).toEqual([
+      [0, 11],
+      [0.5, 11],
+      [5, 6.5],
+    ])
+  })
+
+  it('emits one support_blocker part per foot in source z −H..0, riding the assembly', () => {
+    const blockers: SupportBlocker[] = [
+      { cx: 5, cy: 5, heightMm: 1.6, rFootMm: 4.5 },
+      { cx: 55, cy: 75, heightMm: 1.6, rFootMm: 4.5 },
+    ]
+    const plain = read(assembleAbacus3mf(bodies, BAMBU_256_BED, { support: true }).bytes)
+    const { model, modelSettings, project } = read(
+      assembleAbacus3mf(bodies, BAMBU_256_BED, { support: true, supportBlockers: blockers }).bytes
+    )
+    for (let k = 0; k < 2; k++) {
+      const id = SUPPORT_BLOCKER_ID_BASE + k
+      expect(model).toContain(`<object id="${id}" type="model">`)
+      expect(model).toContain(`<component objectid="${id}" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>`)
+      expect(modelSettings).toContain(
+        `<part id="${id}" subtype="support_blocker"><metadata key="name" value="${SUPPORT_BLOCKER_NAME}-foot-${k + 1}"/></part>`
+      )
+    }
+    // the first foot's mesh: the plate ring at source z −1.6 with r 8.1, the seam
+    // ring at z 0 with r 6.5, both centred on the foot
+    const first = model.slice(
+      model.indexOf(`<object id="${SUPPORT_BLOCKER_ID_BASE}"`),
+      model.indexOf(`<object id="${SUPPORT_BLOCKER_ID_BASE + 1}"`)
+    )
+    expect(first).toContain('<vertex x="13.1" y="5" z="-1.6"/>')
+    expect(first).toContain('<vertex x="11.5" y="5" z="0"/>')
+    expect(first).toContain('<vertex x="5" y="5" z="-1.6"/>')
+    expect(first).toContain('<vertex x="5" y="5" z="0"/>')
+    const zs = [...first.matchAll(/z="(-?[\d.]+)"/g)].map((m) => Number(m[1]))
+    expect(Math.min(...zs)).toBe(-1.6)
+    expect(Math.max(...zs)).toBe(0)
+    // still one printable object, and the blockers move neither the footprint nor the tower
+    expect(model.match(/<item\b/g)).toHaveLength(1)
+    expect(modelSettings).toContain('<part id="1001" subtype="modifier_part">')
+    expect(project.wipe_tower_x).toBe(plain.project.wipe_tower_x)
+    expect(project.wipe_tower_y).toBe(plain.project.wipe_tower_y)
+    expect(model.match(/<build>.*<\/build>/)?.[0]).toBe(
+      plain.model.match(/<build>.*<\/build>/)?.[0]
+    )
+  })
+
+  it('none by default — the TPU-floor file is byte-identical to before', () => {
+    const before = assembleAbacus3mf(bodies, BAMBU_256_BED, { support: true }).bytes
+    expect(
+      assembleAbacus3mf(bodies, BAMBU_256_BED, { support: true, supportBlockers: [] }).bytes
+    ).toEqual(before)
+    expect(read(before).modelSettings).not.toContain('support_blocker')
   })
 })

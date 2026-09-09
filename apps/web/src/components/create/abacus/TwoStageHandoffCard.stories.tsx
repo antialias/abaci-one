@@ -104,6 +104,12 @@ export const FeetTrayNoLongerTpu: Story = {
   },
 }
 
+/** The experimental feet-only variant (Gitea #45): Stage A printed only the feet,
+ *  so the hand-off says Stage B goes back to the plate for the supports first. */
+export const FeetOnlyReadyForStageB: Story = {
+  args: { variant: 'feet-only', view: { kind: 'ready-for-b', retry: false } },
+}
+
 /** The print style changed so the seam no longer lands on a layer boundary. */
 export const SeamOffLayerGrid: Story = {
   args: {

@@ -173,7 +173,7 @@ export function StartPracticeShowcase() {
             <div className={css({ display: 'flex', alignItems: 'center', gap: '0.375rem' })}>
               <ModeChip emoji="🧮" count={10} />
               <ModeChip emoji="🧠" count={8} />
-              <ModeChip emoji="💭" count={6} />
+              <ModeChip emoji="📝" count={6} />
             </div>
 
             <Dot />
@@ -411,7 +411,7 @@ export function StartPracticeShowcaseExpanded() {
                 accent: '#16a34a',
               },
               {
-                emoji: '💭',
+                emoji: '📝',
                 label: 'Linear',
                 weight: 6,
                 color: 'rgba(22, 163, 74, 0.06)',

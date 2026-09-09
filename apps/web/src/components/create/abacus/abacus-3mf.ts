@@ -54,6 +54,7 @@ import {
   BAMBU_256_BED,
   DEFAULT_WIPE_TOWER_PROFILE,
   FEET_PART_PROCESS,
+  type SupportBlocker,
   type WipeTowerProfileGeometry,
 } from './abacus-3mf-assembly'
 import { type InfillLevel, infillPartProcess, resolveInfill } from './abacus-infill'
@@ -61,6 +62,8 @@ import {
   analyzeShells,
   anyTokens,
   type FilamentMap,
+  feetEffective,
+  feetPositions,
   type Params,
   shellSlotIndex,
 } from './abacus-model'
@@ -207,6 +210,10 @@ export function buildAbacusThreeMf(args: {
   /** Filaments the ticket adds beyond the emitted bodies — the support-interface
    *  spool. A download adds none. */
   extraFilaments?: number
+  /** The feet-only two-stage variant (Gitea #45): ship one support blocker per
+   *  foot (`feetSupportBlockers`) so Stage B's PLA support keeps clear of the
+   *  nozzle around the feet Stage A already printed. Printed feet only. */
+  feetOnlyStageA?: boolean
 }): AbacusThreeMf {
   const {
     stl,
@@ -221,6 +228,7 @@ export function buildAbacusThreeMf(args: {
     bed = BAMBU_256_BED,
     wipeTower = DEFAULT_WIPE_TOWER_PROFILE,
     extraFilaments,
+    feetOnlyStageA = false,
   } = args
 
   const mesh = parseStl(stl)
@@ -333,7 +341,22 @@ export function buildAbacusThreeMf(args: {
     wipeTower,
     extraFilaments,
     infill: resolveInfill(params),
+    supportBlockers: feetPrinted && feetOnlyStageA ? feetSupportBlockers(params) : undefined,
   })
+}
+
+/**
+ * The per-foot support blockers the feet-only variant ships (Gitea #45): one per
+ * foot, centred on the scad's `FEET_POS` through its TS mirror (`feetPositions`,
+ * the same frame the viewer overlays the feet in), from the plate to the seam.
+ * The stand-off below the frame is the foot's mouth section — `feet_w` across
+ * (printed feet weld, fit 0) — so its radius is half that; a square foot is
+ * bounded by its circumradius. Geometry lives in `abacus-3mf-assembly.ts`.
+ */
+export function feetSupportBlockers(params: Params): SupportBlocker[] {
+  const { proud } = feetEffective(params)
+  const rFootMm = params.feet_shape === 'square' ? params.feet_w / Math.SQRT2 : params.feet_w / 2
+  return feetPositions(params).map(([cx, cy]) => ({ cx, cy, heightMm: proud, rFootMm }))
 }
 
 /**
@@ -372,6 +395,9 @@ export function emitThreeMfBodies(args: {
    *  `--load-settings` leaves alone. Optional so a caller with no design in hand
    *  emits nothing beyond the feet rule. */
   infill?: { frame: InfillLevel; beads: InfillLevel }
+  /** Per-foot support blockers (the feet-only variant, Gitea #45) — see
+   *  `Assemble3mfOpts.supportBlockers`. */
+  supportBlockers?: readonly SupportBlocker[]
 }): AbacusThreeMf {
   const {
     mesh,
@@ -387,6 +413,7 @@ export function emitThreeMfBodies(args: {
     placedOnBed,
     extraFilaments = 0,
     infill,
+    supportBlockers,
   } = args
 
   // Count triangles per slot, then bucket the position soup (9 floats/tri).
@@ -512,6 +539,7 @@ export function emitThreeMfBodies(args: {
       wipeTower,
       placedOnBed,
       filaments: plateFilaments,
+      ...(supportBlockers && supportBlockers.length > 0 ? { supportBlockers } : {}),
     })
     return {
       bytes: assembled.bytes,
