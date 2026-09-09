@@ -4,6 +4,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LinearReadinessState } from '@/hooks/useLinearReadiness'
+import type { LinearEntryAssessment } from '@/lib/curriculum/linear-entry-policy'
 import type { SkillReadinessResult } from '@/lib/curriculum/skill-readiness'
 
 const mockReadiness: { data: LinearReadinessState | undefined } = { data: undefined }
@@ -33,6 +34,26 @@ function readiness(skillId: string, solid: boolean): SkillReadinessResult {
 }
 
 const BASIC_IDS = ['basic.directAddition', 'basic.heavenBead']
+
+function entry(skillId: string, ready: boolean): LinearEntryAssessment {
+  return {
+    skillId,
+    ready,
+    advancesFrontier: true,
+    opportunities: 40,
+    mastery: { met: true, pKnown: 0.97 },
+    volume: { met: true, opportunities: 40, sessionCount: 6, minOpportunities: 20 },
+    accuracy: {
+      met: ready,
+      recentAccuracy: ready ? 0.93 : 0.73,
+      windowFilled: 15,
+      windowSize: 15,
+      minAccuracy: 0.85,
+      cleanStreak: false,
+    },
+    speed: { rule: 'off', met: true, secondsPerTerm: null, maxSecondsPerTerm: 5 },
+  }
+}
 
 function lockedState(): LinearReadinessState {
   return {
@@ -68,6 +89,7 @@ function lockedState(): LinearReadinessState {
         readiness: readiness(BASIC_IDS[1], false),
       },
     ],
+    pending: [],
   }
 }
 
@@ -78,7 +100,7 @@ beforeEach(() => {
 
 describe('NumberSentencesPanel', () => {
   it('renders nothing when the flag is off', () => {
-    mockReadiness.data = { enabled: false, frontier: null, categories: [], skills: [] }
+    mockReadiness.data = { enabled: false, frontier: null, categories: [], skills: [], pending: [] }
     const { container } = render(<NumberSentencesPanel studentId="p1" isDark={false} />)
     expect(container).toBeEmptyDOMElement()
   })
@@ -91,7 +113,7 @@ describe('NumberSentencesPanel', () => {
     expect(screen.getByText('Number sentences')).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Number sentences unlock when your Basic Skills are quick and steady. 1 of 2 ready.'
+        'Number sentences unlock when your Basic Skills are practiced and mastered. 1 of 2 there.'
       )
     ).toBeInTheDocument()
     const rows = container.querySelectorAll('[data-element="frontier-skill"]')
@@ -118,6 +140,7 @@ describe('NumberSentencesPanel', () => {
         },
       ],
       skills: [],
+      pending: [],
     }
     const { container } = render(<NumberSentencesPanel studentId="p1" isDark={false} />)
     expect(container.querySelector('#number-sentences')!.getAttribute('data-status')).toBe('ready')
@@ -143,5 +166,54 @@ describe('NumberSentencesPanel', () => {
     ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(mockClearVeto.mutate).toHaveBeenCalledWith({ category: 'basic' })
+  })
+
+  it('entry verdicts: frontier rows use advancesFrontier, and settling skills list past the frontier', () => {
+    const base = lockedState()
+    mockReadiness.data = {
+      ...base,
+      skills: [
+        { ...base.skills[0], entry: entry(BASIC_IDS[0], true) },
+        {
+          ...base.skills[1],
+          readiness: readiness(BASIC_IDS[1], false),
+          entry: entry(BASIC_IDS[1], false),
+        },
+      ],
+      pending: [
+        {
+          skillId: 'fiveComplements.4=5-1',
+          name: 'Five Complement 4',
+          stage: 1,
+          readiness: readiness('fiveComplements.4=5-1', false),
+          entry: entry('fiveComplements.4=5-1', false),
+        },
+      ],
+    }
+    const { container } = render(<NumberSentencesPanel studentId="p1" isDark={false} />)
+    const frontierRows = container.querySelectorAll(
+      '[data-element="frontier-skill-list"] [data-element="frontier-skill"]'
+    )
+    expect(frontierRows).toHaveLength(2)
+    // Heaven Bead is not "solid" by the generic assessment but does advance the frontier
+    expect(frontierRows[1].getAttribute('data-solid')).toBe('true')
+    expect(frontierRows[1].getAttribute('data-ready')).toBe('false')
+    expect(frontierRows[0].getAttribute('data-ready')).toBe('true')
+
+    expect(screen.getByText('Almost there: 1 skill still settling')).toBeInTheDocument()
+    const pendingRows = container.querySelectorAll(
+      '[data-element="pending-skill-list"] [data-element="frontier-skill"]'
+    )
+    expect(pendingRows).toHaveLength(1)
+    expect(screen.getByText('Five Complement 4')).toBeInTheDocument()
+    expect(screen.getAllByText('accuracy: 73% over last 15, need 85%')).toHaveLength(2)
+
+    fireEvent.click(screen.getByText('Five Complement 4').closest('button')!)
+    const report = pendingRows[0].querySelector('[data-element="linear-entry-report"]')
+    expect(report).not.toBeNull()
+    expect(report!.querySelector('[data-dimension="accuracy"]')!.getAttribute('data-met')).toBe(
+      'false'
+    )
+    expect(report!.querySelector('[data-dimension="speed"]')).toBeNull()
   })
 })

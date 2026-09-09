@@ -7,13 +7,13 @@ import { getCategorySkillIds } from '@/constants/skillCategories'
 import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 
 const mocks = vi.hoisted(() => ({
-  isEnabled: vi.fn(),
+  getFlag: vi.fn(),
   getAllSkillMastery: vi.fn(),
   getLinearReadinessVetoes: vi.fn(),
   getRecentSessionResults: vi.fn(),
 }))
 
-vi.mock('@/lib/feature-flags', () => ({ isEnabled: mocks.isEnabled }))
+vi.mock('@/lib/feature-flags', () => ({ getFlag: mocks.getFlag }))
 vi.mock('../progress-manager', () => ({
   getAllSkillMastery: mocks.getAllSkillMastery,
   getLinearReadinessVetoes: mocks.getLinearReadinessVetoes,
@@ -38,7 +38,7 @@ function mastery(ids: string[]): Pick<PlayerSkillMastery, 'skillId' | 'practiceL
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.isEnabled.mockResolvedValue(true)
+  mocks.getFlag.mockResolvedValue({ enabled: true, config: null })
   mocks.getAllSkillMastery.mockResolvedValue(mastery(BASIC))
   mocks.getLinearReadinessVetoes.mockResolvedValue(new Set())
   mocks.getRecentSessionResults.mockResolvedValue([])
@@ -46,12 +46,13 @@ beforeEach(() => {
 
 describe('getLinearReadinessState', () => {
   it('flag off → disabled, empty contract', async () => {
-    mocks.isEnabled.mockResolvedValue(false)
+    mocks.getFlag.mockResolvedValue({ enabled: false, config: null })
     await expect(getLinearReadinessState('p1')).resolves.toEqual({
       enabled: false,
       frontier: null,
       categories: [],
       skills: [],
+      pending: [],
     })
   })
 
@@ -99,6 +100,7 @@ describe('getLinearReadinessState', () => {
       readySkillIds: new Set<string>(),
       readyBeforeVetoSkillIds: new Set(BASIC),
       frontierSkills: [],
+      pendingSkills: [],
     }
     vi.mocked(explainLinearReadiness).mockReturnValueOnce(explanation)
     mocks.getLinearReadinessVetoes.mockResolvedValue(new Set(['basic']))

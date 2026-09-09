@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { LinearReadinessSkillState } from '@/hooks/useLinearReadiness'
 import { useLinearReadiness, useLinearReadinessVeto } from '@/hooks/useLinearReadiness'
 import { css } from '../../../styled-system/css'
+import { LinearEntryReport } from './LinearEntryReport'
 import { ReadinessReport } from './ReadinessReport'
 import { describeLinearLock, joinNames } from './start-practice-modal/LinearLockNote'
 
@@ -115,6 +116,33 @@ export function NumberSentencesPanel({
         </div>
       )}
 
+      {data.pending.length > 0 && (
+        <div data-element="pending-skills" className={css({ marginTop: '0.75rem' })}>
+          <p
+            data-element="pending-summary"
+            className={css({
+              fontSize: '0.75rem',
+              fontWeight: '600',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '0.375rem',
+              color: isDark ? 'gray.400' : 'gray.500',
+            })}
+          >
+            Almost there: {data.pending.length} {data.pending.length === 1 ? 'skill' : 'skills'}{' '}
+            still settling
+          </p>
+          <ul
+            data-element="pending-skill-list"
+            className={css({ display: 'flex', flexDirection: 'column', gap: '0.25rem' })}
+          >
+            {data.pending.map((skill) => (
+              <FrontierSkillRow key={skill.skillId} skill={skill} isDark={isDark} />
+            ))}
+          </ul>
+        </div>
+      )}
+
       {vetoed.length > 0 && (
         <ul
           data-element="vetoed-categories"
@@ -184,11 +212,16 @@ function FrontierSkillRow({
 }) {
   const [expanded, setExpanded] = useState(false)
   const readiness = { [skill.skillId]: skill.readiness }
+  const entry = skill.entry
+  const solid = entry
+    ? entry.advancesFrontier
+    : skill.readiness.isSolid && skill.readiness.dimensions.volume.opportunities > 0
   return (
     <li
       data-element="frontier-skill"
       data-skill-id={skill.skillId}
-      data-solid={skill.readiness.isSolid && skill.readiness.dimensions.volume.opportunities > 0}
+      data-solid={solid}
+      data-ready={entry?.ready ?? solid}
       className={css({
         borderRadius: '8px',
         backgroundColor: isDark ? 'gray.700' : 'gray.50',
@@ -215,11 +248,19 @@ function FrontierSkillRow({
         })}
       >
         <span>{skill.name}</span>
-        <ReadinessReport readiness={readiness} variant="compact" />
+        {entry ? (
+          <LinearEntryReport entry={entry} variant="compact" />
+        ) : (
+          <ReadinessReport readiness={readiness} variant="compact" />
+        )}
       </button>
       {expanded && (
         <div className={css({ padding: '0 0.625rem 0.5rem' })}>
-          <ReadinessReport readiness={readiness} variant="full" />
+          {entry ? (
+            <LinearEntryReport entry={entry} variant="full" />
+          ) : (
+            <ReadinessReport readiness={readiness} variant="full" />
+          )}
         </div>
       )}
     </li>

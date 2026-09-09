@@ -24,14 +24,16 @@
  *
  * The frontier is the contiguous fully-mastered *prefix* of stages. A stage counts
  * as mastered only when EVERY non-cascading skill in it has REAL EVIDENCE
- * (opportunities > 0) and is solid — a never-practiced skill does NOT count as
+ * (opportunities > 0) and advances the frontier under the entry policy (mastery +
+ * volume by default, see `linear-entry-policy.ts`) — a never-practiced skill does NOT count as
  * "mastered by default" for the frontier, so a child mid-category cannot vault a
  * whole stage. Cascading skills (which have no tutorial and are rarely drilled) are
  * exempt: they never block the frontier, but they still need their own evidence to
  * enter the linear pool (see membership below).
  *
  * ── Membership ────────────────────────────────────────────────────────────────
- * A skill is linear-ready iff it is solid, has real evidence, sits at a stage the
+ * A skill is linear-ready iff it meets the entry policy's membership test (mastery +
+ * volume + accuracy by default), has real evidence, sits at a stage the
  * frontier has already crossed, its category isn't vetoed, AND it is still active
  * on the manual ladder (a teacher's `none` removes it — "off means off").
  */
@@ -46,6 +48,12 @@ import {
 import type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import { isActive } from '@/db/schema/player-skill-mastery'
 import type { SkillBktResult } from '@/lib/curriculum/bkt/types'
+import {
+  assessLinearEntry,
+  DEFAULT_LINEAR_ENTRY_POLICY,
+  type LinearEntryAssessment,
+  type LinearEntryPolicy,
+} from '@/lib/curriculum/linear-entry-policy'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { assessSkillReadiness, type SkillReadinessResult } from '@/lib/curriculum/skill-readiness'
 
@@ -110,10 +118,24 @@ export function stageRank(skillId: string): number | null {
 
 /** The two facts about a skill that drive the derivation, distilled from history. */
 export interface SkillEvidence {
-  /** Passed all four readiness dimensions (or has no history — see `opportunities`). */
+  /**
+   * Meets the entry policy's MEMBERSHIP requirement (mastery + volume + accuracy
+   * [+ speed]) — or has no history at all, see `opportunities`.
+   */
   isSolid: boolean
+  /**
+   * Meets the entry policy's FRONTIER requirement (mastery + volume by default):
+   * the curriculum has moved past this skill. Defaults to `isSolid` when absent,
+   * so evidence built without a policy still behaves as before.
+   */
+  advancesFrontier?: boolean
   /** Real practice opportunities in the assessment window (0 = never practiced). */
   opportunities: number
+}
+
+/** Whether a skill counts toward its stage being passed by the frontier. */
+function advancesFrontier(e: SkillEvidence): boolean {
+  return e.advancesFrontier ?? e.isSolid
 }
 
 /**
@@ -133,7 +155,7 @@ export function computeFrontierRank(evidenceBySkill: ReadonlyMap<string, SkillEv
     if (stage.exempt) continue
     const mastered = stage.skillIds.every((id) => {
       const e = evidenceBySkill.get(id)
-      return e != null && e.opportunities > 0 && e.isSolid
+      return e != null && e.opportunities > 0 && advancesFrontier(e)
     })
     if (!mastered) return stage.rank
   }
@@ -181,22 +203,28 @@ export function deriveLinearReadyFromEvidence(params: {
 /** Per-skill readiness for every staged skill, plus the reduced evidence the frontier uses. */
 export function buildStagedSkillEvidence(
   problemHistory: ProblemResultWithContext[],
-  bktResults: Map<string, SkillBktResult> | undefined
+  bktResults: Map<string, SkillBktResult> | undefined,
+  policy: LinearEntryPolicy = DEFAULT_LINEAR_ENTRY_POLICY
 ): {
   evidenceBySkill: Map<string, SkillEvidence>
   readinessBySkill: Map<string, SkillReadinessResult>
+  entryBySkill: Map<string, LinearEntryAssessment>
 } {
   const evidenceBySkill = new Map<string, SkillEvidence>()
   const readinessBySkill = new Map<string, SkillReadinessResult>()
+  const entryBySkill = new Map<string, LinearEntryAssessment>()
   for (const skillId of ALL_STAGED_SKILL_IDS) {
     const readiness = assessSkillReadiness(skillId, problemHistory, bktResults?.get(skillId))
+    const entry = assessLinearEntry(skillId, problemHistory, readiness, policy)
     readinessBySkill.set(skillId, readiness)
+    entryBySkill.set(skillId, entry)
     evidenceBySkill.set(skillId, {
-      isSolid: readiness.isSolid,
-      opportunities: readiness.dimensions.volume.opportunities,
+      isSolid: entry.ready,
+      advancesFrontier: entry.advancesFrontier,
+      opportunities: entry.opportunities,
     })
   }
-  return { evidenceBySkill, readinessBySkill }
+  return { evidenceBySkill, readinessBySkill, entryBySkill }
 }
 
 /** The stage currently holding number sentences back, and how close it is to solid. */
@@ -206,7 +234,7 @@ export interface LinearReadinessFrontier {
   /** Category display name, e.g. "Basic Skills". */
   name: string
   skillIds: string[]
-  /** Skills in the stage that are practiced AND solid. */
+  /** Skills in the stage that are practiced AND advance the frontier (mastered + well practiced). */
   solidCount: number
   total: number
 }
@@ -214,7 +242,10 @@ export interface LinearReadinessFrontier {
 export interface LinearReadinessSkillDetail {
   skillId: string
   stageRank: number
+  /** Generic four-dimension assessment (what the dashboard badge uses). */
   readiness: SkillReadinessResult
+  /** The entry policy's verdict — the one that actually decides number sentences. */
+  entry?: LinearEntryAssessment
 }
 
 export interface LinearReadinessExplanation {
@@ -226,6 +257,11 @@ export interface LinearReadinessExplanation {
   readyBeforeVetoSkillIds: Set<string>
   /** Readiness detail for each skill in the frontier stage (empty when `frontier` is null). */
   frontierSkills: LinearReadinessSkillDetail[]
+  /**
+   * Active skills the frontier has already moved past that still fail the entry
+   * policy (accuracy / speed) — "almost there". Sorted by stage, then id.
+   */
+  pendingSkills: LinearReadinessSkillDetail[]
 }
 
 function describeFrontier(
@@ -236,7 +272,7 @@ function describeFrontier(
   if (!stage) return null
   const solidCount = stage.skillIds.filter((id) => {
     const e = evidenceBySkill.get(id)
-    return e != null && e.opportunities > 0 && e.isSolid
+    return e != null && e.opportunities > 0 && advancesFrontier(e)
   }).length
   return {
     rank: stage.rank,
@@ -257,8 +293,10 @@ export function explainLinearReadinessFromEvidence(params: {
   activeSkillIds: ReadonlySet<string>
   vetoedCategories: ReadonlySet<string>
   readinessBySkill?: ReadonlyMap<string, SkillReadinessResult>
+  entryBySkill?: ReadonlyMap<string, LinearEntryAssessment>
 }): LinearReadinessExplanation {
-  const { evidenceBySkill, activeSkillIds, vetoedCategories, readinessBySkill } = params
+  const { evidenceBySkill, activeSkillIds, vetoedCategories, readinessBySkill, entryBySkill } =
+    params
   const readyBeforeVetoSkillIds = deriveLinearReadyFromEvidence({
     evidenceBySkill,
     activeSkillIds,
@@ -270,15 +308,31 @@ export function explainLinearReadinessFromEvidence(params: {
       return category !== null && !vetoedCategories.has(category)
     })
   )
-  const frontier = describeFrontier(computeFrontierRank(evidenceBySkill), evidenceBySkill)
+  const frontierRank = computeFrontierRank(evidenceBySkill)
+  const frontier = describeFrontier(frontierRank, evidenceBySkill)
+  const detail = (skillId: string, stageRank: number): LinearReadinessSkillDetail | null => {
+    const readiness = readinessBySkill?.get(skillId)
+    if (!readiness) return null
+    return { skillId, stageRank, readiness, entry: entryBySkill?.get(skillId) }
+  }
   const frontierSkills: LinearReadinessSkillDetail[] = []
-  if (frontier && readinessBySkill) {
+  if (frontier) {
     for (const skillId of frontier.skillIds) {
-      const readiness = readinessBySkill.get(skillId)
-      if (readiness) frontierSkills.push({ skillId, stageRank: frontier.rank, readiness })
+      const d = detail(skillId, frontier.rank)
+      if (d) frontierSkills.push(d)
     }
   }
-  return { frontier, readySkillIds, readyBeforeVetoSkillIds, frontierSkills }
+  const pendingSkills: LinearReadinessSkillDetail[] = []
+  for (const skillId of activeSkillIds) {
+    const rank = stageRank(skillId)
+    const e = evidenceBySkill.get(skillId)
+    if (rank === null || rank >= frontierRank || !e || e.opportunities <= 0) continue
+    if (readyBeforeVetoSkillIds.has(skillId)) continue
+    const d = detail(skillId, rank)
+    if (d) pendingSkills.push(d)
+  }
+  pendingSkills.sort((a, b) => a.stageRank - b.stageRank || a.skillId.localeCompare(b.skillId))
+  return { frontier, readySkillIds, readyBeforeVetoSkillIds, frontierSkills, pendingSkills }
 }
 
 /**
@@ -290,9 +344,15 @@ export function explainLinearReadiness(params: {
   problemHistory: ProblemResultWithContext[]
   bktResults: Map<string, SkillBktResult> | undefined
   vetoedCategories: ReadonlySet<string>
+  /** Entry policy (thresholds + which dimensions count); defaults to the code defaults. */
+  policy?: LinearEntryPolicy
 }): LinearReadinessExplanation {
-  const { skillMastery, problemHistory, bktResults, vetoedCategories } = params
-  const { evidenceBySkill, readinessBySkill } = buildStagedSkillEvidence(problemHistory, bktResults)
+  const { skillMastery, problemHistory, bktResults, vetoedCategories, policy } = params
+  const { evidenceBySkill, readinessBySkill, entryBySkill } = buildStagedSkillEvidence(
+    problemHistory,
+    bktResults,
+    policy
+  )
   const activeSkillIds = new Set(
     skillMastery.filter((s) => isActive(s.practiceLevel)).map((s) => s.skillId)
   )
@@ -301,6 +361,7 @@ export function explainLinearReadiness(params: {
     activeSkillIds,
     vetoedCategories,
     readinessBySkill,
+    entryBySkill,
   })
 }
 
