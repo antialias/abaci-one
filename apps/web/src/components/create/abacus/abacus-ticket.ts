@@ -18,11 +18,7 @@
 import type {
   PrintTicketV2,
   TicketAuthoring,
-  TicketExternalFilament,
-  TicketFilamentRole,
-  TicketIdentityFilament,
-  TicketProfileFilament,
-  TicketSlotFilament,
+  TicketFilament,
   TicketSource,
   TicketStartPolicy,
   TicketStyle,
@@ -77,22 +73,6 @@ export interface AbacusTicketArgs {
   supportBodySlotId?: string | null
 }
 
-/**
- * Local widening of `@eink/print-dialog@1.1159.0`'s ticket contract — DELETE
- * when the pin passes the print-dialog release that carries
- * things-haunt-house#465/#466 (`TicketFilamentRole` gains `'support'`,
- * `TicketSplit` gains `partition`) and import the package's types instead.
- * `role: 'support'` RIDES an existing model entry: that entry keeps printing its
- * bodies and also feeds the support body. At most one; a loaded slot.
- */
-export type AbacusTicketFilamentRole = TicketFilamentRole | 'support'
-type WithBodyRole<F> = Omit<F, 'role'> & { readonly role?: AbacusTicketFilamentRole }
-export type AbacusTicketFilament =
-  | WithBodyRole<TicketSlotFilament>
-  | WithBodyRole<TicketProfileFilament>
-  | WithBodyRole<TicketIdentityFilament>
-  | TicketExternalFilament
-
 export interface AbacusWipeTowerRequest {
   profile: string
   pinMm: { x: number; y: number }
@@ -105,7 +85,7 @@ export interface AbacusWipeTowerRequest {
 }
 
 export interface AbacusPrintTicket extends Omit<PrintTicketV2, 'filaments'> {
-  readonly filaments: readonly AbacusTicketFilament[]
+  readonly filaments: readonly TicketFilament[]
   wipeTower?: AbacusWipeTowerRequest
   split?: TwoStageSplit
   chain?: TwoStageChain
@@ -169,7 +149,7 @@ export function buildAbacusTicket(args: AbacusTicketArgs): AbacusPrintTicket {
   // grouping; the abacus assembly never merges bodies by colour. The slot set
   // is belt-and-braces — buildAbacusThreeMf already emits one body per slot.
   const seenSlots = new Set<number>()
-  const filaments: AbacusTicketFilament[] = []
+  const filaments: TicketFilament[] = []
   for (const body of bodies) {
     if (seenSlots.has(body.slot)) continue
     seenSlots.add(body.slot)
