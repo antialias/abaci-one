@@ -2000,6 +2000,8 @@ export function ActiveSession({
               display: 'flex',
               justifyContent: 'center',
               width: '100%',
+              // Query container for LinearProblem's fit-to-width font size (100cqw).
+              containerType: 'inline-size',
             })}
           >
             {/* Animated track for problem transitions */}
