@@ -242,6 +242,7 @@ describe('commitmentSummary', () => {
   it('describes the two-stage support interface', () => {
     expect(summary({}, paired({ twoStage: { on: true, feetSpool: 'TPU' } })).supports).toEqual({
       value: 'on · interface in the feet filament (TPU), printed in the feet stage',
+      note: 'Its floor is a sparse comb against the plate, so it peels off instead of bonding.',
     })
   })
   it('describes feet variants', () => {

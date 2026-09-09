@@ -166,6 +166,10 @@ export function commitmentSummary({
   else if (printer.twoStage.on)
     supports = {
       value: `on · interface in the feet filament${printer.twoStage.feetSpool ? ` (${printer.twoStage.feetSpool})` : ''}, printed in the feet stage`,
+      // the floor's plate contact is a sparse comb (two-stage-print.ts), which
+      // is why it comes off the plate at all — worth one line here since the
+      // paragraph that used to say so is gone
+      note: 'Its floor is a sparse comb against the plate, so it peels off instead of bonding.',
     }
   else
     supports = {
