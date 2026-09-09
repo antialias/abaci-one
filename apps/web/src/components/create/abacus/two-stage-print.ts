@@ -17,11 +17,37 @@ import type { ParamScalarValue, TicketStyle } from '@eink/print-dialog'
 import { coPrintGroup, type FilamentCatalog, type FilamentSpool } from './abacus-catalog'
 import type { FilamentMap, Params } from './abacus-model'
 
+/** How the gateway cuts the layers below the seam — a mirror of
+ *  `@eink/print-dialog`'s `TicketSplitPartition` (things-haunt-house#465), local
+ *  until the pin passes the release that carries it. */
+export type TwoStagePartition = 'layer' | 'seam-tool-model'
+
 /** Stage A: split the slice at the seam; the below-seam half prints from the external feed. */
 export interface TwoStageSplit {
   readonly atZMm: number
   readonly feed: { readonly external: true; readonly family: string }
+  /** Absent = `'layer'`: Stage A is every layer below the seam. The feet-only
+   *  variant sends `'seam-tool-model'`: Stage A keeps only filament 0's model
+   *  runs — the feet — and Stage B returns to layer 1 for the supports and the
+   *  tower, its travels lifted over the standing feet (things-haunt-house#465). */
+  readonly partition?: TwoStagePartition
 }
+
+/**
+ * Which two-stage print this is (Gitea #45). `'tpu-floor'` is the original mode:
+ * everything below the seam — feet, support base, interface — prints in Stage A
+ * from the external TPU spool and Stage B lands the body on that TPU floor.
+ * `'feet-only'` is the experimental variant: Stage A prints ONLY the foot
+ * stand-offs (the gateway keeps just the seam tool's model runs below the seam,
+ * things-haunt-house#465) and Stage B goes back to layer 1 to print the support
+ * body in the frame's own PLA (`role: 'support'`, things-haunt-house#466) around
+ * the standing feet, then the abacus. Nothing but the feet is TPU on the plate —
+ * the point of it: the second physical two-stage print (2026-09-09, #39) held
+ * and then would not release, because the TPU floor bonded to smooth PEI and
+ * prying the frame tore the feet off. Off by default, beside the TPU-floor mode.
+ */
+export type TwoStageVariant = 'tpu-floor' | 'feet-only'
+export const DEFAULT_TWO_STAGE_VARIANT: TwoStageVariant = 'tpu-floor'
 
 /** Stage B: consume the half Stage A retained. */
 export interface TwoStageChain {
@@ -128,10 +154,111 @@ export const TWO_STAGE_SEAM_TOOL_OVERRIDES: SeamToolOverrides = {
   close_fan_the_first_x_layers: [3],
 }
 
+/**
+ * `style.process` keys the feet-only variant owns, on BOTH stages, INSTEAD of
+ * `TWO_STAGE_PROCESS` (the two modes are different prints, not a delta):
+ *  - `interface_shells` stays — Stage A's top layer is still the foot's interior.
+ *  - the zero-gap contact keys ride ONLY with a dedicated support-interface spool
+ *    (`FEET_ONLY_DEDICATED_INTERFACE_PROCESS`): the body is PLA now, and PLA on
+ *    PLA at zero gap fuses; without a pick the preset gap (0.2 / 0.5) stands.
+ *  - `raft_first_layer_expansion 0` is mandatory: Orca inflates support layer 0
+ *    AFTER the blockers apply, and the preset's 2 mm would grow the base into the
+ *    nozzle void around each foot. `raft_first_layer_density` goes back to the
+ *    preset's 90 — a PLA base wants adhesion (the 30 % comb is for the TPU floor).
+ *  - `brim_type no_brim`: a brim hugs the feet at `brim_object_gap` 0.1 mm and by
+ *    role lands in Stage B at z 0.2 with the nozzle cone 1.4 mm below the foot
+ *    top — a certain collision; routed to Stage A it is a TPU sheet welded to the
+ *    feet. TPU on PEI needs no brim, the PLA support slab is large and flat, and
+ *    the prime tower keeps its own brim under a separate key. The TPU-floor mode
+ *    keeps the operator's editor choice.
+ *  - the plate-wide slow-TPU95 speeds are gone: Stage B is PLA at normal speed,
+ *    and filament 0's own overlay (3 mm³/s) still caps the feet in Stage A.
+ */
+export const FEET_ONLY_PROCESS: Readonly<Record<string, TicketStyle['process'][string]>> = {
+  interface_shells: true,
+  raft_first_layer_density: 90,
+  raft_first_layer_expansion: 0,
+  brim_type: 'no_brim',
+  independent_support_layer_height: false,
+}
+
+/** The zero-gap contact recipe (a floor, not a bridge), added to
+ *  `FEET_ONLY_PROCESS` only when a dedicated support-interface spool is picked —
+ *  a release material under the PLA, never PLA under PLA. */
+export const FEET_ONLY_DEDICATED_INTERFACE_PROCESS: Readonly<
+  Record<string, TicketStyle['process'][string]>
+> = {
+  support_top_z_distance: 0,
+  support_interface_spacing: 0,
+}
+
+export interface TwoStageProcessOpts {
+  readonly variant?: TwoStageVariant
+  /** A support-interface spool other than the model's rides the ticket (feet-only only). */
+  readonly dedicatedInterface?: boolean
+}
+
 /** The style a two-stage ticket rides: the operator's style with the mode's keys
  *  forced over it. The editor's value is untouched — this applies at submit. */
-export function withTwoStageProcess(style: TicketStyle): TicketStyle {
-  return { ...style, process: { ...style.process, ...TWO_STAGE_PROCESS } }
+export function withTwoStageProcess(
+  style: TicketStyle,
+  opts: TwoStageProcessOpts = {}
+): TicketStyle {
+  const variant = opts.variant ?? DEFAULT_TWO_STAGE_VARIANT
+  const keys =
+    variant === 'feet-only'
+      ? {
+          ...FEET_ONLY_PROCESS,
+          ...(opts.dedicatedInterface ? FEET_ONLY_DEDICATED_INTERFACE_PROCESS : {}),
+        }
+      : TWO_STAGE_PROCESS
+  return { ...style, process: { ...style.process, ...keys } }
+}
+
+export type FeetOnlyUnavailableReason =
+  /** A module kit: the per-foot blockers need every module's foot positions, and
+   *  only the one-piece abacus has a TS mirror of the scad's FEET_POS. */
+  | 'kit'
+  /** The frame prints from the feet's own spool (the no-TPU fallback) — there is
+   *  no separate PLA to print the supports in. */
+  | 'frame-shares-feet-slot'
+
+export type FeetOnlyAvailability =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly reason: FeetOnlyUnavailableReason }
+
+/** Whether the feet-only variant can ride this print (on top of `twoStageAvailability`). */
+export function feetOnlyAvailability(input: {
+  filamentMap: Pick<FilamentMap, 'frame' | 'feet'>
+  kit: boolean
+}): FeetOnlyAvailability {
+  if (input.kit) return { ok: false, reason: 'kit' }
+  const { frame, feet } = input.filamentMap
+  if (feet === undefined || frame === feet) return { ok: false, reason: 'frame-shares-feet-slot' }
+  return { ok: true }
+}
+
+/** Why the checkbox is muted — shown beside it, never only in a title (touch has no hover). */
+export const FEET_ONLY_UNAVAILABLE_COPY: Record<FeetOnlyUnavailableReason, string> = {
+  kit: 'Not on a module kit yet — the support blockers around each foot need every module’s foot positions.',
+  'frame-shares-feet-slot':
+    'The frame prints from the feet spool, so there is no PLA to print the supports in.',
+}
+
+/** What each stage does, per variant — the checkbox, the prep card and the
+ *  hand-off all say it the same way. */
+export const TWO_STAGE_VARIANT_COPY: Record<
+  TwoStageVariant,
+  { readonly stageA: string; readonly stageB: string }
+> = {
+  'tpu-floor': {
+    stageA: 'prints the feet and the support floor below the seam from the external spool',
+    stageB: 'chains the body onto that floor',
+  },
+  'feet-only': {
+    stageA: 'prints only the feet — no supports, no tower — a few minutes',
+    stageB: 'returns to the plate and prints PLA supports around the feet, then the abacus',
+  },
 }
 
 export type TwoStageUnavailableReason =
@@ -236,7 +363,19 @@ export interface TwoStageRecord {
   /** Set once Stage B is submitted, so the hand-off can point at its job card
    *  (and offer a re-submit if that job fails or is canceled before it starts). */
   readonly stageBJobId?: string
+  /** Which two-stage print this is (Gitea #45). Absent on records written before
+   *  the variant existed = the TPU-floor mode. Stage B reads it from HERE, never
+   *  from the panel's checkbox — its plan has to be Stage A's. */
+  readonly variant?: TwoStageVariant
+  /** The support-interface pick Stage A rode (the feet-only variant lifts the
+   *  filament-0 rule), so Stage B repeats the same resolved plan whatever the
+   *  editor says by then. */
+  readonly supportInterfaceSlotId?: string | null
 }
+
+/** The record's variant, with the pre-#45 default. */
+export const recordVariant = (record: Pick<TwoStageRecord, 'variant'>): TwoStageVariant =>
+  record.variant ?? DEFAULT_TWO_STAGE_VARIANT
 
 type RecordStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
@@ -265,7 +404,8 @@ export function loadTwoStageRecord(
       typeof rec.stageAJobId === 'string' &&
       typeof rec.modelSha256 === 'string' &&
       typeof rec.designSig === 'string' &&
-      typeof rec.atZMm === 'number'
+      typeof rec.atZMm === 'number' &&
+      (rec.variant === undefined || rec.variant === 'tpu-floor' || rec.variant === 'feet-only')
       ? (rec as TwoStageRecord)
       : null
   } catch {
@@ -358,6 +498,16 @@ export const STAGE_B_HANDOFF_STEPS: readonly string[] = [
   'Check the AMS TPU tray the feet were mapped to is still loaded.',
   'Submit Stage B below, then start it from its job card once the printer clears the spool check.',
 ]
+
+/** The hand-off per variant: the feet-only Stage B goes back to layer 1 around
+ *  the standing feet, so its first step says so; the spool swap is the same. */
+export function stageBHandoffSteps(variant: TwoStageVariant): readonly string[] {
+  if (variant === 'tpu-floor') return STAGE_B_HANDOFF_STEPS
+  return [
+    'Leave the plate exactly where it is — Stage B prints supports around the standing feet, then the abacus onto them.',
+    ...STAGE_B_HANDOFF_STEPS.slice(1),
+  ]
+}
 
 /**
  * What the operator must do at the printer BEFORE submitting Stage A. The gateway gates the

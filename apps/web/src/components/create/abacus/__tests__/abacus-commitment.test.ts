@@ -244,6 +244,12 @@ describe('commitmentSummary', () => {
       value: 'on · interface in the feet filament (TPU), printed in the feet stage',
       note: 'Its floor is a sparse comb against the plate, so it peels off instead of bonding.',
     })
+    // the feet-only variant (Gitea #45): PLA supports in Stage B, the interface pick standing
+    const feetOnly = paired({ twoStage: { on: true, feetSpool: 'TPU', feetOnly: true } })
+    expect(summary({}, feetOnly).supports.value).toBe(
+      'on · PLA from the frame spool, printed in the body stage around the standing feet, interface in Support PLA'
+    )
+    expect(summary({}, feetOnly).jobs.value).toMatch(/^two jobs · only the feet/)
   })
   it('describes feet variants', () => {
     expect(summary().feet.value).toBe('printed TPU feet · always solid')

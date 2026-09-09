@@ -15,9 +15,15 @@
 import { parseStl, writeBinaryStl } from '@eink/frames-engine/stl'
 import { strFromU8, unzipSync } from 'fflate'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildAbacusThreeMf, emitThreeMfBodies } from '../abacus-3mf'
+import { buildAbacusThreeMf, emitThreeMfBodies, feetSupportBlockers } from '../abacus-3mf'
 import { BAMBU_256_BED, DEFAULT_WIPE_TOWER_PROFILE } from '../abacus-3mf-assembly'
-import { defaultParams, derived, type FilamentMap, type Params } from '../abacus-model'
+import {
+  defaultParams,
+  derived,
+  type FilamentMap,
+  feetPositions,
+  type Params,
+} from '../abacus-model'
 
 // Marker-bearing params (show_markers defaults true) and the markers-off variant
 // used by the split-only tests. Feet are pinned OFF here (defaultParams is
@@ -285,6 +291,49 @@ describe('buildAbacusThreeMf (printed feet — Gitea #23)', () => {
     expect(Date.now()).toBe(new Date(2026, 8, 9, 22, 30, 0).getTime())
     const stageB = build()
     expect(stageB).toEqual(stageA)
+  })
+
+  it('ships one support blocker per foot for the feet-only variant, and none otherwise (Gitea #45)', () => {
+    const build = (feetOnlyStageA?: boolean) =>
+      buildAbacusThreeMf({
+        stl: fixtureStl(feetParams),
+        feet: markerStl(6, 10, 10),
+        params: feetParams,
+        filamentMap: feetFm,
+        ...(feetOnlyStageA === undefined ? {} : { feetOnlyStageA }),
+      })
+    const off = build(false)
+    const on = build(true)
+    expect(off.bytes).toEqual(build().bytes) // the flag off is the flag absent
+    const zip = unzipSync(on.bytes)
+    const model = strFromU8(zip['3D/3dmodel.model'])
+    const settings = strFromU8(zip['Metadata/model_settings.config'])
+    const blockers = feetSupportBlockers(feetParams)
+    const feet = feetPositions(feetParams)
+    expect(blockers).toHaveLength(feet.length)
+    expect(feet.length).toBeGreaterThanOrEqual(4)
+    expect(settings.match(/subtype="support_blocker"/g)).toHaveLength(feet.length)
+    const fmt = (v: number) => {
+      const s = v.toFixed(3).replace(/0+$/, '').replace(/\.$/, '')
+      return s === '-0' ? '0' : s
+    }
+    blockers.forEach((b, k) => {
+      // centred on the scad's FEET_POS (its TS mirror), the stock 1.6 mm stand-off, a Ø9 foot
+      expect(b).toEqual({ cx: feet[k][0], cy: feet[k][1], heightMm: 1.6, rFootMm: 4.5 })
+      // the bottom centre vertex sits at source z −1.6 — bed z 0 after the build transform
+      expect(model).toContain(`<vertex x="${fmt(b.cx)}" y="${fmt(b.cy)}" z="-1.6"/>`)
+    })
+    expect(strFromU8(unzipSync(off.bytes)['Metadata/model_settings.config'])).not.toContain(
+      'support_blocker'
+    )
+    // bodies, extruders and the tower are the same print either way
+    expect(on.bodies).toEqual(off.bodies)
+    expect(on.wipeTower).toEqual(off.wipeTower)
+  })
+
+  it('a square foot’s blocker is bounded by its circumradius', () => {
+    const square: Params = { ...feetParams, feet_shape: 'square' }
+    expect(feetSupportBlockers(square)[0].rFootMm).toBeCloseTo(9 / Math.SQRT2, 9)
   })
 
   it('emits the feet body first so the seam tool is filament 0 (THH #456 / abaci #38)', () => {

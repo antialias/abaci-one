@@ -4,11 +4,18 @@
 // what Stage A is doing, the operator's steps between the stages, the Stage B
 // submit, and the way out. Pure presentation — the panel owns the record, the
 // job roster and the submit; this only renders what `handoffView` decided.
-import { type HandoffView, STAGE_B_HANDOFF_STEPS } from './two-stage-print'
+import {
+  type HandoffView,
+  stageBHandoffSteps,
+  TWO_STAGE_VARIANT_COPY,
+  type TwoStageVariant,
+} from './two-stage-print'
 
 export interface TwoStageHandoffCardProps {
   /** The design the pair of jobs prints — the two-stage record's name. */
   name: string
+  /** Which two-stage print this is (Gitea #45) — from the record, never the panel's checkbox. */
+  variant?: TwoStageVariant
   view: HandoffView
   /** Stage B can't be submitted right now (the ordinary submit gate, the feet tray, the seam). */
   disabled: boolean
@@ -23,6 +30,7 @@ export interface TwoStageHandoffCardProps {
 
 export function TwoStageHandoffCard({
   name,
+  variant = 'tpu-floor',
   view,
   disabled,
   disabledReason,
@@ -34,6 +42,7 @@ export function TwoStageHandoffCard({
     <div
       data-element="two-stage-handoff"
       data-handoff={view.kind}
+      data-variant={variant}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -68,7 +77,9 @@ export function TwoStageHandoffCard({
           <span>
             {view.retry
               ? 'Stage B did not start — it can be submitted again while Stage A is still the last thing on the plate.'
-              : 'Stage A (feet) is done.'}{' '}
+              : variant === 'feet-only'
+                ? `Stage A (feet) is done — Stage B ${TWO_STAGE_VARIANT_COPY['feet-only'].stageB}.`
+                : 'Stage A (feet) is done.'}{' '}
             Before Stage B:
           </span>
           <ol
@@ -81,7 +92,7 @@ export function TwoStageHandoffCard({
               color: 'rgba(203,213,225,0.96)',
             }}
           >
-            {STAGE_B_HANDOFF_STEPS.map((step) => (
+            {stageBHandoffSteps(variant).map((step) => (
               <li key={step}>{step}</li>
             ))}
           </ol>
