@@ -4,16 +4,16 @@ import { db, schema } from '@/db'
 import { withAuth } from '@/lib/auth/withAuth'
 import { createClassroom, getTeacherClassroom } from '@/lib/classroom/classroom-manager'
 import { explainError } from '@/lib/db-errors'
+import {
+  createTestStudentWithTuning,
+  filterProfiles,
+  getProfileInfoList,
+  type ProfileCategory,
+  TEST_PROFILES,
+} from '@/lib/seed'
 import { createTask } from '@/lib/task-manager'
 import type { SeedStudentsEvent } from '@/lib/tasks/events'
 import { getUserId } from '@/lib/viewer'
-import {
-  TEST_PROFILES,
-  filterProfiles,
-  getProfileInfoList,
-  createTestStudentWithTuning,
-  type ProfileCategory,
-} from '@/lib/seed'
 
 /**
  * GET /api/debug/seed-students
@@ -61,13 +61,12 @@ export const POST = withAuth(
       const userId = await getUserId()
 
       // Look up user record
-      let user = await db.query.users.findFirst({
-        where: eq(schema.users.guestId, userId),
+      const user = await db.query.users.findFirst({
+        where: eq(schema.users.id, userId),
       })
 
       if (!user) {
-        const [newUser] = await db.insert(schema.users).values({ guestId: userId }).returning()
-        user = newUser
+        throw new Error(`User ${userId} not found - players.userId must reference users.id`)
       }
 
       // Ensure classroom exists

@@ -1,8 +1,9 @@
 import type { GeneratedProblem, SlotResult } from '../../db/schema/session-plans'
+import { responseTimeWeight } from '../curriculum/bkt/evidence-quality'
 import { MAX_RESPONSE_TIME_CAP_MS } from '../curriculum/timing/constants'
-import type { SkillConfig, SuccessCriteria, TuningAdjustment } from './types'
-import { generateRealisticProblems } from './problem-generation'
 import { designSequenceForClassification } from './bkt-simulation'
+import { generateRealisticProblems } from './problem-generation'
+import type { SkillConfig, SuccessCriteria, TuningAdjustment } from './types'
 
 /**
  * Generate slot results for a skill config (problem history with correct/incorrect sequences)
@@ -16,10 +17,16 @@ export function generateSlotResults(
   const realisticProblems = generateRealisticProblems(config.skillId, config.problems)
 
   // Design a sequence that will reliably produce the target BKT classification
+  // The real classifier weights each answer by its response time (slow correct
+  // answers count for less, slow mistakes for more), so design the sequence
+  // under the same weight or a slow profile lands a notch below its target.
+  const responseTimeMsRange = config.responseTimeMsRange ?? { min: 4000, max: 6000 }
+  const typicalResponseMs = (responseTimeMsRange.min + responseTimeMsRange.max) / 2
   const correctnessSequence = designSequenceForClassification(
     config.skillId,
     config.problems,
-    config.targetClassification
+    config.targetClassification,
+    (isCorrect) => responseTimeWeight(typicalResponseMs, isCorrect)
   )
 
   // Index the timing anomalies for O(1) lookup while mapping attempts.
@@ -48,7 +55,7 @@ export function generateSlotResults(
     const responseTimeMs = anomaly
       ? anomaly.responseTimeMs
       : (() => {
-          const range = config.responseTimeMsRange ?? { min: 4000, max: 6000 }
+          const range = responseTimeMsRange
           return range.min + Math.random() * (range.max - range.min)
         })()
 

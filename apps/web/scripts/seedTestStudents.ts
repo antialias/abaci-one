@@ -22,10 +22,10 @@ import { desc, eq } from 'drizzle-orm'
 import { db, schema } from '../src/db'
 import { createClassroom, getTeacherClassroom } from '../src/lib/classroom/classroom-manager'
 import {
-  TEST_PROFILES,
-  filterProfiles,
   createTestStudentWithTuning,
+  filterProfiles,
   type ProfileCategory,
+  TEST_PROFILES,
   type TestStudentProfile,
 } from '../src/lib/seed'
 
@@ -219,14 +219,12 @@ async function main() {
   // Set up teacher classroom
   console.log('\n2. Setting up teacher classroom...')
 
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, userId),
+  const user = await db.query.users.findFirst({
+    where: eq(schema.users.id, userId),
   })
 
   if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId: userId }).returning()
-    user = newUser
-    console.log(`   Created user record for ${userId}`)
+    throw new Error(`User ${userId} not found - players.userId must reference users.id`)
   }
 
   let classroom = await getTeacherClassroom(user.id)
