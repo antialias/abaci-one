@@ -135,33 +135,46 @@ describe('ConstructionControl (design rail)', () => {
     expect(d.modular[1]).toBeCloseTo(d.mono[1], 10)
   })
 
-  it('modular: the readout is the modular footprint and the delta quotes the seam cost', () => {
+  it('modular: the option list quotes both footprints and the seam cost, and nests the joint', () => {
     studio({ seam_mode: 'modular' })
     const { container } = render(<ConstructionControl />)
     const d = modularSizeDelta({ ...defaultParams, seam_mode: 'modular' })
-    const size = container.querySelector('[data-element="abacus-construction-size"]')
-    expect(size?.textContent).toBe(`${d.modular[0].toFixed(1)} × ${d.modular[1].toFixed(1)} mm`)
-    const el = container.querySelector('[data-element="modular-seam-size-delta"]')
-    expect(el?.textContent).toContain(`${(d.modular[0] - d.mono[0]).toFixed(1)} mm wider`)
-    expect(el?.textContent).toContain(`${d.mono[0].toFixed(1)} mm`)
-    expect(el?.textContent).toContain('any subset stands')
-    // the module-only controls sit in one bounded sub-panel under the switch
-    const details = container.querySelector('[data-element="abacus-construction-details"]')
+    const mono = container.querySelector(
+      '[data-element="abacus-construction-choice-option"][data-value="mono"]'
+    )
+    const modular = container.querySelector(
+      '[data-element="abacus-construction-choice-option"][data-value="modular"]'
+    )
+    expect(mono?.textContent).toContain(`${d.mono[0].toFixed(1)} × ${d.mono[1].toFixed(1)} mm`)
+    expect(modular?.textContent).toContain(`${(d.modular[0] - d.mono[0]).toFixed(1)} mm wider`)
+    expect(modular?.textContent).toContain(
+      `${d.modular[0].toFixed(1)} × ${d.modular[1].toFixed(1)} mm`
+    )
+    expect(modular?.textContent).toContain('any subset stands')
+    expect(modular?.getAttribute('data-selected')).toBe('true')
+    // the module-only controls live INSIDE the selected option, not under the list
+    const details = modular?.querySelector('[data-element="abacus-construction-choice-details"]')
     expect(details?.querySelector('[data-element="modular-joint-type"]')).not.toBeNull()
     expect(details?.querySelector('[data-element="modular-print-pointer"]')).not.toBeNull()
+    expect(mono?.querySelector('[data-element="abacus-construction-choice-details"]')).toBeNull()
   })
 
-  it('one piece: the readout is its own footprint and there is no sub-panel', () => {
+  it('one piece: its option is selected and carries no nested controls', () => {
     studio({ seam_mode: 'mono' })
     const { container } = render(<ConstructionControl />)
     const d = modularSizeDelta(defaultParams)
-    const size = container.querySelector('[data-element="abacus-construction-size"]')
-    expect(size?.textContent).toBe(`${d.mono[0].toFixed(1)} × ${d.mono[1].toFixed(1)} mm`)
-    expect(container.querySelector('[data-element="abacus-construction-details"]')).toBeNull()
-    expect(container.querySelector('[data-element="modular-seam-size-delta"]')).toBeNull()
+    const mono = container.querySelector(
+      '[data-element="abacus-construction-choice-option"][data-value="mono"]'
+    )
+    expect(mono?.getAttribute('data-selected')).toBe('true')
+    expect(mono?.textContent).toContain(`${d.mono[0].toFixed(1)} × ${d.mono[1].toFixed(1)} mm`)
+    expect(
+      container.querySelector('[data-element="abacus-construction-choice-details"]')
+    ).toBeNull()
+    expect(container.querySelector('[data-element="modular-joint-type"]')).toBeNull()
   })
 
-  it('the segmented control writes seam_mode through the one store setter', () => {
+  it('the option list writes seam_mode through the one store setter', () => {
     render(<ConstructionControl />)
     fireEvent.click(screen.getByText('Column modules'))
     expect(set).toHaveBeenCalledWith('seam_mode', 'modular')
@@ -205,7 +218,7 @@ describe('ConstructionControl (design rail)', () => {
   it('points at the print rail for the tuning it does not own', () => {
     studio({ seam_mode: 'modular' })
     render(<ConstructionControl />)
-    expect(screen.getByText(/seam coupon are under Print options/)).toBeInTheDocument()
+    expect(screen.getByText(/seam coupon under Print options/)).toBeInTheDocument()
   })
 })
 
