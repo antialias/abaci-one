@@ -174,6 +174,26 @@ describe('FabricationRail — one primary action', () => {
     expect(container.querySelectorAll('[data-element="print-commitment-card"]')).toHaveLength(0)
   })
 
+  // paired is not the same as "can submit": a dead service or an empty roster
+  // leaves the download as the only real action, so it takes the cyan and the
+  // card comes up with it — instead of both hiding below a panel that can't act
+  it.each([
+    ['service unreachable', { thhFilaments: { unavailable: 'unreachable' } }],
+    ['plan refused', { servicePlanUnavailable: 'unreachable' }],
+    ['roster empty', { thhFilaments: { rosterEmpty: true } }],
+  ] as const)('paired but %s: the download is the commitment again', (_label, overrides) => {
+    studio({}, { connections: [{ id: 'c1', name: 'Home printer' }], ...overrides })
+    const { container } = render(<FabricationRail />)
+    expect(fileBeforePanel(container, '[data-action="export-3mf"]')).toBe(true)
+    const btn = container.querySelector('[data-action="export-3mf"]') as HTMLElement
+    expect(btn.style.background).toContain('gradient')
+    const cards = container.querySelectorAll('[data-element="print-commitment-card"]')
+    expect(cards).toHaveLength(1)
+    expect(Boolean(cards[0].compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(
+      true
+    )
+  })
+
   it('modular: the kit zip replaces the 3MF outright', () => {
     studio({ seam_mode: 'modular' })
     const { container } = render(<FabricationRail />)

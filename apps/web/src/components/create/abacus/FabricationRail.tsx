@@ -253,11 +253,18 @@ export function FabricationRail() {
   // mutation isn't handed a fresh object every render.
   const kitPrint = useMemo(() => ({ requestExportModuleParts }), [requestExportModuleParts])
 
-  // The single primary action. With a paired service the submit is the point of
-  // the rail and the files are a fallback; without one there is nothing to
-  // submit to, so the file IS the commitment and takes the cyan.
-  const paired = connections.length > 0
-  const files = <ExportFiles primary={!paired} busy={seamBusy} onBusy={setSeamBusy} />
+  // The single primary action. When the panel can actually offer a submit, that
+  // is the point of the rail and the files are a fallback; otherwise there is
+  // nothing to submit to, so the file IS the commitment and takes the cyan —
+  // and the commitment card with it. "Paired" is not enough: a paired printer
+  // whose service is unreachable, or whose roster is empty, leaves the
+  // download as the only real action, and it must not hide below a dead panel.
+  // Loading is not a degrade — the panel is about to offer the submit.
+  const submitOffered =
+    connections.length > 0 &&
+    (thhFilaments.unavailable ?? servicePlanUnavailable) == null &&
+    !thhFilaments.rosterEmpty
+  const files = <ExportFiles primary={!submitOffered} busy={seamBusy} onBusy={setSeamBusy} />
 
   return (
     <div
@@ -438,7 +445,7 @@ export function FabricationRail() {
         />
       )}
 
-      {!paired && files}
+      {!submitOffered && files}
 
       {/* print-service panel (Gitea #9) — embedded (normal flow) in the rail.
           One panel, two shapes of print: in modular mode `kit` switches the
@@ -480,7 +487,7 @@ export function FabricationRail() {
         kit={modular ? kitPrint : undefined}
       />
 
-      {paired && files}
+      {submitOffered && files}
     </div>
   )
 }
