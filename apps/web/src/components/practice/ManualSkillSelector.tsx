@@ -2,23 +2,22 @@
 
 import * as Accordion from '@radix-ui/react-accordion'
 import * as Dialog from '@radix-ui/react-dialog'
-import { useCallback, useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react'
 import { animated, useSpring } from '@react-spring/web'
+import { type SyntheticEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useMeasure from 'react-use-measure'
 import { SKILL_CATEGORIES, type SkillCategoryKey } from '@/constants/skillCategories'
-import {
-  useLinearReadiness,
-  useLinearReadinessVeto,
-  type LinearReadyCategory,
-} from '@/hooks/useLinearReadiness'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
 import {
-  type PracticeLevel,
-  nextPracticeLevel,
   isActive,
-  isVisualReady,
+  nextPracticeLevel,
+  type PracticeLevel,
 } from '@/db/schema/player-skill-mastery'
+import {
+  type LinearReadyCategory,
+  useLinearReadiness,
+  useLinearReadinessVeto,
+} from '@/hooks/useLinearReadiness'
 import type { MasteryClassification, SkillBktResult } from '@/lib/curriculum/bkt/types'
 import { BASE_SKILL_COMPLEXITY } from '@/utils/skillComplexity'
 import { css } from '../../../styled-system/css'
@@ -1174,7 +1173,7 @@ export function ManualSkillSelector({
                             </span>
                             {(() => {
                               const lr = linearReadyByCategory.get(categoryKey)
-                              if (!lr) return null
+                              if (!lr || lr.status === 'locked') return null
                               return (
                                 <LinearSentenceChip
                                   vetoed={lr.vetoed}

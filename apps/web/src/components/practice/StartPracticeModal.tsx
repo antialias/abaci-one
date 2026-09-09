@@ -3,40 +3,41 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  useSkillTutorialBroadcast,
-  type SkillTutorialBroadcastState,
-} from '@/hooks/useSkillTutorialBroadcast'
+import { useTheme } from '@/contexts/ThemeContext'
 import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
+import type { SessionPlan } from '@/db/schema/session-plans'
+import { isLinearLocked, useLinearReadiness } from '@/hooks/useLinearReadiness'
 import {
   usePlayerSessionPreferences,
   useSavePlayerSessionPreferences,
 } from '@/hooks/usePlayerSessionPreferences'
-import type { SkillTutorialControlAction } from '@/lib/classroom/socket-events'
-import { useTheme } from '@/contexts/ThemeContext'
-import type { SessionPlan } from '@/db/schema/session-plans'
-import type { SessionMode } from '@/lib/curriculum/session-mode'
-import type { PaceAssessment } from '@/lib/curriculum/timing/pace-estimation'
 import { sessionModeKeys } from '@/hooks/useSessionMode'
+import {
+  type SkillTutorialBroadcastState,
+  useSkillTutorialBroadcast,
+} from '@/hooks/useSkillTutorialBroadcast'
+import type { SkillTutorialControlAction } from '@/lib/classroom/socket-events'
+import type { SessionMode } from '@/lib/curriculum/session-mode'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import type { PaceAssessment } from '@/lib/curriculum/timing/pace-estimation'
 import { css } from '../../../styled-system/css'
 import { SkillTutorialLauncher } from '../tutorial/SkillTutorialLauncher'
 import { ManualSkillSelector } from './ManualSkillSelector'
 import {
+  type GameInfo,
   StartPracticeModalProvider,
   useStartPracticeModal,
-  type GameInfo,
 } from './StartPracticeModalContext'
 import {
-  SessionConfigSummary,
   DurationSelector,
-  PracticeModesSelector,
-  PurposeDistributionBar,
-  ProblemLengthSelector,
-  GameBreakSettings,
-  SessionFocusInfo,
-  PlanIndicator,
   ErrorDisplay,
+  GameBreakSettings,
+  PlanIndicator,
+  PracticeModesSelector,
+  ProblemLengthSelector,
+  PurposeDistributionBar,
+  SessionConfigSummary,
+  SessionFocusInfo,
   StartButton,
   TimingDataNotice,
 } from './start-practice-modal'
@@ -95,6 +96,10 @@ export function StartPracticeModal({
   // mounts before the query resolves, saved values are ignored.
   const { data: savedPreferences, isLoading: prefsLoading } = usePlayerSessionPreferences(studentId)
   const saveMutation = useSavePlayerSessionPreferences(studentId)
+  // L3: when derived readiness gates number sentences, the Linear segment is locked
+  // and never reaches the planner. Undefined (loading / flag off) means not locked.
+  const { data: linearReadiness, isLoading: readinessLoading } = useLinearReadiness(studentId)
+  const linearLocked = isLinearLocked(linearReadiness)
   // Ref so the callback never changes identity when mutation state changes
   const saveMutationRef = useRef(saveMutation)
   saveMutationRef.current = saveMutation
@@ -171,7 +176,9 @@ export function StartPracticeModal({
   }, [])
 
   // Don't render until preferences have loaded so useState initializers see the saved values
-  if (prefsLoading) return null
+  // Same reason as prefs: the lock is read during render, so a segment must not
+  // flash live and get tapped before the readiness answer lands.
+  if (prefsLoading || readinessLoading) return null
 
   return (
     <StartPracticeModalProvider
@@ -191,6 +198,8 @@ export function StartPracticeModal({
       practiceApprovedGamesOverride={practiceApprovedGamesOverride}
       savedPreferences={savedPreferences}
       onSavePreferences={handleSavePreferences}
+      linearLocked={linearLocked}
+      onClose={handleClose}
     >
       <StartPracticeModalContent
         studentId={studentId}

@@ -1,6 +1,8 @@
 'use client'
 
+import * as Popover from '@radix-ui/react-popover'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
+import { useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { css } from '../../../../styled-system/css'
 
@@ -37,6 +39,29 @@ const tooltipPortalClass = css({
   outline: 'none',
 })
 
+/** Popover card for a locked segment's "why" note */
+const lockedPopoverClass = css({
+  zIndex: 15000,
+  outline: 'none',
+  maxWidth: '280px',
+  padding: '0.75rem 0.875rem',
+  borderRadius: '12px',
+  fontSize: '0.8125rem',
+  lineHeight: 1.4,
+  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.18)',
+})
+
+/**
+ * A segment the student can't turn on yet. It stays live (no `disabled`): tapping it
+ * opens a short note on why, instead of cycling the weight.
+ */
+export interface ProportionBarLock {
+  /** Popover body: the reason and, optionally, where to go to work on it */
+  content: React.ReactNode
+  /** Accessible label for the locked control (defaults to "<label> locked") */
+  ariaLabel?: string
+}
+
 export interface ProportionBarSegment {
   key: string
   emoji: string
@@ -46,6 +71,8 @@ export interface ProportionBarSegment {
   badgeContent?: React.ReactNode
   /** Optional rich tooltip content shown on hover (desktop) */
   tooltipContent?: React.ReactNode
+  /** When set, the segment renders locked (🔒, muted) and tapping opens the note */
+  locked?: ProportionBarLock
   /** Color for enabled state: [lightBg, lightBgBoosted, darkBg, darkBgBoosted] */
   colors: {
     lightBg: string
@@ -87,13 +114,13 @@ export function ProportionBar({
   const isDark = resolvedTheme === 'dark'
 
   const disabledPercent = segments.length <= 3 ? DISABLED_PERCENT_3 : DISABLED_PERCENT_4
-  const disabledCount = segments.filter((s) => s.weight === 0).length
+  const disabledCount = segments.filter((s) => s.weight === 0 || s.locked).length
   const reservedPercent = disabledCount * disabledPercent
-  const activeTotal = segments.reduce((sum, s) => sum + s.weight, 0)
+  const activeTotal = segments.reduce((sum, s) => sum + (s.locked ? 0 : s.weight), 0)
   const remainingPercent = 100 - reservedPercent
 
   // Only show ×2 when active segments have mixed weights
-  const activeWeights = segments.filter((s) => s.weight > 0).map((s) => s.weight)
+  const activeWeights = segments.filter((s) => s.weight > 0 && !s.locked).map((s) => s.weight)
   const hasMixedWeights = activeWeights.length >= 2 && new Set(activeWeights).size > 1
 
   return (
@@ -137,6 +164,17 @@ export function ProportionBar({
         }}
       >
         {segments.map((segment) => {
+          if (segment.locked) {
+            return (
+              <LockedSegment
+                key={segment.key}
+                segment={segment}
+                lock={segment.locked}
+                widthPercent={disabledPercent}
+                isDark={isDark}
+              />
+            )
+          }
           const isEnabled = segment.weight > 0
           const isLastActive = isEnabled && enabledCount === 1
 
@@ -384,5 +422,106 @@ export function ProportionBar({
         })}
       </div>
     </div>
+  )
+}
+
+function LockedSegment({
+  segment,
+  lock,
+  widthPercent,
+  isDark,
+}: {
+  segment: ProportionBarSegment
+  lock: ProportionBarLock
+  widthPercent: number
+  isDark: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          data-option={`segment-${segment.key}`}
+          data-element="mode-segment-locked"
+          data-part={segment.key}
+          data-enabled={false}
+          data-weight={0}
+          data-locked="true"
+          aria-label={lock.ariaLabel ?? `${segment.label} locked`}
+          aria-expanded={open}
+          className={css({
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '2px',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'width 0.2s ease, background-color 0.15s ease, opacity 0.15s ease',
+            padding: '0 0.25rem',
+            '@media (max-width: 480px), (max-height: 700px)': {
+              padding: '0 0.125rem',
+            },
+          })}
+          style={{
+            width: `${widthPercent}%`,
+            backgroundColor: 'transparent',
+            opacity: 0.7,
+          }}
+        >
+          <span
+            data-element="lock-glyph"
+            aria-hidden
+            className={css({
+              fontSize: '1.25rem',
+              lineHeight: 1,
+              flexShrink: 0,
+              '@media (max-width: 480px), (max-height: 700px)': {
+                fontSize: '1rem',
+              },
+            })}
+          >
+            🔒
+          </span>
+          <span
+            data-element="segment-label"
+            className={css({
+              fontSize: '0.625rem',
+              fontWeight: '600',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              lineHeight: 1.2,
+              '@media (max-width: 480px), (max-height: 700px)': {
+                fontSize: '0.5625rem',
+              },
+            })}
+            style={{ color: '#94a3b8' }}
+          >
+            {segment.label}
+          </span>
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          side="bottom"
+          sideOffset={8}
+          align="center"
+          collisionPadding={12}
+          data-element="mode-segment-locked-note"
+          data-part={segment.key}
+          className={lockedPopoverClass}
+          style={{
+            backgroundColor: isDark ? '#1e293b' : 'white',
+            color: isDark ? '#e2e8f0' : '#334155',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+          }}
+        >
+          {lock.content}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   )
 }

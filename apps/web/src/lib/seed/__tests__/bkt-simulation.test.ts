@@ -9,8 +9,9 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { simulateBktSequence, designSequenceForClassification } from '../bkt-simulation'
+import { responseTimeWeight } from '../../curriculum/bkt/evidence-quality'
 import { BKT_THRESHOLDS } from '../../curriculum/config/bkt-integration'
+import { designSequenceForClassification, simulateBktSequence } from '../bkt-simulation'
 
 // =============================================================================
 // simulateBktSequence
@@ -240,5 +241,46 @@ describe('designSequenceForClassification', () => {
       const pKnown = simulateBktSequence('basic.directAddition', sequence)
       expect(pKnown).toBeGreaterThanOrEqual(BKT_THRESHOLDS.strong)
     })
+  })
+})
+
+describe('evidence weighting', () => {
+  const skill = 'basic.directAddition'
+  // 21 s against the 5 s expectation: 0.8 on correct answers, 1.2 on mistakes
+  const slowWeight = (isCorrect: boolean) => responseTimeWeight(21_000, isCorrect)
+  // 1.5 s: 1.2 on correct answers, 0.5 on mistakes
+  const fastWeight = (isCorrect: boolean) => responseTimeWeight(1_500, isCorrect)
+
+  it('a weight of 1 reproduces the unweighted simulation', () => {
+    const seq = [true, false, true, true, false, true, true, true]
+    expect(simulateBktSequence(skill, seq, () => 1)).toBeCloseTo(
+      simulateBktSequence(skill, seq),
+      12
+    )
+  })
+
+  it('slow answers pull pKnown below the unweighted result for the same sequence', () => {
+    const seq = Array(12).fill(true)
+    expect(simulateBktSequence(skill, seq, slowWeight)).toBeLessThan(
+      simulateBktSequence(skill, seq)
+    )
+  })
+
+  it.each([
+    ['strong', slowWeight],
+    ['developing', slowWeight],
+    ['weak', slowWeight],
+    ['strong', fastWeight],
+    ['developing', fastWeight],
+    ['weak', fastWeight],
+  ] as const)('%s target lands in band under the same weights', (target, weight) => {
+    const seq = designSequenceForClassification(skill, 15, target, weight)
+    const pKnown = simulateBktSequence(skill, seq, weight)
+    if (target === 'strong') expect(pKnown).toBeGreaterThanOrEqual(BKT_THRESHOLDS.strong)
+    else if (target === 'weak') expect(pKnown).toBeLessThan(BKT_THRESHOLDS.weak)
+    else {
+      expect(pKnown).toBeGreaterThanOrEqual(BKT_THRESHOLDS.weak)
+      expect(pKnown).toBeLessThan(BKT_THRESHOLDS.strong)
+    }
   })
 })

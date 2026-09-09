@@ -5,8 +5,8 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SessionObserverModal } from '@/components/classroom/SessionObserverModal'
+import { GuestProgressBanner } from '@/components/GuestProgressBanner'
 import { PageWithNav } from '@/components/PageWithNav'
-import { useIncomingTransition } from '@/contexts/PageTransitionContext'
 import {
   type ActiveSessionState,
   type CurrentPhaseInfo,
@@ -22,32 +22,33 @@ import {
   type StudentWithProgress,
   VirtualizedSessionList,
 } from '@/components/practice'
-import { getExtendedClassification, type SkillDistribution } from '@/contexts/BktContext'
 import { ContentBannerSlot, ProjectingBanner } from '@/components/practice/BannerSlots'
+import { ManualSkillSelector } from '@/components/practice/ManualSkillSelector'
+import { NumberSentencesPanel } from '@/components/practice/NumberSentencesPanel'
+import { getExtendedClassification, type SkillDistribution } from '@/contexts/BktContext'
+import { useIncomingTransition } from '@/contexts/PageTransitionContext'
 import {
   SessionModeBannerProvider,
   useSessionModeBanner,
 } from '@/contexts/SessionModeBannerContext'
-import { ManualSkillSelector } from '@/components/practice/ManualSkillSelector'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { PlayerCurriculum } from '@/db/schema/player-curriculum'
 import {
   isActive,
-  type PracticeLevel,
   type PlayerSkillMastery,
+  type PracticeLevel,
 } from '@/db/schema/player-skill-mastery'
 import type { Player } from '@/db/schema/players'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
-import { useMyClassroom, useEnrolledClassrooms } from '@/hooks/useClassroom'
+import { useEnrolledClassrooms, useMyClassroom } from '@/hooks/useClassroom'
+import { useRefreshSkillRecency, useSetSkillLevels } from '@/hooks/usePlayerCurriculum'
 import { usePlayerPresenceSocket } from '@/hooks/usePlayerPresenceSocket'
 import {
+  type SessionModeWithComfort,
   useDeferProgression,
   useSessionMode,
-  type SessionModeWithComfort,
 } from '@/hooks/useSessionMode'
-import type { SessionMode } from '@/lib/curriculum/session-mode'
-import { useRefreshSkillRecency, useSetSkillLevels } from '@/hooks/usePlayerCurriculum'
 import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import {
   type BktComputeOptions,
@@ -63,18 +64,18 @@ import {
   ROTATION_MULTIPLIERS,
 } from '@/lib/curriculum/config'
 import type { PaceAssessment, ProblemResultWithContext } from '@/lib/curriculum/server'
+import type { SessionMode } from '@/lib/curriculum/session-mode'
+import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
 import {
   assessSkillReadiness,
   type SkillReadinessDimensions,
 } from '@/lib/curriculum/skill-readiness'
-import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
 import {
   classifyAttemptTiming,
   getEffectiveResponseTimeMs,
 } from '@/lib/curriculum/timing/effective-time'
 import { api } from '@/lib/queryClient'
 import { curriculumKeys, playerKeys, sessionHistoryKeys } from '@/lib/queryKeys'
-import { GuestProgressBanner } from '@/components/GuestProgressBanner'
 import { css } from '../../../../../styled-system/css'
 import { RelationshipsTab } from './RelationshipsTab'
 import { ScoreboardTab } from './ScoreboardTab'
@@ -91,6 +92,20 @@ type TabId =
   | 'notes'
   | 'observers'
   | 'relationships'
+
+const TAB_IDS: readonly TabId[] = [
+  'overview',
+  'skills',
+  'history',
+  'scoreboard',
+  'notes',
+  'observers',
+  'relationships',
+]
+
+function isTabId(value: string | null): value is TabId {
+  return value !== null && (TAB_IDS as readonly string[]).includes(value)
+}
 
 /**
  * Reason why BKT classification is unavailable.
@@ -2133,6 +2148,9 @@ function SkillsTab({
 
   return (
     <div data-tab-content="skills">
+      {/* Why number sentences are / aren't available (hidden when the flag is off) */}
+      <NumberSentencesPanel studentId={studentId} isDark={isDark} />
+
       {/* Header with Manage button */}
       <div
         className={css({
@@ -3522,6 +3540,13 @@ export function DashboardClient({
   const [showStartPracticeModal, setShowStartPracticeModal] = useState(false)
   const [startFresh, setStartFresh] = useState(false)
   const [showManualSkillModal, setShowManualSkillModal] = useState(false)
+
+  // Follow ?tab= when it changes under a mounted page (deep links such as
+  // "See what's needed" → ?tab=skills#number-sentences arrive client-side).
+  const tabParam = searchParams.get('tab')
+  useEffect(() => {
+    setActiveTab(isTabId(tabParam) ? tabParam : 'overview')
+  }, [tabParam])
 
   // Auto-open start practice modal if startPractice query param is set
   useEffect(() => {

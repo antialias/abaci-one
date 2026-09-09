@@ -1,11 +1,13 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useStartPracticeModal, PART_TYPES } from '../StartPracticeModalContext'
+import { useTheme } from '@/contexts/ThemeContext'
+import { useLinearReadiness } from '@/hooks/useLinearReadiness'
+import { PART_TYPES, useStartPracticeModal } from '../StartPracticeModalContext'
 import { LinearGraduationBanner } from './LinearGraduationBanner'
+import { LinearLockNote } from './LinearLockNote'
 import { ProportionBar, type ProportionBarSegment } from './ProportionBar'
 
-/** All practice mode segments use green tones */
 const GREEN_COLORS: ProportionBarSegment['colors'] = {
   lightBg: 'rgba(22, 163, 74, 0.08)',
   lightBgBoosted: 'rgba(22, 163, 74, 0.15)',
@@ -16,8 +18,21 @@ const GREEN_COLORS: ProportionBarSegment['colors'] = {
 }
 
 export function PracticeModesSelector() {
-  const { partWeights, cyclePartWeight, disablePart, problemsPerType, enabledPartCount } =
-    useStartPracticeModal()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const {
+    studentId,
+    partWeights,
+    linearLocked,
+    closeModal,
+    cyclePartWeight,
+    disablePart,
+    problemsPerType,
+    enabledPartCount,
+  } = useStartPracticeModal()
+  // Same query the context's lock decision came from (deduped by React Query);
+  // read here only for the popover copy.
+  const { data: readiness } = useLinearReadiness(studentId)
 
   const segments = useMemo<ProportionBarSegment[]>(
     () =>
@@ -28,8 +43,22 @@ export function PracticeModesSelector() {
         weight: partWeights[type],
         badgeContent: partWeights[type] > 0 ? problemsPerType[type] : undefined,
         colors: GREEN_COLORS,
+        locked:
+          type === 'linear' && linearLocked && readiness
+            ? {
+                ariaLabel: 'Linear locked — tap to see why',
+                content: (
+                  <LinearLockNote
+                    state={readiness}
+                    studentId={studentId}
+                    isDark={isDark}
+                    onNavigate={closeModal}
+                  />
+                ),
+              }
+            : undefined,
       })),
-    [partWeights, problemsPerType]
+    [partWeights, problemsPerType, linearLocked, readiness, studentId, isDark, closeModal]
   )
 
   return (

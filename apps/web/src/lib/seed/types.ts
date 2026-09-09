@@ -169,6 +169,12 @@ export interface TestStudentProfile {
    * Each entry creates multiple game result records.
    */
   gameHistory?: GameResultConfig[]
+  /**
+   * Round-robin each age group's problems across skills before slicing into sessions,
+   * so every skill spans several sessions (real sessions mix skills). Default: each
+   * skill's problems sit in consecutive sessions, which keeps a skill to 1-2 sessions.
+   */
+  interleaveSkillsAcrossSessions?: boolean
 }
 
 /**

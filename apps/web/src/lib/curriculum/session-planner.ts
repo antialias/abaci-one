@@ -15,9 +15,10 @@
 
 import { createId } from '@paralleldrive/cuid2'
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { getSkillCategory, type SkillCategoryKey } from '@/constants/skillCategories'
 import { db, schema } from '@/db'
+import { appSettings } from '@/db/schema'
 import { isActive, isVisualReady, type PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
-import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import {
   calculateMasteryWeight,
   calculateSessionHealth,
@@ -31,15 +32,19 @@ import {
   type PartSummary,
   type PlanGenerationConfig,
   type ProblemSlot,
+  type SessionFlowState,
   type SessionHealth,
   type SessionPart,
-  type SessionFlowState,
   type SessionPartType,
   type SessionPlan,
   type SessionRetryState,
   type SessionSummary,
+  type SkippedPart,
   type SlotResult,
 } from '@/db/schema/session-plans'
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
+import { getFlag } from '@/lib/feature-flags'
+import { revokeSharesForSession } from '@/lib/session-share'
 import {
   buildStudentSkillHistoryFromRecords,
   calculateMaxSkillCost,
@@ -48,17 +53,35 @@ import {
 } from '@/utils/skillComplexity'
 import { computeBktFromHistory, type SkillBktResult } from './bkt'
 import {
+  applyTermCountOverride,
+  computeComfortLevel,
+  computeComfortLevelByMode,
+} from './comfort-level'
+import {
   BKT_INTEGRATION_CONFIG,
   DEFAULT_PROBLEM_GENERATION_MODE,
-  WEAK_SKILL_THRESHOLDS,
   type ProblemGenerationMode,
+  WEAK_SKILL_THRESHOLDS,
 } from './config'
+import {
+  computeTermCountRange,
+  parseTermCountScaling,
+  type TermCountExplanation,
+  type TermCountScalingConfig,
+} from './config/term-count-scaling'
 import {
   type CurriculumPhase,
   getPhase,
   getPhaseDisplayInfo,
   type getPhaseSkillConstraints,
 } from './definitions'
+import {
+  deriveLinearGateState,
+  linearPartUsesAbacus,
+  resolveLinearGateThresholds,
+} from './linear-gate'
+import { explainLinearReadiness } from './linear-readiness'
+import { resolveEnabledPartTypes } from './part-gating'
 import { generateProblemFromConstraints } from './problem-generator'
 import {
   getAllSkillMastery,
@@ -67,29 +90,9 @@ import {
   getPlayerCurriculum,
   recordSkillAttemptsWithHelp,
 } from './progress-manager'
-import { deriveLinearReadySkills } from './linear-readiness'
-import {
-  deriveLinearGateState,
-  resolveLinearGateThresholds,
-  linearPartUsesAbacus,
-} from './linear-gate'
-import { getSkillCategory, type SkillCategoryKey } from '@/constants/skillCategories'
-import { getFlag } from '@/lib/feature-flags'
-import { getWeakSkillIds, type SessionMode } from './session-mode'
-import { revokeSharesForSession } from '@/lib/session-share'
-import {
-  computeComfortLevel,
-  computeComfortLevelByMode,
-  applyTermCountOverride,
-} from './comfort-level'
-import {
-  computeTermCountRange,
-  parseTermCountScaling,
-  type TermCountExplanation,
-  type TermCountScalingConfig,
-} from './config/term-count-scaling'
-import { appSettings } from '@/db/schema'
 import { applyFlowEvent, type SessionFlowEvent } from './session-flow'
+import { getWeakSkillIds, type SessionMode } from './session-mode'
+import { describeSkippedPart } from './skipped-parts'
 import { sanitizeResultTiming } from './timing/response-time-guard'
 
 // ============================================================================
@@ -132,6 +135,8 @@ export type SessionPlanProgressEvent =
       type: 'plan_structure_ready'
       message: string
       parts: Array<{ type: string; problemCount: number }>
+      /** Requested parts the readiness gates dropped */
+      skippedParts?: SkippedPart[]
     }
   | {
       type: 'plan_generating_problem'
@@ -195,12 +200,17 @@ export class NoSkillsEnabledError extends Error {
  */
 export class NoEligiblePartsError extends Error {
   code = 'NO_ELIGIBLE_PARTS' as const
+  /** Why each requested part was gated out — the same reasons a successful plan reports. */
+  skippedParts: SkippedPart[]
 
-  constructor() {
+  constructor(skippedParts: SkippedPart[] = []) {
+    const detail =
+      skippedParts.length > 0 ? ` ${skippedParts.map(describeSkippedPart).join('. ')}.` : ''
     super(
       'Cannot generate a practice session: none of the requested part types have ' +
-        'eligible skills. Enable abacus practice, or advance skills to visual/linear readiness.'
+        `eligible skills.${detail} Enable abacus practice, or advance skills to visual/linear readiness.`
     )
+    this.skippedParts = skippedParts
     this.name = 'NoEligiblePartsError'
   }
 }
@@ -423,14 +433,15 @@ export async function generateSessionPlan(
   // L3: linear-readiness is DERIVED (not the manual visual gate) and gated by a flag.
   // Computed AFTER the empty-skills guard above. When the flag is off, this is empty
   // and linear falls back to the visual coupling in the part gate below.
-  const linearReadyIds = linearReadinessEnabled
-    ? deriveLinearReadySkills({
+  const linearExplanation = linearReadinessEnabled
+    ? explainLinearReadiness({
         skillMastery,
         problemHistory,
         bktResults,
         vetoedCategories: linearVetoes,
       })
-    : new Set<string>()
+    : null
+  const linearReadyIds = linearExplanation?.readySkillIds ?? new Set<string>()
   const linearReadySkills = skillMastery.filter((s) => linearReadyIds.has(s.skillId))
 
   // Ramp gate (linear-with-abacus): linear-ready categories keep the working abacus
@@ -495,19 +506,19 @@ export async function generateSessionPlan(
   // skills, linear on DERIVED linear-readiness. When the flag is off, hasLinearSkills
   // falls back to the visual coupling so behavior is unchanged.
   const hasVisualSkills = visualReadySkills.length > 0
-  const hasLinearSkills = linearReadinessEnabled ? linearReadySkills.length > 0 : hasVisualSkills
-  const enabledPartTypes = (['abacus', 'visualization', 'linear'] as const).filter((type) => {
-    if (!partsToInclude[type]) return false
-    if (type === 'abacus') return true
-    if (type === 'visualization') return hasVisualSkills
-    return hasLinearSkills // linear
+  const { enabledPartTypes, skippedParts } = resolveEnabledPartTypes({
+    partsToInclude,
+    hasVisualSkills,
+    linearReadinessEnabled,
+    linearReadyCount: linearReadySkills.length,
+    linearReadyBeforeVetoCount: linearExplanation?.readyBeforeVetoSkillIds.size ?? 0,
   })
 
   // Every requested part gated out (e.g. caller disabled abacus and there are no
   // visual/linear skills). Fail loudly instead of persisting a 0-part plan that
   // crashes downstream with a NaN weight.
   if (enabledPartTypes.length === 0) {
-    throw new NoEligiblePartsError()
+    throw new NoEligiblePartsError(skippedParts)
   }
 
   const totalEnabledWeight = enabledPartTypes.reduce(
@@ -566,6 +577,7 @@ export async function generateSessionPlan(
     type: 'plan_structure_ready',
     message: `Generating ${previewParts.reduce((s, p) => s + p.problemCount, 0)} problems...`,
     parts: previewParts,
+    skippedParts,
   })
 
   const PART_TYPE_LABELS: Record<string, string> = {
@@ -657,7 +669,7 @@ export async function generateSessionPlan(
   }
 
   // 5. Build summary
-  const summary = buildSummary(parts, currentPhase, durationMinutes)
+  const summary = buildSummary(parts, currentPhase, durationMinutes, skippedParts)
 
   // 6. Calculate total problems
   const totalProblemCount = parts.reduce((sum, part) => sum + part.slots.length, 0)
@@ -2394,7 +2406,8 @@ function getPartDescription(type: SessionPartType): string {
 function buildSummary(
   parts: SessionPart[],
   phase: CurriculumPhase | undefined,
-  durationMinutes: number
+  durationMinutes: number,
+  skippedParts: SkippedPart[] = []
 ): SessionSummary {
   const phaseInfo = phase ? getPhaseDisplayInfo(phase.id) : null
 
@@ -2413,5 +2426,6 @@ function buildSummary(
     totalProblemCount,
     estimatedMinutes: durationMinutes,
     parts: partSummaries,
+    ...(skippedParts.length > 0 ? { skippedParts } : {}),
   }
 }

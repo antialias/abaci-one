@@ -1,8 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import type { SessionPlan, SlotResult, GameBreakSettings } from '@/db/schema/session-plans'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type {
+  GameBreakSettings,
+  SessionPlan,
+  SkippedPart,
+  SlotResult,
+} from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import type { SessionFlowEvent } from '@/lib/curriculum/session-flow'
@@ -43,6 +48,20 @@ export class NoSkillsEnabledClientError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'NoSkillsEnabledClientError'
+  }
+}
+
+/**
+ * Error thrown when every requested part was gated out by readiness (400 NO_ELIGIBLE_PARTS).
+ * Carries the planner's per-part reasons so a UI can explain rather than echo the message.
+ */
+export class NoEligiblePartsClientError extends Error {
+  constructor(
+    message: string,
+    public readonly skippedParts: SkippedPart[]
+  ) {
+    super(message)
+    this.name = 'NoEligiblePartsClientError'
   }
 }
 
@@ -123,6 +142,10 @@ async function createSessionPlanTask(params: GenerateSessionPlanParams): Promise
       throw new NoSkillsEnabledClientError(errorData.error)
     }
 
+    // Handle 400 - every requested part gated out by readiness
+    if (res.status === 400 && errorData.code === 'NO_ELIGIBLE_PARTS') {
+      throw new NoEligiblePartsClientError(errorData.error, errorData.skippedParts ?? [])
+    }
     // Handle 403 - session limit reached (free tier)
     if (res.status === 403 && errorData.code === 'SESSION_LIMIT_REACHED') {
       throw new SessionLimitReachedError(errorData.limit, errorData.count)

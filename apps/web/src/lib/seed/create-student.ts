@@ -1,15 +1,15 @@
 import { createId } from '@paralleldrive/cuid2'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '../../db'
-import { computeBktFromHistory, type SkillBktResult } from '../curriculum/bkt'
-import { BKT_THRESHOLDS } from '../curriculum/config/bkt-integration'
-import { getRecentSessionResults } from '../curriculum/session-planner'
 import type { SessionPart, SessionSummary, SlotResult } from '../../db/schema/session-plans'
 import type { GameResultsReport } from '../arcade/game-sdk/types'
 import { directEnrollStudent } from '../classroom/enrollment-manager'
-import type { SkillConfig, TestStudentProfile, TuningRound } from './types'
-import { generateSlotResults, checkSuccessCriteria, applyTuningAdjustments } from './helpers'
+import { computeBktFromHistory, type SkillBktResult } from '../curriculum/bkt'
+import { BKT_THRESHOLDS } from '../curriculum/config/bkt-integration'
+import { getRecentSessionResults } from '../curriculum/session-planner'
 import { formatActualOutcomes } from './formatting'
+import { applyTuningAdjustments, checkSuccessCriteria, generateSlotResults } from './helpers'
+import type { SkillConfig, TestStudentProfile, TuningRound } from './types'
 
 /**
  * Create a test student from a profile definition.
@@ -138,6 +138,25 @@ export async function createTestStudent(
       })
     }
     problemsByAge.set(ageDays, existing)
+  }
+
+  if (profile.interleaveSkillsAcrossSessions) {
+    for (const [ageDays, group] of problemsByAge) {
+      const bySkill = new Map<string, ProblemWithMeta[]>()
+      for (const p of group) {
+        const list = bySkill.get(p.skillId) ?? []
+        list.push(p)
+        bySkill.set(p.skillId, list)
+      }
+      const queues = Array.from(bySkill.values())
+      const interleaved: ProblemWithMeta[] = []
+      for (let i = 0; interleaved.length < group.length; i++) {
+        for (const queue of queues) {
+          if (i < queue.length) interleaved.push(queue[i])
+        }
+      }
+      problemsByAge.set(ageDays, interleaved)
+    }
   }
 
   // Count total problems
