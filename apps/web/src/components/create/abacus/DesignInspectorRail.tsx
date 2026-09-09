@@ -26,6 +26,7 @@ import {
   type AbacusColorScheme,
 } from '@/lib/abacus/identity'
 import { useAbacusStudio } from './AbacusStudioContext'
+import { INFILL_OPTIONS, type InfillLevel, infillOption } from './abacus-infill'
 import {
   AID_OPTS,
   aidNote,
@@ -494,6 +495,87 @@ export function DesignInspectorRail({
           dataElement="abacus-feet-mode"
           dataAction="set-feet-mode"
         />
+        {/* Infill (abacus-infill.ts) — FDM-only, and it belongs beside the feet
+            because both are questions about the object in the hand rather than
+            about the drawing: how stiff it is, how the beads weigh and click.
+
+            Linked is the default because "make it sturdier" is one thought, not
+            two. The split exists for the one combination worth asking for —
+            heavy beads on a light frame — so the second select stays out of the
+            way until it's asked for. */}
+        <StudioSelect
+          label={params.infill_linked ? 'infill' : 'infill — frame'}
+          value={params.infill_frame}
+          options={INFILL_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
+          onChange={(v) => {
+            set('infill_frame', v as InfillLevel)
+            // While linked the beads follow the frame in the STORED value too, so
+            // "set beads separately" starts the beads where the frame is and the
+            // checkbox on its own never changes the print. (`set` is a functional
+            // update, so the two writes compose.)
+            if (params.infill_linked) set('infill_beads', v as InfillLevel)
+          }}
+          dataElement="abacus-infill-frame"
+          dataAction="set-infill-frame"
+        />
+        <div
+          data-component="DesignInspectorRail"
+          data-element="abacus-infill-frame-note"
+          style={{ fontSize: 11, lineHeight: 1.5, color: 'rgba(226,232,240,0.75)' }}
+        >
+          {infillOption(params.infill_frame).frame}{' '}
+          {params.infill_linked ? `${infillOption(params.infill_frame).beads} ` : ''}
+          {infillOption(params.infill_frame).time}
+        </div>
+        <div data-element="abacus-infill-link">
+          <DebugCheckbox
+            label="Set beads separately"
+            checked={!params.infill_linked}
+            onChange={(separate) => set('infill_linked', !separate)}
+          />
+        </div>
+        {!params.infill_linked && (
+          <>
+            <StudioSelect
+              label="infill — beads"
+              value={params.infill_beads}
+              options={INFILL_OPTIONS.map((o) => ({ value: o.id, label: o.label }))}
+              onChange={(v) => set('infill_beads', v as InfillLevel)}
+              dataElement="abacus-infill-beads"
+              dataAction="set-infill-beads"
+            />
+            <div
+              data-component="DesignInspectorRail"
+              data-element="abacus-infill-beads-note"
+              style={{ fontSize: 11, lineHeight: 1.5, color: 'rgba(226,232,240,0.75)' }}
+            >
+              {infillOption(params.infill_beads).beads}
+            </div>
+            {/* Bodies are per FILAMENT slot, so a scheme that paints the beads in
+                the frame's spool leaves one body to carry one density — and the
+                frame's wins. Only monochrome makes that certain, so only
+                monochrome gets told. */}
+            {params.color_scheme === 'monochrome' && (
+              <div
+                data-component="DesignInspectorRail"
+                data-element="abacus-infill-monochrome-note"
+                style={{ fontSize: 11, lineHeight: 1.5, color: '#b45309' }}
+              >
+                In the monochrome scheme the beads print in the frame&apos;s filament, so they take
+                the frame&apos;s infill.
+              </div>
+            )}
+          </>
+        )}
+        {params.feet_mode === 'printed' && (
+          <div
+            data-component="DesignInspectorRail"
+            data-element="abacus-infill-feet-note"
+            style={{ fontSize: 11, lineHeight: 1.5, color: 'rgba(148,163,184,0.95)' }}
+          >
+            Feet always print solid.
+          </div>
+        )}
         {/* Stick-on bumpers are bought, not printed, so the menu is the range
             you can actually buy — labelled in the inches it's sold in, and
             converted to mm on the way into the model.

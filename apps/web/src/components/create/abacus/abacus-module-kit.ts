@@ -47,6 +47,7 @@ import {
   THREE_MF_ZIP_MTIME,
   type WipeTowerProfileGeometry,
 } from './abacus-3mf-assembly'
+import { resolveInfill } from './abacus-infill'
 import {
   analyzeModuleShells,
   anyTokens,
@@ -311,6 +312,9 @@ export function buildModuleThreeMf(args: {
     supportsAtSlice,
     bed,
     wipeTower,
+    // Same design, different container: a module printed from the zip must fill
+    // at the density the plate would have used.
+    infill: resolveInfill(args.params),
   })
 }
 

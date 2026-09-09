@@ -12,10 +12,11 @@
  * layout constants the classifier reads. Marker "renders" are plain synthetic
  * soups — the merge never classifies them, so their shape is irrelevant.
  */
-import { writeBinaryStl } from '@eink/frames-engine/stl'
+import { parseStl, writeBinaryStl } from '@eink/frames-engine/stl'
 import { strFromU8, unzipSync } from 'fflate'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildAbacusThreeMf } from '../abacus-3mf'
+import { buildAbacusThreeMf, emitThreeMfBodies } from '../abacus-3mf'
+import { BAMBU_256_BED, DEFAULT_WIPE_TOWER_PROFILE } from '../abacus-3mf-assembly'
 import { defaultParams, derived, type FilamentMap, type Params } from '../abacus-model'
 
 // Marker-bearing params (show_markers defaults true) and the markers-off variant
@@ -307,13 +308,16 @@ describe('buildAbacusThreeMf (printed feet — Gitea #23)', () => {
     expect(modelSettings).toContain(
       '<metadata key="name" value="Filament 1"/><metadata key="extruder" value="2"/>'
     )
-    // The feet part prints solid on its own account (FEET_PART_PROCESS); the
-    // frame keeps the operator's infill — the keys sit on extruder 1 only.
+    // The feet print solid on their own account (FEET_PART_PROCESS) while the
+    // frame carries the design's own density (abacus-infill.ts) — so every body
+    // has keys now, and the feet's are the only 100 % ones.
     expect(modelSettings).toContain(
       '<metadata key="extruder" value="1"/><metadata key="sparse_infill_density" value="100%"/>'
     )
-    expect(modelSettings).toContain('<metadata key="extruder" value="2"/></part>')
-    expect(modelSettings.match(/sparse_infill_density/g)).toHaveLength(1)
+    expect(modelSettings).toContain(
+      '<metadata key="extruder" value="2"/><metadata key="sparse_infill_density" value="15%"/>'
+    )
+    expect(modelSettings.match(/sparse_infill_density" value="100%"/g)).toHaveLength(1)
   })
 
   it('merges feet into the frame body when their slots collide (no-TPU fallback)', () => {
@@ -326,9 +330,13 @@ describe('buildAbacusThreeMf (printed feet — Gitea #23)', () => {
     })
     expect(bodies.map((b) => b.slot)).toEqual([0, 1, 3])
     expect(bodies[0].triangleCount).toBe(2 + 6) // frame + feet
-    // Merged, the feet's solid-infill keys stay off: they would take the frame with them.
-    expect(strFromU8(unzipSync(bytes)['Metadata/model_settings.config'])).not.toContain(
-      'sparse_infill_density'
+    // Merged, the feet's SOLID keys stay off: they would take the frame with them.
+    // The body still carries the design's frame density — merged feet are riding
+    // the frame's body, so they fill like the frame.
+    const modelSettings = strFromU8(unzipSync(bytes)['Metadata/model_settings.config'])
+    expect(modelSettings).not.toContain('value="100%"')
+    expect(modelSettings).toContain(
+      '<metadata key="extruder" value="1"/><metadata key="sparse_infill_density" value="15%"/>'
     )
   })
 
@@ -599,5 +607,94 @@ describe('buildAbacusThreeMf (inset text — Gitea #26)', () => {
       expect(withPlugs.bodies).toEqual(bare.bodies)
       expect(withPlugs.bytes.length).toBe(bare.bytes.length)
     }
+  })
+})
+
+describe('per-part infill (the design owns the density, not the ticket style)', () => {
+  // Every body carries its ROLE's density as part config, because THH's
+  // `--load-settings` replaces the project's global settings and would otherwise
+  // eat a plate-wide key. Markers stay ON here: their slot is the interesting
+  // fourth case (geometry that is neither frame nor bead).
+  const infillParams: Params = {
+    ...params,
+    infill_frame: 'sturdy',
+    infill_beads: 'light',
+    infill_linked: false,
+  }
+  const config = (p: Params, filamentMap: FilamentMap = fm): string =>
+    strFromU8(
+      unzipSync(
+        buildAbacusThreeMf({
+          stl: fixtureStl(p),
+          markerBlack: markerStl(3, 5, 5),
+          markerWhite: markerStl(3, 30, 5),
+          params: p,
+          filamentMap,
+        }).bytes
+      )['Metadata/model_settings.config']
+    )
+  /** The `sparse_infill_density` written on a given 1-based extruder. */
+  const densityOn = (xml: string, extruder: number): string | null =>
+    xml.match(
+      new RegExp(
+        `<metadata key="extruder" value="${extruder}"/><metadata key="sparse_infill_density" value="([^"]+)"`
+      )
+    )?.[1] ?? null
+
+  it('gives the frame its level and the beads theirs', () => {
+    // slots ascend: 0 frame → extruder 1, 1 earth bead + markerWhite → 2,
+    // 2 markerBlack → 3, 3 heaven bead → 4
+    const xml = config(infillParams)
+    expect(densityOn(xml, 1)).toBe('30%') // frame, sturdy
+    expect(densityOn(xml, 4)).toBe('10%') // heaven bead, light
+  })
+
+  it('treats a marker-only slot as a frame-surface feature', () => {
+    // Markers are engraved INTO the frame's outer face — they have no density of
+    // their own, and an empty body would fall back to the ticket style's
+    // plate-wide value, which is the number this feature took away.
+    expect(densityOn(config(infillParams), 3)).toBe('30%') // markerBlack alone on slot 2
+  })
+
+  it('lets the frame win a slot it shares with a bead role', () => {
+    // The monochrome scheme always lands here: one body can only have one
+    // density, and the frame is the structural part.
+    const shared: FilamentMap = { ...fm, beadRoles: [0, 0] }
+    const xml = config(infillParams, shared)
+    expect(densityOn(xml, 1)).toBe('30%')
+    expect(xml.match(/sparse_infill_density" value="10%"/g)).toBeNull()
+  })
+
+  it('makes the beads follow the frame when linked, ignoring the stored bead level', () => {
+    const xml = config({ ...infillParams, infill_linked: true })
+    expect(xml.match(/sparse_infill_density" value="30%"/g)).toHaveLength(4)
+    expect(xml).not.toContain('value="10%"')
+  })
+
+  it('writes solid’s pattern too, so 100 % is not drawn as a slow gyroid', () => {
+    const xml = config({ ...infillParams, infill_frame: 'solid', infill_linked: true })
+    expect(xml).toContain(
+      '<metadata key="sparse_infill_density" value="100%"/><metadata key="sparse_infill_pattern" value="rectilinear"/>'
+    )
+  })
+
+  it('emits nothing but the feet rule when the caller passes no infill', () => {
+    // `emitThreeMfBodies` is shared with callers that predate the knob; without
+    // `infill` the only part config is the feet's.
+    const feetOnly: Params = { ...noMarkers, feet_mode: 'printed' }
+    const built = emitThreeMfBodies({
+      ...(() => {
+        const stl = parseStl(fixtureStl(feetOnly))
+        return { mesh: stl, triShell: new Int32Array(stl.triangleCount), slotOfShell: [0] }
+      })(),
+      partSoups: [{ slot: 2, positions: parseStl(markerStl(6, 10, 10)).positions, role: 'feet' }],
+      filamentMap: { ...fm, feet: 2 },
+      feetPrinted: true,
+      bed: BAMBU_256_BED,
+      wipeTower: DEFAULT_WIPE_TOWER_PROFILE,
+    })
+    const xml = strFromU8(unzipSync(built.bytes)['Metadata/model_settings.config'])
+    expect(xml.match(/sparse_infill_density/g)).toHaveLength(1)
+    expect(xml).toContain('value="100%"')
   })
 })

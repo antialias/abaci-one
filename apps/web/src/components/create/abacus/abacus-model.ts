@@ -22,6 +22,9 @@
 // The canonical bead-color resolver, shared with the on-screen abacus. Imported
 // from the React-free `./color` subpath so this module stays framework-free.
 import { BEAD_COLOR_PALETTES, beadColorActive } from '@soroban/abacus-react/color'
+// Type-only (erased at build), so the infill module can keep depending on Params
+// without a runtime import cycle.
+import type { InfillLevel } from './abacus-infill'
 
 // ---- parameters -------------------------------------------------------------
 export const JOINT_TYPES = ['vertical_snap', 'sliding_dovetail'] as const
@@ -123,6 +126,22 @@ export const defaultParams = {
   feet_span: 110, // max unsupported bottom run (mm @ scale 1) before mid feet
   feet_proud: 1.6, // printed: stand-off below the bottom face (absolute mm)
   feet_retention: 'crossbar',
+  // infill (see abacus-infill.ts). JS-only, deliberately NOT in DEFINE_KEYS:
+  // these change nothing about the shape the .scad renders, only the density the
+  // slicer fills it at — they ride the 3MF as per-part config, which is the one
+  // channel THH's `--load-settings` can't overwrite. `infill_linked` (default)
+  // means the beads follow the frame and `infill_beads` is ignored; the rail
+  // keeps the stored bead value mirrored while linked, so separating them starts
+  // the beads where the frame is.
+  //
+  // Adding keys to defaultParams rotates every design's `contentHash`
+  // (db/schema/abacus-designs.ts hashes {v, params, overrides, profileId}), so
+  // saving an untouched legacy design mints a NEW row. Accepted: old rows and
+  // their share links still resolve, and nothing keys off a hash matching across
+  // a params-surface change.
+  infill_frame: 'standard' as InfillLevel,
+  infill_beads: 'standard' as InfillLevel,
+  infill_linked: true,
   // modular columns (Gitea #30). seam_mode is a real geometry knob, not a UI
   // toggle: 'modular' widens the column pitch by one full web per seam (each
   // module keeps a bead-capturing full-thickness edge wall) and swaps the
