@@ -307,11 +307,18 @@ describe('buildAbacusThreeMf (printed feet — Gitea #23)', () => {
     expect(modelSettings).toContain(
       '<metadata key="name" value="Filament 1"/><metadata key="extruder" value="2"/>'
     )
+    // The feet part prints solid on its own account (FEET_PART_PROCESS); the
+    // frame keeps the operator's infill — the keys sit on extruder 1 only.
+    expect(modelSettings).toContain(
+      '<metadata key="extruder" value="1"/><metadata key="sparse_infill_density" value="100%"/>'
+    )
+    expect(modelSettings).toContain('<metadata key="extruder" value="2"/></part>')
+    expect(modelSettings.match(/sparse_infill_density/g)).toHaveLength(1)
   })
 
   it('merges feet into the frame body when their slots collide (no-TPU fallback)', () => {
     const collided: FilamentMap = { ...fm, feet: 0 }
-    const { bodies } = buildAbacusThreeMf({
+    const { bodies, bytes } = buildAbacusThreeMf({
       stl: fixtureStl(feetParams),
       feet: markerStl(6, 10, 10),
       params: feetParams,
@@ -319,6 +326,10 @@ describe('buildAbacusThreeMf (printed feet — Gitea #23)', () => {
     })
     expect(bodies.map((b) => b.slot)).toEqual([0, 1, 3])
     expect(bodies[0].triangleCount).toBe(2 + 6) // frame + feet
+    // Merged, the feet's solid-infill keys stay off: they would take the frame with them.
+    expect(strFromU8(unzipSync(bytes)['Metadata/model_settings.config'])).not.toContain(
+      'sparse_infill_density'
+    )
   })
 
   it('forces the assembly path even single-bodied — the support keys must ship', () => {

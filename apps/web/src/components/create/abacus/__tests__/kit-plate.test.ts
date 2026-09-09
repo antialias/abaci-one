@@ -867,6 +867,22 @@ describe('buildKitPlateThreeMf (the whole kit as one plate)', () => {
     expect([...plate.bytes.slice(0, 4)]).toEqual([0x50, 0x4b, 0x03, 0x04])
   })
 
+  it('gives the plate’s feet body its own solid-infill keys, once, and nothing else', () => {
+    // Every module's feet bucket into ONE body (per slot), so the plate carries the
+    // keys once, on the feet's extruder 1; the frame and bead parts keep the
+    // operator's infill.
+    const feetParams = p({ color_scheme: 'heaven-earth', feet_mode: 'printed' })
+    const plate = buildKitPlateThreeMf({
+      parts: kitParts(feetParams, true),
+      filamentMap: { ...fmHeavenEarth, feet: 2 },
+    })
+    const modelSettings = strFromU8(unzipSync(plate.bytes)['Metadata/model_settings.config'])
+    expect(modelSettings.match(/sparse_infill_density/g)).toHaveLength(1)
+    expect(modelSettings).toContain(
+      '<metadata key="extruder" value="1"/><metadata key="sparse_infill_density" value="100%"/>'
+    )
+  })
+
   it('declares the filament count it reserved for — bodies plus what routing adds', () => {
     // The number the service cross-checks against its resolved plan. It is the same
     // arithmetic the ticket does (one entry per distinct body slot, then the

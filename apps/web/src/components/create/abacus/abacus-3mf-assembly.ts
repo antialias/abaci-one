@@ -61,6 +61,13 @@ export interface AssemblyBody {
   readonly label: string
   /** 1-based filament index (extruder / AMS slot) this body prints on. */
   readonly extruder: number
+  /** Orca process keys this part owns, written beside `extruder` in its
+   *  `model_settings.config` entry. Per-part config is the one channel that
+   *  reaches a submitted print untouched: THH's `--load-settings` replaces the
+   *  project's global settings, not a part's own (the support-transition
+   *  modifier rides the same channel). Values in Orca's own serialization —
+   *  a percent is `"100%"`. */
+  readonly process?: Readonly<Record<string, string>>
 }
 
 export interface Assembled3mf {
@@ -209,6 +216,27 @@ export const SUPPORT_TRANSITION_HEIGHT_MM = 0.6
 export const SUPPORT_TRANSITION_SPEED_MM_S = 25
 export const SUPPORT_TRANSITION_NAME = 'abaci-support-transition-v1'
 
+/**
+ * The printed feet's own process keys: the feet print solid, always.
+ *
+ * Two reasons, both the feet's alone. A soft TPU foot over sparse infill squashes
+ * unevenly under the frame, so the feet were settled as 100 % from the start. And
+ * in a two-stage print the feet ARE Stage A: their top layers are the seam, with
+ * no top shell of their own (the foot's top is interior to the feet+frame union),
+ * so Stage B's first layer lands on whatever infill the feet have. Solid feet make
+ * that a solid bed. Carried per part rather than as a plate-wide style key so the
+ * operator's infill density stays on the frame and beads — the style-wide 100 %
+ * the two-stage mode shipped at first printed every bead solid.
+ *
+ * Only a body that is the feet and nothing else gets these (see
+ * `emitThreeMfBodies`): merged into another role's body, the keys would take the
+ * frame with them.
+ */
+export const FEET_PART_PROCESS: Readonly<Record<string, string>> = {
+  sparse_infill_density: '100%',
+  sparse_infill_pattern: 'rectilinear',
+}
+
 /** Download fallback. Print submission uses the selected printer's live bed geometry. */
 export const BAMBU_256_BED: BedSize = {
   wMm: 256,
@@ -315,6 +343,13 @@ function filamentColor(hex: string): string {
 
 /** Weld a body's triangle soup to indexed geometry (µm quantization) and emit the
  *  3MF `<vertices>`/`<triangles>` XML. Welding is per-body — bodies never merge. */
+/** A part's own process keys, as Orca writes them beside `extruder`. */
+function partProcessXml(b: AssemblyBody): string {
+  return Object.entries(b.process ?? {})
+    .map(([key, value]) => `<metadata key="${key}" value="${escapeXml(value)}"/>`)
+    .join('')
+}
+
 function emitBodyMesh(positions: Float32Array): { verts: string; tris: string } {
   const index = new Map<string, number>()
   const coords: number[] = []
@@ -621,7 +656,7 @@ export function assembleAbacus3mf(
   const partsXml = bodies
     .map(
       (b, i) =>
-        `<part id="${childIds[i]}" subtype="normal_part"><metadata key="name" value="${escapeXml(b.label)}"/><metadata key="extruder" value="${b.extruder}"/></part>`
+        `<part id="${childIds[i]}" subtype="normal_part"><metadata key="name" value="${escapeXml(b.label)}"/><metadata key="extruder" value="${b.extruder}"/>${partProcessXml(b)}</part>`
     )
     .join('')
   const transitionPartXml = transitionMesh

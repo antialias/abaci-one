@@ -58,7 +58,12 @@ import {
   towerMargin,
   towerPlacementCandidates,
 } from '@eink/plate-packing'
-import { type AbacusThreeMf, emitThreeMfBodies, type SpoolBodySummary } from './abacus-3mf'
+import {
+  type AbacusThreeMf,
+  emitThreeMfBodies,
+  type PartSoup,
+  type SpoolBodySummary,
+} from './abacus-3mf'
 import {
   BAMBU_256_BED,
   DEFAULT_WIPE_TOWER_PROFILE,
@@ -294,6 +299,8 @@ const SLOT_PER_SHELL = -1
 export interface SlotSoup {
   readonly slot: number
   readonly positions: Float32Array
+  /** The feet soup's tag, carried through placement — see `PartSoup`. */
+  readonly role?: 'feet'
 }
 
 /** Where the packer put one module: min corner on the bed, and whether it was
@@ -349,7 +356,7 @@ export function placeModuleBodies(
       out[i + 1] = (at.rotated ? x - basis.minX : y - basis.minY) + at.yMm
       out[i + 2] = src[i + 2]
     }
-    return { slot: body.slot, positions: out }
+    return { ...body, positions: out }
   })
 }
 
@@ -1120,7 +1127,7 @@ export function buildKitPlateThreeMf(
   // have shipped, moved as rigid groups — nothing is re-classified after a move.
   const chunks: { positions: Float32Array; triShell: Int32Array; shellBase: number }[] = []
   const slotOfShell: number[] = []
-  const partSoups: { slot: number; positions: Float32Array }[] = []
+  const partSoups: PartSoup[] = []
   for (const inst of instances) {
     const soups = soupsFor(inst)
     const basis = bases[inst.kind]
@@ -1138,7 +1145,7 @@ export function buildKitPlateThreeMf(
     })
     slotOfShell.push(...soups.slotOfShell)
     for (const soup of placeModuleBodies(soups.partSoups, basis, at)) {
-      partSoups.push({ slot: soup.slot, positions: soup.positions })
+      partSoups.push(soup)
     }
   }
 
