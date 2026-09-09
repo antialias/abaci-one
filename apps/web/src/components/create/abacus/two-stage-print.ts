@@ -177,9 +177,17 @@ export const TWO_STAGE_SEAM_TOOL_OVERRIDES: SeamToolOverrides = {
  *    keeps the operator's editor choice.
  *  - the plate-wide slow-TPU95 speeds are gone: Stage B is PLA at normal speed,
  *    and filament 0's own overlay (3 mm³/s) still caps the feet in Stage A.
+ *    One stays: `initial_layer_infill_speed`. Orca prints the frame's contact
+ *    layer over the interface as the `Bottom surface` role and takes that GLOBAL
+ *    key for it, bypassing object modifiers — so the support-transition modifier
+ *    (region keys only) cannot cap it, and the gateway's transition check refused
+ *    the first feet-only slice at 39.51 mm/s (2026-09-09). The TPU-floor mode
+ *    covers it with its plate-wide 18.
  */
 export const FEET_ONLY_PROCESS: Readonly<Record<string, TicketStyle['process'][string]>> = {
   interface_shells: true,
+  /** = `SUPPORT_TRANSITION_SPEED_MM_S` (the test binds them): the Bottom-surface cap. */
+  initial_layer_infill_speed: 25,
   raft_first_layer_density: 90,
   raft_first_layer_expansion: 0,
   brim_type: 'no_brim',

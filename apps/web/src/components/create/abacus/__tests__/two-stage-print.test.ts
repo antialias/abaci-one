@@ -1,5 +1,6 @@
 import type { TicketStyle } from '@eink/print-dialog'
 import { describe, expect, it } from 'vitest'
+import { SUPPORT_TRANSITION_SPEED_MM_S } from '../abacus-3mf-assembly'
 import type { FilamentCatalog } from '../abacus-catalog'
 import {
   checkSeam,
@@ -225,7 +226,6 @@ describe('withTwoStageProcess — the feet-only variant (Gitea #45)', () => {
     expect(out.process.outer_wall_speed).toBe(200)
     for (const key of [
       'initial_layer_speed',
-      'initial_layer_infill_speed',
       'initial_layer_acceleration',
       'inner_wall_speed',
       'sparse_infill_speed',
@@ -236,6 +236,16 @@ describe('withTwoStageProcess — the feet-only variant (Gitea #45)', () => {
       expect(key in out.process).toBe(false)
     }
     expect(out.process).toMatchObject(FEET_ONLY_PROCESS)
+  })
+  it('both modes cap the Bottom-surface role, the global key the transition modifier cannot reach', () => {
+    // Orca takes `initial_layer_infill_speed` for the contact layer over the interface and
+    // ignores object modifiers; the gateway verifies the band at SUPPORT_TRANSITION_SPEED_MM_S.
+    const feetOnly = withTwoStageProcess(style, { variant: 'feet-only' })
+    expect(feetOnly.process.initial_layer_infill_speed).toBe(SUPPORT_TRANSITION_SPEED_MM_S)
+    const tpuFloor = withTwoStageProcess(style)
+    expect(tpuFloor.process.initial_layer_infill_speed as number).toBeLessThanOrEqual(
+      SUPPORT_TRANSITION_SPEED_MM_S
+    )
   })
   it('feet-only with a dedicated interface spool: zero gap on a solid interface — a floor, not a bridge', () => {
     const out = withTwoStageProcess(style, { variant: 'feet-only', dedicatedInterface: true })
