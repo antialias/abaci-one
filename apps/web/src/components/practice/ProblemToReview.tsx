@@ -9,7 +9,7 @@
  * - Single problem representation (never duplicated between collapsed/expanded)
  * - In collapsed mode: shows problem + weak skills (up to 3, ordered by BKT severity)
  * - In expanded mode: annotates the SAME problem with skill breakdown per term
- * - Part type indicator (🧮 Abacus, 🧠 Visualize, 💭 Mental)
+ * - Part type indicator (🧮 Abacus, 🧠 Visualize, 📝 Linear)
  * - Purpose explanation (focus, reinforce, review, challenge)
  * - Attention reason badges (incorrect, slow, help-used)
  */
@@ -51,7 +51,7 @@ function getPartTypeEmoji(type: string): string {
     case 'visualization':
       return '🧠'
     case 'linear':
-      return '💭'
+      return '📝'
     default:
       return '📝'
   }

@@ -65,6 +65,12 @@ export interface AbacusTicketArgs {
   /** Filament overlay for filaments[0], the seam tool — the two-stage recipe
    *  rides it on BOTH stages so the resolved plans match. */
   seamToolOverrides?: SeamToolOverrides | null
+  /** The feet-only variant (Gitea #45 / things-haunt-house#466): the loaded slot
+   *  that prints the SUPPORT BODY, tagged `role: 'support'` on its EXISTING model
+   *  entry — the frame's spool supporting the frame. Rides both stages. With it,
+   *  Stage A's `split` carries `partition: 'seam-tool-model'`, and the support
+   *  interface may be any loaded slot: it prints in Stage B, not below the seam. */
+  supportBodySlotId?: string | null
 }
 
 export interface AbacusWipeTowerRequest {
@@ -78,7 +84,8 @@ export interface AbacusWipeTowerRequest {
   packedForFilaments?: number
 }
 
-export interface AbacusPrintTicket extends PrintTicketV2 {
+export interface AbacusPrintTicket extends Omit<PrintTicketV2, 'filaments'> {
+  readonly filaments: readonly TicketFilament[]
   wipeTower?: AbacusWipeTowerRequest
   split?: TwoStageSplit
   chain?: TwoStageChain
@@ -122,6 +129,7 @@ export function buildAbacusTicket(args: AbacusTicketArgs): AbacusPrintTicket {
     split = null,
     chain = null,
     seamToolOverrides = null,
+    supportBodySlotId = null,
   } = args
 
   if (catalog.source !== 'thh-ams') {
@@ -213,6 +221,29 @@ export function buildAbacusTicket(args: AbacusTicketArgs): AbacusPrintTicket {
     }
   }
 
+  // The support-BODY role (things-haunt-house#466) rides an EXISTING model entry:
+  // no new entry and no position rule, so extruder→spool alignment is untouched.
+  // It is the feet-only variant's whole filament story — the frame's PLA supports
+  // the frame — and the interface follows it unless an interface entry above says
+  // otherwise. THH: at most one, a loaded slot, the same `enable_support` gate.
+  if (supportBodySlotId !== null) {
+    const spool = catalog.spools.find((s) => s.id === supportBodySlotId)
+    if (!spool) {
+      throw new Error(`support-body slot "${supportBodySlotId}" is not in the loaded roster`)
+    }
+    if (spool.external) {
+      throw new Error('the support body must be a loaded AMS slot, never the external spool')
+    }
+    const idx = filaments.findIndex((f) => 'slotId' in f && f.slotId === supportBodySlotId)
+    const entry = idx >= 0 ? filaments[idx] : undefined
+    if (!entry || !('slotId' in entry)) {
+      throw new Error(
+        `support-body slot "${supportBodySlotId}" prints no model body — the role rides the frame's own entry, it does not add one`
+      )
+    }
+    filaments[idx] = { ...entry, role: 'support' }
+  }
+
   // Two-stage feet print (Gitea #38 / things-haunt-house#456): Stage A = this same
   // filament list + `split`, Stage B = the same list + `chain`. THH's slice
   // invariants are refused HERE, at submit, rather than surfacing as a
@@ -234,7 +265,28 @@ export function buildAbacusTicket(args: AbacusTicketArgs): AbacusPrintTicket {
         'a two-stage print needs a loaded AMS slot as filament 0 — the external feed rides in split.feed'
       )
     }
-    if (supportInterfaceSlotId !== null && supportInterfaceSlotId !== seamTool.slotId) {
+    // The feet-only variant (Gitea #45): a role-partitioned Stage A keeps only the
+    // seam tool's model runs, so the support interface no longer sits below the
+    // seam and may be any loaded slot. The variant is named by its support body
+    // and, on Stage A, by the partition — one without the other is half a ticket.
+    const feetOnly = supportBodySlotId !== null
+    if (split && (split.partition === 'seam-tool-model') !== feetOnly) {
+      throw new Error(
+        feetOnly
+          ? 'a support body without split.partition "seam-tool-model" — the feet-only variant needs both'
+          : 'split.partition "seam-tool-model" names no support body — the feet-only variant prints its supports in the frame spool (role: "support")'
+      )
+    }
+    if (feetOnly && supportBodySlotId === seamTool.slotId) {
+      throw new Error(
+        'the feet-only variant prints its supports in a spool other than the feet — the seam tool cannot be the support body'
+      )
+    }
+    if (
+      !feetOnly &&
+      supportInterfaceSlotId !== null &&
+      supportInterfaceSlotId !== seamTool.slotId
+    ) {
       throw new Error(
         'a two-stage print prints its support interface in filament 0 — routing it to another slot is a tool change below the seam'
       )

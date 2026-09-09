@@ -6,11 +6,22 @@
 // lists stay in one place; this is the presentation.
 import { StudioNotice } from '@/components/studio/StudioNotice'
 import { STUDIO } from '@/components/studio/theme'
-import { STAGE_A_PREP_STEPS } from './two-stage-print'
+import { STAGE_A_PREP_STEPS, TWO_STAGE_VARIANT_COPY, type TwoStageVariant } from './two-stage-print'
 
-export function StageAPrepCard() {
+export interface StageAPrepCardProps {
+  /** Which two-stage print this is (Gitea #45); the feed swap is the same, the
+   *  copy for what Stage A then prints is not. */
+  variant?: TwoStageVariant
+}
+
+export function StageAPrepCard({ variant = 'tpu-floor' }: StageAPrepCardProps = {}) {
   return (
-    <StudioNotice tone="info" dataElement="two-stage-prep" title="Before Stage A — at the printer:">
+    <StudioNotice
+      tone="info"
+      dataElement="two-stage-prep"
+      dataAttrs={{ 'data-variant': variant }}
+      title="Before Stage A — at the printer:"
+    >
       <ol
         style={{
           margin: 0,
@@ -24,6 +35,12 @@ export function StageAPrepCard() {
           <li key={step}>{step}</li>
         ))}
       </ol>
+      {variant === 'feet-only' && (
+        <span data-element="two-stage-prep-variant" style={{ color: STUDIO.color.warnInline }}>
+          Feet-only (experimental): Stage A {TWO_STAGE_VARIANT_COPY['feet-only'].stageA}. Stage B{' '}
+          {TWO_STAGE_VARIANT_COPY['feet-only'].stageB}.
+        </span>
+      )}
       <div style={{ ...STUDIO.type.note, marginTop: 6 }}>
         If an AMS tray is still at the nozzle when you submit, the print service parks Stage A until
         you swap the feed. It can’t see what is on the external spool, so check the material

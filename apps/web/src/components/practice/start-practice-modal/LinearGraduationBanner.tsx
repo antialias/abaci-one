@@ -33,7 +33,7 @@ export function LinearGraduationBanner() {
 
   // Only nudge while linear is off — once it's scheduled there's nothing to offer.
   const linearOff = partWeights.linear === 0
-  const ready = (data?.categories ?? []).filter((c) => !c.vetoed)
+  const ready = (data?.categories ?? []).filter((c) => c.status === 'ready')
 
   if (!linearOff || ready.length === 0) return null
 
@@ -83,11 +83,18 @@ export function LinearGraduationBanner() {
             color: isDark ? 'green.100' : 'green.700',
           })}
         >
-          <strong>{namesText}</strong>{' '}
-          {ready.length === 1 ? 'is' : 'are'} automatic enough to practice as horizontal
-          number sentences (e.g. <span className={css({ whiteSpace: 'nowrap' })}>45 + 27 = ?</span>).
+          <strong>{namesText}</strong> {ready.length === 1 ? 'is' : 'are'} automatic enough to
+          practice as horizontal number sentences (e.g.{' '}
+          <span className={css({ whiteSpace: 'nowrap' })}>45 + 27 = ?</span>).
         </p>
-        <div className={css({ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' })}>
+        <div
+          className={css({
+            display: 'flex',
+            gap: '0.5rem',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+          })}
+        >
           <button
             type="button"
             data-action="turn-on-number-sentences"

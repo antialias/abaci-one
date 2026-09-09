@@ -7,32 +7,33 @@
  */
 
 import { NextResponse } from 'next/server'
+import { SKILL_CATEGORIES } from '@/constants/skillCategories'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import { getUserId } from '@/lib/viewer'
-import { SKILL_CATEGORIES } from '@/constants/skillCategories'
-import { clearLinearReadinessVeto, setLinearReadinessVeto } from '@/lib/curriculum/progress-manager'
 import { getLinearReadinessState } from '@/lib/curriculum/linear-readiness-service'
+import { clearLinearReadinessVeto, setLinearReadinessVeto } from '@/lib/curriculum/progress-manager'
+import { getUserId } from '@/lib/viewer'
 
 function isValidCategory(value: unknown): value is string {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(SKILL_CATEGORIES, value)
 }
 
 async function authorize(
-  params: Promise<unknown> | unknown
+  params: Promise<unknown> | unknown,
+  action: 'view' | 'start-session'
 ): Promise<{ playerId: string } | NextResponse> {
   const { playerId } = (await params) as { playerId: string }
   if (!playerId) return NextResponse.json({ error: 'Player ID required' }, { status: 400 })
   const userId = await getUserId()
-  const canModify = await canPerformAction(userId, playerId, 'start-session')
-  if (!canModify) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+  const allowed = await canPerformAction(userId, playerId, action)
+  if (!allowed) return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   return { playerId }
 }
 
 /** GET - derived linear-ready categories (with veto flags) for this student */
 export const GET = withAuth(async (_request, { params }) => {
   try {
-    const auth = await authorize(params)
+    const auth = await authorize(params, 'view')
     if (auth instanceof NextResponse) return auth
     const state = await getLinearReadinessState(auth.playerId)
     return NextResponse.json(state)
@@ -45,7 +46,7 @@ export const GET = withAuth(async (_request, { params }) => {
 /** POST - veto a skill category off number sentences */
 export const POST = withAuth(async (request, { params }) => {
   try {
-    const auth = await authorize(params)
+    const auth = await authorize(params, 'start-session')
     if (auth instanceof NextResponse) return auth
 
     const body = await request.json()
@@ -68,7 +69,7 @@ export const POST = withAuth(async (request, { params }) => {
 /** DELETE - lift a category veto */
 export const DELETE = withAuth(async (request, { params }) => {
   try {
-    const auth = await authorize(params)
+    const auth = await authorize(params, 'start-session')
     if (auth instanceof NextResponse) return auth
 
     const body = await request.json()

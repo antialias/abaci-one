@@ -7,7 +7,7 @@ import { and, desc, eq, inArray, lt, ne, or } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-curriculum'
 import type { NewPlayerSkillMastery, PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
-import { type PracticeLevel, isActive } from '@/db/schema/player-skill-mastery'
+import { isActive, type PracticeLevel } from '@/db/schema/player-skill-mastery'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SlotResult } from '@/db/schema/session-plans'
 import {
@@ -15,14 +15,14 @@ import {
   type NewSkillTutorialProgress,
   type SkillTutorialProgress,
 } from '@/db/schema/skill-tutorial-progress'
-import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
 import { DEFAULT_SECONDS_PER_PROBLEM } from '@/lib/curriculum/config'
+import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
 import {
+  type AttemptTimingReason,
   classifyAttemptTiming,
   countUnresolvedFlagged,
   getEffectiveResponseTimeMs,
   isFlagResolved,
-  type AttemptTimingReason,
 } from '@/lib/curriculum/timing/effective-time'
 import {
   assessPace,
@@ -161,8 +161,9 @@ export async function setLinearReadinessVeto(
   await db
     .insert(schema.linearReadinessVeto)
     .values({ playerId, category, reason: reason ?? null })
-    .onConflictDoNothing({
+    .onConflictDoUpdate({
       target: [schema.linearReadinessVeto.playerId, schema.linearReadinessVeto.category],
+      set: { reason: reason ?? null },
     })
 }
 
@@ -700,10 +701,7 @@ export async function getTimingReviewData(playerId: string): Promise<TimingRevie
       })
       .from(schema.sessionPlans)
       .where(
-        and(
-          eq(schema.sessionPlans.playerId, playerId),
-          eq(schema.sessionPlans.status, 'deleted')
-        )
+        and(eq(schema.sessionPlans.playerId, playerId), eq(schema.sessionPlans.status, 'deleted'))
       )
       .orderBy(desc(schema.sessionPlans.deletedAt))
       .limit(PACE_WINDOW_SESSIONS),

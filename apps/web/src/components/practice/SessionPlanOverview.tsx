@@ -20,7 +20,7 @@ function getPartEmoji(type: SessionPart['type']): string {
     case 'visualization':
       return '🧠'
     case 'linear':
-      return '💭'
+      return '📝'
   }
 }
 

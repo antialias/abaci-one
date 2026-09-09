@@ -206,6 +206,11 @@ export interface Assemble3mfOpts {
    *  the profile's envelope row; see {@link envelopeForFilaments}. Omitted, the
    *  count-unaware bound is reserved, which is safe and wasteful. */
   readonly filaments?: number
+  /** The feet-only two-stage variant (Gitea #45): one `support_blocker` volume per
+   *  foot, keeping Stage B's PLA support out of the nozzle's way around feet that
+   *  are already standing. See {@link supportBlockerRadius}. Never printed, never
+   *  moves the footprint. */
+  readonly supportBlockers?: readonly SupportBlocker[]
 }
 
 /** The printed-feet frame starts at source Z=0, above feet that dip below zero.
@@ -215,6 +220,64 @@ export interface Assemble3mfOpts {
 export const SUPPORT_TRANSITION_HEIGHT_MM = 0.6
 export const SUPPORT_TRANSITION_SPEED_MM_S = 25
 export const SUPPORT_TRANSITION_NAME = 'abaci-support-transition-v1'
+
+/**
+ * Per-foot support blockers for the feet-only two-stage variant (Gitea #45).
+ *
+ * Stage B prints its support body from layer 1 around feet that are already
+ * standing `heightMm` tall on the plate, so every support line has to clear the
+ * NOZZLE, not just the foot: a flat tip Ø3 with 45° sides out to Ø12 (the X1C
+ * hotend, user-measured 2026-09-09). With the tip at layer top z the foot top is
+ * `heightMm − z` above it, so the void about each foot centre is
+ *
+ *     R(z) = r_foot + slop + min(tip_r + (H − z), cone_r)
+ *
+ * 7.9 mm at layer 1 → 6.5 mm at the seam for the stock 1.6 mm feet. Graduated on
+ * purpose: a flat `support_object_xy_distance` would need the layer-1 value all
+ * the way up and double the unsupported ring at the seam. One volume per foot,
+ * revolved from that profile (a frustum while H is under the cone's height, a
+ * cylinder under a frustum beyond it), source z −H..0 = bed z 0..H. Orca sizes an
+ * object by its model parts, so blockers never move the footprint or the tower.
+ * `raft_first_layer_expansion` must be 0 alongside: Orca grows support layer 0
+ * AFTER blockers apply.
+ */
+export const NOZZLE_TIP_RADIUS_MM = 1.5
+export const NOZZLE_CONE_RADIUS_MM = 6
+/** Half a 0.42 mm support line, plus XY slop. */
+export const SUPPORT_BLOCKER_SLOP_MM = 0.5
+export const SUPPORT_BLOCKER_NAME = 'abaci-support-blocker-v1'
+const SUPPORT_BLOCKER_SEGMENTS = 32
+
+export interface SupportBlocker {
+  /** Foot centre, source XY — the frame the bodies are in. */
+  readonly cx: number
+  readonly cy: number
+  /** The feet stand-off = the seam height (`feet_proud`). */
+  readonly heightMm: number
+  /** The stand-off's radius about its centre (a square foot's circumradius). */
+  readonly rFootMm: number
+}
+
+/** The support void's radius about a foot centre with the nozzle tip at layer top `zMm` (bed z). */
+export function supportBlockerRadius(zMm: number, heightMm: number, rFootMm: number): number {
+  return (
+    rFootMm +
+    SUPPORT_BLOCKER_SLOP_MM +
+    Math.min(NOZZLE_TIP_RADIUS_MM + (heightMm - zMm), NOZZLE_CONE_RADIUS_MM)
+  )
+}
+
+/** The revolved profile, bottom to top in bed z: the knots where R(z) bends. */
+export function supportBlockerProfile(
+  heightMm: number,
+  rFootMm: number
+): readonly { readonly z: number; readonly r: number }[] {
+  // Above this height the cone's full radius is already reached at the plate, so
+  // R is flat from the plate up to the knee and slopes only above it.
+  const knee = heightMm - (NOZZLE_CONE_RADIUS_MM - NOZZLE_TIP_RADIUS_MM)
+  const zs = knee > 0 && knee < heightMm ? [0, knee, heightMm] : [0, heightMm]
+  return zs.map((z) => ({ z, r: supportBlockerRadius(z, heightMm, rFootMm) }))
+}
 
 /**
  * The printed feet's own process keys: the feet print solid, always.
@@ -284,6 +347,8 @@ const TOWER_EDGE = 16
 
 const ASSEMBLY_ID = 1000 // printable object id; child meshes take 2..N+1
 const SUPPORT_TRANSITION_ID = ASSEMBLY_ID + 1
+/** Per-foot support blockers take 1002, 1003, … in `FEET_POS` order. */
+export const SUPPORT_BLOCKER_ID_BASE = ASSEMBLY_ID + 2
 
 // A parameter modifier has to cap every feature Orca may assign to the frame's
 // first few layers. In particular, the contact layer is Bridge/Overhang wall,
@@ -419,6 +484,46 @@ function emitModifierBox(
     verts: vertices
       .map(([x, y, z]) => `<vertex x="${fmt(x)}" y="${fmt(y)}" z="${fmt(z)}"/>`)
       .join(''),
+    tris: faces.map(([a, b, c]) => `<triangle v1="${a}" v2="${b}" v3="${c}"/>`).join(''),
+  }
+}
+
+/** A solid of revolution about (cx, cy) from a bottom-to-top profile of (z, r)
+ *  rings — a blocker volume, never printed. Wound outward. */
+function emitRevolvedSolid(
+  cx: number,
+  cy: number,
+  zOffset: number,
+  profile: readonly { readonly z: number; readonly r: number }[],
+  segments: number
+): { verts: string; tris: string } {
+  const n = segments
+  const pts: [number, number, number][] = []
+  for (const ring of profile) {
+    for (let i = 0; i < n; i++) {
+      const a = (2 * Math.PI * i) / n
+      pts.push([cx + ring.r * Math.cos(a), cy + ring.r * Math.sin(a), zOffset + ring.z])
+    }
+  }
+  const bottomCentre = pts.length
+  pts.push([cx, cy, zOffset + profile[0].z])
+  const topCentre = pts.length
+  pts.push([cx, cy, zOffset + profile[profile.length - 1].z])
+  const top = (profile.length - 1) * n
+  const faces: [number, number, number][] = []
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n
+    faces.push([bottomCentre, j, i])
+    faces.push([topCentre, top + i, top + j])
+    for (let k = 0; k + 1 < profile.length; k++) {
+      const lo = k * n
+      const hi = (k + 1) * n
+      faces.push([lo + i, lo + j, hi + j])
+      faces.push([lo + i, hi + j, hi + i])
+    }
+  }
+  return {
+    verts: pts.map(([x, y, z]) => `<vertex x="${fmt(x)}" y="${fmt(y)}" z="${fmt(z)}"/>`).join(''),
     tris: faces.map(([a, b, c]) => `<triangle v1="${a}" v2="${b}" v3="${c}"/>`).join(''),
   }
 }
@@ -636,19 +741,39 @@ export function assembleAbacus3mf(
   const transitionObjectXml = transitionMesh
     ? `<object id="${SUPPORT_TRANSITION_ID}" type="model"><mesh><vertices>${transitionMesh.verts}</vertices><triangles>${transitionMesh.tris}</triangles></mesh></object>`
     : ''
+  // The feet-only variant's blockers (Gitea #45): one revolved volume per foot in
+  // source space, so they ride the same build transform as the bodies — source
+  // −H..0 lands on bed 0..H exactly where the foot stand-off does.
+  const blockers = (opts.supportBlockers ?? []).map((b, k) => ({
+    id: SUPPORT_BLOCKER_ID_BASE + k,
+    mesh: emitRevolvedSolid(
+      b.cx,
+      b.cy,
+      -b.heightMm,
+      supportBlockerProfile(b.heightMm, b.rFootMm),
+      SUPPORT_BLOCKER_SEGMENTS
+    ),
+  }))
+  const blockerObjectsXml = blockers
+    .map(
+      ({ id, mesh }) =>
+        `<object id="${id}" type="model"><mesh><vertices>${mesh.verts}</vertices><triangles>${mesh.tris}</triangles></mesh></object>`
+    )
+    .join('')
   const componentsXml = childIds
     .map((id) => `<component objectid="${id}" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>`)
     .concat(
       transitionMesh
         ? [`<component objectid="${SUPPORT_TRANSITION_ID}" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>`]
-        : []
+        : [],
+      blockers.map(({ id }) => `<component objectid="${id}" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>`)
     )
     .join('')
   const assemblyXml = `<object id="${ASSEMBLY_ID}" type="model"><components>${componentsXml}</components></object>`
   const model =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
     `<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">` +
-    `<resources><basematerials id="1">${baseEntries}</basematerials>${objectsXml}${transitionObjectXml}${assemblyXml}</resources>` +
+    `<resources><basematerials id="1">${baseEntries}</basematerials>${objectsXml}${transitionObjectXml}${blockerObjectsXml}${assemblyXml}</resources>` +
     `<build><item objectid="${ASSEMBLY_ID}" transform="1 0 0 0 1 0 0 0 1 ${fmt(tx)} ${fmt(ty)} ${fmt(tz)}"/></build>` +
     `</model>`
 
@@ -667,9 +792,15 @@ export function assembleAbacus3mf(
       ).join('') +
       `</part>`
     : ''
+  const blockerPartsXml = blockers
+    .map(
+      ({ id }, k) =>
+        `<part id="${id}" subtype="support_blocker"><metadata key="name" value="${SUPPORT_BLOCKER_NAME}-foot-${k + 1}"/></part>`
+    )
+    .join('')
   const modelSettings =
     `<?xml version="1.0" encoding="UTF-8"?>\n<config>` +
-    `<object id="${ASSEMBLY_ID}"><metadata key="name" value="abacus"/>${partsXml}${transitionPartXml}</object>` +
+    `<object id="${ASSEMBLY_ID}"><metadata key="name" value="abacus"/>${partsXml}${transitionPartXml}${blockerPartsXml}</object>` +
     `</config>`
 
   // ---- Metadata/project_settings.config (owned tower + filament pin) ----

@@ -11,7 +11,19 @@ import type { TargetClassification } from './types'
  * - CORRECT: bktUpdate + applyLearning (student may have learned from this)
  * - INCORRECT: bktUpdate only (no learning transition on failure)
  */
-export function simulateBktSequence(skillId: string, sequence: boolean[]): number {
+/**
+ * Per-answer evidence weight, mirroring computeBktFromHistory's blend
+ * (pKnown ← pKnown·(1−w) + updated·w). The real classifier derives w from
+ * response time, help usage and retries; a seed profile with a slow response
+ * band therefore needs the same w here or its target classification drifts.
+ */
+export type EvidenceWeightFn = (isCorrect: boolean) => number
+
+export function simulateBktSequence(
+  skillId: string,
+  sequence: boolean[],
+  evidenceWeight?: EvidenceWeightFn
+): number {
   const params = getDefaultParams(skillId)
   let pKnown = params.pInit
 
@@ -19,7 +31,9 @@ export function simulateBktSequence(skillId: string, sequence: boolean[]): numbe
     const updated = bktUpdate(pKnown, isCorrect, params)
     // Only apply learning transition on CORRECT answers
     // (matches updateOnCorrect vs updateOnIncorrect behavior)
-    pKnown = isCorrect ? applyLearning(updated, params.pLearn) : updated
+    const next = isCorrect ? applyLearning(updated, params.pLearn) : updated
+    const w = evidenceWeight?.(isCorrect) ?? 1
+    pKnown = pKnown * (1 - w) + next * w
   }
 
   return pKnown
@@ -40,7 +54,8 @@ export function simulateBktSequence(skillId: string, sequence: boolean[]): numbe
 export function designSequenceForClassification(
   skillId: string,
   problemCount: number,
-  target: TargetClassification
+  target: TargetClassification,
+  evidenceWeight?: EvidenceWeightFn
 ): boolean[] {
   // For very few problems, use simple patterns
   if (problemCount <= 3) {
@@ -59,17 +74,38 @@ export function designSequenceForClassification(
   switch (target) {
     case 'strong': {
       // 85% correct, ending with streak of correct
-      const incorrectCount = Math.max(1, Math.floor(problemCount * 0.15))
-      return [
-        ...Array(incorrectCount).fill(false),
-        ...Array(problemCount - incorrectCount).fill(true),
-      ]
+      // Early mistakes, then a clean run. Slow-answer weights damp correct
+      // evidence, so shed early mistakes until the run really lands strong.
+      for (
+        let incorrect = Math.max(1, Math.floor(problemCount * 0.15));
+        incorrect >= 0;
+        incorrect--
+      ) {
+        const sequence = [
+          ...Array(incorrect).fill(false),
+          ...Array(problemCount - incorrect).fill(true),
+        ]
+        if (simulateBktSequence(skillId, sequence, evidenceWeight) >= BKT_THRESHOLDS.strong) {
+          return sequence
+        }
+      }
+      return Array(problemCount).fill(true)
     }
 
     case 'weak': {
       // 90% incorrect, ending with long streak of incorrect
-      const correctCount = Math.max(1, Math.floor(problemCount * 0.1))
-      return [...Array(correctCount).fill(true), ...Array(problemCount - correctCount).fill(false)]
+      // A lucky start, then failure. Fast-answer weights amplify correct
+      // evidence, so shed the lucky answers until the run really lands weak.
+      for (let correct = Math.max(1, Math.floor(problemCount * 0.1)); correct >= 0; correct--) {
+        const sequence = [
+          ...Array(correct).fill(true),
+          ...Array(problemCount - correct).fill(false),
+        ]
+        if (simulateBktSequence(skillId, sequence, evidenceWeight) < BKT_THRESHOLDS.weak) {
+          return sequence
+        }
+      }
+      return Array(problemCount).fill(false)
     }
 
     case 'developing': {
@@ -141,7 +177,7 @@ export function designSequenceForClassification(
           // Verify sequence length is correct
           if (sequence.length !== problemCount) continue
 
-          const pKnown = simulateBktSequence(skillId, sequence)
+          const pKnown = simulateBktSequence(skillId, sequence, evidenceWeight)
 
           // Check if it lands in developing range
           if (pKnown >= BKT_THRESHOLDS.weak && pKnown < BKT_THRESHOLDS.strong) {
@@ -157,7 +193,7 @@ export function designSequenceForClassification(
           ...Array(problemCount - correct).fill(false),
           true, // End with one correct
         ]
-        const pKnown = simulateBktSequence(skillId, sequence)
+        const pKnown = simulateBktSequence(skillId, sequence, evidenceWeight)
         if (pKnown >= BKT_THRESHOLDS.weak && pKnown < BKT_THRESHOLDS.strong) {
           return sequence
         }
