@@ -76,7 +76,7 @@ export type UseAbacusScad = {
 
 type Pump = {
   latest: Params | null
-  latestExplode: number // main pump only; the plug pass never renders exploded
+  latestExplode: number // main pump only; the plug pass always renders SEATED
   latestKey: string
   drawnKey: string
   rendering: boolean
@@ -267,12 +267,14 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
     // else branch must clear + orphan, or a render still in flight repaints the
     // gated-out overlay after the flip (the CP8-aftercare race).
     //
-    // Exploded view joins the gate: text_plugs renders at SEATED assembled
-    // positions, so over a taken-apart chain the overlay would drift by
-    // i·explode per module — the same stale-overlay family as the CP8 race.
-    // The pockets carved in each module still show; only the color overlay
-    // rests until the chain is put back together.
-    if (params.text_mode === 'inset' && anyTokens(params) && explode === 0) {
+    // Explode does NOT gate this pass (Gitea #44). text_plugs still renders at
+    // SEATED assembled positions — it always did — but the viewer no longer
+    // draws the overlay as one slab: it splits the plug soup by module and
+    // rides each piece in that module's group, so the seated coordinates land
+    // where the module actually is at any pose. A modular design is now ALWAYS
+    // rendered exploded, so gating on explode here would mean no inset-text
+    // preview on a modular design at all.
+    if (params.text_mode === 'inset' && anyTokens(params)) {
       st.plug.latest = params
       st.plug.latestKey = key
       st.pumpPlug?.()
