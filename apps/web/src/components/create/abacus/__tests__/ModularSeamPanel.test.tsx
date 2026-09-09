@@ -135,26 +135,30 @@ describe('ConstructionControl (design rail)', () => {
     expect(d.modular[1]).toBeCloseTo(d.mono[1], 10)
   })
 
-  it('modular quotes both sizes from the one derived chain', () => {
+  it('modular: the readout is the modular footprint and the delta quotes the seam cost', () => {
     studio({ seam_mode: 'modular' })
     const { container } = render(<ConstructionControl />)
     const d = modularSizeDelta({ ...defaultParams, seam_mode: 'modular' })
+    const size = container.querySelector('[data-element="abacus-construction-size"]')
+    expect(size?.textContent).toBe(`${d.modular[0].toFixed(1)} × ${d.modular[1].toFixed(1)} mm`)
     const el = container.querySelector('[data-element="modular-seam-size-delta"]')
-    expect(el?.textContent).toContain(`${d.mono[0].toFixed(1)} × ${d.mono[1].toFixed(1)} mm`)
-    expect(el?.textContent).toContain(`${d.modular[0].toFixed(1)} × ${d.modular[1].toFixed(1)} mm`)
+    expect(el?.textContent).toContain(`${(d.modular[0] - d.mono[0]).toFixed(1)} mm wider`)
+    expect(el?.textContent).toContain(`${d.mono[0].toFixed(1)} mm`)
     expect(el?.textContent).toContain('any subset stands')
+    // the module-only controls sit in one bounded sub-panel under the switch
+    const details = container.querySelector('[data-element="abacus-construction-details"]')
+    expect(details?.querySelector('[data-element="modular-joint-type"]')).not.toBeNull()
+    expect(details?.querySelector('[data-element="modular-print-pointer"]')).not.toBeNull()
   })
 
-  it('one piece quotes only its own footprint — no seam talk under a choice not made', () => {
+  it('one piece: the readout is its own footprint and there is no sub-panel', () => {
     studio({ seam_mode: 'mono' })
     const { container } = render(<ConstructionControl />)
     const d = modularSizeDelta(defaultParams)
-    const el = container.querySelector('[data-element="modular-seam-size-delta"]')
-    expect(el?.textContent).toContain(`${d.mono[0].toFixed(1)} × ${d.mono[1].toFixed(1)} mm`)
-    expect(el?.textContent).not.toContain(
-      `${d.modular[0].toFixed(1)} × ${d.modular[1].toFixed(1)} mm`
-    )
-    expect(el?.textContent).not.toContain('any subset stands')
+    const size = container.querySelector('[data-element="abacus-construction-size"]')
+    expect(size?.textContent).toBe(`${d.mono[0].toFixed(1)} × ${d.mono[1].toFixed(1)} mm`)
+    expect(container.querySelector('[data-element="abacus-construction-details"]')).toBeNull()
+    expect(container.querySelector('[data-element="modular-seam-size-delta"]')).toBeNull()
   })
 
   it('the segmented control writes seam_mode through the one store setter', () => {
