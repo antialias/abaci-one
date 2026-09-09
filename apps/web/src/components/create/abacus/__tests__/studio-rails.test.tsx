@@ -62,6 +62,7 @@ function studio(params: Partial<Params> = {}, overrides: Record<string, unknown>
     connections: [],
     catalog: { spools: [{ name: 'Matte Black' }, { name: 'Crimson' }] },
     filamentMap: fm,
+    servicePlan: null,
     solveResult: { reasons: [] },
     errors: [],
     warnings: [],
@@ -147,12 +148,30 @@ describe('FabricationRail — one primary action', () => {
     expect(btn.style.background).toContain('gradient')
   })
 
+  it('unpaired: one commitment card sits immediately before the primary 3MF action', () => {
+    const { container } = render(<FabricationRail />)
+    const card = container.querySelector('[data-element="print-commitment-card"]')!
+    const action = container.querySelector('[data-action="export-3mf"]')!
+    expect(container.querySelectorAll('[data-element="print-commitment-card"]')).toHaveLength(1)
+    expect(Boolean(card.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(
+      true
+    )
+    expect(card.querySelector('[data-line="pieces"]')?.textContent).toContain('One piece ·')
+    const between = [...container.querySelectorAll('[data-action]')].filter(
+      (node) =>
+        Boolean(card.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+        Boolean(node.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING)
+    )
+    expect(between).toHaveLength(0)
+  })
+
   it('paired: the submit is the commitment — files below it, secondary', () => {
     studio({}, { connections: [{ id: 'c1', name: 'Home printer' }] })
     const { container } = render(<FabricationRail />)
     expect(fileBeforePanel(container, '[data-action="export-3mf"]')).toBe(false)
     const btn = container.querySelector('[data-action="export-3mf"]') as HTMLElement
     expect(btn.style.background).not.toContain('gradient')
+    expect(container.querySelectorAll('[data-element="print-commitment-card"]')).toHaveLength(0)
   })
 
   it('modular: the kit zip replaces the 3MF outright', () => {
@@ -164,6 +183,8 @@ describe('FabricationRail — one primary action', () => {
     const kit = container.querySelector('[data-action="download-module-kit"]') as HTMLElement
     expect(kit.style.background).toContain('gradient')
     expect(screen.getByText(/engraved marker pockets/)).toBeInTheDocument()
+    const card = container.querySelector('[data-element="print-commitment-card"]')!
+    expect(Boolean(card.compareDocumentPosition(kit) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true)
   })
 
   it('modular: the joint fit and its coupon ride in Print options, not Files', () => {

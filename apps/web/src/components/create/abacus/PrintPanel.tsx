@@ -22,16 +22,17 @@
 //     deliberately coarse until THH ships throttled progress rings.
 
 import type {
+  FilamentPlanResponseV1,
   ParamScalarValue,
   SupportRecommendation,
   SupportRosterEntry,
   TicketStartPolicy,
   TicketStyle,
 } from '@eink/print-dialog'
-import { PrintSettingsEditor, SupportRoleEditor, supportsLine } from '@eink/print-dialog/ui'
+import { PrintSettingsEditor, SupportRoleEditor } from '@eink/print-dialog/ui'
 import '@eink/print-dialog/ui/style.css'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { persistAbacusDesign } from '@/hooks/useAbacusDesignSnapshot'
 import { useAbacusPrintJobs, useCancelPrintJob, useStartPrintJob } from '@/hooks/useAbacusPrintJobs'
 import { useAbacusPrintSettings, useSaveAbacusPrintSettings } from '@/hooks/useAbacusPrintSettings'
@@ -48,6 +49,7 @@ import { api } from '@/lib/queryClient'
 import { abacusPrintKeys } from '@/lib/queryKeys'
 import { type AbacusExportParts, bedSizeFromThh, buildAbacusThreeMf } from './abacus-3mf'
 import { type FilamentCatalog, spoolSupportKind } from './abacus-catalog'
+import { commitmentSummary } from './abacus-commitment'
 import { buildKitPlateThreeMf, KitPlateFitError, kitPlateSignature } from './abacus-kit-plate'
 import type { FilamentMap, Params } from './abacus-model'
 import type { ModuleExportParts } from './abacus-module-kit'
@@ -67,6 +69,7 @@ import { JobNotices } from './JobNotices'
 import { KitPlatePreview } from './KitPlatePreview'
 import { ParkedJobCard } from './ParkedJobCard'
 import { PairPrinterPrompt } from './PrintConnectionsManager'
+import { PrintDecision } from './PrintDecision'
 import { PrintSubmitErrorNotice } from './PrintSubmitErrorNotice'
 import {
   abacusModelFileName,
@@ -109,6 +112,7 @@ export interface PrintPanelProps {
   params: Params
   filamentMap: FilamentMap
   catalog: FilamentCatalog
+  servicePlan?: FilamentPlanResponseV1 | null
   /** Manual filament-role pins — part of the RESTORABLE design snapshot the
    *  submit persists (abaci#22), unlike filamentMap which is provenance. */
   overrides: Record<string, string>
@@ -265,6 +269,7 @@ export function PrintPanel(props: PrintPanelProps) {
     params,
     filamentMap,
     catalog,
+    servicePlan = null,
     overrides,
     profileId,
     printerId,
@@ -851,6 +856,53 @@ export function PrintPanel(props: PrintPanelProps) {
     extraFilaments: supportPick ? 1 : 0,
   })
 
+  const summary = useMemo(
+    () =>
+      commitmentSummary({
+        params,
+        filamentMap,
+        catalog,
+        plan: servicePlan,
+        printer: {
+          kind: 'paired',
+          bedMm: printerBed ? { x: printerBed.sizeMm.x, y: printerBed.sizeMm.y } : null,
+          monochromeExternal,
+          supports: {
+            enabled: supportsWanted,
+            interface: supportRoster.find((entry) => entry.slotId === supportPick)?.product ?? null,
+          },
+          feetGate,
+          twoStage: { on: twoStageOn, feetSpool: twoStage.ok ? twoStage.feetSlot.name : null },
+          // 'spills' only on a real refusal; an idle or failed plate query has no
+          // fit result, so the line falls back to the plain piece count
+          kit: !kit
+            ? 'none'
+            : kitPlate.pending
+              ? 'pending'
+              : kitPlate.refusal
+                ? 'spills'
+                : kitPlate.layout
+                  ? 'fits'
+                  : 'none',
+        },
+      }),
+    [
+      params,
+      filamentMap,
+      catalog,
+      servicePlan,
+      printerBed,
+      monochromeExternal,
+      supportsWanted,
+      supportPick,
+      feetGate,
+      twoStageOn,
+      twoStage,
+      kit,
+      kitPlate,
+    ]
+  )
+
   const submitBlocked =
     exportBlocked ||
     !serviceReady ||
@@ -865,6 +917,118 @@ export function PrintPanel(props: PrintPanelProps) {
   // Stage B ignores the toggle — the record, not the switch, is what it chains
   // on — but still needs the mode available (feet tray still TPU, still loaded).
   const stageBBlocked = submitBlocked || !twoStage.ok || seamMisses
+
+  const gates: ReactNode[] = []
+  if (unplacedRoles.length > 0) {
+    gates.push(
+      <div
+        key="unplaced-roles"
+        data-element="print-unplaced-roles-gate"
+        style={{
+          display: 'flex',
+          gap: 8,
+          padding: '8px 10px',
+          borderRadius: 8,
+          background: 'rgba(120,53,15,0.30)',
+          border: '1px solid rgba(251,191,36,0.45)',
+          color: 'rgba(254,243,199,0.96)',
+          lineHeight: 1.45,
+        }}
+      >
+        <span aria-hidden="true">🎯</span>
+        <span>
+          No loaded filament can print {listRoles(unplacedRoles)} —{' '}
+          {unplacedRoles.length === 1 ? 'it shows' : 'they show'} here in the color you chose, which
+          nothing on the printer can lay down. Load a closer spool, or recolor{' '}
+          {unplacedRoles.length === 1 ? 'it' : 'them'} to something you have.
+        </span>
+      </div>
+    )
+  }
+  if (feetGate.missing.length > 0) {
+    gates.push(
+      <div
+        key="feet-support"
+        data-element="print-feet-support-gate"
+        data-grade={feetGate.blocked ? 'blocking' : 'advisory'}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          padding: '8px 10px',
+          borderRadius: 8,
+          background: feetGate.blocked ? 'rgba(120,53,15,0.30)' : 'rgba(30,58,138,0.28)',
+          border: feetGate.blocked
+            ? '1px solid rgba(251,191,36,0.45)'
+            : '1px solid rgba(96,165,250,0.45)',
+          color: feetGate.blocked ? 'rgba(254,243,199,0.96)' : 'rgba(219,234,254,0.96)',
+          lineHeight: 1.45,
+        }}
+      >
+        <span>
+          <span aria-hidden="true">🦶 </span>
+          {feetGate.blocked
+            ? 'Printed TPU feet stand the abacus off the bed, so the bottom face needs supports — turn them on to print.'
+            : 'Supports are on. Keep them off the model too, or they can grow inside the bead channels where you cannot reach them.'}
+        </span>
+        <button
+          type="button"
+          data-action="enable-feet-supports"
+          disabled={!style}
+          onClick={() =>
+            style &&
+            handleStyleChange({
+              ...style,
+              process: {
+                ...style.process,
+                ...Object.fromEntries(
+                  feetGate.missing.map((key) => [key, FEET_SUPPORT_PROCESS[key]])
+                ),
+              },
+            })
+          }
+          style={{
+            alignSelf: 'flex-start',
+            padding: '5px 11px',
+            borderRadius: 6,
+            border: feetGate.blocked
+              ? '1px solid rgba(251,191,36,0.5)'
+              : '1px solid rgba(96,165,250,0.5)',
+            background: feetGate.blocked ? 'rgba(254,243,199,0.12)' : 'rgba(219,234,254,0.12)',
+            color: feetGate.blocked ? 'rgba(254,243,199,0.98)' : 'rgba(219,234,254,0.98)',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          {feetGate.blocked ? 'Enable supports' : 'Keep supports off the model'}
+        </button>
+      </div>
+    )
+  }
+  if (twoStageOn && seamCheck?.misses) {
+    gates.push(
+      <div
+        key="two-stage-seam"
+        data-element="two-stage-seam-warning"
+        style={{
+          padding: '8px 10px',
+          borderRadius: 8,
+          background: 'rgba(120,53,15,0.35)',
+          border: '1px solid rgba(251,191,36,0.5)',
+          color: 'rgba(254,243,199,0.96)',
+          lineHeight: 1.45,
+        }}
+      >
+        The feet seam at {seamCheck.atZMm} mm doesn’t land between layers at{' '}
+        {seamCheck.layerHeightMm} mm
+        {seamCheck.firstLayerMm !== seamCheck.layerHeightMm &&
+          ` (first layer ${seamCheck.firstLayerMm} mm)`}
+        , and the print service can only split on a layer boundary. Pick a layer height that divides
+        the feet stand-off, or change the stand-off in the editor.
+      </div>
+    )
+  }
 
   return (
     <div
@@ -1070,128 +1234,6 @@ export function PrintPanel(props: PrintPanelProps) {
         </div>
       ) : (
         <>
-          {/* No-AMS single-spool print (state D): the design is still submittable,
-              but a one-nozzle printer lays it down in ONE color — surface that here,
-              non-blocking, so the collapse from multi-color is never a surprise. The
-              submit button below stays enabled (submitBlocked doesn't gate on this). */}
-          {monochromeExternal && (
-            <div
-              data-element="print-monochrome-note"
-              style={{
-                display: 'flex',
-                gap: 8,
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: 'rgba(30,58,138,0.28)',
-                border: '1px solid rgba(96,165,250,0.45)',
-                color: 'rgba(219,234,254,0.96)',
-                lineHeight: 1.45,
-              }}
-            >
-              <span aria-hidden="true">🎨</span>
-              <span>
-                No AMS — this prints in a single color ({catalog.spools[0]?.name}). Your multi-color
-                design collapses to one filament.
-              </span>
-            </div>
-          )}
-          {/* Unplaced roles (Gitea #37). The planner answered and could not serve
-              these from the loaded roster — no compatible spool is close enough in
-              color — so the studio paints them in the color the user DESIGNED. That
-              is right for the viewer and wrong for a printer: the plate would carry
-              a body pointing at an extruder that is never loaded. Blocking, and
-              phrased as a roster problem with a roster fix, because that is what it
-              is — nothing about the design is invalid. */}
-          {unplacedRoles.length > 0 && (
-            <div
-              data-element="print-unplaced-roles-gate"
-              style={{
-                display: 'flex',
-                gap: 8,
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: 'rgba(120,53,15,0.30)',
-                border: '1px solid rgba(251,191,36,0.45)',
-                color: 'rgba(254,243,199,0.96)',
-                lineHeight: 1.45,
-              }}
-            >
-              <span aria-hidden="true">🎯</span>
-              <span>
-                No loaded filament can print {listRoles(unplacedRoles)} —{' '}
-                {unplacedRoles.length === 1 ? 'it shows' : 'they show'} here in the color you chose,
-                which nothing on the printer can lay down. Load a closer spool, or recolor{' '}
-                {unplacedRoles.length === 1 ? 'it' : 'them'} to something you have.
-              </span>
-            </div>
-          )}
-          {/* Printed-feet support gate (Gitea #23), in two grades: supports OFF
-              blocks the submit, supports on but free to land on the model is
-              advice. Either way the button writes the missing keys through the
-              normal debounce-persisted style path — visible in the editor, never
-              a silent injection at ticket-build time (the v2 discipline holds).
-              These have to ride the STYLE: THH's --load-settings overrides the
-              3MF's project_settings, so the 3MF copy reaches downloads only. */}
-          {feetGate.missing.length > 0 && (
-            <div
-              data-element="print-feet-support-gate"
-              data-grade={feetGate.blocked ? 'blocking' : 'advisory'}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: feetGate.blocked ? 'rgba(120,53,15,0.30)' : 'rgba(30,58,138,0.28)',
-                border: feetGate.blocked
-                  ? '1px solid rgba(251,191,36,0.45)'
-                  : '1px solid rgba(96,165,250,0.45)',
-                color: feetGate.blocked ? 'rgba(254,243,199,0.96)' : 'rgba(219,234,254,0.96)',
-                lineHeight: 1.45,
-              }}
-            >
-              <span>
-                <span aria-hidden="true">🦶 </span>
-                {feetGate.blocked
-                  ? 'Printed TPU feet stand the abacus off the bed, so the bottom face needs supports — turn them on to print.'
-                  : 'Supports are on. Keep them off the model too, or they can grow inside the bead channels where you cannot reach them.'}
-              </span>
-              <button
-                type="button"
-                data-action="enable-feet-supports"
-                disabled={!style}
-                onClick={() =>
-                  style &&
-                  handleStyleChange({
-                    ...style,
-                    process: {
-                      ...style.process,
-                      ...Object.fromEntries(
-                        feetGate.missing.map((key) => [key, FEET_SUPPORT_PROCESS[key]])
-                      ),
-                    },
-                  })
-                }
-                style={{
-                  alignSelf: 'flex-start',
-                  padding: '5px 11px',
-                  borderRadius: 6,
-                  border: feetGate.blocked
-                    ? '1px solid rgba(251,191,36,0.5)'
-                    : '1px solid rgba(96,165,250,0.5)',
-                  background: feetGate.blocked
-                    ? 'rgba(254,243,199,0.12)'
-                    : 'rgba(219,234,254,0.12)',
-                  color: feetGate.blocked ? 'rgba(254,243,199,0.98)' : 'rgba(219,234,254,0.98)',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                {feetGate.blocked ? 'Enable supports' : 'Keep supports off the model'}
-              </button>
-            </div>
-          )}
           {slowFirstLayerSupported && (
             <div
               data-element="slow-first-layer-choice"
@@ -1292,50 +1334,37 @@ export function PrintPanel(props: PrintPanelProps) {
               </button>
             </div>
           )}
-          {twoStageOn && seamCheck?.misses && (
-            <div
-              data-element="two-stage-seam-warning"
-              style={{
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: 'rgba(120,53,15,0.35)',
-                border: '1px solid rgba(251,191,36,0.5)',
-                color: 'rgba(254,243,199,0.96)',
-                lineHeight: 1.45,
-              }}
-            >
-              The feet seam at {seamCheck.atZMm} mm doesn’t land between layers at{' '}
-              {seamCheck.layerHeightMm} mm
-              {seamCheck.firstLayerMm !== seamCheck.layerHeightMm &&
-                ` (first layer ${seamCheck.firstLayerMm} mm)`}
-              , and the print service can only split on a layer boundary. Pick a layer height that
-              divides the feet stand-off, or change the stand-off in the editor.
-            </div>
-          )}
-          {twoStageOn && !twoStageRecord && <StageAPrepCard />}
-          {/* Directly above the commit, because that's the question it answers:
-              this is the bed you're about to print. */}
-          {kit && (
-            <div
-              data-element="kit-plate-preview-slot"
-              style={{ opacity: kitPlate.pending && kitPlate.layout ? 0.55 : 1 }}
-            >
-              <KitPlatePreview
-                layout={kitPlate.layout}
-                refusal={kitPlate.refusal}
-                pending={kitPlate.pending}
-                filaments={kitPlate.filaments ?? undefined}
-              />
-            </div>
-          )}
-
-          <button
-            type="button"
-            data-action="submit-print-job"
-            onClick={() => submit.mutate(twoStageOn ? 'stage-a' : 'single')}
-            disabled={twoStageOn ? stageABlocked : submitBlocked}
-            title={
-              exportBlocked
+          <PrintDecision
+            summary={summary}
+            plate={
+              kit ? (
+                <div
+                  data-element="kit-plate-preview-slot"
+                  style={{ opacity: kitPlate.pending && kitPlate.layout ? 0.55 : 1 }}
+                >
+                  <KitPlatePreview
+                    layout={kitPlate.layout}
+                    refusal={kitPlate.refusal}
+                    pending={kitPlate.pending}
+                    filaments={kitPlate.filaments ?? undefined}
+                  />
+                </div>
+              ) : undefined
+            }
+            gates={gates}
+            prep={twoStageOn && !twoStageRecord ? <StageAPrepCard /> : undefined}
+            submit={{
+              label: submit.isPending
+                ? 'Rendering & submitting…'
+                : kit
+                  ? '🖨 Print this kit'
+                  : twoStageOn
+                    ? '🖨 Print Stage A (feet)'
+                    : '🖨 Print this abacus',
+              disabled: twoStageOn ? stageABlocked : submitBlocked,
+              pending: submit.isPending,
+              onClick: () => submit.mutate(twoStageOn ? 'stage-a' : 'single'),
+              title: exportBlocked
                 ? 'Fix the printability errors first'
                 : feetGate.blocked
                   ? 'Enable supports first — printed feet need them'
@@ -1343,29 +1372,9 @@ export function PrintPanel(props: PrintPanelProps) {
                     ? 'The feet seam has to land on a layer boundary'
                     : twoStageOn
                       ? 'Slice once; print the feet from the external spool first'
-                      : 'Slice and print on the paired printer'
-            }
-            style={{
-              padding: '10px 12px',
-              borderRadius: 8,
-              border: 'none',
-              background: submitBlocked
-                ? 'rgba(75,85,99,0.55)'
-                : 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-              color: submitBlocked ? 'rgba(209,213,219,0.7)' : '#fff',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: submitBlocked ? 'not-allowed' : 'pointer',
+                      : 'Slice and print on the paired printer',
             }}
-          >
-            {submit.isPending
-              ? 'Rendering & submitting…'
-              : kit
-                ? '🖨 Print this kit'
-                : twoStageOn
-                  ? '🖨 Print Stage A (feet)'
-                  : '🖨 Print this abacus'}
-          </button>
+          />
 
           {submit.isSuccess && (
             <div
@@ -1469,24 +1478,6 @@ export function PrintPanel(props: PrintPanelProps) {
               a collapsed editor. The recommendation ★ and any service caution
               render inside the kit editor; the reminder ("load your Support for
               PLA") is service DATA the kit leaves to the host. */}
-          {supportsWanted && twoStage.ok && twoStageOn && (
-            <div
-              data-element="print-support-role-two-stage"
-              style={{
-                padding: '8px 10px',
-                borderRadius: 8,
-                background: 'rgba(30,41,59,0.48)',
-                border: '1px solid rgba(148,163,184,0.3)',
-                color: 'rgba(203,213,225,0.96)',
-                lineHeight: 1.45,
-              }}
-            >
-              Support interface prints in the feet filament ({twoStage.feetSlot.name}): in a
-              two-stage print the interface layers sit under the seam, where only the feet spool
-              runs. It prints as a solid floor with no gap — the rigid seam layer lands on it
-              directly, and TPU releases from it.
-            </div>
-          )}
           {supportsWanted && !twoStageOn && (
             <div
               data-element="print-support-role"
@@ -1507,22 +1498,14 @@ export function PrintPanel(props: PrintPanelProps) {
                     : 'Checking which filament should face the supports…'}
                 </span>
               ) : (
-                <>
-                  <span
-                    data-element="print-supports-line"
-                    style={{ fontSize: 11, fontWeight: 600, color: 'rgba(148,163,184,0.95)' }}
-                  >
-                    {supportsLine(supportRec.data, supportSlotId, supportRoster)}
-                  </span>
-                  <SupportRoleEditor
-                    roster={supportRoster}
-                    recommendation={supportRec.data}
-                    value={supportSlotId}
-                    onChange={setSupportSlotId}
-                    errors={invalidDetail}
-                    theme="dark"
-                  />
-                </>
+                <SupportRoleEditor
+                  roster={supportRoster}
+                  recommendation={supportRec.data}
+                  value={supportSlotId}
+                  onChange={setSupportSlotId}
+                  errors={invalidDetail}
+                  theme="dark"
+                />
               )}
               {supportRec.data?.reminder && (
                 <div

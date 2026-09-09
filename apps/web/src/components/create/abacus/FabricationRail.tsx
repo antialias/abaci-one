@@ -30,6 +30,7 @@ import { StudioSelect } from '@/components/studio/StudioSelect'
 import { DebugSlider } from '@/components/toys/ToyDebugPanel'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { buildAbacusThreeMf } from './abacus-3mf'
+import { commitmentSummary } from './abacus-commitment'
 import { isModular } from './abacus-model'
 import { PRINTER_PROFILES } from './abacus-solver'
 import { downloadBlob } from './download-blob'
@@ -43,6 +44,7 @@ import {
   type SeamBusy,
   type SeamBusyProps,
 } from './ModularSeamPanel'
+import { PrintCommitmentCard } from './PrintCommitmentCard'
 import { PrintPanel } from './PrintPanel'
 
 // shared style for the one-click solver-fix buttons (sit inside the red error box)
@@ -78,6 +80,7 @@ function ExportFiles({ primary, ...busyProps }: { primary: boolean } & SeamBusyP
     profile,
     catalog,
     filamentMap,
+    servicePlan,
     exportBlocked,
     exporterReady,
     requestExportStl,
@@ -91,6 +94,17 @@ function ExportFiles({ primary, ...busyProps }: { primary: boolean } & SeamBusyP
 
   const modular = isModular(params)
   const canExport = exporterReady && !exportBlocked
+  const summary = useMemo(
+    () =>
+      commitmentSummary({
+        params,
+        filamentMap,
+        catalog,
+        plan: servicePlan ?? null,
+        printer: { kind: 'unpaired' },
+      }),
+    [params, filamentMap, catalog, servicePlan]
+  )
 
   // the multi-material 3MF — the print projection's colors baked in as one
   // co-registered body per filament slot (#9), plus the ArUco corner marker
@@ -129,6 +143,7 @@ function ExportFiles({ primary, ...busyProps }: { primary: boolean } & SeamBusyP
 
   return (
     <StudioSection label="Files" dataElement="abacus-section-files">
+      {primary && <PrintCommitmentCard summary={summary} />}
       {modular ? (
         <>
           <ModuleKitExport primary={primary} {...busyProps} />
@@ -437,6 +452,7 @@ export function FabricationRail() {
         params={params}
         filamentMap={filamentMap}
         catalog={catalog}
+        servicePlan={servicePlan}
         overrides={overrides}
         profileId={profileId}
         printerId={thhFilaments.printerId}

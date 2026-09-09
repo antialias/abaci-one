@@ -19,6 +19,7 @@
 // and the parent's recolor agree by construction — keep the options object in
 // lockstep if it ever grows.
 
+import type { FilamentPlanResponseV1 } from '@eink/print-dialog'
 import { StandaloneBead } from '@soroban/abacus-react'
 import {
   type CSSProperties,
@@ -35,10 +36,18 @@ import {
   type FilamentSpool,
   isSupportSpool,
 } from './abacus-catalog'
+import { filamentPlanFacts } from './abacus-commitment'
 import type { AbacusDesign } from './abacus-design'
 import { pickerInk } from './abacus-model'
-import type { FilamentPlanResponseV1 } from '@eink/print-dialog'
-import { materialize, NO_SPOOL, type PrintRoleKind, type RoleAssignment, roleShifted } from './abacus-plan'
+import {
+  materialize,
+  NO_SPOOL,
+  type PrintRoleKind,
+  type RoleAssignment,
+  roleShifted,
+} from './abacus-plan'
+
+export { roleShifted } from './abacus-plan'
 
 // gh#163 UX: mapping rows truncate spool names, and every spool from one brand
 // starts with the same words ("Bambu Lab …") — the ellipsis was eating exactly
@@ -298,12 +307,7 @@ export function FilamentPlanPanel({
   // the demoted "N filaments loaded / N colors shift" caption, now the list footer.
   // The shift count spans the surfaces the user colored (frame + beads + text),
   // matching the old reconcile strip's subset (ArUco ink is excluded).
-  const loaded = catalog.spools.length
-  const shiftCount = plan.assignments.filter(
-    (a) =>
-      (a.role.kind === 'frame' || a.role.kind === 'bead' || a.role.kind === 'text') &&
-      roleShifted(a)
-  ).length
+  const facts = filamentPlanFacts(catalog, plan)
   // show each spool's material only when it's informative (a mixed-material THH
   // catalog); the all-PLA params catalog would just print "PLA" on every row.
   const showMaterial = useMemo(
@@ -553,7 +557,9 @@ export function FilamentPlanPanel({
           // an unplaced role's tile shows the color the user DESIGNED — the thing
           // nothing loaded can print — behind a dashed alarm border, not a blank.
           background: assigned ? assigned.hex : a.role.intrinsicHex,
-          border: assigned ? '1px solid rgba(255,255,255,0.25)' : '1px dashed rgba(248,113,113,0.95)',
+          border: assigned
+            ? '1px solid rgba(255,255,255,0.25)'
+            : '1px dashed rgba(248,113,113,0.95)',
           boxShadow: a.overridden ? '0 0 0 1px #111827, 0 0 0 2px rgba(103,232,249,0.95)' : 'none',
         }}
       >
@@ -1117,14 +1123,14 @@ export function FilamentPlanPanel({
           }}
         >
           <span style={{ color: 'rgba(148,163,184,0.9)' }}>
-            {loaded} filament{loaded === 1 ? '' : 's'} loaded
+            {facts.loaded} filament{facts.loaded === 1 ? '' : 's'} loaded
           </span>
           <span
             data-element="abacus-studio-mapping-shift"
-            style={{ color: shiftCount > 0 ? 'rgba(251,191,36,0.92)' : 'rgba(148,163,184,0.7)' }}
+            style={{ color: facts.shifted > 0 ? 'rgba(251,191,36,0.92)' : 'rgba(148,163,184,0.7)' }}
           >
-            {shiftCount > 0
-              ? `${shiftCount} color${shiftCount === 1 ? '' : 's'} shift`
+            {facts.shifted > 0
+              ? `${facts.shifted} color${facts.shifted === 1 ? '' : 's'} shift`
               : 'prints true'}
           </span>
         </div>
