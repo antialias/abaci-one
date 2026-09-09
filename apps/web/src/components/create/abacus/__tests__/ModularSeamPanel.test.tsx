@@ -319,7 +319,11 @@ describe('ModularFitPanel + ModuleKitExport (print rail)', () => {
   it('quotes the real kit plan in the hint', () => {
     studio({ seam_mode: 'modular' })
     render(<ModuleKitExport />)
-    expect(screen.getByText(/13 modules across 3 files/)).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'One 3MF per bead-color variant; print counts are in the filenames and the README.'
+      )
+    ).toBeInTheDocument()
   })
 
   it('locks both downloads while one render is in flight', async () => {

@@ -30,6 +30,7 @@ import { StudioSelect } from '@/components/studio/StudioSelect'
 import { DebugSlider } from '@/components/toys/ToyDebugPanel'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { buildAbacusThreeMf } from './abacus-3mf'
+import { commitmentSummary } from './abacus-commitment'
 import { isModular } from './abacus-model'
 import { PRINTER_PROFILES } from './abacus-solver'
 import { downloadBlob } from './download-blob'
@@ -43,6 +44,7 @@ import {
   type SeamBusy,
   type SeamBusyProps,
 } from './ModularSeamPanel'
+import { PrintCommitmentCard } from './PrintCommitmentCard'
 import { PrintPanel } from './PrintPanel'
 
 // shared style for the one-click solver-fix buttons (sit inside the red error box)
@@ -78,6 +80,7 @@ function ExportFiles({ primary, ...busyProps }: { primary: boolean } & SeamBusyP
     profile,
     catalog,
     filamentMap,
+    servicePlan,
     exportBlocked,
     exporterReady,
     requestExportStl,
@@ -91,6 +94,17 @@ function ExportFiles({ primary, ...busyProps }: { primary: boolean } & SeamBusyP
 
   const modular = isModular(params)
   const canExport = exporterReady && !exportBlocked
+  const summary = useMemo(
+    () =>
+      commitmentSummary({
+        params,
+        filamentMap,
+        catalog,
+        plan: servicePlan ?? null,
+        printer: { kind: 'unpaired' },
+      }),
+    [params, filamentMap, catalog, servicePlan]
+  )
 
   // the multi-material 3MF — the print projection's colors baked in as one
   // co-registered body per filament slot (#9), plus the ArUco corner marker
@@ -129,6 +143,7 @@ function ExportFiles({ primary, ...busyProps }: { primary: boolean } & SeamBusyP
 
   return (
     <StudioSection label="Files" dataElement="abacus-section-files">
+      {primary && <PrintCommitmentCard summary={summary} />}
       {modular ? (
         <>
           <ModuleKitExport primary={primary} {...busyProps} />
@@ -238,11 +253,18 @@ export function FabricationRail() {
   // mutation isn't handed a fresh object every render.
   const kitPrint = useMemo(() => ({ requestExportModuleParts }), [requestExportModuleParts])
 
-  // The single primary action. With a paired service the submit is the point of
-  // the rail and the files are a fallback; without one there is nothing to
-  // submit to, so the file IS the commitment and takes the cyan.
-  const paired = connections.length > 0
-  const files = <ExportFiles primary={!paired} busy={seamBusy} onBusy={setSeamBusy} />
+  // The single primary action. When the panel can actually offer a submit, that
+  // is the point of the rail and the files are a fallback; otherwise there is
+  // nothing to submit to, so the file IS the commitment and takes the cyan —
+  // and the commitment card with it. "Paired" is not enough: a paired printer
+  // whose service is unreachable, or whose roster is empty, leaves the
+  // download as the only real action, and it must not hide below a dead panel.
+  // Loading is not a degrade — the panel is about to offer the submit.
+  const submitOffered =
+    connections.length > 0 &&
+    (thhFilaments.unavailable ?? servicePlanUnavailable) == null &&
+    !thhFilaments.rosterEmpty
+  const files = <ExportFiles primary={!submitOffered} busy={seamBusy} onBusy={setSeamBusy} />
 
   return (
     <div
@@ -423,7 +445,7 @@ export function FabricationRail() {
         />
       )}
 
-      {!paired && files}
+      {!submitOffered && files}
 
       {/* print-service panel (Gitea #9) — embedded (normal flow) in the rail.
           One panel, two shapes of print: in modular mode `kit` switches the
@@ -437,6 +459,7 @@ export function FabricationRail() {
         params={params}
         filamentMap={filamentMap}
         catalog={catalog}
+        servicePlan={servicePlan}
         overrides={overrides}
         profileId={profileId}
         printerId={thhFilaments.printerId}
@@ -464,7 +487,7 @@ export function FabricationRail() {
         kit={modular ? kitPrint : undefined}
       />
 
-      {paired && files}
+      {submitOffered && files}
     </div>
   )
 }

@@ -247,7 +247,6 @@ export function ModuleKitExport({
   // What the kit would contain, from the same plan the build uses. Only
   // meaningful in modular mode (the kit build throws on a mono design).
   const plan = on ? moduleKitPlan(params, filamentMap) : null
-  const pieces = plan?.reduce((n, e) => n + e.count, 0) ?? 0
 
   const kitReady = exporterReady && fit.ok && on && busy === null
 
@@ -296,7 +295,7 @@ export function ModuleKitExport({
       </button>
       <div style={{ fontSize: 10, lineHeight: 1.45, color: 'rgba(148,163,184,0.85)' }}>
         {plan
-          ? `${pieces} modules across ${plan.length} files — one 3MF per bead-color variant, print counts in the filenames and README.`
+          ? 'One 3MF per bead-color variant; print counts are in the filenames and the README.'
           : 'One 3MF per module variant, with print counts and assembly notes in a README.'}
       </div>
 
