@@ -78,6 +78,20 @@ export const TWO_STAGE_REAR_BAND_MM = 25
  * a dedicated support material, and it turns the interface into a floor. These
  * must ride the style too — the 3MF's `support_top_z_distance` is overridden by
  * THH's `--load-settings` on a submitted print.
+ *
+ * Plate contact (from the second physical two-stage print, 2026-09-09): the print
+ * held — seam and floor both worked — and then would not come off the plate. Orca
+ * prints support layer 0 as its own thing: `raft_first_layer_density` (the gateway
+ * presets pin 90 %) with `raft_first_layer_expansion` (2 mm) grown around it, "the
+ * first raft OR support layer" per the tooltips. Under a two-stage abacus that is a
+ * near-solid TPU sheet the size of the frame, welded to smooth PEI: too flexible to
+ * pop with the plate, too thin to get a wedge under, and prying the frame loads
+ * the feet (the only TPU joined to anything above the seam) until they tear. A
+ * sparse first layer with no expansion turns that sheet into a comb of single TPU
+ * lines — a peel started at a corner walks along it — and leaves the feet as the
+ * only solid contact, which is small enough to peel. Both keys are open in the
+ * gateway policy. Brim stays the operator's editor choice (this block never sets
+ * brim keys).
  */
 export const TWO_STAGE_PROCESS: Readonly<Record<string, TicketStyle['process'][string]>> = {
   interface_shells: true,
@@ -92,6 +106,10 @@ export const TWO_STAGE_PROCESS: Readonly<Record<string, TicketStyle['process'][s
   gap_infill_speed: 25,
   support_top_z_distance: 0,
   support_interface_spacing: 0,
+  // Plate contact: support layer 0 as a sparse comb, not the preset's 90 % sheet
+  // grown 2 mm past the support. Percent, like `sparse_infill_density`.
+  raft_first_layer_density: 30,
+  raft_first_layer_expansion: 0,
   // Orca already ignores this with a prime tower (every multi-filament abacus);
   // pinned so a single-filament slice keeps support layers on the model's layer
   // grid, which the seam-at-a-layer-boundary rule needs.
