@@ -1,12 +1,21 @@
 'use client'
 
 // FabricationRail — the studio's RIGHT docked rail (Gitea epic #5, full-bleed
-// CP1a). Everything specific to turning the shared design into a 3D print lives
-// here: the filament reconcile strip (how the designed colors land on the loaded
-// filaments), the printer profile + printability verdict, the Export actions, and
-// the print-service panel. Mounted only on the 3D-print target, so the paper lane
-// pays for none of it. The 3D model always shows the user's designed colors — the
-// design→filament reconciliation is whispered by the strip, not a preview toggle.
+// CP1a). It answers the studio's second and third questions: HOW is this design
+// made, and WHAT am I committing my printer and myself to?
+//   • the filament reconcile strip (how the designed colors land on the loaded
+//     filaments), the printer profile and the printability verdict,
+//   • "Print options" — infill, the modular joint's fit + coupon, and the two
+//     slicer knobs (bead clearance, curve smoothness) behind "Advanced",
+//   • the commitment: ONE primary action, and the files.
+// Mounted only on the 3D-print target, so the paper lane pays for none of it.
+// The 3D model always shows the user's designed colors — the design→filament
+// reconciliation is whispered by the strip, not a preview toggle.
+//
+// ONE PRIMARY ACTION. Paired with a print service, the cyan button is the
+// PrintPanel's submit and the files sit below it in the secondary style. Unpaired,
+// there is nothing to submit to, so the main file (the 3MF, or the module kit)
+// takes the cyan and sits ABOVE the panel's pairing prompt. Never two.
 //
 // The heavy renders stay bound to the three.js viewer; this rail calls the
 // store's registered `requestExportParts()` (whole abacus + the ArUco marker
@@ -15,17 +24,26 @@
 // the viewer chunk is still loading.
 
 import { type CSSProperties, useMemo, useState } from 'react'
+import { Disclosure } from '@/components/studio/Disclosure'
+import { StudioSection } from '@/components/studio/StudioSection'
 import { StudioSelect } from '@/components/studio/StudioSelect'
+import { DebugSlider } from '@/components/toys/ToyDebugPanel'
 import { useAbacusStudio } from './AbacusStudioContext'
 import { buildAbacusThreeMf } from './abacus-3mf'
 import { isModular } from './abacus-model'
 import { PRINTER_PROFILES } from './abacus-solver'
 import { downloadBlob } from './download-blob'
 import { FilamentPlanPanel } from './FilamentPlanPanel'
-import { ModularSeamPanel } from './ModularSeamPanel'
+import { InfillControls } from './InfillControls'
+import {
+  BTN,
+  ModularFitPanel,
+  ModuleKitExport,
+  PRIMARY_BTN,
+  type SeamBusy,
+  type SeamBusyProps,
+} from './ModularSeamPanel'
 import { PrintPanel } from './PrintPanel'
-
-const CYAN_GRADIENT = 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)'
 
 // shared style for the one-click solver-fix buttons (sit inside the red error box)
 const FIX_BTN: CSSProperties = {
@@ -39,68 +57,45 @@ const FIX_BTN: CSSProperties = {
   cursor: 'pointer',
 }
 
-export function FabricationRail() {
+const NOTE: CSSProperties = {
+  fontSize: 11,
+  lineHeight: 1.5,
+  color: 'rgba(148,163,184,0.95)',
+}
+
+/**
+ * ExportFiles — the "Files" section: what you can carry to a slicer yourself.
+ * `primary` is true only when nothing else in the rail is the primary action
+ * (i.e. no paired print service), and then the MAIN file — the 3MF, or the
+ * module kit in modular mode — wears the cyan. The mono buttons are simply
+ * absent in modular mode rather than shown disabled: the kit IS the file, and
+ * the old "3MF is one piece — kit below" label only existed because the kit was
+ * far away.
+ */
+function ExportFiles({ primary, ...busyProps }: { primary: boolean } & SeamBusyProps) {
   const {
     params,
-    set,
-    profileId,
-    setProfileId,
     profile,
-    overrides,
-    setOverrides,
-    design,
-    thhFilaments,
-    connections,
-    selectedConnectionId,
-    selectConnection,
     catalog,
-    servicePlan,
-    unpinnedServicePlan,
-    servicePlanUnavailable,
-    servicePlanUnavailableDetail,
-    planPending,
-    unplacedRoles,
     filamentMap,
-    solveResult,
-    errors,
-    warnings,
     exportBlocked,
-    scaleFix,
-    clearanceFix,
+    exporterReady,
     requestExportStl,
     requestExportParts,
-    requestExportModuleParts,
-    exporterReady,
-    setRevealIntrinsic,
-    setHighlightRole,
-    modelPick,
-    playerId,
   } = useAbacusStudio()
-
-  const canExport = exporterReady && !exportBlocked
-
-  // Modular columns (Gitea #30): the whole-abacus exports are a footgun in
-  // modular mode — they'd print a fused-seam monolith with dead sockets — so
-  // they lock with a pointer at the kit. The print-service panel does NOT lock:
-  // it switches to the kit (Gitea #32), packing every module onto one bed and
-  // submitting that plate, and refuses to the kit-zip download only when the
-  // modules genuinely don't fit one plate.
-  const modular = isModular(params)
-  const canExportMono = canExport && !modular
-
-  // Rebuilt only when the requestor identity changes, so the panel's submit
-  // mutation isn't handed a fresh object every render.
-  const kitPrint = useMemo(() => ({ requestExportModuleParts }), [requestExportModuleParts])
 
   // A failed export render (e.g. a marker part pass) now REJECTS instead of
   // hanging — surfaced inline under the button. Silently swallowing it would
   // recreate the markerless-print bug in UX form (Gitea #12).
   const [exportError, setExportError] = useState<string | null>(null)
 
-  // primary export: the multi-material 3MF — the print projection's colors baked
-  // in as one co-registered body per filament slot (#9), plus the ArUco corner
-  // marker bodies from their own part renders (#12). Falls back to the raw
-  // colorless STL for anyone whose slicer wants that.
+  const modular = isModular(params)
+  const canExport = exporterReady && !exportBlocked
+
+  // the multi-material 3MF — the print projection's colors baked in as one
+  // co-registered body per filament slot (#9), plus the ArUco corner marker
+  // bodies from their own part renders (#12). Falls back to the raw colorless
+  // STL for anyone whose slicer wants that.
   const onExport3mf = async () => {
     setExportError(null)
     try {
@@ -131,6 +126,123 @@ export function FabricationRail() {
       setExportError(String((err as Error)?.message ?? err))
     }
   }
+
+  return (
+    <StudioSection label="Files" dataElement="abacus-section-files">
+      {modular ? (
+        <>
+          <ModuleKitExport primary={primary} {...busyProps} />
+          <div data-element="modular-kit-caveat" style={{ ...NOTE, fontSize: 10 }}>
+            End modules carry engraved marker pockets, not printed markers. Words on the top/bottom
+            rails and front/back walls print on the one-piece abacus only.
+          </div>
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            data-action="export-3mf"
+            onClick={onExport3mf}
+            disabled={!canExport}
+            title={
+              exportBlocked
+                ? `Fix the errors above to print on ${profile.label}`
+                : exporterReady
+                  ? 'Download a print-ready multi-material 3MF'
+                  : 'Preparing the 3D exporter…'
+            }
+            style={primary ? PRIMARY_BTN(canExport) : BTN(canExport)}
+          >
+            ⬇ 3MF
+          </button>
+          <button
+            type="button"
+            data-action="export-stl"
+            onClick={onExportPlainStl}
+            disabled={!canExport}
+            style={BTN(canExport)}
+          >
+            ⬇ plain STL
+          </button>
+        </>
+      )}
+      {exportError != null && (
+        <div
+          data-element="abacus-studio-export-error"
+          style={{
+            padding: '8px 10px',
+            borderRadius: 8,
+            background: 'rgba(127,29,29,0.35)',
+            border: '1px solid rgba(248,113,113,0.5)',
+            color: 'rgba(254,226,226,0.96)',
+            fontSize: 11,
+            lineHeight: 1.45,
+          }}
+        >
+          Export failed: {exportError}
+        </div>
+      )}
+    </StudioSection>
+  )
+}
+
+export function FabricationRail() {
+  const {
+    params,
+    set,
+    profileId,
+    setProfileId,
+    profile,
+    overrides,
+    setOverrides,
+    design,
+    thhFilaments,
+    connections,
+    selectedConnectionId,
+    selectConnection,
+    catalog,
+    servicePlan,
+    unpinnedServicePlan,
+    servicePlanUnavailable,
+    servicePlanUnavailableDetail,
+    planPending,
+    unplacedRoles,
+    filamentMap,
+    solveResult,
+    errors,
+    warnings,
+    exportBlocked,
+    scaleFix,
+    clearanceFix,
+    requestExportParts,
+    requestExportModuleParts,
+    setRevealIntrinsic,
+    setHighlightRole,
+    modelPick,
+    playerId,
+  } = useAbacusStudio()
+
+  // Modular columns (Gitea #30): the whole-abacus exports would print a
+  // fused-seam monolith with dead sockets, so in modular mode the Files section
+  // offers the kit instead. The print-service panel does NOT switch away: it
+  // submits the kit (Gitea #32), packing every module onto one bed, and refuses
+  // only when the modules genuinely don't fit one plate.
+  const modular = isModular(params)
+
+  // One render at a time across the two seam downloads — they sit in different
+  // sections now (fit/coupon in Print options, kit in Files), so the interlock
+  // they always had lives here, in their common owner.
+  const [seamBusy, setSeamBusy] = useState<SeamBusy>(null)
+
+  // Rebuilt only when the requestor identity changes, so the panel's submit
+  // mutation isn't handed a fresh object every render.
+  const kitPrint = useMemo(() => ({ requestExportModuleParts }), [requestExportModuleParts])
+
+  // The single primary action. With a paired service the submit is the point of
+  // the rail and the files are a fallback; without one there is nothing to
+  // submit to, so the file IS the commitment and takes the cyan.
+  const paired = connections.length > 0
+  const files = <ExportFiles primary={!paired} busy={seamBusy} onBusy={setSeamBusy} />
 
   return (
     <div
@@ -223,7 +335,7 @@ export function FabricationRail() {
                       onClick={() => set('clearance', clearanceFix)}
                       style={FIX_BTN}
                     >
-                      ↕ Raise fit gap to {clearanceFix.toFixed(2)} mm
+                      ↕ Raise bead clearance to {clearanceFix.toFixed(2)} mm
                     </button>
                   )}
                 </div>
@@ -257,80 +369,44 @@ export function FabricationRail() {
         </div>
       )}
 
-      {/* primary action — the whole point of the print path */}
-      <button
-        type="button"
-        data-action="export-3mf"
-        onClick={onExport3mf}
-        disabled={!canExportMono}
-        title={
-          modular
-            ? 'Modular columns print as a per-module kit — use the Modular columns panel below'
-            : exportBlocked
-              ? `Fix the errors above to print on ${profile.label}`
-              : exporterReady
-                ? 'Download a print-ready multi-material 3MF'
-                : 'Preparing the 3D exporter…'
-        }
-        style={{
-          padding: '11px 12px',
-          borderRadius: 8,
-          border: 'none',
-          background: canExportMono ? CYAN_GRADIENT : 'rgba(75,85,99,0.55)',
-          color: canExportMono ? '#fff' : 'rgba(209,213,219,0.7)',
-          fontSize: 13,
-          fontWeight: 700,
-          cursor: canExportMono ? 'pointer' : 'not-allowed',
-          boxShadow: canExportMono ? '0 4px 14px rgba(6,182,212,0.35)' : 'none',
-        }}
-      >
-        {modular ? '⬇ 3MF is one piece — kit below' : '⬇ Download 3MF to print'}
-      </button>
-      <button
-        type="button"
-        data-action="export-stl"
-        onClick={onExportPlainStl}
-        disabled={!canExportMono}
-        title={
-          modular
-            ? 'Modular columns print as a per-module kit — use the Modular columns panel below'
-            : undefined
-        }
-        style={{
-          alignSelf: 'center',
-          padding: '2px 4px',
-          border: 'none',
-          background: 'transparent',
-          color: canExportMono ? 'rgba(148,163,184,0.9)' : 'rgba(148,163,184,0.5)',
-          fontSize: 11,
-          cursor: canExportMono ? 'pointer' : 'not-allowed',
-          textDecoration: 'underline',
-        }}
-      >
-        plain STL instead
-      </button>
-      {exportError != null && (
-        <div
-          data-element="abacus-studio-export-error"
-          style={{
-            padding: '8px 10px',
-            borderRadius: 8,
-            background: 'rgba(127,29,29,0.35)',
-            border: '1px solid rgba(248,113,113,0.5)',
-            color: 'rgba(254,226,226,0.96)',
-            fontSize: 11,
-            lineHeight: 1.45,
-          }}
+      {/* HOW it's made. Everything here is invisible in the finished design and
+          meaningless on paper: density, the joint's tuning, and the two slicer
+          knobs that used to sit in the design rail. */}
+      <StudioSection label="Print options" dataElement="abacus-section-print-options">
+        <InfillControls />
+        {modular && <ModularFitPanel busy={seamBusy} onBusy={setSeamBusy} />}
+        {/* Two real knobs that almost nobody should touch: one is a printer's
+            tolerance, the other is preview/slice cost. Collapsed, not removed. */}
+        <Disclosure
+          label="Advanced"
+          dataElement="abacus-print-advanced"
+          dataAction="toggle-print-advanced"
         >
-          Export failed: {exportError}
-        </div>
-      )}
-
-      {/* modular columns (Gitea #30): seam toggle, fit verdicts, coupon +
-          module-kit downloads. Sits below the whole-abacus exports it replaces
-          in modular mode. Always mounted — the toggle inside it is the config
-          option, and the disclosure keeps it collapsed until asked for. */}
-      <ModularSeamPanel />
+          <DebugSlider
+            label="bead clearance (mm)"
+            value={params.clearance}
+            min={0.1}
+            max={0.8}
+            step={0.01}
+            onChange={(v) => set('clearance', v)}
+            formatValue={(v) => v.toFixed(2)}
+          />
+          <div data-element="abacus-clearance-note" style={NOTE}>
+            Gap between each bead and its rod. Raise it if beads bind on your printer.
+          </div>
+          <DebugSlider
+            label="curve smoothness"
+            value={params.fn}
+            min={8}
+            max={64}
+            step={1}
+            onChange={(v) => set('fn', v)}
+          />
+          <div data-element="abacus-fn-note" style={NOTE}>
+            Facets per curve. Higher is smoother, and slower to preview and slice.
+          </div>
+        </Disclosure>
+      </StudioSection>
 
       {/* which paired print service this design prints to. Only shown once the
           user has more than one — with a single connection there's nothing to
@@ -346,6 +422,8 @@ export function FabricationRail() {
           dataAction="select-print-connection"
         />
       )}
+
+      {!paired && files}
 
       {/* print-service panel (Gitea #9) — embedded (normal flow) in the rail.
           One panel, two shapes of print: in modular mode `kit` switches the
@@ -385,6 +463,8 @@ export function FabricationRail() {
         playerId={playerId}
         kit={modular ? kitPrint : undefined}
       />
+
+      {paired && files}
     </div>
   )
 }

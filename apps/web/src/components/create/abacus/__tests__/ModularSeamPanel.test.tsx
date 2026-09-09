@@ -1,19 +1,31 @@
 /**
- * ModularSeamPanel (Gitea #30, CP7) — the panel is thin wiring over four
- * contracts, and each is pinned here: seam_mode flows through the ONE store
- * setter; verdicts and the size delta come from the shared model (never a
- * second copy of the arithmetic); the coupon rides the single-pass escape
- * hatch with the fit in the filename; the kit rides the snapshot-once bundle
- * into buildModuleKit and is unreachable outside modular mode. The kit build
+ * Modular columns (Gitea #30) — the panel is now three components, one per
+ * studio question: ConstructionControl (design rail: what it IS),
+ * ModularFitPanel (print options: what it asks of a printer) and ModuleKitExport
+ * (files: what you're committing to). Each is thin wiring over a contract, and
+ * every contract is pinned here: seam_mode and joint_type flow through the ONE
+ * store setter (and the sliding clamp rides the joint change); verdicts and the
+ * size delta come from the shared model (never a second copy of the arithmetic);
+ * the coupon rides the single-pass escape hatch with the fit in the filename;
+ * the kit rides the snapshot-once bundle into buildModuleKit and is unreachable
+ * outside modular mode; and the coupon/kit interlock survives the split, carried
+ * by the busy prop their common owner (FabricationRail) holds. The kit build
  * itself has its own suite over real STL soups — here it's a stubbed
  * collaborator (moduleKitPlan stays real: the hint line quotes it).
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useAbacusStudio } from '../AbacusStudioContext'
 import { defaultParams, type FilamentMap, type Params } from '../abacus-model'
 import { buildModuleKit, type ModuleExportParts, type ModuleKit } from '../abacus-module-kit'
-import { ModularSeamPanel, modularSizeDelta } from '../ModularSeamPanel'
+import { ConstructionControl } from '../ConstructionControl'
+import {
+  ModularFitPanel,
+  ModuleKitExport,
+  modularSizeDelta,
+  type SeamBusy,
+} from '../ModularSeamPanel'
 
 vi.mock('../AbacusStudioContext', () => ({
   useAbacusStudio: vi.fn(),
@@ -54,11 +66,16 @@ function studio(params: Partial<Params> = {}, overrides: Record<string, unknown>
   } as any)
 }
 
-/** Render + open the disclosure (it defaults closed). */
-function open() {
-  const view = render(<ModularSeamPanel />)
-  fireEvent.click(screen.getByText('Modular columns'))
-  return view
+/** The two print-rail halves as the rail mounts them: different sections, one
+ *  shared "a render is in flight" lock. */
+function SeamDownloads() {
+  const [busy, setBusy] = useState<SeamBusy>(null)
+  return (
+    <>
+      <ModularFitPanel busy={busy} onBusy={setBusy} />
+      <ModuleKitExport busy={busy} onBusy={setBusy} />
+    </>
+  )
 }
 
 const modularParts = (): ModuleExportParts => ({
@@ -111,36 +128,87 @@ afterEach(() => {
   HTMLAnchorElement.prototype.click = realClick
 })
 
-describe('ModularSeamPanel', () => {
+describe('ConstructionControl (design rail)', () => {
   it('modularSizeDelta: seams widen the row and never the depth', () => {
     const d = modularSizeDelta(defaultParams)
     expect(d.modular[0]).toBeGreaterThan(d.mono[0])
     expect(d.modular[1]).toBeCloseTo(d.mono[1], 10)
   })
 
-  it('quotes both sizes from the one derived chain', () => {
-    const { container } = open()
-    const d = modularSizeDelta(defaultParams)
+  it('modular quotes both sizes from the one derived chain', () => {
+    studio({ seam_mode: 'modular' })
+    const { container } = render(<ConstructionControl />)
+    const d = modularSizeDelta({ ...defaultParams, seam_mode: 'modular' })
     const el = container.querySelector('[data-element="modular-seam-size-delta"]')
     expect(el?.textContent).toContain(`${d.mono[0].toFixed(1)} × ${d.mono[1].toFixed(1)} mm`)
     expect(el?.textContent).toContain(`${d.modular[0].toFixed(1)} × ${d.modular[1].toFixed(1)} mm`)
+    expect(el?.textContent).toContain('any subset stands')
   })
 
-  it('the toggle writes seam_mode through the one store setter', () => {
-    open()
-    fireEvent.click(screen.getByRole('checkbox'))
+  it('one piece quotes only its own footprint — no seam talk under a choice not made', () => {
+    studio({ seam_mode: 'mono' })
+    const { container } = render(<ConstructionControl />)
+    const d = modularSizeDelta(defaultParams)
+    const el = container.querySelector('[data-element="modular-seam-size-delta"]')
+    expect(el?.textContent).toContain(`${d.mono[0].toFixed(1)} × ${d.mono[1].toFixed(1)} mm`)
+    expect(el?.textContent).not.toContain(
+      `${d.modular[0].toFixed(1)} × ${d.modular[1].toFixed(1)} mm`
+    )
+    expect(el?.textContent).not.toContain('any subset stands')
+  })
+
+  it('the segmented control writes seam_mode through the one store setter', () => {
+    render(<ConstructionControl />)
+    fireEvent.click(screen.getByText('Column modules'))
     expect(set).toHaveBeenCalledWith('seam_mode', 'modular')
   })
 
   it('…and back to mono when already modular', () => {
     studio({ seam_mode: 'modular' })
-    open()
-    fireEvent.click(screen.getByRole('checkbox'))
+    render(<ConstructionControl />)
+    fireEvent.click(screen.getByText('One piece'))
     expect(set).toHaveBeenCalledWith('seam_mode', 'mono')
   })
 
+  it('hides the joint question until there is a joint', () => {
+    const { container } = render(<ConstructionControl />)
+    expect(container.querySelector('[data-action="select-modular-joint-type"]')).toBeNull()
+    expect(container.querySelector('[data-element="modular-joint-explanation"]')).toBeNull()
+  })
+
+  it('selects the joint topology and explains it in three sentences', () => {
+    studio({ seam_mode: 'modular', joint_type: 'sliding_dovetail', joint_fit: 0.11 })
+    const { container } = render(<ConstructionControl />)
+    const select = container.querySelector('[data-action="select-modular-joint-type"]')
+    expect(select).toHaveValue('sliding_dovetail')
+    expect(
+      container.querySelector('[data-element="modular-joint-explanation"]')?.textContent
+    ).toContain('slides in from the back')
+    fireEvent.change(select!, { target: { value: 'vertical_snap' } })
+    expect(set).toHaveBeenCalledWith('joint_type', 'vertical_snap')
+  })
+
+  it('clamps an out-of-range fit onto the sliding ladder when the joint changes', () => {
+    studio({ seam_mode: 'modular', joint_type: 'vertical_snap', joint_fit: 0.25 })
+    const { container } = render(<ConstructionControl />)
+    fireEvent.change(container.querySelector('[data-action="select-modular-joint-type"]')!, {
+      target: { value: 'sliding_dovetail' },
+    })
+    expect(set).toHaveBeenCalledWith('joint_type', 'sliding_dovetail')
+    expect(set).toHaveBeenCalledWith('joint_fit', 0.1)
+  })
+
+  it('points at the print rail for the tuning it does not own', () => {
+    studio({ seam_mode: 'modular' })
+    render(<ConstructionControl />)
+    expect(screen.getByText(/seam coupon are under Print options/)).toBeInTheDocument()
+  })
+})
+
+describe('ModularFitPanel + ModuleKitExport (print rail)', () => {
   it('shows the wood-PLA strain provenance when every verdict passes', () => {
-    const { container } = open()
+    studio({ seam_mode: 'modular' })
+    const { container } = render(<ModularFitPanel />)
     const ok = container.querySelector('[data-element="modular-seam-verdict-ok"]')
     // 45/64 % at stock constants — the flexure-gate number, shown as provenance
     expect(ok?.textContent).toMatch(/strain 0\.70%/)
@@ -150,7 +218,7 @@ describe('ModularSeamPanel', () => {
   it('a failing seamFit blocks both downloads and names the knobs', () => {
     // S = 0.6 trips exactly clip_walls, seat, module_feet (pinned in CP4)
     studio({ scale_factor: 0.6, seam_mode: 'modular' })
-    const { container } = open()
+    const { container } = render(<SeamDownloads />)
     expect(container.querySelector('[data-element="modular-seam-verdict-bad"]')).not.toBeNull()
     expect(screen.getByText(/clip socket leaves/)).toBeInTheDocument()
     expect(screen.getByText(/bottom seat/)).toBeInTheDocument()
@@ -161,14 +229,14 @@ describe('ModularSeamPanel', () => {
 
   it('keeps the feet-free coupon available when only module-foot checks fail', () => {
     studio({ seam_mode: 'modular', feet_mode: 'adhesive', feet_w: 9.5 })
-    open()
+    render(<SeamDownloads />)
     expect(screen.getByText(/stick-on bumper doesn’t fit/)).toBeInTheDocument()
     expect((screen.getByText('⬇ Seam coupon (STL)') as HTMLButtonElement).disabled).toBe(false)
     expect((screen.getByText('⬇ Module print kit (.zip)') as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('the kit needs modular mode; the coupon does not', () => {
-    open() // defaults: mono, everything passing
+  it('the kit needs modular mode; the coupon is gated on geometry alone', () => {
+    render(<SeamDownloads />) // defaults: mono, everything passing
     expect((screen.getByText('⬇ Seam coupon (STL)') as HTMLButtonElement).disabled).toBe(false)
     const kit = screen.getByText('⬇ Module print kit (.zip)') as HTMLButtonElement
     expect(kit.disabled).toBe(true)
@@ -177,7 +245,7 @@ describe('ModularSeamPanel', () => {
 
   it('both buttons wait for the exporter chunk', () => {
     studio({ seam_mode: 'modular' }, { exporterReady: false })
-    open()
+    render(<SeamDownloads />)
     const coupon = screen.getByText('⬇ Seam coupon (STL)') as HTMLButtonElement
     expect(coupon.disabled).toBe(true)
     expect(coupon.title).toBe('Preparing the 3D exporter…')
@@ -186,7 +254,7 @@ describe('ModularSeamPanel', () => {
 
   it('coupon: single-pass escape hatch, fit and scale in the filename', async () => {
     requestExportPass.mockResolvedValue(new ArrayBuffer(84))
-    open()
+    render(<ModularFitPanel />)
     fireEvent.click(screen.getByText('⬇ Seam coupon (STL)'))
     await waitFor(() => expect(downloads).toHaveLength(1))
     expect(requestExportPass).toHaveBeenCalledWith({ only: 'seam_coupon' })
@@ -195,28 +263,21 @@ describe('ModularSeamPanel', () => {
     )
   })
 
-  it('selects the joint topology and shows sliding-specific controls and guidance', () => {
+  it('shows the sliding topology’s own guidance and strain', () => {
     studio({ seam_mode: 'modular', joint_type: 'sliding_dovetail', joint_fit: 0.11 })
-    const { container } = open()
-    const select = container.querySelector('[data-action="select-modular-joint-type"]')
-    expect(select).toHaveValue('sliding_dovetail')
-    expect(
-      container.querySelector('[data-element="modular-joint-explanation"]')?.textContent
-    ).toContain('rear entry mouth')
+    const { container } = render(<ModularFitPanel />)
     expect(screen.getByText(/bounded plate contains 0\.10, 0\.11, and 0\.12/)).toBeInTheDocument()
     // one flexure in this topology — the detent's male tongue — so the ok line
     // carries its strain alongside the self-holding taper
     const ok = container.querySelector('[data-element="modular-seam-verdict-ok"]')
     expect(ok?.textContent).toContain('self-holding')
     expect(ok?.textContent).toMatch(/detent strain 0\.69%/)
-    fireEvent.change(select!, { target: { value: 'vertical_snap' } })
-    expect(set).toHaveBeenCalledWith('joint_type', 'vertical_snap')
   })
 
   it('sliding coupon filename carries the stable joint slug', async () => {
     requestExportPass.mockResolvedValue(new ArrayBuffer(84))
     studio({ joint_type: 'sliding_dovetail', joint_fit: 0.11 })
-    open()
+    render(<ModularFitPanel />)
     fireEvent.click(screen.getByText('⬇ Seam coupon (STL)'))
     await waitFor(() => expect(downloads).toHaveLength(1))
     expect(downloads[0]).toBe('abacus-seam-coupon-sliding-dovetail-fit0.11-x1.stl')
@@ -227,7 +288,7 @@ describe('ModularSeamPanel', () => {
     const parts = modularParts()
     requestExportModuleParts.mockResolvedValue(parts)
     vi.mocked(buildModuleKit).mockReturnValue(fakeKit())
-    open()
+    render(<ModuleKitExport />)
     fireEvent.click(screen.getByText('⬇ Module print kit (.zip)'))
     await waitFor(() => expect(downloads).toHaveLength(1))
     expect(buildModuleKit).toHaveBeenCalledWith({
@@ -240,19 +301,8 @@ describe('ModularSeamPanel', () => {
 
   it('quotes the real kit plan in the hint', () => {
     studio({ seam_mode: 'modular' })
-    open()
+    render(<ModuleKitExport />)
     expect(screen.getByText(/13 modules across 3 files/)).toBeInTheDocument()
-  })
-
-  it('the footer tells the side-text truth: sides print, crossing slots are one-piece only', () => {
-    // The stale claim this replaces said frame text was mono-only outright —
-    // since the side rails and end walls ride the end modules, that would
-    // wrongly warn users off text the kit actually prints.
-    studio({ seam_mode: 'modular' })
-    open()
-    const note = screen.getByText(/side rails and end walls/)
-    expect(note.textContent).toContain('one-piece abacus only')
-    expect(note.textContent).not.toContain('mono-only')
   })
 
   it('locks both downloads while one render is in flight', async () => {
@@ -264,7 +314,7 @@ describe('ModularSeamPanel', () => {
       })
     )
     vi.mocked(buildModuleKit).mockReturnValue(fakeKit())
-    open()
+    render(<SeamDownloads />)
     fireEvent.click(screen.getByText('⬇ Module print kit (.zip)'))
     expect(await screen.findByText('Rendering module passes…')).toBeInTheDocument()
     expect((screen.getByText('⬇ Seam coupon (STL)') as HTMLButtonElement).disabled).toBe(true)
@@ -275,9 +325,17 @@ describe('ModularSeamPanel', () => {
 
   it('a rejected render surfaces in place instead of vanishing', async () => {
     requestExportPass.mockRejectedValue(new Error('the seam_coupon render has no triangles'))
-    open()
+    render(<ModularFitPanel />)
     fireEvent.click(screen.getByText('⬇ Seam coupon (STL)'))
     expect(await screen.findByText(/Export failed: .*no triangles/)).toBeInTheDocument()
     expect(downloads).toHaveLength(0)
+  })
+
+  it('the kit wears the primary style only when nothing else in the rail does', () => {
+    studio({ seam_mode: 'modular' })
+    const { rerender } = render(<ModuleKitExport />)
+    expect(screen.getByText('⬇ Module print kit (.zip)').style.background).not.toContain('gradient')
+    rerender(<ModuleKitExport primary />)
+    expect(screen.getByText('⬇ Module print kit (.zip)').style.background).toContain('gradient')
   })
 })

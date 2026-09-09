@@ -44,7 +44,9 @@ const mainKeyOf = (p: Params, explode: number): string =>
   `${previewDedupKey(p)}\u0002${p.fn}${explode > 0 ? `\u0002explode=${explode}` : ''}`
 
 export type MainResult = { stl: ArrayBuffer; ms: number; id: number }
-export type StatusUpdate = { text: string; error?: boolean }
+/** `busy` marks the in-flight phases so a viewer can show progress without
+ *  parsing the dev text; a completed render carries neither `busy` nor `error`. */
+export type StatusUpdate = { text: string; error?: boolean; busy?: 'loading' | 'rendering' }
 
 export type UseAbacusScadArgs = {
   onMain: (res: MainResult) => void
@@ -133,7 +135,7 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
       m.rendering = true
       const id = ++m.reqId
       m.pending = { id, key: m.latestKey }
-      cbRef.current.onStatus?.({ text: `rendering #${id}…` })
+      cbRef.current.onStatus?.({ text: `rendering #${id}…`, busy: 'rendering' })
       st.worker?.postMessage({
         id,
         entry: '/abacus.scad',
@@ -208,7 +210,7 @@ export function useAbacusScad(args: UseAbacusScadArgs): UseAbacusScad {
 
     // ---- one-time load of the scad source + fonts ----------------------------
     ;(async () => {
-      cbRef.current.onStatus?.({ text: 'loading abacus.scad + fonts…' })
+      cbRef.current.onStatus?.({ text: 'loading abacus.scad + fonts…', busy: 'loading' })
       try {
         const [scad, ...fontBufs] = await Promise.all([
           fetch(SCAD_URL).then((r) => r.text()),

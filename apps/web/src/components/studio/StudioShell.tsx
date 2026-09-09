@@ -149,6 +149,11 @@ export function StudioShell({
   const isMobile = useIsMobile()
   const [railsOpen, setRailsOpen] = useState(false)
   const railScroll = css({ h: 'full', overflow: 'auto', bg: '#0f1419' })
+  // The global MyAbacus dock is fixed bottom-RIGHT at z-102 and floats over this
+  // rail — 100 px of button plus its 24 px inset on md+ — so without a floor of
+  // padding it eats the last control in the column (the print submit, or a file
+  // download). Only the right rail is under it; the left one is clear.
+  const rightRailScroll = css({ h: 'full', overflow: 'auto', bg: '#0f1419', pb: '124px' })
 
   if (isMobile) {
     // Small screens: the canvas (or marker sheet) owns the whole viewport as the
@@ -247,7 +252,7 @@ export function StudioShell({
         {right != null && <StudioResizeHandle />}
         {right != null && (
           <Panel id="right" order={3} defaultSize={28} minSize={20} maxSize={42} collapsible>
-            <div data-element="studio-rail-right" className={railScroll}>
+            <div data-element="studio-rail-right" className={rightRailScroll}>
               {right}
             </div>
           </Panel>

@@ -39,7 +39,7 @@ export type PrinterProfile = {
   label: string
   nozzleMm: number
   layerMm: number
-  minClearanceMm: number // bead↔track fit gap; below → captive beads fuse
+  minClearanceMm: number // bead↔track clearance; below → captive beads fuse
   minWallMm: number // wall between channels (`web`)
   minFeatureMm: number // thin structural strip (reckoning `bar`)
   minInlayDepthMm: number // ArUco/text color-inlay depth (Z)
@@ -83,8 +83,9 @@ export const PRINTER_PROFILES: readonly PrinterProfile[] = [
 ]
 
 export const DEFAULT_PROFILE_ID = 'fdm-0.4'
-export const DEFAULT_PROFILE: PrinterProfile =
-  PRINTER_PROFILES.find((p) => p.id === DEFAULT_PROFILE_ID) as PrinterProfile
+export const DEFAULT_PROFILE: PrinterProfile = PRINTER_PROFILES.find(
+  (p) => p.id === DEFAULT_PROFILE_ID
+) as PrinterProfile
 
 // Resolve a profile id to its profile, falling back to the default for an
 // unknown id (e.g. a stale `profileId` deserialized from an old saved design).
@@ -138,8 +139,7 @@ const EPS = 1e-9
 
 // Smallest scale_factor at which `knob * S >= floor`, rounded UP to 4 decimals so
 // the returned value comfortably clears the floor (never lands just under it).
-const clearsAtScale = (knob: number, floor: number): number =>
-  Math.ceil((floor / knob) * 1e4) / 1e4
+const clearsAtScale = (knob: number, floor: number): number => Math.ceil((floor / knob) * 1e4) / 1e4
 
 /**
  * Check a design against a printer profile. Pure: no I/O, no mutation. Returns a
@@ -152,16 +152,16 @@ export function solve(p: Params, profile: PrinterProfile): SolveResult {
   const S = p.scale_factor
   const reasons: SolveReason[] = []
 
-  // 1. bead↔track fit gap — LOCKED/absolute; scaling can't fix it.
+  // 1. bead↔track clearance — LOCKED/absolute; scaling can't fix it.
   if (p.clearance < profile.minClearanceMm - EPS) {
     reasons.push({
       dim: 'clearance',
       severity: 'error',
-      label: 'fit gap',
+      label: 'bead clearance',
       measuredMm: p.clearance,
       floorMm: profile.minClearanceMm,
-      message: `Bead↔track fit gap ${p.clearance.toFixed(2)} mm is below the ${profile.label} floor of ${profile.minClearanceMm.toFixed(2)} mm — captive beads would fuse to the track.`,
-      fix: `Raise the fit gap to at least ${profile.minClearanceMm.toFixed(2)} mm (it's absolute — printing larger won't help).`,
+      message: `Bead clearance ${p.clearance.toFixed(2)} mm is below the ${profile.label} floor of ${profile.minClearanceMm.toFixed(2)} mm — captive beads would fuse to the track.`,
+      fix: `Raise the bead clearance to at least ${profile.minClearanceMm.toFixed(2)} mm (it's absolute — printing larger won't help).`,
     })
   }
 
