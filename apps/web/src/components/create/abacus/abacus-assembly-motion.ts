@@ -25,12 +25,13 @@
 // Travelling modules seat centre-out, alternating right-then-left by distance
 // from the anchor (travelOrder), and the schedule is keyed by that ORDER — the
 // first two travellers get the slow windows wherever they sit. Taking apart
-// runs the same ORDER first-to-last as putting together (the slow, important
-// beat leads BOTH plays): apart windows are the together windows mirrored in
-// s, {start: 1−end, end: 1−start}, so as s sweeps 1→0 the centre module's slow
-// unhooking is the first thing that moves. The end poses are identical under
-// either schedule, so static poses and reduced-motion jumps never see the
-// flag.
+// is the SAME schedule played in reverse (s sweeps 1→0) — the kinematics
+// demand it: a module can only unhook from a FREE end of the chain (a middle
+// module is hooked to both neighbours; pulling it out of the middle drags it
+// through them), so disassembly peels the ends first, fast, and converges on
+// the anchor, ending with the slow deliberate unhooking of the final centre
+// pair — the legible beat still plays at the visual centre, where the
+// shrinking chain has dragged the viewer's eye.
 //
 // Physical semantics (this is the point of the feature — see the assembly note
 // in abacus-module-kit.ts, and abacus.scad's two seam topologies):
@@ -46,10 +47,12 @@
 //     place — the top swings away from the anchor as it closes, and the 45°
 //     seat wedge is exactly the arc the roll traces. The crossbar clips
 //     click at the very end.
-// Taking apart is the mirror of putting together (and faster): the reverse of
-// "slide forward and click" is a rearward tug, the reverse of "lean over,
-// hook and roll back" is lean over and lift off — led, like assembly, by the
-// slow centre modules.
+// Taking apart is the exact reverse of putting together (and apartSpeed×
+// faster): the reverse of "slide forward and click" is a rearward tug, the
+// reverse of "lean over, hook and roll back" is lean over and lift off — and
+// the reverse of centre-out seating is ends-in peeling, so the slow centre
+// pair is the LAST thing to come apart, never the first (user review
+// 2026-09-10: pulling a module out of the middle first breaks the kinematics).
 
 import type { JointType } from './abacus-model'
 
@@ -190,13 +193,13 @@ export function timelineMs(cols: number): number {
  * traveller on — only when there IS a third, i.e. n ≥ 4 — windows are brisk
  * and their overlap tightens so the last module lands exactly on the budget.
  *
- * `apart` mirrors every moving window in s ({start: 1−end, end: 1−start}):
- * as s sweeps 1→0 the centre pair unhooks FIRST and slowly, and the brisk
- * tail follows — both plays lead with the legible beat (user review
- * 2026-09-10: apart used to run the fast tail first). The end poses are the
- * same under either schedule; the degenerate and parked windows don't mirror.
+ * Taking apart plays this same schedule with s sweeping 1→0, so modules
+ * unhook in the EXACT reverse of the order they seat — the ends first (fast),
+ * the slow centre pair last. That reversal is not a choice, it's the
+ * kinematics: only a free end of the chain can unhook (user review
+ * 2026-09-10).
  */
-export function moduleWindow(i: number, cols: number, apart = false): AssemblyWindow {
+export function moduleWindow(i: number, cols: number): AssemblyWindow {
   const n = movingModules(cols)
   const k = travelPosition(i, anchorModule(cols))
   if (k <= 0 || n <= 0) return { start: 0, end: 0 }
@@ -215,12 +218,12 @@ export function moduleWindow(i: number, cols: number, apart = false): AssemblyWi
     if (startMs >= total) return { start: 1, end: 1 }
     w = { start: startMs / total, end: Math.min((startMs + ASSEMBLY.fastModuleMs) / total, 1) }
   }
-  return apart ? { start: 1 - w.end, end: 1 - w.start } : w
+  return w
 }
 
 /** module i's local progress at global timeline position `s` */
-function localProgress(i: number, cols: number, s: number, apart: boolean): number {
-  const { start, end } = moduleWindow(i, cols, apart)
+function localProgress(i: number, cols: number, s: number): number {
+  const { start, end } = moduleWindow(i, cols)
   if (end <= start) return s >= end ? 1 : 0
   return clamp01((s - start) / (end - start))
 }
@@ -277,8 +280,7 @@ function snapTilt(u: number, tiltRad: number): number {
  * `x0` is the module's SEAM-side face X in the group's local frame — the
  * bottom line the vertical_snap roll pivots about (the left face for modules
  * right of the anchor, the right face for modules left of it; the caller
- * picks). sliding_dovetail ignores it. `apart` selects the mirrored schedule
- * (see moduleWindow); it changes only WHO moves WHEN, never the end poses.
+ * picks). sliding_dovetail ignores it.
  *
  * Every offset is measured from the exploded render, and the constant
  * `home = −anchor·gap` is the anchor's own offset: fully apart, ALL modules
@@ -315,14 +317,13 @@ export function modulePose(
   cols: number,
   s: number,
   dims: AssemblyDims,
-  x0 = 0,
-  apart = false
+  x0 = 0
 ): ModulePose {
   const anchor = anchorModule(cols)
   const home = -anchor * dims.gap
   if (i === anchor) return pose(home, 0, 0)
   if (i < 0 || i >= cols) return pose(0, 0, 0) // parked pool group: never moves
-  const u = localProgress(i, cols, s, apart)
+  const u = localProgress(i, cols, s)
   const seatX = -i * dims.gap
   const A = ASSEMBLY.approachFraction
 

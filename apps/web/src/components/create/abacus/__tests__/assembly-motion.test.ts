@@ -2,7 +2,8 @@
 //
 // This is where the FEEL of "take it apart / put it together" is pinned: the
 // centre anchor, the centre-out travel order, the stagger, the two-phase path
-// per joint topology, the detent click, the apart mirror, and the
+// per joint topology, the detent click, the apart time-reversal (ends peel
+// first, the slow centre pair last), and the
 // reduced-motion escape hatch. Pure arithmetic, so all of it is testable
 // without three.js, a canvas or a render.
 
@@ -68,7 +69,7 @@ describe('moduleWindow', () => {
   it('gives the anchor a degenerate window — it never moves', () => {
     for (const cols of [1, 2, 5, 13]) {
       expect(moduleWindow(anchorModule(cols), cols)).toEqual({ start: 0, end: 0 })
-      expect(moduleWindow(anchorModule(cols), cols, true)).toEqual({ start: 0, end: 0 })
+      expect(moduleWindow(anchorModule(cols), cols)).toEqual({ start: 0, end: 0 })
     }
   })
 
@@ -121,7 +122,7 @@ describe('moduleWindow', () => {
 
   it('parks indices past the chain (the viewer group pool only grows)', () => {
     expect(moduleWindow(40, 4)).toEqual({ start: 1, end: 1 })
-    expect(moduleWindow(40, 4, true)).toEqual({ start: 1, end: 1 })
+    expect(moduleWindow(40, 4)).toEqual({ start: 1, end: 1 })
   })
 
   it('is degenerate for a mono design', () => {
@@ -152,34 +153,39 @@ describe('moduleWindow', () => {
   })
 })
 
-describe('moduleWindow — the apart mirror', () => {
-  it('mirrors every moving window in s', () => {
+describe('moduleWindow — apart is the exact time-reversal', () => {
+  it('windows strictly increase along the travel order, so removal runs exactly backwards', () => {
+    // as s sweeps 1→0 the module with the HIGHEST window moves first, so ends
+    // increasing along the seating order means the chain peels from the ends
+    // in — the only kinematically legal unhook order, since a module can only
+    // unhook from a FREE end (user review 2026-09-10)
     for (const cols of [2, 4, 5, 13, 21]) {
-      for (const i of travelOrder(cols)) {
-        const together = moduleWindow(i, cols, false)
-        const apart = moduleWindow(i, cols, true)
-        expect(apart.start).toBeCloseTo(1 - together.end, 12)
-        expect(apart.end).toBeCloseTo(1 - together.start, 12)
+      const order = travelOrder(cols)
+      for (let k = 0; k < order.length - 1; k++) {
+        const a = moduleWindow(order[k], cols)
+        const b = moduleWindow(order[k + 1], cols)
+        expect(b.start).toBeGreaterThan(a.start)
+        expect(b.end).toBeGreaterThan(a.end)
       }
     }
   })
 
-  it('leads apart with the slow centre pair, brisk tail last (as s sweeps 1→0)', () => {
+  it('peels the ends fast and saves the slow centre pair for last (as s sweeps 1→0)', () => {
     const cols = 13
     const total = timelineMs(cols)
     const order = travelOrder(cols)
-    const first = moduleWindow(order[0], cols, true)
-    const second = moduleWindow(order[1], cols, true)
-    // the first traveller starts moving the instant s leaves 1, and both
-    // centre modules get the full slow window
-    expect(first.end).toBe(1)
+    // the last traveller starts moving the instant s leaves 1…
+    const last = moduleWindow(order[order.length - 1], cols)
+    expect(last.end).toBe(1)
+    // …and the centre pair comes apart LAST, at the slow deliberate cadence —
+    // the legible beat still plays at the visual centre, where the shrinking
+    // chain has dragged the viewer's eye
+    const first = moduleWindow(order[0], cols)
+    const second = moduleWindow(order[1], cols)
+    expect(first.start).toBe(0)
     expect(len(first)).toBeCloseTo(ASSEMBLY.slowModuleMs / total, 12)
     expect(len(second)).toBeCloseTo(ASSEMBLY.slowModuleMs / total, 12)
-    expect(second.start).toBeLessThan(first.start) // staggered behind, in time
-    // the tail waits: its windows sit at LOW s — late in an apart play
-    const last = moduleWindow(order[order.length - 1], cols, true)
-    expect(last.start).toBe(0)
-    expect(last.end).toBeLessThan(first.start)
+    expect(second.end).toBeLessThan(last.start) // both centre windows below the tail's start
   })
 })
 
@@ -209,17 +215,46 @@ describe('modulePose — the two end poses', () => {
       const home = { x: -anchor * DIMS.gap, y: 0, z: 0, rotY: 0 }
       for (const s of SAMPLES) {
         expect(modulePose(joint, anchor, 13, s, DIMS)).toEqual(home)
-        expect(modulePose(joint, anchor, 13, s, DIMS, 0, true)).toEqual(home)
       }
     })
 
-    it(`${joint}: the apart schedule lands on the SAME end poses`, () => {
-      for (const s of [0, 1]) {
-        for (let i = 0; i < 13; i++) {
-          expect(modulePose(joint, i, 13, s, DIMS, 0, true)).toEqual(
-            modulePose(joint, i, 13, s, DIMS, 0, false)
-          )
-        }
+    it(`${joint}: apart peels the ENDS first — the edge unhooks while the centre is still seated`, () => {
+      const cols = 13
+      const order = travelOrder(cols)
+      const edge = order[order.length - 1] // the last module seated = the first freed
+      const w = moduleWindow(edge, cols)
+      const s = (w.start + w.end) / 2 // halfway through the first unhook of an apart play
+      expect(modulePose(joint, edge, cols, s, DIMS)).not.toEqual({
+        x: -edge * DIMS.gap + 0,
+        y: 0,
+        z: 0,
+        rotY: 0,
+      })
+      // …and the slow centre pair hasn't moved a hair
+      for (const i of order.slice(0, 2)) {
+        expect(modulePose(joint, i, cols, s, DIMS)).toEqual({
+          x: -i * DIMS.gap + 0, // (+0: the pose helper normalises −0, so must we)
+          y: 0,
+          z: 0,
+          rotY: 0,
+        })
+      }
+    })
+
+    it(`${joint}: the centre module comes apart LAST — everything else already apart`, () => {
+      const cols = 13
+      const order = travelOrder(cols)
+      const w = moduleWindow(order[0], cols)
+      const s = (w.start + w.end) / 2 // the centre window sits at LOW s: the END of an apart play
+      const home = -anchorModule(cols) * DIMS.gap
+      expect(modulePose(joint, order[0], cols, s, DIMS)).not.toEqual({
+        x: home,
+        y: 0,
+        z: 0,
+        rotY: 0,
+      })
+      for (const i of order.slice(1)) {
+        expect(modulePose(joint, i, cols, s, DIMS)).toEqual({ x: home, y: 0, z: 0, rotY: 0 })
       }
     })
 
@@ -475,37 +510,6 @@ describe('modulePose — the chain seats from the anchor outward', () => {
       for (let k = 0; k < order.length - 1; k++) {
         expect(progress(order[k], s)).toBeGreaterThanOrEqual(progress(order[k + 1], s) - 1e-9)
       }
-    }
-  })
-
-  it('leads APART with the first traveller — everyone else still seated mid-window', () => {
-    const cols = 13
-    const order = travelOrder(cols)
-    const w = moduleWindow(order[0], cols, true)
-    const s = (w.start + w.end) / 2 // halfway through the first unhook
-    // the first traveller is already tugging rearward off its seat…
-    expect(modulePose('sliding_dovetail', order[0], cols, s, DIMS, 0, true).y).toBeLessThan(0)
-    // …and the whole rest of the chain is still exactly seated
-    for (const i of order.slice(1)) {
-      expect(modulePose('sliding_dovetail', i, cols, s, DIMS, 0, true)).toEqual({
-        x: -i * DIMS.gap + 0, // (+0: the pose helper normalises −0, so must we)
-        y: 0,
-        z: 0,
-        rotY: 0,
-      })
-    }
-  })
-
-  it('unrolls the snap hook first too — the centre module lifts off tilted', () => {
-    const cols = 13
-    const order = travelOrder(cols)
-    const w = moduleWindow(order[0], cols, true)
-    const s = (w.start + w.end) / 2
-    // a right-side module: the unroll runs the lean back out toward the
-    // full over-the-anchor tilt before the column lifts away
-    expect(modulePose('vertical_snap', order[0], cols, s, DIMS, 0, true).rotY).toBeLessThan(0)
-    for (const i of order.slice(1)) {
-      expect(modulePose('vertical_snap', i, cols, s, DIMS, 0, true).rotY).toBe(0)
     }
   })
 })
