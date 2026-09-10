@@ -24,7 +24,13 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { STUDIO } from '@/components/studio/theme'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { useAbacusStudio } from './AbacusStudioContext'
-import { type Motion, modulePose, planMotion, sampleMotion } from './abacus-assembly-motion'
+import {
+  anchorModule,
+  type Motion,
+  modulePose,
+  planMotion,
+  sampleMotion,
+} from './abacus-assembly-motion'
 import {
   analyzeShells,
   COLOR_PALETTES,
@@ -325,23 +331,29 @@ export function AbacusStudioViewer() {
     }
     // 1 = seated, 0 = fully taken apart. A plain object, not React state, so the
     // animation can drive it per frame without re-rendering the studio tree.
-    const pose = { assembled: 1 }
+    // `apart` is the DIRECTION of the current play: the schedule mirrors (the
+    // slow centre pair leads both ways), and only the mid-play windows differ —
+    // the end poses are identical, so stale values between plays are harmless.
+    const pose = { assembled: 1, apart: false }
 
     // Pose every module group and recentre on the chain's TRUE X extent.
-    // Mid-play the modules are NOT evenly spread — they seat from the anchor
-    // outward with a stagger — so the only honest centre is the one measured
-    // from where the modules actually are this frame. Module 0 is the anchor at
-    // x = 0, so the extent is [0, max right edge]: seated that is exactly
-    // frameW (a modular design centres where a mono one does), fully apart it is
-    // frameW + (cols-1)·gap, and everything between falls out of the same sum.
-    // The joint path itself lives in abacus-assembly-motion (pure + tested);
-    // this is only the three.js binding.
+    // Mid-play the modules are NOT evenly spread — they seat from the centre
+    // anchor outward with a stagger — so the only honest centre is the one
+    // measured from where the modules actually are this frame, BOTH edges: the
+    // anchor is the centre module now, and fully apart every module carries
+    // the constant home offset (−anchor·gap), so the chain extends to
+    // NEGATIVE x (seated it is exactly [0, frameW] — a modular design centres
+    // where a mono one does; apart it is [−anchor·gap, frameW +
+    // (cols−1−anchor)·gap], and everything between falls out of the same
+    // corner math). The joint path itself lives in abacus-assembly-motion
+    // (pure + tested); this is only the three.js binding.
     // derived() is not memoized and the pose reads it once per module per frame,
     // so cache what the pose needs against the params OBJECT (the store hands out
     // a new one on every edit). `explodedX0[i]`/`explodedRight[i]` are module i's
-    // seam-side (left) face and right edge in the render's own coordinates — the
-    // roll pivots about the left one, and the right one plus the module's current
-    // pose gives the chain's right edge this frame.
+    // left face and right edge in the render's own coordinates — the roll pivots
+    // about the SEAM-side one (the left face for modules right of the anchor,
+    // the right edge for modules left of it), and the rotated box corners plus
+    // the module's current pose give the chain's extent this frame.
     let poseGeomFor: Params | null = null
     let poseGeom = {
       dims: { gap: 0, depth: 0 },
@@ -381,26 +393,35 @@ export function AbacusStudioViewer() {
         centered.position.set(-fw / 2, -dims.depth / 2, 0)
         return
       }
-      let right = 0
+      const anchor = anchorModule(p.cols)
+      let left = Number.POSITIVE_INFINITY
+      let right = Number.NEGATIVE_INFINITY
       for (let i = 0; i < moduleGroups.length; i++) {
-        const q = modulePose(p.joint_type, i, p.cols, pose.assembled, dims, explodedX0[i] ?? 0)
+        // the roll pivots about the seam-side bottom line: the LEFT face for
+        // modules right of the anchor, the RIGHT edge for modules left of it
+        const x0 = i < anchor ? (explodedRight[i] ?? 0) : (explodedX0[i] ?? 0)
+        const q = modulePose(p.joint_type, i, p.cols, pose.assembled, dims, x0, pose.apart)
         moduleGroups[i].position.set(q.x, q.y, q.z)
         moduleGroups[i].rotation.y = q.rotY
         if (i < p.cols) {
-          // the module's right edge this frame: its width rotated into X by the
-          // roll, plus the top corner swinging a further frameH·sin out — at
-          // rotY = 0 this is exactly explodedRight[i] + q.x (the seated centre
-          // is pixel-identical to before the roll existed)
-          right = Math.max(
-            right,
-            q.x +
-              explodedX0[i] +
-              (explodedRight[i] - explodedX0[i]) * Math.cos(q.rotY) +
-              frameH * Math.sin(q.rotY)
-          )
+          // the module's true X extent this frame: the four box corners
+          // rotated into world X by the roll (the q.x/q.z pivot correction is
+          // already inside q) — at rotY = 0 exactly [explodedX0[i],
+          // explodedRight[i]] + q.x, so the seated centre is pixel-identical
+          // to before the roll existed
+          const cos = Math.cos(q.rotY)
+          const sin = Math.sin(q.rotY)
+          for (const x of [explodedX0[i], explodedRight[i]]) {
+            for (const z of [0, frameH]) {
+              const wx = q.x + x * cos + z * sin
+              if (wx < left) left = wx
+              if (wx > right) right = wx
+            }
+          }
         }
       }
-      centered.position.set(-right / 2, -dims.depth / 2, 0)
+      // no modules yet (the STL hasn't landed): centre on the assembled frame
+      centered.position.set(left > right ? -fw / 2 : -(left + right) / 2, -dims.depth / 2, 0)
     }
     applyPose()
 
@@ -418,6 +439,7 @@ export function AbacusStudioViewer() {
     }
     const animateTo = (to: number) => {
       if (!motion && to === pose.assembled) return
+      pose.apart = to < pose.assembled
       const m = planMotion(pose.assembled, to, paramsRef.current.cols, {
         now: performance.now(),
         reducedMotion: reducedMotion(),

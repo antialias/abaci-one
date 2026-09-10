@@ -1,7 +1,8 @@
 // abacus-assembly-motion — the joint-path timeline (Gitea #44, PR D phase 2).
 //
 // This is where the FEEL of "take it apart / put it together" is pinned: the
-// stagger, the two-phase path per joint topology, the detent click, and the
+// centre anchor, the centre-out travel order, the stagger, the two-phase path
+// per joint topology, the detent click, the apart mirror, and the
 // reduced-motion escape hatch. Pure arithmetic, so all of it is testable
 // without three.js, a canvas or a render.
 
@@ -9,46 +10,87 @@ import { describe, expect, it } from 'vitest'
 import {
   ASSEMBLY,
   type AssemblyDims,
+  anchorModule,
   modulePose,
   moduleWindow,
   movingModules,
   planMotion,
   sampleMotion,
   timelineMs,
+  travelOrder,
 } from '../abacus-assembly-motion'
 
 const DIMS: AssemblyDims = { gap: 12, depth: 80 }
 /** sample the whole timeline finely enough to catch an excursion */
 const SAMPLES = Array.from({ length: 401 }, (_, k) => k / 400)
 const len = (w: { start: number; end: number }) => w.end - w.start
-/** the global `s` at which module i is `u` through its own window */
+/** the global `s` at which module i is `u` through its own (together) window */
 const at = (i: number, cols: number, u: number) => {
   const w = moduleWindow(i, cols)
   return w.start + u * len(w)
 }
 
-describe('moduleWindow', () => {
-  it('gives module 0 a degenerate window — the anchor never moves', () => {
-    for (const cols of [1, 2, 5, 13]) expect(moduleWindow(0, cols)).toEqual({ start: 0, end: 0 })
+describe('anchorModule / travelOrder', () => {
+  it('anchors the centre module (just left of centre on an even count)', () => {
+    expect(anchorModule(1)).toBe(0)
+    expect(anchorModule(2)).toBe(0)
+    expect(anchorModule(3)).toBe(1)
+    expect(anchorModule(4)).toBe(1)
+    expect(anchorModule(5)).toBe(2)
+    expect(anchorModule(12)).toBe(5)
+    expect(anchorModule(13)).toBe(6)
+    expect(anchorModule(21)).toBe(10)
   })
 
-  it('starts the first travelling module at 0 and lands the last exactly on 1', () => {
-    for (const cols of [2, 3, 5, 13]) {
-      expect(moduleWindow(1, cols).start).toBe(0)
-      expect(moduleWindow(cols - 1, cols).end).toBeCloseTo(1, 12)
+  it('travels centre-out, alternating right-then-left by distance', () => {
+    expect(travelOrder(1)).toEqual([])
+    expect(travelOrder(2)).toEqual([1])
+    expect(travelOrder(3)).toEqual([2, 0])
+    expect(travelOrder(4)).toEqual([2, 0, 3])
+    expect(travelOrder(12)).toEqual([6, 4, 7, 3, 8, 2, 9, 1, 10, 0, 11])
+  })
+
+  it('visits every non-anchor module exactly once', () => {
+    for (const cols of [2, 3, 4, 5, 13, 21]) {
+      const order = travelOrder(cols)
+      expect(order.length).toBe(cols - 1)
+      expect(new Set(order).size).toBe(cols - 1)
+      expect(order).not.toContain(anchorModule(cols))
+      for (const i of order) {
+        expect(i).toBeGreaterThanOrEqual(0)
+        expect(i).toBeLessThan(cols)
+      }
+    }
+  })
+})
+
+describe('moduleWindow', () => {
+  it('gives the anchor a degenerate window — it never moves', () => {
+    for (const cols of [1, 2, 5, 13]) {
+      expect(moduleWindow(anchorModule(cols), cols)).toEqual({ start: 0, end: 0 })
+      expect(moduleWindow(anchorModule(cols), cols, true)).toEqual({ start: 0, end: 0 })
     }
   })
 
-  it('plays the first two modules slowly and uniformly at the stagger cadence', () => {
+  it('starts the first traveller at 0 and lands the last exactly on 1', () => {
+    for (const cols of [2, 3, 5, 13]) {
+      const order = travelOrder(cols)
+      expect(moduleWindow(order[0], cols).start).toBe(0)
+      expect(moduleWindow(order[order.length - 1], cols).end).toBeCloseTo(1, 12)
+    }
+  })
+
+  it('plays the first two travellers slowly and uniformly at the stagger cadence', () => {
     for (const cols of [3, 5, 13, 21]) {
       const total = timelineMs(cols)
-      const a = moduleWindow(1, cols)
-      const b = moduleWindow(2, cols)
+      const order = travelOrder(cols)
+      const a = moduleWindow(order[0], cols)
+      const b = moduleWindow(order[1], cols)
       expect(a.start).toBe(0)
       expect(len(a)).toBeCloseTo(ASSEMBLY.slowModuleMs / total, 12)
       expect(len(b)).toBeCloseTo(ASSEMBLY.slowModuleMs / total, 12)
-      // module 2 starts staggerFraction of a slow window in, so they are in
-      // flight together for the remaining 45%
+      // the second traveller starts staggerFraction of a slow window in, so
+      // they are in flight together for the remaining 45%
       expect(b.start - a.start).toBeCloseTo(
         (ASSEMBLY.staggerFraction * ASSEMBLY.slowModuleMs) / total,
         12
@@ -61,9 +103,10 @@ describe('moduleWindow', () => {
     const cols = 13
     const total = timelineMs(cols)
     expect(total).toBe(ASSEMBLY.budgetMs)
-    for (let i = 3; i < cols - 1; i++) {
-      const a = moduleWindow(i, cols)
-      const b = moduleWindow(i + 1, cols)
+    const order = travelOrder(cols)
+    for (let k = 2; k < order.length - 1; k++) {
+      const a = moduleWindow(order[k], cols)
+      const b = moduleWindow(order[k + 1], cols)
       // every tail module keeps the full brisk window — the OVERLAP tightens
       expect(len(a)).toBeCloseTo(ASSEMBLY.fastModuleMs / total, 12)
       expect(b.start).toBeGreaterThan(a.start)
@@ -77,8 +120,8 @@ describe('moduleWindow', () => {
   })
 
   it('parks indices past the chain (the viewer group pool only grows)', () => {
-    const w = moduleWindow(40, 4)
-    expect(w).toEqual({ start: 1, end: 1 })
+    expect(moduleWindow(40, 4)).toEqual({ start: 1, end: 1 })
+    expect(moduleWindow(40, 4, true)).toEqual({ start: 1, end: 1 })
   })
 
   it('is degenerate for a mono design', () => {
@@ -88,7 +131,7 @@ describe('moduleWindow', () => {
     expect(timelineMs(0)).toBe(0)
   })
 
-  it('is the slow dance up to three modules, then holds the budget forever', () => {
+  it('is the slow dance up to three travellers, then holds the budget forever', () => {
     expect(timelineMs(2)).toBeCloseTo(ASSEMBLY.slowModuleMs, 9)
     expect(timelineMs(3)).toBeCloseTo(ASSEMBLY.slowModuleMs * (1 + ASSEMBLY.staggerFraction), 9)
     // a 4-column abacus: exactly three slow windows = the budget, ~4× the
@@ -103,19 +146,45 @@ describe('moduleWindow', () => {
   })
 
   it('never exceeds the budget, however wide the chain — and still comes apart fast', () => {
-    expect(moduleWindow(20, 21).end).toBeCloseTo(1, 12)
+    const order = travelOrder(21)
+    expect(moduleWindow(order[order.length - 1], 21).end).toBeCloseTo(1, 12)
     expect(timelineMs(21) / ASSEMBLY.apartSpeed).toBeLessThan(4000)
+  })
+})
+
+describe('moduleWindow — the apart mirror', () => {
+  it('mirrors every moving window in s', () => {
+    for (const cols of [2, 4, 5, 13, 21]) {
+      for (const i of travelOrder(cols)) {
+        const together = moduleWindow(i, cols, false)
+        const apart = moduleWindow(i, cols, true)
+        expect(apart.start).toBeCloseTo(1 - together.end, 12)
+        expect(apart.end).toBeCloseTo(1 - together.start, 12)
+      }
+    }
+  })
+
+  it('leads apart with the slow centre pair, brisk tail last (as s sweeps 1→0)', () => {
+    const cols = 13
+    const total = timelineMs(cols)
+    const order = travelOrder(cols)
+    const first = moduleWindow(order[0], cols, true)
+    const second = moduleWindow(order[1], cols, true)
+    // the first traveller starts moving the instant s leaves 1, and both
+    // centre modules get the full slow window
+    expect(first.end).toBe(1)
+    expect(len(first)).toBeCloseTo(ASSEMBLY.slowModuleMs / total, 12)
+    expect(len(second)).toBeCloseTo(ASSEMBLY.slowModuleMs / total, 12)
+    expect(second.start).toBeLessThan(first.start) // staggered behind, in time
+    // the tail waits: its windows sit at LOW s — late in an apart play
+    const last = moduleWindow(order[order.length - 1], cols, true)
+    expect(last.start).toBe(0)
+    expect(last.end).toBeLessThan(first.start)
   })
 })
 
 describe('modulePose — the two end poses', () => {
   for (const joint of ['sliding_dovetail', 'vertical_snap'] as const) {
-    it(`${joint}: s=0 is the exploded render itself (no offset at all)`, () => {
-      for (let i = 0; i < 13; i++) {
-        expect(modulePose(joint, i, 13, 0, DIMS)).toEqual({ x: 0, y: 0, z: 0, rotY: 0 })
-      }
-    })
-
     it(`${joint}: s=1 is seated — module i pulled back exactly i·gap`, () => {
       for (let i = 0; i < 13; i++) {
         const q = modulePose(joint, i, 13, 1, DIMS)
@@ -125,18 +194,54 @@ describe('modulePose — the two end poses', () => {
       }
     })
 
-    it(`${joint}: module 0 is the anchor at EVERY point of the timeline`, () => {
-      for (const s of SAMPLES)
-        expect(modulePose(joint, 0, 13, s, DIMS)).toEqual({ x: 0, y: 0, z: 0, rotY: 0 })
+    it(`${joint}: s=0 is the exploded render re-centred on the anchor — one constant offset`, () => {
+      // every module carries the anchor's home offset; the viewer's per-frame
+      // extent centring absorbs the constant, so this renders pixel-identical
+      // to the plain exploded view
+      const home = -anchorModule(13) * DIMS.gap
+      for (let i = 0; i < 13; i++) {
+        expect(modulePose(joint, i, 13, 0, DIMS)).toEqual({ x: home, y: 0, z: 0, rotY: 0 })
+      }
     })
 
-    it(`${joint}: x closes monotonically and never passes the seat`, () => {
-      for (const i of [1, 4, 12]) {
-        let prev = 0
+    it(`${joint}: the anchor sits at the home offset at EVERY point of the timeline`, () => {
+      const anchor = anchorModule(13)
+      const home = { x: -anchor * DIMS.gap, y: 0, z: 0, rotY: 0 }
+      for (const s of SAMPLES) {
+        expect(modulePose(joint, anchor, 13, s, DIMS)).toEqual(home)
+        expect(modulePose(joint, anchor, 13, s, DIMS, 0, true)).toEqual(home)
+      }
+    })
+
+    it(`${joint}: the apart schedule lands on the SAME end poses`, () => {
+      for (const s of [0, 1]) {
+        for (let i = 0; i < 13; i++) {
+          expect(modulePose(joint, i, 13, s, DIMS, 0, true)).toEqual(
+            modulePose(joint, i, 13, s, DIMS, 0, false)
+          )
+        }
+      }
+    })
+
+    it(`${joint}: x closes monotonically on the anchor and never passes the seat`, () => {
+      const home = -anchorModule(13) * DIMS.gap
+      // right of the anchor: x falls from home to the seat
+      for (const i of [8, 12]) {
+        let prev = home
         for (const s of SAMPLES) {
           const { x } = modulePose(joint, i, 13, s, DIMS)
           expect(x).toBeLessThanOrEqual(prev + 1e-9)
           expect(x).toBeGreaterThanOrEqual(-i * DIMS.gap - 1e-9)
+          prev = x
+        }
+      }
+      // left of the anchor: x rises from home to the seat
+      for (const i of [0, 4]) {
+        let prev = home
+        for (const s of SAMPLES) {
+          const { x } = modulePose(joint, i, 13, s, DIMS)
+          expect(x).toBeGreaterThanOrEqual(prev - 1e-9)
+          expect(x).toBeLessThanOrEqual(-i * DIMS.gap + 1e-9)
           prev = x
         }
       }
@@ -145,20 +250,29 @@ describe('modulePose — the two end poses', () => {
 })
 
 describe('modulePose — sliding_dovetail enters from behind', () => {
+  // cols = 5 anchors module 2; module 3 is the FIRST traveller (right side),
+  // module 1 the second (left side)
   const pose = (i: number, u: number) => modulePose('sliding_dovetail', i, 5, at(i, 5, u), DIMS)
 
   it('lines up BEHIND the seat (−Y), aligned in X, before it slides', () => {
-    const q = pose(2, ASSEMBLY.approachFraction)
-    expect(q.x).toBeCloseTo(-2 * DIMS.gap, 10) // already in its column
+    const q = pose(3, ASSEMBLY.approachFraction)
+    expect(q.x).toBeCloseTo(-3 * DIMS.gap, 10) // already in its column
     expect(q.y).toBeCloseTo(-DIMS.depth * ASSEMBLY.slideBehindFactor, 10) // a full depth back
     expect(q.z).toBe(0)
   })
 
+  it('stages left-side modules the same way, closing +X onto the anchor', () => {
+    const q = pose(1, ASSEMBLY.approachFraction)
+    expect(q.x).toBeCloseTo(-1 * DIMS.gap, 10)
+    expect(q.y).toBeCloseTo(-DIMS.depth * ASSEMBLY.slideBehindFactor, 10)
+    expect(q.z).toBe(0)
+  })
+
   it('slides forward (+Y) through phase B with x parked on the seat', () => {
-    let prev = pose(2, ASSEMBLY.approachFraction).y
+    let prev = pose(3, ASSEMBLY.approachFraction).y
     for (let u = 0.45; u <= ASSEMBLY.clickAt; u += 0.02) {
-      const q = pose(2, u)
-      expect(q.x).toBeCloseTo(-2 * DIMS.gap, 10)
+      const q = pose(3, u)
+      expect(q.x).toBeCloseTo(-3 * DIMS.gap, 10)
       expect(q.y).toBeGreaterThan(prev)
       prev = q.y
     }
@@ -173,7 +287,7 @@ describe('modulePose — sliding_dovetail enters from behind', () => {
   })
 
   it('never overshoots past the detent and never leaves the Y/X plane', () => {
-    for (let i = 1; i < 5; i++) {
+    for (const i of travelOrder(5)) {
       for (const s of SAMPLES) {
         const q = modulePose('sliding_dovetail', i, 5, s, DIMS)
         expect(q.y).toBeLessThanOrEqual(ASSEMBLY.clickOvershootMm + 1e-9)
@@ -192,28 +306,52 @@ describe('modulePose — vertical_snap hooks the sliver and rolls in', () => {
   const atB = (b: number) => A + (1 - A) * b
 
   it('stages ABOVE the seat (+Z), aligned in X, fully tilted at first mating', () => {
-    const q = pose(2, A)
-    expect(q.x).toBeCloseTo(-2 * DIMS.gap, 10)
+    const q = pose(3, A)
+    expect(q.x).toBeCloseTo(-3 * DIMS.gap, 10)
     expect(q.z).toBeCloseTo(DIMS.depth * ASSEMBLY.liftFactor, 10)
     expect(q.y).toBe(0)
     // "at the point they start mating you have to have the column rotated"
-    // — leaning OVER the seated part (negative = top toward the anchor)
+    // — leaning OVER the seated part (negative = top toward the anchor,
+    // for a module approaching from the right)
     expect(q.rotY).toBeCloseTo(-tilt, 12)
+  })
+
+  it('closes on the anchor from BOTH sides — right-side modules move −X, left-side +X', () => {
+    // at first mating both are aligned in X over their own seats…
+    expect(pose(3, A).x).toBeCloseTo(-3 * DIMS.gap, 10)
+    expect(pose(1, A).x).toBeCloseTo(-1 * DIMS.gap, 10)
+    // …and fully apart both sit at the anchor's home offset (the exploded
+    // strip re-centred on the anchor)
+    const home = -anchorModule(5) * DIMS.gap
+    expect(pose(3, 0).x).toBeCloseTo(home, 10)
+    expect(pose(1, 0).x).toBeCloseTo(home, 10)
+  })
+
+  it('mirrors the roll for left-side modules: same magnitude, opposite sign', () => {
+    // modules 3 (right of the anchor) and 1 (left) are the first two
+    // travellers of a 5-column chain — same windows, mirrored paths
+    for (const u of SAMPLES) {
+      const right = pose(3, u)
+      const left = pose(1, u)
+      expect(left.rotY).toBeCloseTo(-right.rotY, 12)
+      expect(left.z).toBeCloseTo(right.z, 12)
+      expect(left.y).toBe(right.y)
+    }
   })
 
   it('leans over the seated part over the approach — upright at the start, tilted at the pocket', () => {
     // (landing ON tiltInAt to the ulp is a float coin toss — pin the flat
     // region just before it, and the boundary only approximately)
-    expect(pose(2, A * ASSEMBLY.tiltInAt * 0.999).rotY).toBe(0)
-    expect(pose(2, A * ASSEMBLY.tiltInAt).rotY).toBeCloseTo(0, 12)
-    const mid = pose(2, A * (ASSEMBLY.tiltInAt + (1 - ASSEMBLY.tiltInAt) / 2)).rotY
+    expect(pose(3, A * ASSEMBLY.tiltInAt * 0.999).rotY).toBe(0)
+    expect(pose(3, A * ASSEMBLY.tiltInAt).rotY).toBeCloseTo(0, 12)
+    const mid = pose(3, A * (ASSEMBLY.tiltInAt + (1 - ASSEMBLY.tiltInAt) / 2)).rotY
     expect(mid).toBeLessThan(0)
     expect(mid).toBeGreaterThan(-tilt)
     // the seam-side bottom corner (the x0 = 0 offset path) never reverses
     // while the body swings onto the tilt
-    let prev = pose(2, 0)
+    let prev = pose(3, 0)
     for (let u = 0.02; u <= A + 1e-9; u += 0.02) {
-      const q = pose(2, Math.min(u, A))
+      const q = pose(3, Math.min(u, A))
       expect(q.x).toBeLessThanOrEqual(prev.x + 1e-9)
       expect(q.z).toBeGreaterThanOrEqual(prev.z - 1e-9)
       prev = q
@@ -221,30 +359,30 @@ describe('modulePose — vertical_snap hooks the sliver and rolls in', () => {
   })
 
   it('holds the tilt while the sliver engages, then rolls upright before the click', () => {
-    expect(pose(2, atB(ASSEMBLY.tiltHoldUntil)).rotY).toBeCloseTo(-tilt, 12)
-    const mid = pose(2, atB((ASSEMBLY.tiltHoldUntil + ASSEMBLY.tiltOutAt) / 2)).rotY
+    expect(pose(3, atB(ASSEMBLY.tiltHoldUntil)).rotY).toBeCloseTo(-tilt, 12)
+    const mid = pose(3, atB((ASSEMBLY.tiltHoldUntil + ASSEMBLY.tiltOutAt) / 2)).rotY
     expect(mid).toBeGreaterThan(-tilt)
     expect(mid).toBeLessThan(0)
-    expect(pose(2, atB(ASSEMBLY.tiltOutAt)).rotY).toBe(0)
-    expect(pose(2, ASSEMBLY.clickAt).rotY).toBe(0)
+    expect(pose(3, atB(ASSEMBLY.tiltOutAt)).rotY).toBe(0)
+    expect(pose(3, ASSEMBLY.clickAt).rotY).toBe(0)
   })
 
   it('slides the sliver home early, parks the pivot through the roll, presses at the click', () => {
     // the hook descends only while the sliver slides in (the hold)
-    let prev = pose(2, A).z
+    let prev = pose(3, A).z
     for (let b = 0.02; b <= ASSEMBLY.hookDescentEnd + 1e-9; b += 0.02) {
-      const z = pose(2, atB(Math.min(b, ASSEMBLY.hookDescentEnd))).z
+      const z = pose(3, atB(Math.min(b, ASSEMBLY.hookDescentEnd))).z
       expect(z).toBeLessThan(prev)
       prev = z
     }
     // from there to the clip press the pivot barely moves — the mate IS the
     // roll, not a descent — with x parked on the seat throughout
-    const rest = pose(2, atB(ASSEMBLY.hookDescentEnd)).z
+    const rest = pose(3, atB(ASSEMBLY.hookDescentEnd)).z
     expect(rest).toBeCloseTo(ASSEMBLY.hookRestMm, 10)
     const bClick = (ASSEMBLY.clickAt - A) / (1 - A)
     for (let b = ASSEMBLY.hookDescentEnd; b <= bClick - ASSEMBLY.clickDipSpan + 1e-9; b += 0.02) {
-      const q = pose(2, atB(b))
-      expect(q.x).toBeCloseTo(-2 * DIMS.gap, 10)
+      const q = pose(3, atB(b))
+      expect(q.x).toBeCloseTo(-3 * DIMS.gap, 10)
       expect(q.z).toBeCloseTo(rest, 10)
     }
   })
@@ -256,14 +394,18 @@ describe('modulePose — vertical_snap hooks the sliver and rolls in', () => {
   })
 
   it('never dips deeper than the click, never over-tilts, never leaves the Z/X plane', () => {
-    for (let i = 1; i < 5; i++) {
+    const anchor = anchorModule(5)
+    for (const i of travelOrder(5)) {
       for (const s of SAMPLES) {
         const q = modulePose('vertical_snap', i, 5, s, DIMS)
         expect(q.z).toBeGreaterThanOrEqual(-ASSEMBLY.clickOvershootMm + 1e-9)
         expect(q.z).toBeLessThanOrEqual(DIMS.depth * ASSEMBLY.liftFactor + 1e-9)
         expect(q.y).toBe(0)
-        expect(q.rotY).toBeLessThanOrEqual(0)
-        expect(q.rotY).toBeGreaterThanOrEqual(-tilt - 1e-12)
+        expect(Math.abs(q.rotY)).toBeLessThanOrEqual(tilt + 1e-12)
+        // the lean is always OVER the anchor: negative from the right,
+        // positive from the left
+        if (i > anchor) expect(q.rotY).toBeLessThanOrEqual(0)
+        else expect(q.rotY).toBeGreaterThanOrEqual(0)
       }
     }
   })
@@ -273,49 +415,97 @@ describe('modulePose — vertical_snap hooks the sliver and rolls in', () => {
     // independent of the pivot: group.pos + R_y(rotY)·(x0,0,0) is the same
     // whether the caller passes x0 (group rolls, origin swings) or 0 (the
     // offset IS the corner path). three.js R_y maps (x,0,0) to
-    // (x·cos, 0, −x·sin), so: world = (q.x + x0·cos, q.y, q.z − x0·sin)
-    const X0 = 137.5
-    for (const s of SAMPLES) {
-      const rolled = modulePose('vertical_snap', 2, 5, s, DIMS, X0)
-      const plain = modulePose('vertical_snap', 2, 5, s, DIMS)
-      expect(rolled.rotY).toBe(plain.rotY)
-      expect(rolled.x + X0 * Math.cos(rolled.rotY)).toBeCloseTo(plain.x + X0, 9)
-      expect(rolled.z - X0 * Math.sin(rolled.rotY)).toBeCloseTo(plain.z, 9)
-      expect(rolled.y).toBe(plain.y)
+    // (x·cos, 0, −x·sin), so: world = (q.x + x0·cos, q.y, q.z − x0·sin).
+    // Right-side modules pivot on their LEFT face, left-side modules on
+    // their RIGHT — the correction is sign-agnostic, so pin both.
+    for (const [i, X0] of [
+      [3, 137.5],
+      [1, 96.25],
+    ] as const) {
+      for (const s of SAMPLES) {
+        const rolled = modulePose('vertical_snap', i, 5, s, DIMS, X0)
+        const plain = modulePose('vertical_snap', i, 5, s, DIMS)
+        expect(rolled.rotY).toBe(plain.rotY)
+        expect(rolled.x + X0 * Math.cos(rolled.rotY)).toBeCloseTo(plain.x + X0, 9)
+        expect(rolled.z - X0 * Math.sin(rolled.rotY)).toBeCloseTo(plain.z, 9)
+        expect(rolled.y).toBe(plain.y)
+      }
     }
   })
 
   it('leaves the end poses untouched by the pivot (no tilt at either end)', () => {
     for (const s of [0, 1]) {
-      expect(modulePose('vertical_snap', 2, 5, s, DIMS, 137.5)).toEqual(
-        modulePose('vertical_snap', 2, 5, s, DIMS)
+      expect(modulePose('vertical_snap', 3, 5, s, DIMS, 137.5)).toEqual(
+        modulePose('vertical_snap', 3, 5, s, DIMS)
       )
     }
   })
 })
 
 describe('modulePose — the chain seats from the anchor outward', () => {
-  it('has module 1 home before the last module has started', () => {
+  it('has the first traveller home before the last has started', () => {
     const cols = 13
-    const s = moduleWindow(1, cols).end
-    expect(modulePose('sliding_dovetail', 1, cols, s, DIMS).x).toBeCloseTo(-DIMS.gap, 10)
-    expect(modulePose('sliding_dovetail', 12, cols, s, DIMS)).toEqual({
-      x: 0,
+    const order = travelOrder(cols)
+    const s = moduleWindow(order[0], cols).end
+    const first = order[0]
+    const last = order[order.length - 1]
+    expect(modulePose('sliding_dovetail', first, cols, s, DIMS).x).toBeCloseTo(
+      -first * DIMS.gap,
+      10
+    )
+    expect(modulePose('sliding_dovetail', last, cols, s, DIMS)).toEqual({
+      x: -anchorModule(cols) * DIMS.gap, // still parked at the home offset
       y: 0,
       z: 0,
       rotY: 0,
     })
   })
 
-  it('keeps earlier modules ahead of later ones all the way through', () => {
+  it('keeps earlier travellers ahead of later ones all the way through', () => {
     const cols = 8
+    const anchor = anchorModule(cols)
+    const home = -anchor * DIMS.gap
+    const order = travelOrder(cols)
+    /** progress as a fraction of that module's own X travel */
+    const progress = (i: number, s: number) => {
+      const seatX = -i * DIMS.gap
+      return (modulePose('vertical_snap', i, cols, s, DIMS).x - home) / (seatX - home)
+    }
     for (const s of SAMPLES) {
-      for (let i = 1; i < cols - 1; i++) {
-        // progress as a fraction of that module's own travel
-        const a = modulePose('vertical_snap', i, cols, s, DIMS).x / -(i * DIMS.gap)
-        const b = modulePose('vertical_snap', i + 1, cols, s, DIMS).x / -((i + 1) * DIMS.gap)
-        expect(a).toBeGreaterThanOrEqual(b - 1e-9)
+      for (let k = 0; k < order.length - 1; k++) {
+        expect(progress(order[k], s)).toBeGreaterThanOrEqual(progress(order[k + 1], s) - 1e-9)
       }
+    }
+  })
+
+  it('leads APART with the first traveller — everyone else still seated mid-window', () => {
+    const cols = 13
+    const order = travelOrder(cols)
+    const w = moduleWindow(order[0], cols, true)
+    const s = (w.start + w.end) / 2 // halfway through the first unhook
+    // the first traveller is already tugging rearward off its seat…
+    expect(modulePose('sliding_dovetail', order[0], cols, s, DIMS, 0, true).y).toBeLessThan(0)
+    // …and the whole rest of the chain is still exactly seated
+    for (const i of order.slice(1)) {
+      expect(modulePose('sliding_dovetail', i, cols, s, DIMS, 0, true)).toEqual({
+        x: -i * DIMS.gap + 0, // (+0: the pose helper normalises −0, so must we)
+        y: 0,
+        z: 0,
+        rotY: 0,
+      })
+    }
+  })
+
+  it('unrolls the snap hook first too — the centre module lifts off tilted', () => {
+    const cols = 13
+    const order = travelOrder(cols)
+    const w = moduleWindow(order[0], cols, true)
+    const s = (w.start + w.end) / 2
+    // a right-side module: the unroll runs the lean back out toward the
+    // full over-the-anchor tilt before the column lifts away
+    expect(modulePose('vertical_snap', order[0], cols, s, DIMS, 0, true).rotY).toBeLessThan(0)
+    for (const i of order.slice(1)) {
+      expect(modulePose('vertical_snap', i, cols, s, DIMS, 0, true).rotY).toBe(0)
     }
   })
 })

@@ -8,13 +8,29 @@
 //
 // Coordinates: the group-local frame is the EXPLODED render's frame, Z-up (the
 // module groups live under `centered`, before the model's −90° X rotation). So
-//   • −X  … toward the anchor module (seating pulls module i back by i·gap)
+//   • −X / +X  … along the chain (modules close on the anchor from BOTH sides)
 //   • −Y  … BEHIND the chain (the rear-entry side of a sliding dovetail)
 //   • +Z  … above the chain (where a vertical-snap module hovers before it drops)
-// A module's pose is an OFFSET from its exploded position: (0,0,0) is where the
-// render already put it, (−i·gap, 0, 0) is seated. `rotY` is a rotation about
-// the +Y axis applied to the group; with the pivot correction below, the
-// module visibly rotates about its own seam-side bottom line, not the origin.
+// A module's pose is an OFFSET from its exploded position: seated is always
+// (−i·gap, 0, 0). Fully apart every module carries the same constant offset
+// E = −anchor·gap, which is what re-centres the exploded strip on the anchor —
+// the viewer measures the chain's true extent every frame, so a constant
+// shift of the whole strip is invisible and s = 0 stays pixel-identical to
+// the exploded render. `rotY` is a rotation about the +Y axis applied to the
+// group; with the pivot correction below, the module visibly rotates about
+// its own seam-side bottom line, not the origin.
+//
+// The anchor is the CENTRE module (anchorModule), not an end: on a wide abacus
+// the slow, legible part of the dance must happen where the viewer is looking.
+// Travelling modules seat centre-out, alternating right-then-left by distance
+// from the anchor (travelOrder), and the schedule is keyed by that ORDER — the
+// first two travellers get the slow windows wherever they sit. Taking apart
+// runs the same ORDER first-to-last as putting together (the slow, important
+// beat leads BOTH plays): apart windows are the together windows mirrored in
+// s, {start: 1−end, end: 1−start}, so as s sweeps 1→0 the centre module's slow
+// unhooking is the first thing that moves. The end poses are identical under
+// either schedule, so static poses and reduced-motion jumps never see the
+// flag.
 //
 // Physical semantics (this is the point of the feature — see the assembly note
 // in abacus-module-kit.ts, and abacus.scad's two seam topologies):
@@ -30,9 +46,10 @@
 //     place — the top swings away from the anchor as it closes, and the 45°
 //     seat wedge is exactly the arc the roll traces. The crossbar clips
 //     click at the very end.
-// Taking apart is the same timeline run backwards (and faster): the reverse of
+// Taking apart is the mirror of putting together (and faster): the reverse of
 // "slide forward and click" is a rearward tug, the reverse of "lean over,
-// hook and roll back" is lean over and lift off.
+// hook and roll back" is lean over and lift off — led, like assembly, by the
+// slow centre modules.
 
 import type { JointType } from './abacus-model'
 
@@ -106,9 +123,45 @@ const easeInOut = (t: number): number =>
   t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) * (-2 * t + 2) * (-2 * t + 2)) / 2
 const easeOut = (t: number): number => 1 - (1 - t) * (1 - t) * (1 - t)
 
-/** module 0 is the anchor and never moves, so cols−1 modules travel. */
+/**
+ * The anchor is the centre module — the one that never travels. On an even
+ * column count the anchor sits just left of centre (the right side is the
+ * longer one, which is why the travel order alternates right-then-left).
+ * Pinning the dance to the middle keeps the slow, legible beat on screen for
+ * wide abaci; an edge anchor puts it off the side of the frame (user review
+ * 2026-09-10).
+ */
+export function anchorModule(cols: number): number {
+  return Math.max(0, Math.floor((cols - 1) / 2))
+}
+
+/** the anchor never moves, so cols−1 modules travel. */
 export function movingModules(cols: number): number {
   return Math.max(0, cols - 1)
+}
+
+/**
+ * Module `i`'s 1-based position in the travel order (0 = the anchor, which
+ * never travels). Centre-out by distance, alternating right-then-left: for
+ * cols = 4 (anchor 1) the order is 2, 0, 3; for cols = 12 (anchor 5) it is
+ * 6, 4, 7, 3, 8, 2, 9, 1, 10, 0, 11. Right-first always works: the right
+ * side is never the shorter one.
+ */
+function travelPosition(i: number, anchor: number): number {
+  if (i === anchor) return 0
+  const d = Math.abs(i - anchor)
+  return i > anchor ? 2 * d - 1 : 2 * d
+}
+
+/** the moving module indices in the order they seat (anchor excluded). */
+export function travelOrder(cols: number): number[] {
+  const anchor = anchorModule(cols)
+  const order: number[] = []
+  for (let d = 1; d < cols; d++) {
+    if (anchor + d < cols) order.push(anchor + d)
+    if (anchor - d >= 0) order.push(anchor - d)
+  }
+  return order
 }
 
 /**
@@ -125,36 +178,49 @@ export function timelineMs(cols: number): number {
 }
 
 /**
- * Module `i`'s slice of the normalised timeline. Module 0 gets the degenerate
- * window {0,0} (it never moves); module 1 starts at 0 and the last module ends
- * at exactly 1, so a play is over precisely when the last module clicks home.
- * Indices past the chain (the viewer's group pool only grows) park at {1,1}.
+ * Module `i`'s slice of the normalised timeline. The anchor gets the
+ * degenerate window {0,0} (it never moves); the FIRST module in the travel
+ * order starts at 0 and the last ends at exactly 1, so a play is over
+ * precisely when the last module clicks home. Indices past the chain (the
+ * viewer's group pool only grows) park at {1,1}.
  *
- * The schedule is deliberately NOT uniform: modules 1–2 (the first thing the
- * viewer watches) get the full slow window at the stagger cadence; from
- * module 3 on — only when there IS a third, i.e. n ≥ 4 — windows are brisk
+ * The schedule is deliberately NOT uniform: the first two travellers (the
+ * centre-out pair bracketing the anchor — the first thing the viewer
+ * watches) get the full slow window at the stagger cadence; from the third
+ * traveller on — only when there IS a third, i.e. n ≥ 4 — windows are brisk
  * and their overlap tightens so the last module lands exactly on the budget.
+ *
+ * `apart` mirrors every moving window in s ({start: 1−end, end: 1−start}):
+ * as s sweeps 1→0 the centre pair unhooks FIRST and slowly, and the brisk
+ * tail follows — both plays lead with the legible beat (user review
+ * 2026-09-10: apart used to run the fast tail first). The end poses are the
+ * same under either schedule; the degenerate and parked windows don't mirror.
  */
-export function moduleWindow(i: number, cols: number): AssemblyWindow {
+export function moduleWindow(i: number, cols: number, apart = false): AssemblyWindow {
   const n = movingModules(cols)
-  if (i <= 0 || n <= 0) return { start: 0, end: 0 }
+  const k = travelPosition(i, anchorModule(cols))
+  if (k <= 0 || n <= 0) return { start: 0, end: 0 }
+  if (k > n) return { start: 1, end: 1 }
   const total = timelineMs(cols)
-  const slowStart = (k: number) => (k - 1) * ASSEMBLY.staggerFraction * ASSEMBLY.slowModuleMs
-  if (n <= 3 || i <= 2) {
-    const startMs = slowStart(i)
+  const slowStart = (m: number) => (m - 1) * ASSEMBLY.staggerFraction * ASSEMBLY.slowModuleMs
+  let w: AssemblyWindow
+  if (n <= 3 || k <= 2) {
+    const startMs = slowStart(k)
     if (startMs >= total) return { start: 1, end: 1 }
-    return { start: startMs / total, end: (startMs + ASSEMBLY.slowModuleMs) / total }
+    w = { start: startMs / total, end: (startMs + ASSEMBLY.slowModuleMs) / total }
+  } else {
+    const tail = n - 2 // travellers 3..n share the fast tail
+    const step = (ASSEMBLY.budgetMs - slowStart(3) - ASSEMBLY.fastModuleMs) / (tail - 1)
+    const startMs = slowStart(3) + (k - 3) * step
+    if (startMs >= total) return { start: 1, end: 1 }
+    w = { start: startMs / total, end: Math.min((startMs + ASSEMBLY.fastModuleMs) / total, 1) }
   }
-  const tail = n - 2 // modules 3..n share the fast tail
-  const step = (ASSEMBLY.budgetMs - slowStart(3) - ASSEMBLY.fastModuleMs) / (tail - 1)
-  const startMs = slowStart(3) + (i - 3) * step
-  if (startMs >= total) return { start: 1, end: 1 }
-  return { start: startMs / total, end: Math.min((startMs + ASSEMBLY.fastModuleMs) / total, 1) }
+  return apart ? { start: 1 - w.end, end: 1 - w.start } : w
 }
 
 /** module i's local progress at global timeline position `s` */
-function localProgress(i: number, cols: number, s: number): number {
-  const { start, end } = moduleWindow(i, cols)
+function localProgress(i: number, cols: number, s: number, apart: boolean): number {
+  const { start, end } = moduleWindow(i, cols, apart)
   if (end <= start) return s >= end ? 1 : 0
   return clamp01((s - start) / (end - start))
 }
@@ -208,15 +274,26 @@ function snapTilt(u: number, tiltRad: number): number {
 /**
  * Where module `i`'s group sits at global timeline position `s`
  * (0 = fully taken apart, 1 = seated), as an offset from its exploded pose.
- * `x0` is the module's seam-side (left) face X in the group's local frame —
- * the line the vertical_snap roll pivots about; sliding_dovetail ignores it.
+ * `x0` is the module's SEAM-side face X in the group's local frame — the
+ * bottom line the vertical_snap roll pivots about (the left face for modules
+ * right of the anchor, the right face for modules left of it; the caller
+ * picks). sliding_dovetail ignores it. `apart` selects the mirrored schedule
+ * (see moduleWindow); it changes only WHO moves WHEN, never the end poses.
+ *
+ * Every offset is measured from the exploded render, and the constant
+ * `home = −anchor·gap` is the anchor's own offset: fully apart, ALL modules
+ * carry it (the exploded strip re-centred on the anchor — invisible under
+ * the viewer's per-frame extent centring, so s = 0 is still pixel-identical
+ * to the render); seated, module i carries exactly −i·gap as it always has.
+ * The anchor itself sits at `home` for the whole play.
  *
  * Two phases per module, so the path reads as a real assembly move rather than
  * a slide through solid plastic:
  *   A (u ≤ approachFraction) — travel to the staging point: seated in X, but
  *     still `depth` behind the seat (sliding) or `liftFactor·depth` above it
  *     (snap). A snap module also leans to its full tilt — over the seated
- *     part, top toward the anchor — over A's tail, so it arrives at the
+ *     part, top toward the anchor (NEGATIVE rotY for right-side modules,
+ *     POSITIVE for left-side ones) — over A's tail, so it arrives at the
  *     pocket already hooked. Nothing is ever inside anything else.
  *   B (the rest) — close the joint: the slide runs the one legal axis straight
  *     home; the snap slides the sliver home at full tilt, ROLLS back upright
@@ -227,9 +304,10 @@ function snapTilt(u: number, tiltRad: number): number {
  * The roll is returned as `rotY` (rotation about +Y). The group would rotate
  * about its own origin, so the x/z offsets carry the correction that pins the
  * pivot line (x0, z=0): position += P − R_y(rotY)·P for P = (x0, 0, 0), i.e.
- * x += x0·(1−cos), z += x0·sin. The seam-side bottom corner therefore traces
- * the plain approach-and-drop path while the body hangs off the roll — hook
- * the corner, swing the column.
+ * x += x0·(1−cos), z += x0·sin — sign-agnostic, so the mirrored roll about
+ * the right face needs no special case. The seam-side bottom corner therefore
+ * traces the plain approach-and-drop path while the body hangs off the roll —
+ * hook the corner, swing the column.
  */
 export function modulePose(
   joint: JointType,
@@ -237,36 +315,41 @@ export function modulePose(
   cols: number,
   s: number,
   dims: AssemblyDims,
-  x0 = 0
+  x0 = 0,
+  apart = false
 ): ModulePose {
-  if (i <= 0) return pose(0, 0, 0)
-  const u = localProgress(i, cols, s)
+  const anchor = anchorModule(cols)
+  const home = -anchor * dims.gap
+  if (i === anchor) return pose(home, 0, 0)
+  if (i < 0 || i >= cols) return pose(0, 0, 0) // parked pool group: never moves
+  const u = localProgress(i, cols, s, apart)
   const seatX = -i * dims.gap
   const A = ASSEMBLY.approachFraction
 
   if (joint === 'sliding_dovetail') {
     const stage = -dims.depth * ASSEMBLY.slideBehindFactor
     if (u <= A) {
-      // phase A: line up behind the seat (x closes, −Y opens)
+      // phase A: line up behind the seat (x closes on the anchor, −Y opens)
       const a = easeInOut(A > 0 ? u / A : 1)
-      return pose(seatX * a, stage * a, 0)
+      return pose(home + (seatX - home) * a, stage * a, 0)
     }
     // phase B: x is home; slide forward with the detent click
     const b = (u - A) / (1 - A)
     return pose(seatX, seatWithClick(b, stage, ASSEMBLY.clickOvershootMm), 0)
   }
 
-  // vertical_snap: hook-and-roll about the seam-side bottom line. NEGATIVE
-  // rotY leans the column OVER the seated part (top toward the anchor); the
-  // roll swings the top away from the anchor as the body closes — reversed
-  // from the first cut, per the physical kit (user review 2026-09-10).
+  // vertical_snap: hook-and-roll about the seam-side bottom line. The tilt
+  // leans the column OVER the seated part, top toward the anchor — negative
+  // rotY for modules approaching from the right, positive from the left —
+  // and the roll swings the top away from the anchor as the body closes.
   const lift = dims.depth * ASSEMBLY.liftFactor
-  const rotY = snapTilt(u, (-ASSEMBLY.tiltDeg * Math.PI) / 180)
+  const tiltRad = (ASSEMBLY.tiltDeg * Math.PI) / 180
+  const rotY = snapTilt(u, i > anchor ? -tiltRad : tiltRad)
   let base: Vec3
   if (u <= A) {
     // phase A: close X and lift the column, rolling to full tilt at the end
     const a = easeInOut(A > 0 ? u / A : 1)
-    base = vec(seatX * a, 0, lift * a)
+    base = vec(home + (seatX - home) * a, 0, lift * a)
   } else {
     // phase B: the sliver slides home at full tilt, the ROLL does the
     // mating (nearly pure rotation about the hooked corner), then the press
