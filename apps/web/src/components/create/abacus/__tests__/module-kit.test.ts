@@ -575,7 +575,9 @@ describe('buildModuleKit', () => {
     })
     const verticalReadme = strFromU8(unzipSync(vertical.bytes)['README.txt'])
     expect(verticalReadme).toContain('vertical dovetails + snap clip')
-    expect(verticalReadme).toContain('lifts straight out')
+    expect(verticalReadme).toContain('hook that thin foot into')
+    expect(verticalReadme).toContain('ROLL the module upright')
+    expect(verticalReadme).toContain('rolls into — or out of — an assembled row')
     expect(verticalReadme).toContain('vertical-snap seam coupon pair')
 
     const slidingParams = p({

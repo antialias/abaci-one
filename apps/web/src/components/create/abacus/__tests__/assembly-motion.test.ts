@@ -89,7 +89,7 @@ describe('modulePose — the two end poses', () => {
   for (const joint of ['sliding_dovetail', 'vertical_snap'] as const) {
     it(`${joint}: s=0 is the exploded render itself (no offset at all)`, () => {
       for (let i = 0; i < 13; i++) {
-        expect(modulePose(joint, i, 13, 0, DIMS)).toEqual({ x: 0, y: 0, z: 0 })
+        expect(modulePose(joint, i, 13, 0, DIMS)).toEqual({ x: 0, y: 0, z: 0, rotY: 0 })
       }
     })
 
@@ -104,7 +104,7 @@ describe('modulePose — the two end poses', () => {
 
     it(`${joint}: module 0 is the anchor at EVERY point of the timeline`, () => {
       for (const s of SAMPLES)
-        expect(modulePose(joint, 0, 13, s, DIMS)).toEqual({ x: 0, y: 0, z: 0 })
+        expect(modulePose(joint, 0, 13, s, DIMS)).toEqual({ x: 0, y: 0, z: 0, rotY: 0 })
     })
 
     it(`${joint}: x closes monotonically and never passes the seat`, () => {
@@ -161,18 +161,49 @@ describe('modulePose — sliding_dovetail enters from behind', () => {
   })
 })
 
-describe('modulePose — vertical_snap drops from above', () => {
+describe('modulePose — vertical_snap hooks the sliver and rolls in', () => {
   const pose = (i: number, u: number) => modulePose('vertical_snap', i, 5, at(i, 5, u), DIMS)
+  const tilt = (ASSEMBLY.tiltDeg * Math.PI) / 180
+  const A = ASSEMBLY.approachFraction
+  /** the local u at which phase B is `b` through itself */
+  const atB = (b: number) => A + (1 - A) * b
 
-  it('hovers ABOVE the seat (+Z), aligned in X, before it drops', () => {
-    const q = pose(2, ASSEMBLY.approachFraction)
+  it('stages ABOVE the seat (+Z), aligned in X, fully tilted at first mating', () => {
+    const q = pose(2, A)
     expect(q.x).toBeCloseTo(-2 * DIMS.gap, 10)
     expect(q.z).toBeCloseTo(DIMS.depth * ASSEMBLY.liftFactor, 10)
     expect(q.y).toBe(0)
+    // "at the point they start mating you have to have the column rotated"
+    expect(q.rotY).toBeCloseTo(tilt, 12)
+  })
+
+  it('rolls in over the tail of the approach — upright early, tilted at the pocket', () => {
+    expect(pose(2, A * ASSEMBLY.tiltInAt).rotY).toBe(0)
+    const mid = pose(2, A * (ASSEMBLY.tiltInAt + (1 - ASSEMBLY.tiltInAt) / 2)).rotY
+    expect(mid).toBeGreaterThan(0)
+    expect(mid).toBeLessThan(tilt)
+    // the seam-side bottom corner (the x0 = 0 offset path) never reverses
+    // while the body swings onto the tilt
+    let prev = pose(2, 0)
+    for (let u = 0.02; u <= A + 1e-9; u += 0.02) {
+      const q = pose(2, Math.min(u, A))
+      expect(q.x).toBeLessThanOrEqual(prev.x + 1e-9)
+      expect(q.z).toBeGreaterThanOrEqual(prev.z - 1e-9)
+      prev = q
+    }
+  })
+
+  it('holds the tilt while the sliver engages, then rolls upright before the click', () => {
+    expect(pose(2, atB(ASSEMBLY.tiltHoldUntil)).rotY).toBeCloseTo(tilt, 12)
+    const mid = pose(2, atB((ASSEMBLY.tiltHoldUntil + ASSEMBLY.tiltOutAt) / 2)).rotY
+    expect(mid).toBeGreaterThan(0)
+    expect(mid).toBeLessThan(tilt)
+    expect(pose(2, atB(ASSEMBLY.tiltOutAt)).rotY).toBe(0)
+    expect(pose(2, ASSEMBLY.clickAt).rotY).toBe(0)
   })
 
   it('drops (−Z) through phase B with x parked on the seat', () => {
-    let prev = pose(2, ASSEMBLY.approachFraction).z
+    let prev = pose(2, A).z
     for (let u = 0.45; u <= ASSEMBLY.clickAt; u += 0.02) {
       const q = pose(2, u)
       expect(q.x).toBeCloseTo(-2 * DIMS.gap, 10)
@@ -187,14 +218,41 @@ describe('modulePose — vertical_snap drops from above', () => {
     expect(pose(3, 0.97).z).toBeLessThan(0)
   })
 
-  it('never dips deeper than the click and never leaves the Z/X plane', () => {
+  it('never dips deeper than the click, never over-tilts, never leaves the Z/X plane', () => {
     for (let i = 1; i < 5; i++) {
       for (const s of SAMPLES) {
         const q = modulePose('vertical_snap', i, 5, s, DIMS)
         expect(q.z).toBeGreaterThanOrEqual(-ASSEMBLY.clickOvershootMm + 1e-9)
         expect(q.z).toBeLessThanOrEqual(DIMS.depth * ASSEMBLY.liftFactor + 1e-9)
         expect(q.y).toBe(0)
+        expect(q.rotY).toBeGreaterThanOrEqual(0)
+        expect(q.rotY).toBeLessThanOrEqual(tilt + 1e-12)
       }
+    }
+  })
+
+  it('pivots about the seam-side bottom line: x0 pins that line, wherever it is', () => {
+    // the correction must make the WORLD position of the local point (x0,0,0)
+    // independent of the pivot: group.pos + R_y(rotY)·(x0,0,0) is the same
+    // whether the caller passes x0 (group rolls, origin swings) or 0 (the
+    // offset IS the corner path). three.js R_y maps (x,0,0) to
+    // (x·cos, 0, −x·sin), so: world = (q.x + x0·cos, q.y, q.z − x0·sin)
+    const X0 = 137.5
+    for (const s of SAMPLES) {
+      const rolled = modulePose('vertical_snap', 2, 5, s, DIMS, X0)
+      const plain = modulePose('vertical_snap', 2, 5, s, DIMS)
+      expect(rolled.rotY).toBe(plain.rotY)
+      expect(rolled.x + X0 * Math.cos(rolled.rotY)).toBeCloseTo(plain.x + X0, 9)
+      expect(rolled.z - X0 * Math.sin(rolled.rotY)).toBeCloseTo(plain.z, 9)
+      expect(rolled.y).toBe(plain.y)
+    }
+  })
+
+  it('leaves the end poses untouched by the pivot (no tilt at either end)', () => {
+    for (const s of [0, 1]) {
+      expect(modulePose('vertical_snap', 2, 5, s, DIMS, 137.5)).toEqual(
+        modulePose('vertical_snap', 2, 5, s, DIMS)
+      )
     }
   })
 })
@@ -204,7 +262,12 @@ describe('modulePose — the chain seats from the anchor outward', () => {
     const cols = 13
     const s = moduleWindow(1, cols).end
     expect(modulePose('sliding_dovetail', 1, cols, s, DIMS).x).toBeCloseTo(-DIMS.gap, 10)
-    expect(modulePose('sliding_dovetail', 12, cols, s, DIMS)).toEqual({ x: 0, y: 0, z: 0 })
+    expect(modulePose('sliding_dovetail', 12, cols, s, DIMS)).toEqual({
+      x: 0,
+      y: 0,
+      z: 0,
+      rotY: 0,
+    })
   })
 
   it('keeps earlier modules ahead of later ones all the way through', () => {

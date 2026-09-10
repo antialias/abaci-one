@@ -338,35 +338,67 @@ export function AbacusStudioViewer() {
     // this is only the three.js binding.
     // derived() is not memoized and the pose reads it once per module per frame,
     // so cache what the pose needs against the params OBJECT (the store hands out
-    // a new one on every edit). `explodedRight[i]` is module i's right edge in the
-    // render's own coordinates; add the module's current x offset and the largest
-    // one is the chain's right edge this frame.
+    // a new one on every edit). `explodedX0[i]`/`explodedRight[i]` are module i's
+    // seam-side (left) face and right edge in the render's own coordinates — the
+    // roll pivots about the left one, and the right one plus the module's current
+    // pose gives the chain's right edge this frame.
     let poseGeomFor: Params | null = null
-    let poseGeom = { dims: { gap: 0, depth: 0 }, explodedRight: [] as number[], frameW: 0 }
+    let poseGeom = {
+      dims: { gap: 0, depth: 0 },
+      explodedX0: [] as number[],
+      explodedRight: [] as number[],
+      frameH: 0,
+      frameW: 0,
+    }
     const poseGeometry = (p: Params) => {
       if (poseGeomFor === p) return poseGeom
       const gap = explodeRef.current
+      const explodedX0: number[] = []
       const explodedRight: number[] = []
-      for (let i = 0; i < p.cols; i++)
-        explodedRight.push(moduleOriginX(p, i, gap) + moduleWidth(p, i))
-      poseGeom = { dims: { gap, depth: outerD(p) }, explodedRight, frameW: frameW(p) }
+      for (let i = 0; i < p.cols; i++) {
+        explodedX0.push(moduleOriginX(p, i, gap))
+        explodedRight.push(explodedX0[i] + moduleWidth(p, i))
+      }
+      poseGeom = {
+        dims: { gap, depth: outerD(p) },
+        explodedX0,
+        explodedRight,
+        frameH: p.frame_h * p.scale_factor,
+        frameW: frameW(p),
+      }
       poseGeomFor = p
       return poseGeom
     }
     const applyPose = () => {
       const p = paramsRef.current
-      const { dims, explodedRight, frameW: fw } = poseGeometry(p)
+      const { dims, explodedX0, explodedRight, frameH, frameW: fw } = poseGeometry(p)
       if (dims.gap === 0) {
         // mono: one group, and it never moves
-        for (const g of moduleGroups) g.position.set(0, 0, 0)
+        for (const g of moduleGroups) {
+          g.position.set(0, 0, 0)
+          g.rotation.y = 0
+        }
         centered.position.set(-fw / 2, -dims.depth / 2, 0)
         return
       }
       let right = 0
       for (let i = 0; i < moduleGroups.length; i++) {
-        const q = modulePose(p.joint_type, i, p.cols, pose.assembled, dims)
+        const q = modulePose(p.joint_type, i, p.cols, pose.assembled, dims, explodedX0[i] ?? 0)
         moduleGroups[i].position.set(q.x, q.y, q.z)
-        if (i < p.cols) right = Math.max(right, explodedRight[i] + q.x)
+        moduleGroups[i].rotation.y = q.rotY
+        if (i < p.cols) {
+          // the module's right edge this frame: its width rotated into X by the
+          // roll, plus the top corner swinging a further frameH·sin out — at
+          // rotY = 0 this is exactly explodedRight[i] + q.x (the seated centre
+          // is pixel-identical to before the roll existed)
+          right = Math.max(
+            right,
+            q.x +
+              explodedX0[i] +
+              (explodedRight[i] - explodedX0[i]) * Math.cos(q.rotY) +
+              frameH * Math.sin(q.rotY)
+          )
+        }
       }
       centered.position.set(-right / 2, -dims.depth / 2, 0)
     }

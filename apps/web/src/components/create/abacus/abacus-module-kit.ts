@@ -487,9 +487,14 @@ either end until the module is exposed. Do not pry the dovetail apart.`
   }
   return `Modules join left to right. The two vertical dovetails (front and back
 edges) carry the pull-apart load, and the two-prong clip at the crossbar
-band locks the height with a click. Any middle module drops straight in —
-or lifts straight out — of an assembled row. Press down until the clip
-clicks, the bottom seat is reached, and the tops sit flush.`
+band locks the height with a click. The posts do NOT drop straight in:
+each post's foot is pinched to a thin edge, so hold the module tilted
+about 40-45° — top leaned away from the row — hook that thin foot into
+the open pocket mouths, then ROLL the module upright into place. The
+posts wedge home as it straightens. Finish with a firm press down until
+the clip clicks, the bottom seat is reached, and the tops sit flush. Any
+middle module rolls into — or out of — an assembled row this way; to
+remove one, lift as you tilt it away from the row.`
 }
 
 function couponNote(p: Params): string {

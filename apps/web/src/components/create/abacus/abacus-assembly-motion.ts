@@ -12,18 +12,25 @@
 //   • −Y  … BEHIND the chain (the rear-entry side of a sliding dovetail)
 //   • +Z  … above the chain (where a vertical-snap module hovers before it drops)
 // A module's pose is an OFFSET from its exploded position: (0,0,0) is where the
-// render already put it, (−i·gap, 0, 0) is seated.
+// render already put it, (−i·gap, 0, 0) is seated. `rotY` is a rotation about
+// the +Y axis applied to the group; with the pivot correction below, the
+// module visibly rotates about its own seam-side bottom line, not the origin.
 //
 // Physical semantics (this is the point of the feature — see the assembly note
 // in abacus-module-kit.ts, and abacus.scad's two seam topologies):
 //   • sliding_dovetail — the module cannot drop in; it lines up BEHIND its seat
 //     and slides forward (+Y) onto the rail until the detent clicks over the
 //     front stop.
-//   • vertical_snap — the module comes down from ABOVE (−Z) and the clips snap
-//     past their catches.
+//   • vertical_snap — a straight drop is NOT how these mate. The seat wedge
+//     pinches the dovetail post to a razor sliver at its foot (abacus.scad
+//     sc_seated_post — "slide-through is impossible" and even drop-through is
+//     meant to start thin), so the real move is hook-and-roll: hold the column
+//     tilted ~40–45° laterally, hook the sliver into the pocket mouth, then
+//     ROLL upright into place — the 45° seat wedge is exactly the arc the roll
+//     traces. The crossbar clips click at the very end.
 // Taking apart is the same timeline run backwards (and faster): the reverse of
-// "slide forward and click" is a rearward tug, the reverse of "drop and snap"
-// is a lift.
+// "slide forward and click" is a rearward tug, the reverse of "hook, roll and
+// snap" is tilt away and lift off.
 
 import type { JointType } from './abacus-model'
 
@@ -49,9 +56,20 @@ export const ASSEMBLY = {
   approachFraction: 0.4,
   /** …and the detent lands here, leaving the tail of the window to settle */
   clickAt: 0.94,
+  /** vertical_snap hook-and-roll: the lateral tilt (deg) at first mating */
+  tiltDeg: 42,
+  /** …the tilt ramps in over the tail of phase A, starting this far through
+   *  it — so the column reaches full tilt exactly as mating begins */
+  tiltInAt: 0.55,
+  /** phase B holds the full tilt until here (the sliver engages the pocket)… */
+  tiltHoldUntil: 0.25,
+  /** …and the column has rolled upright by here, well before the clip click */
+  tiltOutAt: 0.6,
 } as const
 
 export type Vec3 = { x: number; y: number; z: number }
+/** a module's group pose: the offset from its exploded pose, plus the roll */
+export type ModulePose = Vec3 & { rotY: number }
 /** a module's slice of the normalised [0,1] timeline */
 export type AssemblyWindow = { start: number; end: number }
 /** what a group's local frame needs from the design: EXPLODE_GAP and outerD */
@@ -60,6 +78,10 @@ export type AssemblyDims = { gap: number; depth: number }
 const clamp01 = (t: number): number => (t < 0 ? 0 : t > 1 ? 1 : t)
 /** −0 is a real float and `toEqual({x: 0})` knows it; keep the poses clean */
 const vec = (x: number, y: number, z: number): Vec3 => ({ x: x + 0, y: y + 0, z: z + 0 })
+const pose = (x: number, y: number, z: number, rotY = 0): ModulePose => ({
+  ...vec(x, y, z),
+  rotY: rotY + 0,
+})
 const easeInOut = (t: number): number =>
   t < 0.5 ? 4 * t * t * t : 1 - ((-2 * t + 2) * (-2 * t + 2) * (-2 * t + 2)) / 2
 const easeOut = (t: number): number => 1 - (1 - t) * (1 - t) * (1 - t)
@@ -114,45 +136,86 @@ function seatWithClick(b: number, from: number, peak: number): number {
   return peak * (1 - easeOut((b - bClick) / (1 - bClick)))
 }
 
+/** the hook-and-roll tilt schedule: 0 upright … tiltRad fully tilted */
+function snapTilt(u: number, tiltRad: number): number {
+  const A = ASSEMBLY.approachFraction
+  if (u <= A) {
+    // ramp in over the tail of the approach: full tilt exactly at first mating
+    const t = A > 0 ? u / A : 1
+    return tiltRad * easeInOut(clamp01((t - ASSEMBLY.tiltInAt) / (1 - ASSEMBLY.tiltInAt)))
+  }
+  // hold while the sliver engages, then roll upright well before the click
+  const b = (u - A) / (1 - A)
+  const t = clamp01((b - ASSEMBLY.tiltHoldUntil) / (ASSEMBLY.tiltOutAt - ASSEMBLY.tiltHoldUntil))
+  return tiltRad * (1 - easeInOut(t))
+}
+
 /**
  * Where module `i`'s group sits at global timeline position `s`
  * (0 = fully taken apart, 1 = seated), as an offset from its exploded pose.
+ * `x0` is the module's seam-side (left) face X in the group's local frame —
+ * the line the vertical_snap roll pivots about; sliding_dovetail ignores it.
  *
  * Two phases per module, so the path reads as a real assembly move rather than
  * a slide through solid plastic:
  *   A (u ≤ approachFraction) — travel to the staging point: seated in X, but
  *     still `depth` behind the seat (sliding) or `liftFactor·depth` above it
- *     (snap). Nothing is ever inside anything else.
- *   B (the rest) — close the joint along its one legal axis, with the detent
- *     click at the end.
+ *     (snap). A snap module also rolls to its full tilt over A's tail, so it
+ *     arrives at the pocket already hooked. Nothing is ever inside anything
+ *     else.
+ *   B (the rest) — close the joint: the slide runs the one legal axis straight
+ *     home; the snap holds its tilt while the sliver engages, rolls upright
+ *     about the seam-side bottom line, and both end on the detent click.
+ *
+ * The roll is returned as `rotY` (rotation about +Y). The group would rotate
+ * about its own origin, so the x/z offsets carry the correction that pins the
+ * pivot line (x0, z=0): position += P − R_y(rotY)·P for P = (x0, 0, 0), i.e.
+ * x += x0·(1−cos), z += x0·sin. The seam-side bottom corner therefore traces
+ * the plain approach-and-drop path while the body hangs off the roll — hook
+ * the corner, swing the column.
  */
 export function modulePose(
   joint: JointType,
   i: number,
   cols: number,
   s: number,
-  dims: AssemblyDims
-): Vec3 {
-  if (i <= 0) return vec(0, 0, 0)
+  dims: AssemblyDims,
+  x0 = 0
+): ModulePose {
+  if (i <= 0) return pose(0, 0, 0)
   const u = localProgress(i, cols, s)
   const seatX = -i * dims.gap
   const A = ASSEMBLY.approachFraction
-  const sliding = joint === 'sliding_dovetail'
-  const stage = sliding
-    ? -dims.depth * ASSEMBLY.slideBehindFactor
-    : dims.depth * ASSEMBLY.liftFactor
 
-  if (u <= A) {
-    // phase A: line up off the seat (x closes, the joint axis opens)
-    const a = easeInOut(A > 0 ? u / A : 1)
-    const off = stage * a
-    return sliding ? vec(seatX * a, off, 0) : vec(seatX * a, 0, off)
+  if (joint === 'sliding_dovetail') {
+    const stage = -dims.depth * ASSEMBLY.slideBehindFactor
+    if (u <= A) {
+      // phase A: line up behind the seat (x closes, −Y opens)
+      const a = easeInOut(A > 0 ? u / A : 1)
+      return pose(seatX * a, stage * a, 0)
+    }
+    // phase B: x is home; slide forward with the detent click
+    const b = (u - A) / (1 - A)
+    return pose(seatX, seatWithClick(b, stage, ASSEMBLY.clickOvershootMm), 0)
   }
-  // phase B: x is home; close the joint with a click
-  const b = (u - A) / (1 - A)
-  const over = sliding ? ASSEMBLY.clickOvershootMm : -ASSEMBLY.clickOvershootMm * 0.5
-  const along = seatWithClick(b, stage, over)
-  return sliding ? vec(seatX, along, 0) : vec(seatX, 0, along)
+
+  // vertical_snap: hook-and-roll about the seam-side bottom line
+  const lift = dims.depth * ASSEMBLY.liftFactor
+  const rotY = snapTilt(u, (ASSEMBLY.tiltDeg * Math.PI) / 180)
+  let base: Vec3
+  if (u <= A) {
+    // phase A: close X and lift the column, rolling to full tilt at the end
+    const a = easeInOut(A > 0 ? u / A : 1)
+    base = vec(seatX * a, 0, lift * a)
+  } else {
+    // phase B: the hooked sliver descends; the roll finishes, then the click
+    const b = (u - A) / (1 - A)
+    base = vec(seatX, 0, seatWithClick(b, lift, -ASSEMBLY.clickOvershootMm * 0.5))
+  }
+  if (rotY === 0) return pose(base.x, base.y, base.z)
+  const cos = Math.cos(rotY)
+  const sin = Math.sin(rotY)
+  return pose(base.x + x0 * (1 - cos), base.y, base.z + x0 * sin, rotY)
 }
 
 /** an in-flight play of the timeline; `t0`/`now` are performance.now() ms */

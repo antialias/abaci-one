@@ -90,7 +90,7 @@ export function ConstructionControl() {
                 <div data-element="modular-joint-explanation" style={NOTE}>
                   {sliding
                     ? 'Each module slides in from the back along a tapered dovetail rail and clicks into a notch at the front stop. The taper holds itself; a firm rearward tug releases it. No seam opens through the underside.'
-                    : 'Modules press straight down on vertical dovetails and the crossbar clip clicks at full depth. Any middle module lifts straight out.'}
+                    : 'Tilt the module ~45°, hook the thin foot of its dovetail posts into the open pockets, then roll it upright — the posts wedge home as it straightens, and the crossbar clip clicks at full depth. Any middle module rolls in — or out — of an assembled row.'}
                 </div>
                 {/* the tuning and the coupon are a printer's problem, so they
                     live in the print rail — say where, or the choice looks
