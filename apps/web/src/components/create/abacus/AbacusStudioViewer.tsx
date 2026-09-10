@@ -331,10 +331,7 @@ export function AbacusStudioViewer() {
     }
     // 1 = seated, 0 = fully taken apart. A plain object, not React state, so the
     // animation can drive it per frame without re-rendering the studio tree.
-    // `apart` is the DIRECTION of the current play: the schedule mirrors (the
-    // slow centre pair leads both ways), and only the mid-play windows differ —
-    // the end poses are identical, so stale values between plays are harmless.
-    const pose = { assembled: 1, apart: false }
+    const pose = { assembled: 1 }
 
     // Pose every module group and recentre on the chain's TRUE X extent.
     // Mid-play the modules are NOT evenly spread — they seat from the centre
@@ -400,7 +397,7 @@ export function AbacusStudioViewer() {
         // the roll pivots about the seam-side bottom line: the LEFT face for
         // modules right of the anchor, the RIGHT edge for modules left of it
         const x0 = i < anchor ? (explodedRight[i] ?? 0) : (explodedX0[i] ?? 0)
-        const q = modulePose(p.joint_type, i, p.cols, pose.assembled, dims, x0, pose.apart)
+        const q = modulePose(p.joint_type, i, p.cols, pose.assembled, dims, x0)
         moduleGroups[i].position.set(q.x, q.y, q.z)
         moduleGroups[i].rotation.y = q.rotY
         if (i < p.cols) {
@@ -439,7 +436,6 @@ export function AbacusStudioViewer() {
     }
     const animateTo = (to: number) => {
       if (!motion && to === pose.assembled) return
-      pose.apart = to < pose.assembled
       const m = planMotion(pose.assembled, to, paramsRef.current.cols, {
         now: performance.now(),
         reducedMotion: reducedMotion(),
