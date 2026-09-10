@@ -28,7 +28,7 @@ export function describeLinearLock(state: LinearReadinessState): string {
   }
   const { frontier } = state
   if (frontier) {
-    return `Number sentences unlock when your ${frontier.name} are quick and steady. ${frontier.solidCount} of ${frontier.total} ready.`
+    return `Number sentences unlock when your ${frontier.name} are practiced and mastered. ${frontier.solidCount} of ${frontier.total} there.`
   }
   return 'Number sentences are not available yet.'
 }

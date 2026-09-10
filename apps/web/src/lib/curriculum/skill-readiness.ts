@@ -15,8 +15,8 @@
  */
 
 import type { SkillBktResult } from '@/lib/curriculum/bkt/types'
-import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { READINESS_THRESHOLDS } from '@/lib/curriculum/config/readiness-thresholds'
+import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 
 // =============================================================================
 // Types
@@ -69,7 +69,7 @@ export interface SkillReadinessResult {
  * Filter results to those relevant for a skill's readiness assessment.
  * Excludes retries and sentinel records (recency-refresh).
  */
-function filterResultsForSkill(
+export function filterResultsForSkill(
   allResults: ProblemResultWithContext[],
   skillId: string
 ): ProblemResultWithContext[] {

@@ -43,6 +43,7 @@ import {
   type SlotResult,
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
+import { resolveLinearEntryPolicy } from '@/lib/curriculum/linear-entry-policy'
 import { getFlag } from '@/lib/feature-flags'
 import { revokeSharesForSession } from '@/lib/session-share'
 import {
@@ -300,6 +301,7 @@ export async function generateSessionPlan(
   // the thresholds; a null/missing config falls back to DEFAULT_LINEAR_GATE_THRESHOLDS.
   const linearReadinessEnabled = linearReadinessFlag?.enabled ?? false
   const linearGateThresholds = resolveLinearGateThresholds(linearReadinessFlag?.config)
+  const linearEntryPolicy = resolveLinearEntryPolicy(linearReadinessFlag?.config)
 
   // Compute BKT if in adaptive modes and we have problem history
   const bktStart = performance.now()
@@ -439,6 +441,7 @@ export async function generateSessionPlan(
         problemHistory,
         bktResults,
         vetoedCategories: linearVetoes,
+        policy: linearEntryPolicy,
       })
     : null
   const linearReadyIds = linearExplanation?.readySkillIds ?? new Set<string>()

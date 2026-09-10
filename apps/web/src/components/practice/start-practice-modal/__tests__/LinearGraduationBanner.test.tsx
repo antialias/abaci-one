@@ -49,6 +49,7 @@ beforeEach(() => {
     enabled: true,
     frontier: null,
     skills: [],
+    pending: [],
     categories: [cat('basic', 'Basic')],
   }
 })
@@ -74,6 +75,7 @@ describe('LinearGraduationBanner', () => {
       enabled: true,
       frontier: null,
       skills: [],
+      pending: [],
       categories: [cat('basic', 'Basic', true)],
     }
     const { container } = render(<LinearGraduationBanner />)
@@ -97,6 +99,7 @@ describe('LinearGraduationBanner', () => {
       enabled: true,
       frontier: null,
       skills: [],
+      pending: [],
       categories: [cat('basic', 'Basic'), cat('fiveComplements', 'Five Complements')],
     }
     render(<LinearGraduationBanner />)
@@ -113,6 +116,7 @@ describe('LinearGraduationBanner', () => {
       enabled: true,
       frontier: null,
       skills: [],
+      pending: [],
       categories: [cat('basic', 'Basic'), cat('fiveComplements', 'Five Complements')],
     }
     render(<LinearGraduationBanner />)
