@@ -66,7 +66,7 @@ export const ASSEMBLY = {
   staggerFraction: 0.55,
   /** taking apart runs the same timeline backwards, this much faster */
   apartSpeed: 1.6,
-  /** sliding_dovetail: how far behind the seat the module lines up, × depth */
+  /** sliding_dovetail: how far beyond the NARROW entry the module lines up, × depth */
   slideBehindFactor: 1,
   /** vertical_snap: how high above the seat the module hovers, × depth */
   liftFactor: 0.6,
@@ -292,7 +292,7 @@ function snapTilt(u: number, tiltRad: number): number {
  * Two phases per module, so the path reads as a real assembly move rather than
  * a slide through solid plastic:
  *   A (u ≤ approachFraction) — travel to the staging point: seated in X, but
- *     still `depth` behind the seat (sliding) or `liftFactor·depth` above it
+ *     still `depth` beyond the narrow entry (sliding) or `liftFactor·depth` above it
  *     (snap). A snap module also leans to its full tilt — over the seated
  *     part, top toward the anchor (NEGATIVE rotY for right-side modules,
  *     POSITIVE for left-side ones) — over A's tail, so it arrives at the
@@ -328,15 +328,19 @@ export function modulePose(
   const A = ASSEMBLY.approachFraction
 
   if (joint === 'sliding_dovetail') {
-    const stage = -dims.depth * ASSEMBLY.slideBehindFactor
+    // The graduated rail enters at its NARROW end. Its wide deep-anchor
+    // section is the LAST part to reach the berth, so the visible insertion
+    // runs from +Y toward the seated origin — not from −Y toward it (user
+    // review 2026-09-10). Apart is this exact path in reverse.
+    const stage = dims.depth * ASSEMBLY.slideBehindFactor
     if (u <= A) {
-      // phase A: line up behind the seat (x closes on the anchor, −Y opens)
+      // phase A: line up beyond the narrow entry (x closes, +Y opens)
       const a = easeInOut(A > 0 ? u / A : 1)
       return pose(home + (seatX - home) * a, stage * a, 0)
     }
-    // phase B: x is home; slide forward with the detent click
+    // phase B: slide toward the wide anchor, crossing its final detent
     const b = (u - A) / (1 - A)
-    return pose(seatX, seatWithClick(b, stage, ASSEMBLY.clickOvershootMm), 0)
+    return pose(seatX, seatWithClick(b, stage, -ASSEMBLY.clickOvershootMm), 0)
   }
 
   // vertical_snap: hook-and-roll about the seam-side bottom line. The tilt
