@@ -177,7 +177,7 @@ describe('modulePose — vertical_snap hooks the sliver and rolls in', () => {
     expect(q.rotY).toBeCloseTo(tilt, 12)
   })
 
-  it('rolls in over the tail of the approach — upright early, tilted at the pocket', () => {
+  it('leans in over the approach — upright at the start, tilted at the pocket', () => {
     expect(pose(2, A * ASSEMBLY.tiltInAt).rotY).toBe(0)
     const mid = pose(2, A * (ASSEMBLY.tiltInAt + (1 - ASSEMBLY.tiltInAt) / 2)).rotY
     expect(mid).toBeGreaterThan(0)
@@ -202,13 +202,23 @@ describe('modulePose — vertical_snap hooks the sliver and rolls in', () => {
     expect(pose(2, ASSEMBLY.clickAt).rotY).toBe(0)
   })
 
-  it('drops (−Z) through phase B with x parked on the seat', () => {
+  it('slides the sliver home early, parks the pivot through the roll, presses at the click', () => {
+    // the hook descends only while the sliver slides in (the hold)
     let prev = pose(2, A).z
-    for (let u = 0.45; u <= ASSEMBLY.clickAt; u += 0.02) {
-      const q = pose(2, u)
+    for (let b = 0.02; b <= ASSEMBLY.hookDescentEnd + 1e-9; b += 0.02) {
+      const z = pose(2, atB(Math.min(b, ASSEMBLY.hookDescentEnd))).z
+      expect(z).toBeLessThan(prev)
+      prev = z
+    }
+    // from there to the clip press the pivot barely moves — the mate IS the
+    // roll, not a descent — with x parked on the seat throughout
+    const rest = pose(2, atB(ASSEMBLY.hookDescentEnd)).z
+    expect(rest).toBeCloseTo(ASSEMBLY.hookRestMm, 10)
+    const bClick = (ASSEMBLY.clickAt - A) / (1 - A)
+    for (let b = ASSEMBLY.hookDescentEnd; b <= bClick - ASSEMBLY.clickDipSpan + 1e-9; b += 0.02) {
+      const q = pose(2, atB(b))
       expect(q.x).toBeCloseTo(-2 * DIMS.gap, 10)
-      expect(q.z).toBeLessThan(prev)
-      prev = q.z
+      expect(q.z).toBeCloseTo(rest, 10)
     }
   })
 

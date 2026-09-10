@@ -58,13 +58,24 @@ export const ASSEMBLY = {
   clickAt: 0.94,
   /** vertical_snap hook-and-roll: the lateral tilt (deg) at first mating */
   tiltDeg: 42,
-  /** …the tilt ramps in over the tail of phase A, starting this far through
-   *  it — so the column reaches full tilt exactly as mating begins */
-  tiltInAt: 0.55,
-  /** phase B holds the full tilt until here (the sliver engages the pocket)… */
-  tiltHoldUntil: 0.25,
-  /** …and the column has rolled upright by here, well before the clip click */
-  tiltOutAt: 0.6,
+  /** …the tilt ramps in over the approach, starting this far through it —
+   *  early enough that the approach itself reads as "carrying a tilted
+   *  column" — and reaches full tilt exactly as mating begins */
+  tiltInAt: 0.15,
+  /** phase B holds the full tilt until here, while the sliver slides home… */
+  tiltHoldUntil: 0.3,
+  /** …and the column has rolled upright by here. The roll is the slow,
+   *  deliberate beat of the mate: by then the pivot corner is already at
+   *  its resting height, so it reads as ROTATION, not descent */
+  tiltOutAt: 0.85,
+  /** the hooked sliver has slid fully home by this far through phase B —
+   *  from here to the clip press the pivot corner barely moves */
+  hookDescentEnd: 0.45,
+  /** …leaving the pivot this far (mm) above the seat until the clip press */
+  hookRestMm: 1.2,
+  /** the clip press is a short sharp beat, this wide (fraction of phase B),
+   *  ending exactly at clickAt — the clips snap in the last mm */
+  clickDipSpan: 0.05,
 } as const
 
 export type Vec3 = { x: number; y: number; z: number }
@@ -136,6 +147,26 @@ function seatWithClick(b: number, from: number, peak: number): number {
   return peak * (1 - easeOut((b - bClick) / (1 - bClick)))
 }
 
+/**
+ * The vertical_snap pivot-corner height through phase B. Unlike the sliding
+ * joint's long eased descent, the hook drops fast: the sliver slides down the
+ * pocket's flared mouth at full tilt and is home by hookDescentEnd, leaving
+ * the pivot a hair above the seat. From there to the press the pivot barely
+ * moves — the mate IS the roll — and the last beat is the short firm press
+ * that snaps the crossbar clips (the dip), then settles.
+ */
+function hookZ(b: number, lift: number, peak: number): number {
+  const rest = ASSEMBLY.hookRestMm
+  const bClick = (ASSEMBLY.clickAt - ASSEMBLY.approachFraction) / (1 - ASSEMBLY.approachFraction)
+  if (b <= ASSEMBLY.hookDescentEnd) {
+    return lift + (rest - lift) * easeInOut(clamp01(b / ASSEMBLY.hookDescentEnd))
+  }
+  const dipStart = bClick - ASSEMBLY.clickDipSpan
+  if (b <= dipStart) return rest
+  if (b <= bClick) return rest + (peak - rest) * easeInOut((b - dipStart) / (bClick - dipStart))
+  return peak * (1 - easeOut((b - bClick) / (1 - bClick)))
+}
+
 /** the hook-and-roll tilt schedule: 0 upright … tiltRad fully tilted */
 function snapTilt(u: number, tiltRad: number): number {
   const A = ASSEMBLY.approachFraction
@@ -164,8 +195,9 @@ function snapTilt(u: number, tiltRad: number): number {
  *     arrives at the pocket already hooked. Nothing is ever inside anything
  *     else.
  *   B (the rest) — close the joint: the slide runs the one legal axis straight
- *     home; the snap holds its tilt while the sliver engages, rolls upright
- *     about the seam-side bottom line, and both end on the detent click.
+ *     home; the snap slides the sliver home at full tilt, ROLLS upright about
+ *     the seam-side bottom line (nearly pure rotation — the pivot is already
+ *     at its resting height), and both end on the detent/clip click.
  *
  * The roll is returned as `rotY` (rotation about +Y). The group would rotate
  * about its own origin, so the x/z offsets carry the correction that pins the
@@ -208,9 +240,10 @@ export function modulePose(
     const a = easeInOut(A > 0 ? u / A : 1)
     base = vec(seatX * a, 0, lift * a)
   } else {
-    // phase B: the hooked sliver descends; the roll finishes, then the click
+    // phase B: the sliver slides home at full tilt, the ROLL does the
+    // mating (nearly pure rotation about the hooked corner), then the press
     const b = (u - A) / (1 - A)
-    base = vec(seatX, 0, seatWithClick(b, lift, -ASSEMBLY.clickOvershootMm * 0.5))
+    base = vec(seatX, 0, hookZ(b, lift, -ASSEMBLY.clickOvershootMm * 0.5))
   }
   if (rotY === 0) return pose(base.x, base.y, base.z)
   const cos = Math.cos(rotY)
