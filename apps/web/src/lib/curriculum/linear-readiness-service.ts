@@ -8,7 +8,11 @@
  */
 
 import { getCategoryDisplayName, type SkillCategoryKey } from '@/constants/skillCategories'
-import { isEnabled } from '@/lib/feature-flags'
+import {
+  type LinearEntryAssessment,
+  resolveLinearEntryPolicy,
+} from '@/lib/curriculum/linear-entry-policy'
+import { getFlag } from '@/lib/feature-flags'
 import { getSkillDisplayName } from '@/utils/skillDisplay'
 import { computeBktFromHistory } from './bkt'
 import { BKT_INTEGRATION_CONFIG } from './config'
@@ -16,6 +20,7 @@ import {
   explainLinearReadiness,
   groupLinearReadyByCategory,
   type LinearReadinessFrontier,
+  type LinearReadinessSkillDetail,
 } from './linear-readiness'
 import { getAllSkillMastery, getLinearReadinessVetoes } from './progress-manager'
 import { getRecentSessionResults } from './session-planner'
@@ -47,7 +52,10 @@ export interface LinearReadinessSkillState {
   name: string
   /** Stage rank in the linear-readiness ladder */
   stage: number
+  /** Generic four-dimension assessment (dashboard badge semantics). */
   readiness: SkillReadinessResult
+  /** The entry policy's verdict — what actually decides number sentences. */
+  entry?: LinearEntryAssessment
 }
 
 export interface LinearReadinessState {
@@ -59,6 +67,8 @@ export interface LinearReadinessState {
   categories: LinearReadyCategory[]
   /** Readiness detail for each skill in the frontier stage. */
   skills: LinearReadinessSkillState[]
+  /** Skills the frontier has moved past that still miss the entry policy (accuracy / speed). */
+  pending: LinearReadinessSkillState[]
 }
 
 function flagOffState(): LinearReadinessState {
@@ -67,12 +77,14 @@ function flagOffState(): LinearReadinessState {
     frontier: null,
     categories: [],
     skills: [],
+    pending: [],
   }
 }
 
 export async function getLinearReadinessState(playerId: string): Promise<LinearReadinessState> {
-  const enabled = await isEnabled('linear_readiness.enabled', false)
-  if (!enabled) return flagOffState()
+  const flag = await getFlag('linear_readiness.enabled')
+  if (!flag?.enabled) return flagOffState()
+  const policy = resolveLinearEntryPolicy(flag.config)
 
   const [skillMastery, problemHistory, vetoes] = await Promise.all([
     getAllSkillMastery(playerId),
@@ -90,6 +102,7 @@ export async function getLinearReadinessState(playerId: string): Promise<LinearR
     problemHistory,
     bktResults,
     vetoedCategories: vetoes,
+    policy,
   })
 
   const categories: LinearReadyCategory[] = [
@@ -119,12 +132,15 @@ export async function getLinearReadinessState(playerId: string): Promise<LinearR
     })
   }
 
-  const skills: LinearReadinessSkillState[] = explanation.frontierSkills.map((detail) => ({
+  const toState = (detail: LinearReadinessSkillDetail): LinearReadinessSkillState => ({
     skillId: detail.skillId,
     name: getSkillDisplayName(detail.skillId),
     stage: detail.stageRank,
     readiness: detail.readiness,
-  }))
+    entry: detail.entry,
+  })
+  const skills = explanation.frontierSkills.map(toState)
+  const pending = explanation.pendingSkills.map(toState)
 
-  return { enabled: true, frontier, categories, skills }
+  return { enabled: true, frontier, categories, skills, pending }
 }

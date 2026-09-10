@@ -31,6 +31,7 @@ function state(overrides: Partial<LinearReadinessState> = {}): LinearReadinessSt
       { category: 'basic', name: 'Basic Skills', skillIds: [], status: 'locked', vetoed: false },
     ],
     skills: [],
+    pending: [],
     ...overrides,
   }
 }
@@ -38,7 +39,7 @@ function state(overrides: Partial<LinearReadinessState> = {}): LinearReadinessSt
 describe('LinearLockNote', () => {
   it('names the frontier stage and how close it is', () => {
     expect(describeLinearLock(state())).toBe(
-      'Number sentences unlock when your Basic Skills are quick and steady. 1 of 6 ready.'
+      'Number sentences unlock when your Basic Skills are practiced and mastered. 1 of 6 there.'
     )
   })
 

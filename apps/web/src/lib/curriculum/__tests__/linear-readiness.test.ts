@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getCategorySkillIds, getFullSkillId } from '@/constants/skillCategories'
+import type { LinearEntryAssessment } from '@/lib/curriculum/linear-entry-policy'
+import type { SkillReadinessResult } from '@/lib/curriculum/skill-readiness'
 import {
   ALL_STAGED_SKILL_IDS,
   computeFrontierRank,
@@ -313,5 +315,165 @@ describe('explainLinearReadiness (adapter)', () => {
       expect(d.readiness.dimensions.volume.opportunities).toBe(0)
       expect(d.readiness.dimensions.volume.met).toBe(false)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Frontier vs membership split (entry policy, 2026-09)
+// ---------------------------------------------------------------------------
+
+/** Mastered and practiced enough to move the frontier, but not accurate enough to be a member. */
+const SETTLING: SkillEvidence = { isSolid: false, advancesFrontier: true, opportunities: 5 }
+
+function readinessFor(skillId: string): SkillReadinessResult {
+  return {
+    skillId,
+    isSolid: false,
+    dimensions: {
+      mastery: { met: true, pKnown: 0.97, confidence: 0.8 },
+      volume: { met: true, opportunities: 40, sessionCount: 6 },
+      speed: { met: false, medianSecondsPerTerm: 9 },
+      consistency: {
+        met: false,
+        recentAccuracy: 0.8,
+        lastFiveAllCorrect: false,
+        recentHelpCount: 0,
+      },
+    },
+  }
+}
+
+function entryFor(skillId: string, ready: boolean): LinearEntryAssessment {
+  return {
+    skillId,
+    ready,
+    advancesFrontier: true,
+    opportunities: 40,
+    mastery: { met: true, pKnown: 0.97 },
+    volume: { met: true, opportunities: 40, sessionCount: 6, minOpportunities: 20 },
+    accuracy: {
+      met: ready,
+      recentAccuracy: ready ? 0.93 : 0.8,
+      windowFilled: 15,
+      windowSize: 15,
+      minAccuracy: 0.85,
+      cleanStreak: false,
+    },
+    speed: { rule: 'off', met: true, secondsPerTerm: null, maxSecondsPerTerm: 5 },
+  }
+}
+
+describe('advancesFrontier vs isSolid', () => {
+  it('a settling skill lets the frontier move past its stage without joining the ready set', () => {
+    const m = baseEvidence()
+    set(m, CAT.basic, MASTERED)
+    m.set(CAT.basic[0], SETTLING)
+    expect(computeFrontierRank(m)).toBe(1)
+    const ready = deriveLinearReadyFromEvidence({
+      evidenceBySkill: m,
+      activeSkillIds: new Set(CAT.basic),
+      vetoedCategories: noVeto,
+    })
+    expect(ready.has(CAT.basic[0])).toBe(false)
+    for (const id of CAT.basic.slice(1)) expect(ready.has(id)).toBe(true)
+  })
+
+  it('legacy evidence without advancesFrontier falls back to isSolid', () => {
+    const m = baseEvidence()
+    set(m, CAT.basic, MASTERED)
+    m.set(CAT.basic[0], WEAK)
+    expect(computeFrontierRank(m)).toBe(0)
+  })
+
+  it('the frontier summary counts advancing skills, not members', () => {
+    const m = baseEvidence()
+    set(m, CAT.basic, MASTERED)
+    set(m, CAT.basic.slice(0, 2), SETTLING)
+    m.set(CAT.basic[2], WEAK)
+    const x = explainLinearReadinessFromEvidence({
+      evidenceBySkill: m,
+      activeSkillIds: new Set(CAT.basic),
+      vetoedCategories: noVeto,
+    })
+    expect(x.frontier).toMatchObject({ rank: 0, solidCount: CAT.basic.length - 1 })
+  })
+})
+
+describe('pendingSkills', () => {
+  it('lists practiced skills below the frontier that are not yet members, with their entry verdict', () => {
+    const m = baseEvidence()
+    set(m, CAT.basic, MASTERED)
+    set(m, CAT.basic.slice(0, 2), SETTLING)
+    set(m, CAT.five, MASTERED)
+    m.set(CAT.five[0], SETTLING)
+    const active = new Set([...CAT.basic, ...CAT.five, ...CAT.ten])
+    const readinessBySkill = new Map(
+      [...CAT.basic, ...CAT.five].map((id) => [id, readinessFor(id)] as const)
+    )
+    const entryBySkill = new Map(
+      [...CAT.basic, ...CAT.five].map(
+        (id) => [id, entryFor(id, !m.get(id)!.isSolid === false)] as const
+      )
+    )
+    const x = explainLinearReadinessFromEvidence({
+      evidenceBySkill: m,
+      activeSkillIds: active,
+      vetoedCategories: noVeto,
+      readinessBySkill,
+      entryBySkill,
+    })
+    expect(x.frontier?.rank).toBe(2)
+    const expected = [...CAT.basic.slice(0, 2)].sort((a, b) => a.localeCompare(b))
+    expect(x.pendingSkills.map((d) => d.skillId)).toEqual([...expected, CAT.five[0]])
+    expect(x.pendingSkills.map((d) => d.stageRank)).toEqual([0, 0, 1])
+    expect(x.pendingSkills[0].entry).toEqual(entryBySkill.get(x.pendingSkills[0].skillId))
+    for (const d of x.pendingSkills) expect(x.readySkillIds.has(d.skillId)).toBe(false)
+  })
+
+  it('excludes unpracticed, ready, and above-frontier skills', () => {
+    const m = baseEvidence()
+    set(m, CAT.basic, MASTERED)
+    m.set(CAT.five[0], SETTLING) // above the frontier (stage 1 not complete)
+    const readinessBySkill = new Map(
+      [...CAT.basic, ...CAT.five].map((id) => [id, readinessFor(id)] as const)
+    )
+    const x = explainLinearReadinessFromEvidence({
+      evidenceBySkill: m,
+      activeSkillIds: new Set([...CAT.basic, ...CAT.five]),
+      vetoedCategories: noVeto,
+      readinessBySkill,
+    })
+    expect(x.frontier?.rank).toBe(1)
+    expect(x.pendingSkills).toEqual([])
+  })
+
+  it('a vetoed category still shows its members as ready-before-veto, not pending', () => {
+    const m = baseEvidence()
+    set(m, CAT.basic, MASTERED)
+    const x = explainLinearReadinessFromEvidence({
+      evidenceBySkill: m,
+      activeSkillIds: new Set(CAT.basic),
+      vetoedCategories: new Set(['basic']),
+      readinessBySkill: new Map(CAT.basic.map((id) => [id, readinessFor(id)] as const)),
+    })
+    expect(x.readySkillIds.size).toBe(0)
+    expect(x.readyBeforeVetoSkillIds.size).toBe(CAT.basic.length)
+    expect(x.pendingSkills).toEqual([])
+  })
+})
+
+describe('explainLinearReadiness (policy pass-through)', () => {
+  it('attaches an entry verdict to every frontier row', () => {
+    const x = explainLinearReadiness({
+      skillMastery: CAT.basic.map((skillId) => ({ skillId, practiceLevel: 'abacus' as const })),
+      problemHistory: [],
+      bktResults: undefined,
+      vetoedCategories: noVeto,
+    })
+    for (const d of x.frontierSkills) {
+      expect(d.entry).toMatchObject({ skillId: d.skillId, ready: false, advancesFrontier: false })
+      expect(d.entry?.speed.rule).toBe('off')
+    }
+    expect(x.pendingSkills).toEqual([])
   })
 })
