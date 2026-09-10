@@ -25,19 +25,23 @@
 //     pinches the dovetail post to a razor sliver at its foot (abacus.scad
 //     sc_seated_post — "slide-through is impossible" and even drop-through is
 //     meant to start thin), so the real move is hook-and-roll: hold the column
-//     tilted ~40–45° laterally, hook the sliver into the pocket mouth, then
-//     ROLL upright into place — the 45° seat wedge is exactly the arc the roll
-//     traces. The crossbar clips click at the very end.
+//     tilted ~40–45° leaning OVER the seated part (top toward the anchor),
+//     hook the sliver into the pocket mouth, then ROLL it back upright into
+//     place — the top swings away from the anchor as it closes, and the 45°
+//     seat wedge is exactly the arc the roll traces. The crossbar clips
+//     click at the very end.
 // Taking apart is the same timeline run backwards (and faster): the reverse of
-// "slide forward and click" is a rearward tug, the reverse of "hook, roll and
-// snap" is tilt away and lift off.
+// "slide forward and click" is a rearward tug, the reverse of "lean over,
+// hook and roll back" is lean over and lift off.
 
 import type { JointType } from './abacus-model'
 
 /** View constants — the feel of the animation, in one place. */
 export const ASSEMBLY = {
-  /** how long ONE module takes to travel its whole path, ms */
-  perModuleMs: 600,
+  /** the FIRST TWO travelling modules each get this full, deliberate
+   *  window — slow enough to read the hook and the roll (4× the original
+   *  600 ms a module used to get) */
+  slowModuleMs: 2400,
   /** module i+1 starts this far into module i's window (so they overlap) */
   staggerFraction: 0.55,
   /** taking apart runs the same timeline backwards, this much faster */
@@ -48,10 +52,15 @@ export const ASSEMBLY = {
   liftFactor: 0.6,
   /** the detent: how far past the stop the module flicks before settling, mm */
   clickOvershootMm: 0.5,
-  /** ceiling on a whole play, ms. The choreography is normalised to [0,1], so a
-   *  long chain just runs the SAME dance faster rather than holding the pill
-   *  hostage: 21 columns would otherwise be 7.2 s (and 4.5 s to come apart). */
-  maxTotalMs: 3600,
+  /** modules from the third travelling module on get this brisk window —
+   *  never shorter, so every module stays legible; the OVERLAP tightens to
+   *  absorb the compression as the chain grows */
+  fastModuleMs: 1200,
+  /** constant wall-clock budget for a whole play, ms: the first two modules
+   *  play slowly, the rest speed up to fit. = slowModuleMs·(1+2·stagger) —
+   *  exactly three slow windows — so a 4-column abacus takes ~4× the
+   *  original dance and a 21-column chain never takes longer */
+  budgetMs: 5040,
   /** phase A (line up off the seat) ends here in a module's local progress */
   approachFraction: 0.4,
   /** …and the detent lands here, leaving the tail of the window to settle */
@@ -104,13 +113,15 @@ export function movingModules(cols: number): number {
 
 /**
  * Wall-clock length of a full assembly play (s: 0 → 1) for a chain of `cols`
- * modules. Windows overlap, so N modules cost far less than N × perModuleMs.
+ * modules. Up to three travelling modules the play is the slow dance at the
+ * stagger cadence (a 4-column abacus lands exactly on the budget); past that
+ * the tail speeds up and the total holds at budgetMs forever.
  */
 export function timelineMs(cols: number): number {
   const n = movingModules(cols)
   if (n <= 0) return 0
-  const full = ASSEMBLY.perModuleMs * (1 + (n - 1) * ASSEMBLY.staggerFraction)
-  return Math.min(full, ASSEMBLY.maxTotalMs)
+  const full = ASSEMBLY.slowModuleMs * (1 + (n - 1) * ASSEMBLY.staggerFraction)
+  return Math.min(full, ASSEMBLY.budgetMs)
 }
 
 /**
@@ -118,14 +129,27 @@ export function timelineMs(cols: number): number {
  * window {0,0} (it never moves); module 1 starts at 0 and the last module ends
  * at exactly 1, so a play is over precisely when the last module clicks home.
  * Indices past the chain (the viewer's group pool only grows) park at {1,1}.
+ *
+ * The schedule is deliberately NOT uniform: modules 1–2 (the first thing the
+ * viewer watches) get the full slow window at the stagger cadence; from
+ * module 3 on — only when there IS a third, i.e. n ≥ 4 — windows are brisk
+ * and their overlap tightens so the last module lands exactly on the budget.
  */
 export function moduleWindow(i: number, cols: number): AssemblyWindow {
   const n = movingModules(cols)
   if (i <= 0 || n <= 0) return { start: 0, end: 0 }
-  const total = 1 + (n - 1) * ASSEMBLY.staggerFraction
-  const start = ((i - 1) * ASSEMBLY.staggerFraction) / total
-  if (start >= 1) return { start: 1, end: 1 }
-  return { start, end: Math.min(start + 1 / total, 1) }
+  const total = timelineMs(cols)
+  const slowStart = (k: number) => (k - 1) * ASSEMBLY.staggerFraction * ASSEMBLY.slowModuleMs
+  if (n <= 3 || i <= 2) {
+    const startMs = slowStart(i)
+    if (startMs >= total) return { start: 1, end: 1 }
+    return { start: startMs / total, end: (startMs + ASSEMBLY.slowModuleMs) / total }
+  }
+  const tail = n - 2 // modules 3..n share the fast tail
+  const step = (ASSEMBLY.budgetMs - slowStart(3) - ASSEMBLY.fastModuleMs) / (tail - 1)
+  const startMs = slowStart(3) + (i - 3) * step
+  if (startMs >= total) return { start: 1, end: 1 }
+  return { start: startMs / total, end: Math.min((startMs + ASSEMBLY.fastModuleMs) / total, 1) }
 }
 
 /** module i's local progress at global timeline position `s` */
@@ -191,13 +215,14 @@ function snapTilt(u: number, tiltRad: number): number {
  * a slide through solid plastic:
  *   A (u ≤ approachFraction) — travel to the staging point: seated in X, but
  *     still `depth` behind the seat (sliding) or `liftFactor·depth` above it
- *     (snap). A snap module also rolls to its full tilt over A's tail, so it
- *     arrives at the pocket already hooked. Nothing is ever inside anything
- *     else.
+ *     (snap). A snap module also leans to its full tilt — over the seated
+ *     part, top toward the anchor — over A's tail, so it arrives at the
+ *     pocket already hooked. Nothing is ever inside anything else.
  *   B (the rest) — close the joint: the slide runs the one legal axis straight
- *     home; the snap slides the sliver home at full tilt, ROLLS upright about
- *     the seam-side bottom line (nearly pure rotation — the pivot is already
- *     at its resting height), and both end on the detent/clip click.
+ *     home; the snap slides the sliver home at full tilt, ROLLS back upright
+ *     about the seam-side bottom line (the top swinging away from the anchor —
+ *     nearly pure rotation, the pivot already at its resting height), and both
+ *     end on the detent/clip click.
  *
  * The roll is returned as `rotY` (rotation about +Y). The group would rotate
  * about its own origin, so the x/z offsets carry the correction that pins the
@@ -231,9 +256,12 @@ export function modulePose(
     return pose(seatX, seatWithClick(b, stage, ASSEMBLY.clickOvershootMm), 0)
   }
 
-  // vertical_snap: hook-and-roll about the seam-side bottom line
+  // vertical_snap: hook-and-roll about the seam-side bottom line. NEGATIVE
+  // rotY leans the column OVER the seated part (top toward the anchor); the
+  // roll swings the top away from the anchor as the body closes — reversed
+  // from the first cut, per the physical kit (user review 2026-09-10).
   const lift = dims.depth * ASSEMBLY.liftFactor
-  const rotY = snapTilt(u, (ASSEMBLY.tiltDeg * Math.PI) / 180)
+  const rotY = snapTilt(u, (-ASSEMBLY.tiltDeg * Math.PI) / 180)
   let base: Vec3
   if (u <= A) {
     // phase A: close X and lift the column, rolling to full tilt at the end

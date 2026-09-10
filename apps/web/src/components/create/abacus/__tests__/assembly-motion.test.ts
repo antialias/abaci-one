@@ -39,18 +39,36 @@ describe('moduleWindow', () => {
     }
   })
 
-  it('orders the windows and offsets each by staggerFraction of a window', () => {
+  it('plays the first two modules slowly and uniformly at the stagger cadence', () => {
+    for (const cols of [3, 5, 13, 21]) {
+      const total = timelineMs(cols)
+      const a = moduleWindow(1, cols)
+      const b = moduleWindow(2, cols)
+      expect(a.start).toBe(0)
+      expect(len(a)).toBeCloseTo(ASSEMBLY.slowModuleMs / total, 12)
+      expect(len(b)).toBeCloseTo(ASSEMBLY.slowModuleMs / total, 12)
+      // module 2 starts staggerFraction of a slow window in, so they are in
+      // flight together for the remaining 45%
+      expect(b.start - a.start).toBeCloseTo(
+        (ASSEMBLY.staggerFraction * ASSEMBLY.slowModuleMs) / total,
+        12
+      )
+      expect(b.start).toBeLessThan(a.end)
+    }
+  })
+
+  it('runs the tail briskly inside the budget — ordered, overlapping, landing on 1', () => {
     const cols = 13
-    for (let i = 1; i < cols - 1; i++) {
+    const total = timelineMs(cols)
+    expect(total).toBe(ASSEMBLY.budgetMs)
+    for (let i = 3; i < cols - 1; i++) {
       const a = moduleWindow(i, cols)
       const b = moduleWindow(i + 1, cols)
+      // every tail module keeps the full brisk window — the OVERLAP tightens
+      expect(len(a)).toBeCloseTo(ASSEMBLY.fastModuleMs / total, 12)
       expect(b.start).toBeGreaterThan(a.start)
       expect(b.end).toBeGreaterThan(a.end)
-      // consecutive modules overlap: the next one starts staggerFraction of a
-      // window in, so they are in flight together for the remaining 45%
-      expect(b.start - a.start).toBeCloseTo(ASSEMBLY.staggerFraction * len(a), 12)
-      expect(b.start).toBeLessThan(a.end)
-      expect(len(b)).toBeCloseTo(len(a), 12)
+      expect(b.start).toBeLessThan(a.end) // tighter overlap, never a gap
     }
   })
 
@@ -70,18 +88,23 @@ describe('moduleWindow', () => {
     expect(timelineMs(0)).toBe(0)
   })
 
-  it('costs one window plus a stagger per extra module', () => {
-    expect(timelineMs(2)).toBeCloseTo(ASSEMBLY.perModuleMs, 9)
-    expect(timelineMs(5)).toBeCloseTo(ASSEMBLY.perModuleMs * (1 + 3 * ASSEMBLY.staggerFraction), 9)
+  it('is the slow dance up to three modules, then holds the budget forever', () => {
+    expect(timelineMs(2)).toBeCloseTo(ASSEMBLY.slowModuleMs, 9)
+    expect(timelineMs(3)).toBeCloseTo(ASSEMBLY.slowModuleMs * (1 + ASSEMBLY.staggerFraction), 9)
+    // a 4-column abacus: exactly three slow windows = the budget, ~4× the
+    // original 1260 ms dance (user review: the sequences were far too fast)
+    expect(ASSEMBLY.budgetMs).toBeCloseTo(
+      ASSEMBLY.slowModuleMs * (1 + 2 * ASSEMBLY.staggerFraction),
+      9
+    )
+    expect(timelineMs(4)).toBe(ASSEMBLY.budgetMs)
+    expect(timelineMs(13)).toBe(ASSEMBLY.budgetMs)
+    expect(timelineMs(21)).toBe(ASSEMBLY.budgetMs)
   })
 
-  it('caps a long chain instead of holding the pill hostage', () => {
-    // the choreography is normalised, so the cap plays the same dance faster
-    expect(timelineMs(13)).toBe(ASSEMBLY.maxTotalMs)
-    expect(timelineMs(21)).toBe(ASSEMBLY.maxTotalMs)
+  it('never exceeds the budget, however wide the chain — and still comes apart fast', () => {
     expect(moduleWindow(20, 21).end).toBeCloseTo(1, 12)
-    // …and the widest chain still comes apart in well under 3 s
-    expect(timelineMs(21) / ASSEMBLY.apartSpeed).toBeLessThan(3000)
+    expect(timelineMs(21) / ASSEMBLY.apartSpeed).toBeLessThan(4000)
   })
 })
 
@@ -174,14 +197,18 @@ describe('modulePose — vertical_snap hooks the sliver and rolls in', () => {
     expect(q.z).toBeCloseTo(DIMS.depth * ASSEMBLY.liftFactor, 10)
     expect(q.y).toBe(0)
     // "at the point they start mating you have to have the column rotated"
-    expect(q.rotY).toBeCloseTo(tilt, 12)
+    // — leaning OVER the seated part (negative = top toward the anchor)
+    expect(q.rotY).toBeCloseTo(-tilt, 12)
   })
 
-  it('leans in over the approach — upright at the start, tilted at the pocket', () => {
-    expect(pose(2, A * ASSEMBLY.tiltInAt).rotY).toBe(0)
+  it('leans over the seated part over the approach — upright at the start, tilted at the pocket', () => {
+    // (landing ON tiltInAt to the ulp is a float coin toss — pin the flat
+    // region just before it, and the boundary only approximately)
+    expect(pose(2, A * ASSEMBLY.tiltInAt * 0.999).rotY).toBe(0)
+    expect(pose(2, A * ASSEMBLY.tiltInAt).rotY).toBeCloseTo(0, 12)
     const mid = pose(2, A * (ASSEMBLY.tiltInAt + (1 - ASSEMBLY.tiltInAt) / 2)).rotY
-    expect(mid).toBeGreaterThan(0)
-    expect(mid).toBeLessThan(tilt)
+    expect(mid).toBeLessThan(0)
+    expect(mid).toBeGreaterThan(-tilt)
     // the seam-side bottom corner (the x0 = 0 offset path) never reverses
     // while the body swings onto the tilt
     let prev = pose(2, 0)
@@ -194,10 +221,10 @@ describe('modulePose — vertical_snap hooks the sliver and rolls in', () => {
   })
 
   it('holds the tilt while the sliver engages, then rolls upright before the click', () => {
-    expect(pose(2, atB(ASSEMBLY.tiltHoldUntil)).rotY).toBeCloseTo(tilt, 12)
+    expect(pose(2, atB(ASSEMBLY.tiltHoldUntil)).rotY).toBeCloseTo(-tilt, 12)
     const mid = pose(2, atB((ASSEMBLY.tiltHoldUntil + ASSEMBLY.tiltOutAt) / 2)).rotY
-    expect(mid).toBeGreaterThan(0)
-    expect(mid).toBeLessThan(tilt)
+    expect(mid).toBeGreaterThan(-tilt)
+    expect(mid).toBeLessThan(0)
     expect(pose(2, atB(ASSEMBLY.tiltOutAt)).rotY).toBe(0)
     expect(pose(2, ASSEMBLY.clickAt).rotY).toBe(0)
   })
@@ -235,8 +262,8 @@ describe('modulePose — vertical_snap hooks the sliver and rolls in', () => {
         expect(q.z).toBeGreaterThanOrEqual(-ASSEMBLY.clickOvershootMm + 1e-9)
         expect(q.z).toBeLessThanOrEqual(DIMS.depth * ASSEMBLY.liftFactor + 1e-9)
         expect(q.y).toBe(0)
-        expect(q.rotY).toBeGreaterThanOrEqual(0)
-        expect(q.rotY).toBeLessThanOrEqual(tilt + 1e-12)
+        expect(q.rotY).toBeLessThanOrEqual(0)
+        expect(q.rotY).toBeGreaterThanOrEqual(-tilt - 1e-12)
       }
     }
   })
