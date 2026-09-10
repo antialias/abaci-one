@@ -722,7 +722,24 @@ export const MARKER_BITS = [
 // Per-triangle shell membership + each shell's semantics, so a scheme/palette
 // change recolors the existing geometry instantly (no re-render).
 export type ShellInfo = { isFrame: boolean; i: number; isHeaven: boolean }
-export type ShellAnalysis = { triShell: Int32Array; shellInfo: ShellInfo[] }
+export type ShellAnalysis = {
+  triShell: Int32Array
+  shellInfo: ShellInfo[]
+  /** Which MODULE each shell belongs to, or −1 when the question is meaningless
+   *  (mono designs, and a seated modular chain whose modules are welded into one
+   *  shell). Only the exploded modular classification can answer it, which is why
+   *  the studio always renders modular designs exploded: the viewer partitions the
+   *  triangle soup on this and poses each module's group itself. */
+  shellModule: Int32Array
+}
+
+/** Per-triangle module index, expanded from {@link ShellAnalysis.shellModule}.
+ *  Pure fan-out of the per-shell answer — the form the triangle partition wants. */
+export function triModule(a: ShellAnalysis): Int32Array {
+  const out = new Int32Array(a.triShell.length)
+  for (let t = 0; t < out.length; t++) out[t] = a.shellModule[a.triShell[t]] ?? -1
+  return out
+}
 
 type ShellBox = { xmin: number; xmax: number; ymin: number; ymax: number }
 
@@ -803,6 +820,60 @@ function weldShellBoxes(positions: ArrayLike<number>): { ts: Int32Array; boxes: 
  *  every export stay seated. */
 export const EXPLODE_GAP = 12
 
+// ---- the module chain's X arithmetic ----------------------------------------
+// ONE copy of the .scad's module placement (abacus.scad:2146-2156): module i
+// starts at the widths to its left, plus i·explode once the studio opens the
+// seams. The feet studs, the exploded shell classifier and the viewer's
+// per-module partition all read it from here — three mirrors of the same chain
+// is exactly how a stud ends up hanging in an opened seam.
+const moduleOriginFrom = (d: Derived, cols: number, i: number, e: number): number =>
+  i <= 0
+    ? 0
+    : // The LAST module is pinned to the frame's right edge rather than summed
+      // left-to-right: 2·modWe + (cols−2)·scW === frameW exactly in real
+      // arithmetic, but the accumulated sum can land an ulp off, and the end
+      // studs have to fall EXACTLY on the monolith's corners.
+      i >= cols - 1
+      ? d.frameW - d.modWe + i * e
+      : d.modWe + (i - 1) * d.scW + i * e
+
+/** X of module i's left edge in the assembled frame — the same frame
+ *  {@link feetPositions} and {@link tokenCenters} answer in. `explode` is the
+ *  studio's take-it-apart gap (view state, never a Param); a mono design has no
+ *  seams to open, so it ignores it. */
+export function moduleOriginX(p: Params, i: number, explode = 0): number {
+  return moduleOriginFrom(derived(p), p.cols, i, isModular(p) ? explode : 0)
+}
+
+/** Width of module i: the end modules carry the border + field margin (modWe),
+ *  every middle module is one seam pitch (scW). */
+export function moduleWidth(p: Params, i: number): number {
+  const d = derived(p)
+  return i === 0 || i === p.cols - 1 ? d.modWe : d.scW
+}
+
+/** Which module owns the point `x`. Containment first; otherwise the NEAREST
+ *  module, because a male dovetail key protrudes past its module's nominal range
+ *  by a couple of mm and still belongs to the module that grew it. */
+export function moduleAtX(p: Params, x: number, explode = 0): number {
+  if (!isModular(p)) return 0
+  const d = derived(p)
+  const e = explode
+  let best = 0
+  let bestDist = Number.POSITIVE_INFINITY
+  for (let i = 0; i < p.cols; i++) {
+    const lo = moduleOriginFrom(d, p.cols, i, e)
+    const hi = lo + (i === 0 || i === p.cols - 1 ? d.modWe : d.scW)
+    if (x >= lo && x <= hi) return i
+    const dist = x < lo ? lo - x : x - hi
+    if (dist < bestDist) {
+      bestDist = dist
+      best = i
+    }
+  }
+  return best
+}
+
 // union-find the STL's triangles into connected shells (frame + free beads), then
 // map each bead shell's centroid back to its (column, heaven/earth) cell with the
 // same layout the .scad uses. Frame = the one shell far wider than a column pitch.
@@ -843,7 +914,19 @@ export function analyzeShells(positions: ArrayLike<number>, p: Params, explode =
     const i = Math.max(0, Math.min(p.cols - 1, Math.round((cx - s_em) / pitch)))
     return { isFrame: false, i, isHeaven: Math.abs(cy - s_hy) < s_ep * 0.5 }
   })
-  return { triShell: ts, shellInfo }
+  // Module membership only exists once the chain is taken apart: seated, every
+  // module welds into the SAME frame shell, so there is nothing to attribute.
+  // Exploded, a bead rides the module of its own column and a frame slab is
+  // owned by whichever module's opened X range holds its centroid.
+  const shellModule = new Int32Array(boxes.length).fill(-1)
+  if (exploded)
+    for (let si = 0; si < boxes.length; si++) {
+      const info = shellInfo[si]
+      shellModule[si] = info.isFrame
+        ? moduleAtX(p, (boxes[si].xmin + boxes[si].xmax) / 2, explode)
+        : info.i
+    }
+  return { triShell: ts, shellInfo, shellModule }
 }
 
 /** Shell classifier for a PER-MODULE render (Gitea #30) — the export-time gate
@@ -916,7 +999,8 @@ export function analyzeModuleShells(
   if (heavens !== 1) {
     throw new Error(`the module_${kind} render has ${heavens} heaven beads — expected exactly 1`)
   }
-  return { triShell: ts, shellInfo }
+  // A per-module render IS one module, so every shell trivially belongs to it.
+  return { triShell: ts, shellInfo, shellModule: new Int32Array(boxes.length).fill(column) }
 }
 
 // The filament slot a shell rides under the current scheme/palette + filament
@@ -2419,9 +2503,9 @@ export function moduleFeetStuds(p: Params, explode = 0): ModuleFootStud[] {
   const add = (kind: 'left' | 'mid' | 'right', x0: number, mouth: number): void => {
     for (const [x, y] of moduleFeetPositions(p, kind)) studs.push({ x: x0 + x, y, mouth, kind })
   }
-  add('left', 0, endMouth)
-  for (let j = 0; j < p.cols - 2; j++) add('mid', d.modWe + j * d.scW + (j + 1) * e, midMouth)
-  add('right', d.frameW - d.modWe + (p.cols - 1) * e, endMouth)
+  add('left', moduleOriginFrom(d, p.cols, 0, e), endMouth)
+  for (let j = 0; j < p.cols - 2; j++) add('mid', moduleOriginFrom(d, p.cols, j + 1, e), midMouth)
+  add('right', moduleOriginFrom(d, p.cols, p.cols - 1, e), endMouth)
   return studs
 }
 

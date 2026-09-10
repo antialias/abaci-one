@@ -17,13 +17,14 @@
 // redraw effects — and publishes its worker-bound STL exporter into the store so
 // the fabrication rail's Export buttons can drive it.
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js'
 import { STUDIO } from '@/components/studio/theme'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import { useAbacusStudio } from './AbacusStudioContext'
+import { type Motion, modulePose, planMotion, sampleMotion } from './abacus-assembly-motion'
 import {
   analyzeShells,
   COLOR_PALETTES,
@@ -36,8 +37,12 @@ import {
   isModular,
   MARKER_BITS,
   markersFollowFrameGhost,
+  moduleAtX,
   moduleFeetStuds,
+  moduleOriginX,
+  moduleWidth,
   outerD,
+  type Params,
   type ShellInfo,
   shellHex,
   shellRoleKey,
@@ -45,8 +50,16 @@ import {
   textGroupCount,
   tokenCenters,
   tokGroup,
+  triModule,
+  type XrayGroup,
   xrayGroups,
 } from './abacus-model'
+import {
+  type ModuleRange,
+  partitionTriangles,
+  permuteInt32,
+  permuteTriangles,
+} from './abacus-module-partition'
 import { type StatusUpdate, useAbacusScad } from './useAbacusScad'
 
 // x-ray opacity for the ghosted (non-emphasized) parts during a row highlight — the
@@ -57,6 +70,27 @@ const XRAY_OPACITY = 0.14
 // The hero's glass chrome (pills, caption, HUD) — one palette, from theme.ts.
 const CANVAS = STUDIO.color.canvas
 
+// The canvas pill (mock-up `.pill` / `.pill.on`) — shared by the two assembly
+// controls so "Take it apart" and "Replay" cannot drift apart. `dim` is the
+// while-a-play-runs state: aria-disabled + faded, never the `disabled`
+// attribute (a disabled control is invisible to hover and touch, and this one
+// is unavailable for ~1 s, not broken).
+const canvasPill = (on: boolean, dim: boolean): CSSProperties => ({
+  padding: '5px 12px',
+  borderRadius: STUDIO.radius.pill,
+  border: `1px solid ${on ? CANVAS.chromeBorderOn : STUDIO.color.border}`,
+  background: on ? CANVAS.chromeOn : CANVAS.chrome,
+  color: on ? CANVAS.textOn : STUDIO.color.text2,
+  font: '12px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif',
+  fontWeight: 600,
+  letterSpacing: 0.2,
+  cursor: dim ? 'default' : 'pointer',
+  opacity: dim ? 0.55 : 1,
+  backdropFilter: 'blur(6px)',
+  boxShadow: on ? STUDIO.shadow.canvasOn : 'none',
+  transition: 'color 120ms, background 120ms, border-color 120ms, box-shadow 120ms, opacity 120ms',
+})
+
 type DrawApi = {
   /** parse + shell-classify + recolor a fresh geometry STL; returns tri count */
   swapMesh: (stl: ArrayBuffer) => number
@@ -64,6 +98,13 @@ type DrawApi = {
   clearPlug: () => void
   /** cheap: recenter + rebuild markers + recolor existing mesh (no WASM) */
   applyParams: () => void
+  /** Pose the modular chain INSTANTLY: 1 = seated, 0 = fully taken apart. A pure
+   *  group transform — no re-render, no WASM, no React state per frame. Cancels
+   *  any play in flight. */
+  setAssembled: (v: number) => void
+  /** Play the assembly timeline from the current pose to `to` (1 = seated,
+   *  0 = apart) along each joint's real path. Jumps under reduced motion. */
+  animateTo: (to: number) => void
 }
 
 export function AbacusStudioViewer() {
@@ -121,16 +162,27 @@ export function AbacusStudioViewer() {
 
   const [status, setStatus] = useState<StatusUpdate>({ text: 'booting…', busy: 'loading' })
   const [meta, setMeta] = useState<{ ms?: number; tris?: number }>({})
-  // "take it apart" toggle: pure VIEW state, never a Param — explode rides the
-  // render call (and the shell classifier) but stays out of snapshots, content
-  // hashes and every export. Auto-collapses to 0 whenever the design isn't
-  // modular, so leaving modular mode reassembles without clearing the toggle.
+  // "take it apart" toggle: pure VIEW state, never a Param — it stays out of
+  // snapshots, content hashes and every export.
   const [exploded, setExploded] = useState(false)
-  const explodeMm = exploded && isModular(params) ? EXPLODE_GAP : 0
-  // mirrored for the mount-once three.js closures (recenter/swapMesh), same
-  // pattern as paramsRef above.
+  // …and the two bits of state the ASSEMBLY PLAY needs on the React side, both
+  // written at most twice per play (never per frame): `moving` dims the pills
+  // while the modules are in flight, `playedOnce` is what makes Replay appear
+  // (an offer to watch it again, not a control that pre-dates the first play).
+  const [moving, setMoving] = useState(false)
+  const [playedOnce, setPlayedOnce] = useState(false)
+  // ...and it no longer reaches the renderer AT ALL. The scad's explode knob is a
+  // pure per-module translation (module i sits at x0(i) + i·explode and nothing
+  // else changes), so the exploded soup IS the seated soup with each module
+  // shifted — which means a modular design can be rendered exploded ONCE and
+  // posed in JS. The viewer splits that soup per module and slides the groups, so
+  // the toggle is a transform, not a re-render, and a modular design costs
+  // exactly as many WASM renders as the seated view always did.
+  const explodeRender = isModular(params) ? EXPLODE_GAP : 0
+  // mirrored for the mount-once three.js closures (the pose, the shell
+  // classifier, the feet studs), same pattern as paramsRef above.
   const explodeRef = useRef(0)
-  explodeRef.current = explodeMm
+  explodeRef.current = explodeRender
   const mountRef = useRef<HTMLDivElement | null>(null)
   const drawRef = useRef<DrawApi | null>(null)
 
@@ -237,29 +289,126 @@ export function AbacusStudioViewer() {
       opacity: XRAY_OPACITY,
       depthWrite: false,
     })
-    let renderMesh: THREE.Mesh | null = null
+    // ONE shared set of geometry attributes for the whole abacus, with one
+    // BufferGeometry + Mesh per MODULE over it, each carrying only its own draw
+    // range and parented to its own group. (three's non-indexed raycast honours
+    // drawRange and still reports an ABSOLUTE faceIndex — Mesh.js:297-310 — so
+    // the global per-triangle tables below keep working unchanged.)
+    let moduleMeshes: THREE.Mesh[] = []
+    let moduleGeos: THREE.BufferGeometry[] = []
+    let moduleRanges: ModuleRange[] = []
+    // triShell/shellInfo stay GLOBAL over the (permuted) soup, so recolor and
+    // picking remain one flat pass across every module exactly as they were when
+    // the abacus was a single mesh.
     let triShell: Int32Array | null = null
     let shellInfo: ShellInfo[] = []
     // true while a row highlight is x-raying the model — read by plugRecolor so the
     // inset text ghosts along with its beads instead of floating solid over them.
     let xrayOn = false
 
-    // exploded width: each of the cols-1 seams opens by explodeRef mm in +X, so
-    // the taken-apart chain recenters on its true extent (0 when seated).
-    const recenter = () =>
-      centered.position.set(
-        -(frameW(paramsRef.current) + (paramsRef.current.cols - 1) * explodeRef.current) / 2,
-        -outerD(paramsRef.current) / 2,
-        0
-      )
-    recenter()
+    // ---- per-module groups + the assembly pose ------------------------------
+    // The modular STL is always the EXPLODED chain, so a module group's LOCAL
+    // frame is the exploded render's frame: seated pulls group i back by
+    // i·EXPLODE_GAP, taken apart leaves it at 0. Everything that belongs to a
+    // module — its slab, its beads, its feet studs, its share of the inset-text
+    // overlay — lives in that group and rides along for free. Mono has exactly
+    // one group and it never moves.
+    // The pool only grows: dropping a column leaves an empty group parked.
+    const moduleGroups: THREE.Group[] = []
+    const groupFor = (i: number): THREE.Group => {
+      while (moduleGroups.length <= i) {
+        const g = new THREE.Group()
+        centered.add(g)
+        moduleGroups.push(g)
+      }
+      return moduleGroups[i]
+    }
+    // 1 = seated, 0 = fully taken apart. A plain object, not React state, so the
+    // animation can drive it per frame without re-rendering the studio tree.
+    const pose = { assembled: 1 }
+
+    // Pose every module group and recentre on the chain's TRUE X extent.
+    // Mid-play the modules are NOT evenly spread — they seat from the anchor
+    // outward with a stagger — so the only honest centre is the one measured
+    // from where the modules actually are this frame. Module 0 is the anchor at
+    // x = 0, so the extent is [0, max right edge]: seated that is exactly
+    // frameW (a modular design centres where a mono one does), fully apart it is
+    // frameW + (cols-1)·gap, and everything between falls out of the same sum.
+    // The joint path itself lives in abacus-assembly-motion (pure + tested);
+    // this is only the three.js binding.
+    // derived() is not memoized and the pose reads it once per module per frame,
+    // so cache what the pose needs against the params OBJECT (the store hands out
+    // a new one on every edit). `explodedRight[i]` is module i's right edge in the
+    // render's own coordinates; add the module's current x offset and the largest
+    // one is the chain's right edge this frame.
+    let poseGeomFor: Params | null = null
+    let poseGeom = { dims: { gap: 0, depth: 0 }, explodedRight: [] as number[], frameW: 0 }
+    const poseGeometry = (p: Params) => {
+      if (poseGeomFor === p) return poseGeom
+      const gap = explodeRef.current
+      const explodedRight: number[] = []
+      for (let i = 0; i < p.cols; i++)
+        explodedRight.push(moduleOriginX(p, i, gap) + moduleWidth(p, i))
+      poseGeom = { dims: { gap, depth: outerD(p) }, explodedRight, frameW: frameW(p) }
+      poseGeomFor = p
+      return poseGeom
+    }
+    const applyPose = () => {
+      const p = paramsRef.current
+      const { dims, explodedRight, frameW: fw } = poseGeometry(p)
+      if (dims.gap === 0) {
+        // mono: one group, and it never moves
+        for (const g of moduleGroups) g.position.set(0, 0, 0)
+        centered.position.set(-fw / 2, -dims.depth / 2, 0)
+        return
+      }
+      let right = 0
+      for (let i = 0; i < moduleGroups.length; i++) {
+        const q = modulePose(p.joint_type, i, p.cols, pose.assembled, dims)
+        moduleGroups[i].position.set(q.x, q.y, q.z)
+        if (i < p.cols) right = Math.max(right, explodedRight[i] + q.x)
+      }
+      centered.position.set(-right / 2, -dims.depth / 2, 0)
+    }
+    applyPose()
+
+    // ---- the assembly timeline ----------------------------------------------
+    // One play at a time, advanced by the rAF loop at the bottom of this effect.
+    // `pose.assembled` is a plain number in this closure, so a play costs ZERO
+    // React renders: only its start and its end flip the pill's own state.
+    let motion: Motion | null = null
+    const reducedMotion = () =>
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const endMotion = () => {
+      motion = null
+      setMoving(false)
+    }
+    const animateTo = (to: number) => {
+      if (!motion && to === pose.assembled) return
+      const m = planMotion(pose.assembled, to, paramsRef.current.cols, {
+        now: performance.now(),
+        reducedMotion: reducedMotion(),
+      })
+      // reduced motion (or nothing to stagger) → 0 ms: land the end pose now,
+      // never start a play, never touch React state — so Replay, which only
+      // exists once a play has actually run, never appears for a jump.
+      if (m.durationMs <= 0) {
+        if (motion) endMotion()
+        pose.assembled = to
+        applyPose()
+        return
+      }
+      motion = m
+      setMoving(true)
+      setPlayedOnce(true)
+    }
 
     function recolor() {
       const p = paramsRef.current
-      if (!renderMesh || !triShell) return
+      if (!triShell || moduleGeos.length === 0) return
       const ts = triShell
-      const geo = renderMesh.geometry
-      const nVert = geo.attributes.position.count
+      const nVert = ts.length * 3
       // Reality-first: default to what actually PRINTS — the design's colors
       // QUANTIZED onto the loaded filaments (shellHex over the filament map). While
       // a strip fleck is hovered, `fm` goes null and we fall back to the user's
@@ -305,44 +454,92 @@ export function AbacusStudioViewer() {
           colors[o + 2] = rgb[2]
         }
       }
-      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+      // one colour attribute, shared by every module geometry (they share the
+      // position attribute too — the whole point of the permuted soup)
+      const colorAttr = new THREE.BufferAttribute(colors, 3)
+      for (const g of moduleGeos) g.setAttribute('color', colorAttr)
 
       // x-ray split: expand the per-shell match to a per-triangle mask, coalesce into
       // geometry groups — matching triangles → material 0 (opaque renderMat), the rest
       // → material 1 (translucent ghostMat, depth-write-free so the emphasized part
       // shows through). No highlight → one opaque material, no groups (single-draw).
-      geo.clearGroups()
+      // The groups are ABSOLUTE indices into the shared buffer, so each module
+      // takes only the slice that overlaps its own draw range — the renderer and
+      // the raycaster would clip them anyway, but pruning here keeps the draw
+      // call count proportional to the geometry instead of to cols·groups.
+      let groups: XrayGroup[] | null = null
       if (anyMatch && shellMatch) {
         const mask = new Array<boolean>(ts.length)
         for (let t = 0; t < ts.length; t++) mask[t] = shellMatch[ts[t]] ?? false
-        for (const g of xrayGroups(mask)) geo.addGroup(g.start, g.count, g.materialIndex)
-        renderMesh.material = [renderMat, ghostMat]
-      } else {
-        renderMesh.material = renderMat
+        groups = xrayGroups(mask)
       }
+      moduleGeos.forEach((g, i) => {
+        g.clearGroups()
+        if (!groups) return
+        const lo = moduleRanges[i].start * 3
+        const hi = lo + moduleRanges[i].count * 3
+        for (const gr of groups) {
+          const s0 = Math.max(gr.start, lo)
+          const e0 = Math.min(gr.start + gr.count, hi)
+          if (e0 > s0) g.addGroup(s0, e0 - s0, gr.materialIndex)
+        }
+      })
+      for (const m of moduleMeshes) m.material = groups ? [renderMat, ghostMat] : renderMat
       xrayOn = anyMatch
       plugRecolor()
     }
 
+    function disposeModuleMeshes() {
+      for (const m of moduleMeshes) m.parent?.remove(m)
+      // The module geometries SHARE their attributes, so they have to be disposed
+      // together: three frees an attribute's GPU buffer with the first geometry
+      // that references it (WebGLGeometries.onGeometryDispose), which would leave
+      // any survivor drawing from a deleted buffer.
+      for (const g of moduleGeos) g.dispose()
+      moduleMeshes = []
+      moduleGeos = []
+    }
+
     function swapMesh(stl: ArrayBuffer): number {
-      const geo = stlLoader.parse(stl)
-      geo.computeVertexNormals()
-      if (renderMesh) {
-        renderMesh.geometry.dispose()
-        renderMesh.geometry = geo
-      } else {
-        renderMesh = new THREE.Mesh(geo, renderMat)
-        centered.add(renderMesh)
-      }
-      const a = analyzeShells(
-        geo.attributes.position.array as ArrayLike<number>,
-        paramsRef.current,
-        explodeRef.current
-      )
-      triShell = a.triShell
+      const p = paramsRef.current
+      const src = stlLoader.parse(stl)
+      const raw = src.attributes.position.array as ArrayLike<number>
+      // In modular mode this soup is the EXPLODED chain, so every module is a
+      // disjoint set of shells and the partition is exact rather than a guess.
+      const a = analyzeShells(raw, p, explodeRef.current)
+      const modules = isModular(p) ? p.cols : 1
+      const { order, ranges } = partitionTriangles(triModule(a), modules)
+      const positions = permuteTriangles(raw, order)
+      triShell = permuteInt32(a.triShell, order)
       shellInfo = a.shellInfo
+      moduleRanges = ranges
+      src.dispose()
+
+      disposeModuleMeshes()
+      const posAttr = new THREE.BufferAttribute(positions, 3)
+      // normals are computed ONCE over the whole soup (computeVertexNormals
+      // ignores drawRange) and shared, like the positions
+      let normAttr: THREE.BufferAttribute | null = null
+      for (let i = 0; i < ranges.length; i++) {
+        const geo = new THREE.BufferGeometry()
+        geo.setAttribute('position', posAttr)
+        if (normAttr) geo.setAttribute('normal', normAttr)
+        else {
+          geo.computeVertexNormals()
+          normAttr = geo.attributes.normal as THREE.BufferAttribute
+        }
+        geo.setDrawRange(ranges[i].start * 3, ranges[i].count * 3)
+        // the bounding sphere covers the WHOLE shared buffer, not this module's
+        // slice — conservative, so frustum culling and the raycast broad phase
+        // stay correct; they just do a little more work than they could.
+        const mesh = new THREE.Mesh(geo, renderMat)
+        groupFor(i).add(mesh)
+        moduleGeos.push(geo)
+        moduleMeshes.push(mesh)
+      }
+      applyPose()
       recolor()
-      return geo.attributes.position.count / 3
+      return order.length
     }
 
     // ---- ArUco corner marker overlay ----------------------------------------
@@ -470,8 +667,11 @@ export function AbacusStudioViewer() {
     // mouth-diameter studs at the positions the matching pass would emit.
     // The studs deliberately dip below the z=0 grid — the print stands on its
     // feet, and showing them buried would hide the whole point of the feature.
-    const feetGroup = new THREE.Group()
-    centered.add(feetGroup)
+    // Studs are NOT one group any more: each one is parented to its own module's
+    // group, so a modular kit's feet stay under their module through the whole
+    // pose instead of hanging over an opened seam. Held in a flat list so
+    // disposal stays exact-once wherever they ended up.
+    const feetMeshes: THREE.Mesh[] = []
     // Studs share a solid per FOOT CLASS — one on a monolith, two on a modular
     // design (the mid modules' smaller class beside the mono corner foot) — so
     // the geometries are keyed by mouth and the material is shared by all of
@@ -481,7 +681,8 @@ export function AbacusStudioViewer() {
     let feetMat: THREE.Material | null = null
 
     function disposeFeet() {
-      feetGroup.clear()
+      for (const m of feetMeshes) m.parent?.remove(m)
+      feetMeshes.length = 0
       for (const geo of feetGeos.values()) geo.dispose()
       feetGeos.clear()
       feetMat?.dispose()
@@ -492,7 +693,6 @@ export function AbacusStudioViewer() {
       const p = paramsRef.current
       disposeFeet()
       const on = p.feet_mode === 'printed' && p.show_frame
-      feetGroup.visible = on
       if (!on) return
       const fx = feetEffective(p)
       // The stud spans z ∈ [−proud, depthEff] at the MOUTH section. The real foot
@@ -540,7 +740,11 @@ export function AbacusStudioViewer() {
       for (const { x, y, mouth } of studs) {
         const stud = new THREE.Mesh(geoFor(mouth), feetMat)
         stud.position.set(x, y, (fx.depthEff - fx.proud) / 2)
-        feetGroup.add(stud)
+        // moduleFeetStuds already rides the gap, so these are EXPLODED
+        // coordinates — which is exactly the local frame of the module group the
+        // stud belongs in. Mono resolves to module 0, the group that never moves.
+        groupFor(moduleAtX(p, x, explodeRef.current)).add(stud)
+        feetMeshes.push(stud)
       }
     }
 
@@ -571,19 +775,21 @@ export function AbacusStudioViewer() {
       opacity: XRAY_OPACITY,
       depthWrite: false,
     })
-    let plugMesh: THREE.Mesh | null = null
+    // Same shape as the main mesh: one shared attribute set, one draw-ranged
+    // geometry per module, each mesh inside its module's group.
+    let plugMeshes: THREE.Mesh[] = []
+    let plugGeos: THREE.BufferGeometry[] = []
     let plugTriTok: Int32Array | null = null
 
     function plugRecolor() {
-      if (!plugMesh || !plugTriTok) return
+      if (!plugTriTok || plugGeos.length === 0) return
       const p = paramsRef.current
       // reality-first: the inlay ink snaps to the nearest loaded filament by
       // default; the intrinsic-reveal hover shows the intended ink (rainbow palette
       // or the single text color) unquantized.
       const fm = revealIntrinsicRef.current ? null : filamentMapRef.current
       const pal = COLOR_PALETTES[p.color_palette] ?? COLOR_PALETTES.default
-      const geo = plugMesh.geometry
-      const colors = new Float32Array(geo.attributes.position.count * 3)
+      const colors = new Float32Array(plugTriTok.length * 9)
       const cache = new Map<number, readonly [number, number, number]>()
       for (let t = 0; t < plugTriTok.length; t++) {
         const k = plugTriTok[t]
@@ -607,17 +813,24 @@ export function AbacusStudioViewer() {
           colors[o + 2] = rgb[2]
         }
       }
-      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-      plugMesh.material = xrayOn ? plugGhostMat : plugMat
+      const colorAttr = new THREE.BufferAttribute(colors, 3)
+      for (const g of plugGeos) g.setAttribute('color', colorAttr)
+      for (const m of plugMeshes) m.material = xrayOn ? plugGhostMat : plugMat
     }
 
     function swapPlug(stl: ArrayBuffer) {
-      const geo = stlLoader.parse(stl)
-      geo.computeVertexNormals()
-      const centers = tokenCenters(paramsRef.current)
-      const pos = geo.attributes.position.array as ArrayLike<number>
+      const p = paramsRef.current
+      const src = stlLoader.parse(stl)
+      const centers = tokenCenters(p)
+      const pos = src.attributes.position.array as ArrayLike<number>
       const nTri = (pos.length / 9) | 0
-      plugTriTok = new Int32Array(nTri)
+      // text_plugs always renders SEATED, so a token belongs to whichever
+      // module's SEATED x range holds it. Membership is decided per TOKEN, not
+      // per triangle, so a letter sitting over a seam stays whole with one module
+      // instead of tearing in half the moment the chain opens.
+      const tokModule = centers.map((tc) => moduleAtX(p, tc.x, 0))
+      const tok = new Int32Array(nTri)
+      const mod = new Int32Array(nTri)
       for (let t = 0; t < nTri; t++) {
         let cx = 0
         let cy = 0
@@ -631,32 +844,54 @@ export function AbacusStudioViewer() {
         cx /= 3
         cy /= 3
         cz /= 3
-        let bk = 0
+        let bi = -1
         let bd = Number.POSITIVE_INFINITY
-        for (const tc of centers) {
+        centers.forEach((tc, i) => {
           const dd = (cx - tc.x) ** 2 + (cy - tc.y) ** 2 + (cz - tc.z) ** 2
           if (dd < bd) {
             bd = dd
-            bk = tc.k
+            bi = i
           }
-        }
-        plugTriTok[t] = bk
+        })
+        tok[t] = bi < 0 ? 0 : centers[bi].k
+        mod[t] = bi < 0 ? 0 : tokModule[bi]
       }
-      if (plugMesh) {
-        plugMesh.geometry.dispose()
-        plugMesh.geometry = geo
-      } else {
-        plugMesh = new THREE.Mesh(geo, plugMat)
-        centered.add(plugMesh)
+      const modules = isModular(p) ? p.cols : 1
+      const { order, ranges } = partitionTriangles(mod, modules)
+      const positions = permuteTriangles(pos, order)
+      const permutedTok = permuteInt32(tok, order)
+      src.dispose()
+
+      clearPlug()
+      plugTriTok = permutedTok
+      const posAttr = new THREE.BufferAttribute(positions, 3)
+      let normAttr: THREE.BufferAttribute | null = null
+      for (let i = 0; i < ranges.length; i++) {
+        const geo = new THREE.BufferGeometry()
+        geo.setAttribute('position', posAttr)
+        if (normAttr) geo.setAttribute('normal', normAttr)
+        else {
+          geo.computeVertexNormals()
+          normAttr = geo.attributes.normal as THREE.BufferAttribute
+        }
+        geo.setDrawRange(ranges[i].start * 3, ranges[i].count * 3)
+        const mesh = new THREE.Mesh(geo, plugMat)
+        // the plug soup is in SEATED coordinates and the group frame is the
+        // EXPLODED render's, so each piece carries the offset back the other way
+        mesh.position.x = i * explodeRef.current
+        groupFor(i).add(mesh)
+        plugGeos.push(geo)
+        plugMeshes.push(mesh)
       }
       plugRecolor()
     }
 
     function clearPlug() {
-      if (!plugMesh) return
-      centered.remove(plugMesh)
-      plugMesh.geometry.dispose()
-      plugMesh = null
+      for (const m of plugMeshes) m.parent?.remove(m)
+      // shared attributes again: dispose the whole set or none of it
+      for (const g of plugGeos) g.dispose()
+      plugMeshes = []
+      plugGeos = []
       plugTriTok = null
     }
 
@@ -665,8 +900,16 @@ export function AbacusStudioViewer() {
       swapMesh,
       swapPlug,
       clearPlug,
+      setAssembled: (v: number) => {
+        // the geometry on screen is ALREADY the taken-apart chain, so both poses
+        // are the same triangles under a different group transform
+        if (motion) endMotion()
+        pose.assembled = v
+        applyPose()
+      },
+      animateTo,
       applyParams: () => {
-        recenter()
+        applyPose()
         // recolor first: it sets xrayOn, which updateMarkers/updateFeet read to
         // fade with the board during an x-ray (Gitea #17). recolor never touches
         // the markers or the feet studs, so the swap is safe.
@@ -700,15 +943,22 @@ export function AbacusStudioViewer() {
       // reject orbit drags: only a short, near-stationary press reads as a pick
       if (Math.hypot(e.clientX - downX, e.clientY - downY) > 6) return
       if (e.timeStamp - downT > 500) return
-      if (!renderMesh || !triShell) return
+      if (moduleMeshes.length === 0 || !triShell) return
       const rect = renderer.domElement.getBoundingClientRect()
       ndc.set(
         ((e.clientX - rect.left) / rect.width) * 2 - 1,
         -((e.clientY - rect.top) / rect.height) * 2 + 1
       )
       raycaster.setFromCamera(ndc, camera)
-      const hit = raycaster.intersectObject(renderMesh, false)[0]
+      // nearest hit across every module mesh (intersectObjects sorts by
+      // distance). Each group carries its own transform, so the hit is already
+      // in world space — no pose bookkeeping here.
+      const hit = raycaster.intersectObjects(moduleMeshes, false)[0]
       if (hit?.faceIndex == null) return // clicked empty space / grid
+      // faceIndex is ABSOLUTE over the shared position buffer: three clamps the
+      // scan to the geometry's drawRange but still numbers triangles globally
+      // (three/src/objects/Mesh.js — `faceIndex = Math.floor(i / 3)`), so it
+      // indexes the permuted triShell directly.
       const shell = shellInfo[triShell[hit.faceIndex]]
       if (!shell) return
       pickRef.current?.(shellRoleKey(shell, paramsRef.current))
@@ -730,6 +980,14 @@ export function AbacusStudioViewer() {
     let raf = 0
     const loop = () => {
       raf = requestAnimationFrame(loop)
+      if (motion) {
+        // the global timeline advances linearly; every ease, the stagger and the
+        // detent live in modulePose, so this stays one lerp and a group write.
+        const { s, done } = sampleMotion(motion, performance.now())
+        pose.assembled = s
+        applyPose()
+        if (done) endMotion()
+      }
       controls.update()
       key.position.copy(camera.position) // headlamp
       renderer.render(scene, camera)
@@ -742,10 +1000,10 @@ export function AbacusStudioViewer() {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown)
       renderer.domElement.removeEventListener('pointerup', onPointerUp)
       controls.dispose()
-      renderMesh?.geometry.dispose()
+      disposeModuleMeshes()
       renderMat.dispose()
       ghostMat.dispose()
-      plugMesh?.geometry.dispose()
+      clearPlug()
       plugMat.dispose()
       plugGhostMat.dispose()
       for (const child of markerGroup.children) {
@@ -763,13 +1021,27 @@ export function AbacusStudioViewer() {
   }, [])
 
   // ---- react to param edits: cheap redraw + (deduped) WASM re-render --------
-  // explodeMm rides along: toggling "take it apart" re-renders with -Dexplode
-  // (mainKeyOf keys on it, so seated↔exploded never dedupes away) and recenters
-  // on the wider extent immediately.
+  // explodeRender is a function of PARAMS alone (modular → EXPLODE_GAP), never of
+  // the toggle — so this effect fires exactly when it always did, and the "take
+  // it apart" pill never reaches the renderer. mainKeyOf still keys on explode,
+  // so a mono↔modular flip re-renders as before.
   useEffect(() => {
     drawRef.current?.applyParams()
-    scad.render(params, explodeMm)
-  }, [params, scad, explodeMm])
+    scad.render(params, explodeRender)
+  }, [params, scad])
+
+  // ...and the pose follows the pill — as a PLAY along each joint's real path
+  // (rear slide + detent, or drop + snap), not a jump: the chain on screen is
+  // already the taken-apart geometry, so the whole animation is per-frame group
+  // transforms in the rAF loop. React state drives only the pill's label,
+  // aria-pressed and dimming; `s` itself never round-trips through React.
+  // On mount this runs with the pose already seated and animateTo no-ops.
+  // Crossing the mobile breakpoint remounts the viewer: the scene rebuilds
+  // seated and `exploded` resets to false at the same time, so the two can't
+  // drift — the pose is simply lost, which is what a remount means.
+  useEffect(() => {
+    drawRef.current?.animateTo(exploded ? 0 : 1)
+  }, [exploded])
 
   // editing the filament mapping (a pin, or new spools) is geometry-free: the
   // default filament projection changed, so recolor without a WASM re-render.
@@ -937,37 +1209,63 @@ export function AbacusStudioViewer() {
         Print preview · hover a swatch for your design
       </div>
 
-      {/* "take it apart" toggle (modular mode only): slides the modules apart in
-          the hero so the joint faces are inspectable without downloading an STL.
-          View-only — exports, snapshots and the kit always stay seated. */}
+      {/* the assembly controls (modular mode only): the modules come apart along
+          the path they'd really take — a sliding dovetail backs out the rear and
+          slides home with a detent, a snap seam lifts and drops onto its clips —
+          so the joint faces are inspectable, and HOW the thing goes together is
+          shown rather than described. View-only: exports, snapshots and the kit
+          always stay seated, and the model never re-renders (the play is a
+          per-module group transform on geometry that is already on screen). */}
       {isModular(params) && (
-        <button
-          type="button"
-          data-element="abacus-studio-explode-toggle"
-          data-action="toggle-explode"
-          aria-pressed={exploded}
-          onClick={() => setExploded((v) => !v)}
+        <div
+          data-element="abacus-studio-canvas-pills"
           style={{
             position: 'absolute',
             top: 12,
             left: 12,
-            padding: '5px 12px',
-            borderRadius: STUDIO.radius.pill,
-            border: `1px solid ${exploded ? CANVAS.chromeBorderOn : STUDIO.color.border}`,
-            background: exploded ? CANVAS.chromeOn : CANVAS.chrome,
-            color: exploded ? CANVAS.textOn : STUDIO.color.text2,
-            font: '12px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif',
-            fontWeight: 600,
-            letterSpacing: 0.2,
-            cursor: 'pointer',
-            backdropFilter: 'blur(6px)',
-            boxShadow: exploded ? STUDIO.shadow.canvasOn : 'none',
-            transition: 'color 120ms, background 120ms, border-color 120ms, box-shadow 120ms',
+            display: 'flex',
+            // stacked, not side by side: the hero caption is centred on the SAME
+            // top edge, and a two-pill row runs into it as soon as the canvas is
+            // narrow (rails open at 1280). Down has room at every width.
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: 8,
             zIndex: 2,
           }}
         >
-          {exploded ? 'Put it back together' : 'Take it apart'}
-        </button>
+          <button
+            type="button"
+            data-element="abacus-studio-explode-toggle"
+            data-action="toggle-explode"
+            aria-pressed={exploded}
+            aria-disabled={moving}
+            onClick={() => {
+              if (moving) return
+              setExploded((v) => !v)
+            }}
+            style={canvasPill(exploded, moving)}
+          >
+            {exploded ? 'Put it together' : 'Take it apart'}
+          </button>
+          {/* an offer, not a control: only once the user has seen a play, and
+              only from the seated end of it (from apart, the toggle IS replay). */}
+          {playedOnce && !exploded && (
+            <button
+              type="button"
+              data-element="abacus-studio-replay"
+              data-action="replay-assembly"
+              aria-disabled={moving}
+              onClick={() => {
+                if (moving) return
+                drawRef.current?.setAssembled(0)
+                drawRef.current?.animateTo(1)
+              }}
+              style={canvasPill(false, moving)}
+            >
+              Replay
+            </button>
+          )}
+        </div>
       )}
 
       {/* status HUD — a DEV readout ("#7 1346ms · 48,598 tris · clearance

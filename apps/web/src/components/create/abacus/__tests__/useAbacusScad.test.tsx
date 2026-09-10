@@ -157,12 +157,17 @@ describe('useAbacusScad plug pump', () => {
   })
 })
 
-// The "take it apart" toggle: explode is VIEW state threaded through render(),
-// never a Param — it must ride the main render as -Dexplode, participate in the
-// main dedup key (seated↔exploded is a real geometry change), and gate the plug
-// pass off (text_plugs renders at SEATED positions; over a taken-apart chain
-// the overlay would drift by i·explode per module — the CP8 stale-overlay
-// family again).
+// The "take it apart" view: explode is VIEW state threaded through render(),
+// never a Param — it must ride the main render as -Dexplode and participate in
+// the main dedup key (seated↔exploded is a real geometry change).
+//
+// It does NOT gate the plug pass any more (Gitea #44). text_plugs still renders
+// at SEATED positions, but plug PLACEMENT moved to the viewer, which splits the
+// plug soup by module and carries each piece in that module's group — so seated
+// coordinates land wherever the module currently is. That matters because a
+// modular design is now rendered exploded ALWAYS (the pose is a group transform,
+// not a re-render): an explode gate here would mean no inset-text preview on a
+// modular design at all.
 describe('useAbacusScad explode (take-it-apart view)', () => {
   it('rides the main render as -Dexplode — and only when nonzero', async () => {
     const { result } = await mount()
@@ -195,28 +200,33 @@ describe('useAbacusScad explode (take-it-apart view)', () => {
     expect(mainWorker().posted[2].defines).toEqual(mainWorker().posted[0].defines)
   })
 
-  it('clears + orphans the plug pass — surviving side tokens do not keep it alive', async () => {
+  it('still posts the plug pass on an exploded modular render — SEATED, no -Dexplode', async () => {
     const { result, onPlug } = await mount()
-    result.current.render(sideModular) // side tokens: plug pass in flight
+    result.current.render(sideModular, 12) // side tokens survive the modular gate
     expect(plugWorker().posted).toHaveLength(1)
+    // the view knob belongs to the main pass only: the plug soup is seated
+    // geometry the viewer places per module, so its defines must not learn it
+    expect(plugWorker().posted[0].defines.join(' ')).not.toContain('-Dexplode')
+    expect(plugWorker().posted[0].defines).toContain('-Donly="text_plugs"')
 
-    result.current.render(sideModular, 12)
-    expect(onPlug).toHaveBeenLastCalledWith(null)
-    // the seated plug render completes AFTER the toggle — dropped, not drawn
     plugWorker().emit({ id: plugWorker().posted[0].id, ok: true, stl: new ArrayBuffer(84) })
-    expect(onPlug.mock.calls.every(([v]) => v === null)).toBe(true)
-    expect(plugWorker().posted).toHaveLength(1) // and no exploded plug render either
+    expect(onPlug).toHaveBeenLastCalledWith(expect.any(ArrayBuffer)) // drawn, not cleared
   })
 
-  it('putting it back together re-renders the plug it cleared', async () => {
-    const { result, onPlug } = await mount()
-    result.current.render(sideModular)
-    plugWorker().emit({ id: plugWorker().posted[0].id, ok: true, stl: new ArrayBuffer(84) })
-
+  it('the plug pass dedupes across explode — the same design never re-solves its text', async () => {
+    const { result } = await mount()
     result.current.render(sideModular, 12)
-    expect(onPlug).toHaveBeenLastCalledWith(null)
+    plugWorker().emit({ id: plugWorker().posted[0].id, ok: true, stl: new ArrayBuffer(84) })
+    result.current.render(sideModular, 12)
+    expect(plugWorker().posted).toHaveLength(1)
+  })
 
-    result.current.render(sideModular) // reassembled: the clear wiped drawnKey
-    expect(plugWorker().posted).toHaveLength(2)
+  it('the modular gate itself still bites: crossing-slot tokens post no plug pass', async () => {
+    // non-vacuity for the two tests above — dropping the explode gate must not
+    // have dropped the anyTokens gate with it (the CP8 stale-overlay family).
+    const { result, onPlug } = await mount()
+    result.current.render(modular, 12) // edge_front only: emptied in modular
+    expect(plugWorker().posted).toHaveLength(0)
+    expect(onPlug).toHaveBeenLastCalledWith(null)
   })
 })

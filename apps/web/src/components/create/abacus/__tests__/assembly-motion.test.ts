@@ -1,0 +1,265 @@
+// abacus-assembly-motion — the joint-path timeline (Gitea #44, PR D phase 2).
+//
+// This is where the FEEL of "take it apart / put it together" is pinned: the
+// stagger, the two-phase path per joint topology, the detent click, and the
+// reduced-motion escape hatch. Pure arithmetic, so all of it is testable
+// without three.js, a canvas or a render.
+
+import { describe, expect, it } from 'vitest'
+import {
+  ASSEMBLY,
+  type AssemblyDims,
+  modulePose,
+  moduleWindow,
+  movingModules,
+  planMotion,
+  sampleMotion,
+  timelineMs,
+} from '../abacus-assembly-motion'
+
+const DIMS: AssemblyDims = { gap: 12, depth: 80 }
+/** sample the whole timeline finely enough to catch an excursion */
+const SAMPLES = Array.from({ length: 401 }, (_, k) => k / 400)
+const len = (w: { start: number; end: number }) => w.end - w.start
+/** the global `s` at which module i is `u` through its own window */
+const at = (i: number, cols: number, u: number) => {
+  const w = moduleWindow(i, cols)
+  return w.start + u * len(w)
+}
+
+describe('moduleWindow', () => {
+  it('gives module 0 a degenerate window — the anchor never moves', () => {
+    for (const cols of [1, 2, 5, 13]) expect(moduleWindow(0, cols)).toEqual({ start: 0, end: 0 })
+  })
+
+  it('starts the first travelling module at 0 and lands the last exactly on 1', () => {
+    for (const cols of [2, 3, 5, 13]) {
+      expect(moduleWindow(1, cols).start).toBe(0)
+      expect(moduleWindow(cols - 1, cols).end).toBeCloseTo(1, 12)
+    }
+  })
+
+  it('orders the windows and offsets each by staggerFraction of a window', () => {
+    const cols = 13
+    for (let i = 1; i < cols - 1; i++) {
+      const a = moduleWindow(i, cols)
+      const b = moduleWindow(i + 1, cols)
+      expect(b.start).toBeGreaterThan(a.start)
+      expect(b.end).toBeGreaterThan(a.end)
+      // consecutive modules overlap: the next one starts staggerFraction of a
+      // window in, so they are in flight together for the remaining 45%
+      expect(b.start - a.start).toBeCloseTo(ASSEMBLY.staggerFraction * len(a), 12)
+      expect(b.start).toBeLessThan(a.end)
+      expect(len(b)).toBeCloseTo(len(a), 12)
+    }
+  })
+
+  it('gives a 2-module chain the whole timeline', () => {
+    expect(moduleWindow(1, 2)).toEqual({ start: 0, end: 1 })
+  })
+
+  it('parks indices past the chain (the viewer group pool only grows)', () => {
+    const w = moduleWindow(40, 4)
+    expect(w).toEqual({ start: 1, end: 1 })
+  })
+
+  it('is degenerate for a mono design', () => {
+    expect(movingModules(1)).toBe(0)
+    expect(moduleWindow(1, 1)).toEqual({ start: 0, end: 0 })
+    expect(timelineMs(1)).toBe(0)
+    expect(timelineMs(0)).toBe(0)
+  })
+
+  it('costs one window plus a stagger per extra module', () => {
+    expect(timelineMs(2)).toBeCloseTo(ASSEMBLY.perModuleMs, 9)
+    expect(timelineMs(5)).toBeCloseTo(ASSEMBLY.perModuleMs * (1 + 3 * ASSEMBLY.staggerFraction), 9)
+  })
+
+  it('caps a long chain instead of holding the pill hostage', () => {
+    // the choreography is normalised, so the cap plays the same dance faster
+    expect(timelineMs(13)).toBe(ASSEMBLY.maxTotalMs)
+    expect(timelineMs(21)).toBe(ASSEMBLY.maxTotalMs)
+    expect(moduleWindow(20, 21).end).toBeCloseTo(1, 12)
+    // …and the widest chain still comes apart in well under 3 s
+    expect(timelineMs(21) / ASSEMBLY.apartSpeed).toBeLessThan(3000)
+  })
+})
+
+describe('modulePose — the two end poses', () => {
+  for (const joint of ['sliding_dovetail', 'vertical_snap'] as const) {
+    it(`${joint}: s=0 is the exploded render itself (no offset at all)`, () => {
+      for (let i = 0; i < 13; i++) {
+        expect(modulePose(joint, i, 13, 0, DIMS)).toEqual({ x: 0, y: 0, z: 0 })
+      }
+    })
+
+    it(`${joint}: s=1 is seated — module i pulled back exactly i·gap`, () => {
+      for (let i = 0; i < 13; i++) {
+        const q = modulePose(joint, i, 13, 1, DIMS)
+        expect(q.x).toBeCloseTo(-i * DIMS.gap, 10)
+        expect(q.y).toBeCloseTo(0, 10)
+        expect(q.z).toBeCloseTo(0, 10)
+      }
+    })
+
+    it(`${joint}: module 0 is the anchor at EVERY point of the timeline`, () => {
+      for (const s of SAMPLES)
+        expect(modulePose(joint, 0, 13, s, DIMS)).toEqual({ x: 0, y: 0, z: 0 })
+    })
+
+    it(`${joint}: x closes monotonically and never passes the seat`, () => {
+      for (const i of [1, 4, 12]) {
+        let prev = 0
+        for (const s of SAMPLES) {
+          const { x } = modulePose(joint, i, 13, s, DIMS)
+          expect(x).toBeLessThanOrEqual(prev + 1e-9)
+          expect(x).toBeGreaterThanOrEqual(-i * DIMS.gap - 1e-9)
+          prev = x
+        }
+      }
+    })
+  }
+})
+
+describe('modulePose — sliding_dovetail enters from behind', () => {
+  const pose = (i: number, u: number) => modulePose('sliding_dovetail', i, 5, at(i, 5, u), DIMS)
+
+  it('lines up BEHIND the seat (−Y), aligned in X, before it slides', () => {
+    const q = pose(2, ASSEMBLY.approachFraction)
+    expect(q.x).toBeCloseTo(-2 * DIMS.gap, 10) // already in its column
+    expect(q.y).toBeCloseTo(-DIMS.depth * ASSEMBLY.slideBehindFactor, 10) // a full depth back
+    expect(q.z).toBe(0)
+  })
+
+  it('slides forward (+Y) through phase B with x parked on the seat', () => {
+    let prev = pose(2, ASSEMBLY.approachFraction).y
+    for (let u = 0.45; u <= ASSEMBLY.clickAt; u += 0.02) {
+      const q = pose(2, u)
+      expect(q.x).toBeCloseTo(-2 * DIMS.gap, 10)
+      expect(q.y).toBeGreaterThan(prev)
+      prev = q.y
+    }
+  })
+
+  it('clicks over the front stop and settles onto it', () => {
+    expect(pose(3, ASSEMBLY.clickAt).y).toBeCloseTo(ASSEMBLY.clickOvershootMm, 10)
+    expect(pose(3, 1).y).toBeCloseTo(0, 10)
+    // …and the settle comes back from the far side
+    expect(pose(3, 0.97).y).toBeGreaterThan(0)
+    expect(pose(3, 0.97).y).toBeLessThan(ASSEMBLY.clickOvershootMm)
+  })
+
+  it('never overshoots past the detent and never leaves the Y/X plane', () => {
+    for (let i = 1; i < 5; i++) {
+      for (const s of SAMPLES) {
+        const q = modulePose('sliding_dovetail', i, 5, s, DIMS)
+        expect(q.y).toBeLessThanOrEqual(ASSEMBLY.clickOvershootMm + 1e-9)
+        expect(q.y).toBeGreaterThanOrEqual(-DIMS.depth - 1e-9)
+        expect(q.z).toBe(0)
+      }
+    }
+  })
+})
+
+describe('modulePose — vertical_snap drops from above', () => {
+  const pose = (i: number, u: number) => modulePose('vertical_snap', i, 5, at(i, 5, u), DIMS)
+
+  it('hovers ABOVE the seat (+Z), aligned in X, before it drops', () => {
+    const q = pose(2, ASSEMBLY.approachFraction)
+    expect(q.x).toBeCloseTo(-2 * DIMS.gap, 10)
+    expect(q.z).toBeCloseTo(DIMS.depth * ASSEMBLY.liftFactor, 10)
+    expect(q.y).toBe(0)
+  })
+
+  it('drops (−Z) through phase B with x parked on the seat', () => {
+    let prev = pose(2, ASSEMBLY.approachFraction).z
+    for (let u = 0.45; u <= ASSEMBLY.clickAt; u += 0.02) {
+      const q = pose(2, u)
+      expect(q.x).toBeCloseTo(-2 * DIMS.gap, 10)
+      expect(q.z).toBeLessThan(prev)
+      prev = q.z
+    }
+  })
+
+  it('dips past the seat as the clips snap, then settles', () => {
+    expect(pose(3, ASSEMBLY.clickAt).z).toBeCloseTo(-ASSEMBLY.clickOvershootMm * 0.5, 10)
+    expect(pose(3, 1).z).toBeCloseTo(0, 10)
+    expect(pose(3, 0.97).z).toBeLessThan(0)
+  })
+
+  it('never dips deeper than the click and never leaves the Z/X plane', () => {
+    for (let i = 1; i < 5; i++) {
+      for (const s of SAMPLES) {
+        const q = modulePose('vertical_snap', i, 5, s, DIMS)
+        expect(q.z).toBeGreaterThanOrEqual(-ASSEMBLY.clickOvershootMm + 1e-9)
+        expect(q.z).toBeLessThanOrEqual(DIMS.depth * ASSEMBLY.liftFactor + 1e-9)
+        expect(q.y).toBe(0)
+      }
+    }
+  })
+})
+
+describe('modulePose — the chain seats from the anchor outward', () => {
+  it('has module 1 home before the last module has started', () => {
+    const cols = 13
+    const s = moduleWindow(1, cols).end
+    expect(modulePose('sliding_dovetail', 1, cols, s, DIMS).x).toBeCloseTo(-DIMS.gap, 10)
+    expect(modulePose('sliding_dovetail', 12, cols, s, DIMS)).toEqual({ x: 0, y: 0, z: 0 })
+  })
+
+  it('keeps earlier modules ahead of later ones all the way through', () => {
+    const cols = 8
+    for (const s of SAMPLES) {
+      for (let i = 1; i < cols - 1; i++) {
+        // progress as a fraction of that module's own travel
+        const a = modulePose('vertical_snap', i, cols, s, DIMS).x / -(i * DIMS.gap)
+        const b = modulePose('vertical_snap', i + 1, cols, s, DIMS).x / -((i + 1) * DIMS.gap)
+        expect(a).toBeGreaterThanOrEqual(b - 1e-9)
+      }
+    }
+  })
+})
+
+describe('planMotion / sampleMotion', () => {
+  it('takes a full play to put a chain together', () => {
+    const m = planMotion(0, 1, 5, { now: 1000 })
+    expect(m.durationMs).toBeCloseTo(timelineMs(5), 9)
+    expect(sampleMotion(m, 1000)).toEqual({ s: 0, done: false })
+    expect(sampleMotion(m, 1000 + m.durationMs / 2).s).toBeCloseTo(0.5, 10)
+    // (the frame that lands ON the end, to the ulp, is a float coin toss —
+    // what matters is that the next one finishes it)
+    expect(sampleMotion(m, 1000 + m.durationMs + 1)).toEqual({ s: 1, done: true })
+  })
+
+  it('takes it apart apartSpeed× faster', () => {
+    const together = planMotion(0, 1, 5, { now: 0 })
+    const apart = planMotion(1, 0, 5, { now: 0 })
+    expect(apart.durationMs).toBeCloseTo(together.durationMs / ASSEMBLY.apartSpeed, 9)
+    expect(sampleMotion(apart, apart.durationMs / 2).s).toBeCloseTo(0.5, 10)
+    expect(sampleMotion(apart, apart.durationMs + 1)).toEqual({ s: 0, done: true })
+  })
+
+  it('holds one speed when a play is interrupted (duration scales with distance)', () => {
+    const full = planMotion(0, 1, 9, { now: 0 })
+    const half = planMotion(0.5, 1, 9, { now: 0 })
+    expect(half.durationMs).toBeCloseTo(full.durationMs / 2, 9)
+  })
+
+  it('jumps under prefers-reduced-motion', () => {
+    const m = planMotion(1, 0, 13, { now: 500, reducedMotion: true })
+    expect(m.durationMs).toBe(0)
+    expect(sampleMotion(m, 500)).toEqual({ s: 0, done: true })
+    expect(sampleMotion(m, 0)).toEqual({ s: 0, done: true })
+  })
+
+  it('jumps on a mono design (no modules to stagger)', () => {
+    const m = planMotion(1, 0, 1, { now: 0 })
+    expect(m.durationMs).toBe(0)
+    expect(sampleMotion(m, 0)).toEqual({ s: 0, done: true })
+  })
+
+  it('clamps a sample taken before the start', () => {
+    const m = planMotion(0, 1, 5, { now: 1000 })
+    expect(sampleMotion(m, 900)).toEqual({ s: 0, done: false })
+  })
+})

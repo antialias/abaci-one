@@ -13,10 +13,14 @@ import {
   EXPLODE_GAP,
   feetEffective,
   feetPositions,
+  frameW,
   isModular,
+  moduleAtX,
   moduleFeetLayout,
   moduleFeetPositions,
   moduleFeetStuds,
+  moduleOriginX,
+  moduleWidth,
   PART_ONLY_DEFINE_KEYS,
   type Params,
   previewDedupKey,
@@ -31,6 +35,7 @@ import {
   slidingAnchorGeometry,
   slidingDetentGeometry,
   slidingDovetailDerived,
+  triModule,
 } from '../abacus-model'
 
 // CP4 of the modular-columns epic (Gitea #30): the TS model grew a mirror of the
@@ -1437,5 +1442,172 @@ describe('analyzeShells on the exploded ("take it apart") chain', () => {
     const { shellInfo } = analyzeShells(soup, mono, e)
     expect(shellInfo.map((s) => s.isFrame)).toEqual([true, false])
     expect(shellInfo[1].i).toBe(1) // pitch NOT widened — explode is modular-only
+  })
+})
+
+// ---- the module chain's X arithmetic + per-shell module attribution ----------
+// Gitea #44 animates the assembly by putting each module's triangles in its own
+// three.js group and posing the groups, which needs two things the model owes
+// it: ONE copy of the .scad's module placement chain (moduleOriginX/moduleWidth
+// — the feet studs already encoded it privately) and, from the exploded
+// classifier, WHICH module every shell belongs to. Both are geometry contracts:
+// an origin an ulp off puts an end stud off the monolith corner, and a
+// mis-attributed slab tears a module in half the moment the pose moves.
+
+describe('moduleOriginX / moduleWidth (the .scad module chain in TS)', () => {
+  const jointTypes = ['vertical_snap', 'sliding_dovetail'] as const
+
+  it('reproduces the stud chain exactly, seated and taken apart', () => {
+    for (const joint_type of jointTypes)
+      for (const cols of [3, 5, 13]) {
+        const q = p({ seam_mode: 'modular', joint_type, cols })
+        const d = derived(q)
+        for (const e of [0, EXPLODE_GAP]) {
+          // the arithmetic moduleFeetStuds carried before it delegated here
+          const expected = [
+            0,
+            ...Array.from({ length: cols - 2 }, (_, j) => d.modWe + j * d.scW + (j + 1) * e),
+            d.frameW - d.modWe + (cols - 1) * e,
+          ]
+          expect(Array.from({ length: cols }, (_, i) => moduleOriginX(q, i, e))).toEqual(expected)
+        }
+      }
+  })
+
+  it('tiles the frame: widths sum to frameW and modules abut when seated', () => {
+    for (const joint_type of jointTypes)
+      for (const cols of [3, 5, 13]) {
+        const q = p({ seam_mode: 'modular', joint_type, cols })
+        const widths = Array.from({ length: cols }, (_, i) => moduleWidth(q, i))
+        expect(widths.reduce((a, b) => a + b, 0)).toBeCloseTo(frameW(q), 9)
+        for (let i = 1; i < cols; i++)
+          expect(moduleOriginX(q, i)).toBeCloseTo(moduleOriginX(q, i - 1) + widths[i - 1], 9)
+        // ends carry the border, middles are one seam pitch
+        expect(widths[0]).toBe(derived(q).modWe)
+        expect(widths.at(-1)).toBe(derived(q).modWe)
+        if (cols > 2) expect(widths[1]).toBe(derived(q).scW)
+      }
+  })
+
+  it('opens exactly one gap per seam — module i slides i·explode, module 0 never moves', () => {
+    const q = p({ seam_mode: 'modular', cols: 7 })
+    for (let i = 0; i < 7; i++)
+      expect(moduleOriginX(q, i, EXPLODE_GAP) - moduleOriginX(q, i)).toBeCloseTo(i * EXPLODE_GAP, 9)
+  })
+
+  it('a mono design has no seams to open: explode is ignored', () => {
+    const mono = p()
+    for (let i = 0; i < mono.cols; i++)
+      expect(moduleOriginX(mono, i, EXPLODE_GAP)).toBe(moduleOriginX(mono, i))
+  })
+
+  it('moduleAtX: containment inside a module, NEAREST across an opened seam', () => {
+    const q = p({ seam_mode: 'modular', cols: 5 })
+    const e = EXPLODE_GAP
+    for (let i = 0; i < 5; i++) {
+      const x0 = moduleOriginX(q, i, e)
+      expect(moduleAtX(q, x0, e)).toBe(i)
+      expect(moduleAtX(q, x0 + moduleWidth(q, i) / 2, e)).toBe(i)
+      expect(moduleAtX(q, x0 + moduleWidth(q, i), e)).toBe(i)
+    }
+    // inside the opened seam between modules 1 and 2: whichever face is closer.
+    // This is the male dovetail key's case — it protrudes past its module's
+    // nominal range and still belongs to the module that grew it.
+    const seam = moduleOriginX(q, 1, e) + moduleWidth(q, 1)
+    expect(moduleAtX(q, seam + 1, e)).toBe(1)
+    expect(moduleAtX(q, seam + e - 1, e)).toBe(2)
+    // and off both ends
+    expect(moduleAtX(q, -50, e)).toBe(0)
+    expect(moduleAtX(q, 1e4, e)).toBe(4)
+    // mono has exactly one module, wherever you ask
+    expect(moduleAtX(p(), 1e4)).toBe(0)
+  })
+})
+
+describe('analyzeShells.shellModule (which module owns each shell)', () => {
+  const jointTypes = ['vertical_snap', 'sliding_dovetail'] as const
+  // an exploded chain, built the way the .scad emits one: a full-depth slab per
+  // module at its opened origin, plus one heaven bead per column riding it.
+  const chain = (q: Params, e: number): Float32Array => {
+    const d = derived(q)
+    const sEm = q.border_w * q.scale_factor + d.sEm
+    const sHy = q.border_w * q.scale_factor + d.sHy
+    const tris: number[] = []
+    for (let i = 0; i < q.cols; i++) {
+      const x0 = moduleOriginX(q, i, e)
+      tris.push(...rect(x0, x0 + moduleWidth(q, i), 0, d.outerD))
+    }
+    for (let i = 0; i < q.cols; i++) tris.push(...beadTri(sEm + i * (d.sCp + e), sHy))
+    return new Float32Array(tris)
+  }
+
+  it('covers every module exactly once, both joint types, 5 and 13 columns', () => {
+    for (const joint_type of jointTypes)
+      for (const cols of [5, 13]) {
+        const q = p({ seam_mode: 'modular', joint_type, cols })
+        const { shellInfo, shellModule } = analyzeShells(chain(q, EXPLODE_GAP), q, EXPLODE_GAP)
+        expect(shellInfo).toHaveLength(2 * cols) // one slab + one bead per module
+        const slabs = [...shellModule].filter((_, si) => shellInfo[si].isFrame)
+        expect(slabs).toEqual(Array.from({ length: cols }, (_, i) => i))
+      }
+  })
+
+  it('beads ride their own column’s module', () => {
+    const q = p({ seam_mode: 'modular', cols: 7 })
+    const { shellInfo, shellModule } = analyzeShells(chain(q, EXPLODE_GAP), q, EXPLODE_GAP)
+    const beads = shellInfo
+      .map((info, si) => ({ info, m: shellModule[si] }))
+      .filter(({ info }) => !info.isFrame)
+    expect(beads.map(({ m }) => m)).toEqual([0, 1, 2, 3, 4, 5, 6])
+    // the bead's module IS its column — the identity the viewer's partition rests on
+    for (const { info, m } of beads) expect(m).toBe(info.i)
+  })
+
+  it('attributes a slab that overhangs its module (the male key) to that module', () => {
+    const q = p({ seam_mode: 'modular', joint_type: 'sliding_dovetail', cols: 5 })
+    const d = derived(q)
+    const e = EXPLODE_GAP
+    const tris: number[] = []
+    for (let i = 0; i < q.cols; i++) {
+      const x0 = moduleOriginX(q, i, e)
+      // +2 mm of male key hanging into the opened seam
+      tris.push(...rect(x0, x0 + moduleWidth(q, i) + (i < q.cols - 1 ? 2 : 0), 0, d.outerD))
+    }
+    const soup = new Float32Array(tris)
+    const { shellModule } = analyzeShells(soup, q, e)
+    expect([...shellModule]).toEqual([0, 1, 2, 3, 4])
+  })
+
+  it('mono, and a SEATED modular chain, answer −1 — there is nothing to attribute', () => {
+    const mp2 = p({ seam_mode: 'modular' })
+    const d = derived(mp2)
+    const sEm = mp2.border_w * mp2.scale_factor + d.sEm
+    const sHy = mp2.border_w * mp2.scale_factor + d.sHy
+    const seated = new Float32Array([
+      ...rect(0, d.modWe),
+      ...rect(d.modWe, d.modWe + d.scW),
+      ...beadTri(sEm, sHy),
+    ])
+    expect([...analyzeShells(seated, mp2).shellModule]).toEqual([-1, -1])
+    const mono = p()
+    const dm = derived(mono)
+    const soup = new Float32Array([
+      ...rect(0, 100),
+      ...beadTri(
+        mono.border_w * mono.scale_factor + dm.sEm,
+        mono.border_w * mono.scale_factor + dm.sHy
+      ),
+    ])
+    expect([...analyzeShells(soup, mono, EXPLODE_GAP).shellModule]).toEqual([-1, -1])
+  })
+
+  it('triModule fans the per-shell answer out to every triangle', () => {
+    const q = p({ seam_mode: 'modular', cols: 5 })
+    const a = analyzeShells(chain(q, EXPLODE_GAP), q, EXPLODE_GAP)
+    const tm = triModule(a)
+    expect(tm).toHaveLength(a.triShell.length)
+    for (let t = 0; t < tm.length; t++) expect(tm[t]).toBe(a.shellModule[a.triShell[t]])
+    // every module is represented, and nothing is left unattributed
+    expect(new Set(tm)).toEqual(new Set([0, 1, 2, 3, 4]))
   })
 })
