@@ -292,41 +292,41 @@ describe('modulePose — sliding_dovetail enters from behind', () => {
   it('lines up BEHIND the seat (−Y), aligned in X, before it slides', () => {
     const q = pose(3, ASSEMBLY.approachFraction)
     expect(q.x).toBeCloseTo(-3 * DIMS.gap, 10) // already in its column
-    expect(q.y).toBeCloseTo(-DIMS.depth * ASSEMBLY.slideBehindFactor, 10) // a full depth back
+    expect(q.y).toBeCloseTo(DIMS.depth * ASSEMBLY.slideBehindFactor, 10) // a full depth back
     expect(q.z).toBe(0)
   })
 
   it('stages left-side modules the same way, closing +X onto the anchor', () => {
     const q = pose(1, ASSEMBLY.approachFraction)
     expect(q.x).toBeCloseTo(-1 * DIMS.gap, 10)
-    expect(q.y).toBeCloseTo(-DIMS.depth * ASSEMBLY.slideBehindFactor, 10)
+    expect(q.y).toBeCloseTo(DIMS.depth * ASSEMBLY.slideBehindFactor, 10)
     expect(q.z).toBe(0)
   })
 
-  it('slides forward (+Y) through phase B with x parked on the seat', () => {
+  it('slides from the narrow entry toward the wide anchor (−Y) through phase B', () => {
     let prev = pose(3, ASSEMBLY.approachFraction).y
     for (let u = 0.45; u <= ASSEMBLY.clickAt; u += 0.02) {
       const q = pose(3, u)
       expect(q.x).toBeCloseTo(-3 * DIMS.gap, 10)
-      expect(q.y).toBeGreaterThan(prev)
+      expect(q.y).toBeLessThan(prev)
       prev = q.y
     }
   })
 
-  it('clicks over the front stop and settles onto it', () => {
-    expect(pose(3, ASSEMBLY.clickAt).y).toBeCloseTo(ASSEMBLY.clickOvershootMm, 10)
+  it('clicks into the wide final anchor and settles onto it', () => {
+    expect(pose(3, ASSEMBLY.clickAt).y).toBeCloseTo(-ASSEMBLY.clickOvershootMm, 10)
     expect(pose(3, 1).y).toBeCloseTo(0, 10)
     // …and the settle comes back from the far side
-    expect(pose(3, 0.97).y).toBeGreaterThan(0)
-    expect(pose(3, 0.97).y).toBeLessThan(ASSEMBLY.clickOvershootMm)
+    expect(pose(3, 0.97).y).toBeLessThan(0)
+    expect(pose(3, 0.97).y).toBeGreaterThan(-ASSEMBLY.clickOvershootMm)
   })
 
   it('never overshoots past the detent and never leaves the Y/X plane', () => {
     for (const i of travelOrder(5)) {
       for (const s of SAMPLES) {
         const q = modulePose('sliding_dovetail', i, 5, s, DIMS)
-        expect(q.y).toBeLessThanOrEqual(ASSEMBLY.clickOvershootMm + 1e-9)
-        expect(q.y).toBeGreaterThanOrEqual(-DIMS.depth - 1e-9)
+        expect(q.y).toBeGreaterThanOrEqual(-ASSEMBLY.clickOvershootMm - 1e-9)
+        expect(q.y).toBeLessThanOrEqual(DIMS.depth + 1e-9)
         expect(q.z).toBe(0)
       }
     }
