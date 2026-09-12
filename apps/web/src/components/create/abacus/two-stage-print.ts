@@ -56,7 +56,23 @@ export type TwoStageVariant = 'tpu-floor' | 'feet-only'
 export const DEFAULT_TWO_STAGE_VARIANT: TwoStageVariant = 'tpu-floor'
 
 /** Stage B: consume the half Stage A retained. */
-export type TwoStageChain = TicketChain
+export interface TwoStageChain extends TicketChain {
+  /** The operator has looked at the plate and says the prior stage's output is on it
+   *  (things-haunt-house `chain.vouchedByOperator`). Every check this skips is the service
+   *  INFERRING what is on the plate — the prior job's phase, and whether anything else has
+   *  touched the printer since. A human standing at the printer is direct evidence, so it
+   *  wins. What it cannot do is conjure the other half of a split: the service still refuses
+   *  a chain it holds no retained half for, rather than print a whole model onto the parts. */
+  readonly vouchedByOperator?: true
+}
+
+/** Said in full before the operator vouches, because the service will not check any of it. */
+export const STAGE_B_VOUCH_DISCLAIMER: readonly string[] = [
+  'Look at the plate first. Nothing downstream of this button checks it.',
+  "Stage B prints onto Stage A's parts. Missing, damaged or moved parts mean it prints into air.",
+  "Clear off anything a failed attempt left behind — but leave Stage A's parts exactly where they are.",
+  'The printer is not re-levelled and the first layer is not inspected, as on any chained stage.',
+]
 
 /** A filament-class overlay for one ticket entry: vector keys carry exactly one
  *  element (each `filament_{i}.json` describes one filament). */

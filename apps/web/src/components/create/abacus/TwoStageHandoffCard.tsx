@@ -7,6 +7,7 @@
 import { button, CARD, STUDIO } from '@/components/studio/theme'
 import {
   type HandoffView,
+  STAGE_B_VOUCH_DISCLAIMER,
   stageBHandoffSteps,
   TWO_STAGE_VARIANT_COPY,
   type TwoStageVariant,
@@ -25,6 +26,9 @@ export interface TwoStageHandoffCardProps {
   /** The Stage B submit is in flight (render + upload). */
   submitting: boolean
   onSubmitStageB: () => void
+  /** Submit Stage B on the operator's word about the plate, past the service's ledger
+   *  checks. The only way back in when a stage died with good parts on the bed. */
+  onVouchStageB: () => void
   /** Drop the record: the panel goes back to the one-job / Stage A choice. */
   onForget: () => void
 }
@@ -37,8 +41,47 @@ export function TwoStageHandoffCard({
   disabledReason,
   submitting,
   onSubmitStageB,
+  onVouchStageB,
   onForget,
 }: TwoStageHandoffCardProps) {
+  // The override, offered in the two places an operator can be standing in front of good
+  // parts the ledger has written off: a stage that ended badly, and a chain the service
+  // refuses. Deliberately verbose — it trades away every check the service would have run.
+  const vouchOffer = (lead: string, tone: 'primary' | 'chip') => (
+    <div data-element="stage-b-vouch" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <span style={{ color: STUDIO.color.text2 }}>{lead}</span>
+      <ul
+        style={{
+          margin: 0,
+          paddingLeft: 18,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+          color: STUDIO.color.text2,
+        }}
+      >
+        {STAGE_B_VOUCH_DISCLAIMER.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        data-action="vouch-stage-b"
+        onClick={onVouchStageB}
+        disabled={disabled}
+        title={disabledReason ?? 'Print Stage B onto parts you have checked are on the plate'}
+        style={
+          tone === 'primary'
+            ? button('primary', { disabled })
+            : { ...button('chip'), alignSelf: 'flex-start' }
+        }
+      >
+        {submitting
+          ? 'Rendering & submitting…'
+          : '🖨 The parts are on the plate — print Stage B anyway'}
+      </button>
+    </div>
+  )
   return (
     <div
       data-element="two-stage-handoff"
@@ -62,10 +105,17 @@ export function TwoStageHandoffCard({
           completes.
         </span>
       ) : view.kind === 'stage-a-ended' ? (
-        <span>
-          Stage A {view.phase} — there is nothing to chain onto. Clear the plate and print Stage A
-          again.
-        </span>
+        <>
+          <span>
+            Stage A {view.phase} — so the print service will not chain onto it. That is a statement
+            about the job, not about the plate: a stage stopped after its parts were down leaves
+            them there, and they are still printable.
+          </span>
+          {vouchOffer(
+            "If Stage A's parts are on the plate, say so and Stage B will print onto them.",
+            'primary'
+          )}
+        </>
       ) : view.kind === 'stage-b-open' ? (
         <span>
           Stage B (body) is {view.phase ?? 'on its way to the job list'} — resolve it from its job
@@ -111,6 +161,10 @@ export function TwoStageHandoffCard({
                 ? '🖨 Submit Stage B again'
                 : '🖨 Submit Stage B (body)'}
           </button>
+          {vouchOffer(
+            'Refused because the chain is broken — something else printed here, or Stage A ended badly? The plate is the only thing that actually matters, and you can see it.',
+            'chip'
+          )}
         </>
       )}
       <button

@@ -19,6 +19,7 @@ const meta: Meta<typeof TwoStageHandoffCard> = {
     disabledReason: null,
     submitting: false,
     onSubmitStageB: () => {},
+    onVouchStageB: () => {},
     onForget: () => {},
   },
   decorators: [
@@ -63,12 +64,15 @@ export const StageAParked: Story = {
   args: { view: { kind: 'stage-a-running', phase: 'needs_attention' } },
 }
 
-/** Stage A failed — there is nothing on the plate to chain onto. */
+/** Stage A failed. The service will not chain onto it, but a stage that died after its
+ *  parts were down still left them there — so the card offers the operator's override
+ *  rather than a dead end. */
 export const StageAFailed: Story = {
   args: { view: { kind: 'stage-a-ended', phase: 'failed' } },
 }
 
-/** Stage A canceled by the operator; same dead end as a failure. */
+/** Stage A canceled by the operator — the common case: a clog mid-print, stopped by hand
+ *  with four good feet already on the bed. */
 export const StageACanceled: Story = {
   args: { view: { kind: 'stage-a-ended', phase: 'canceled' } },
 }
