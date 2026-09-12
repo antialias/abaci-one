@@ -144,4 +144,19 @@ describe('two-stage idempotency (Gitea #38)', () => {
       })
     ).not.toBe(retry)
   })
+
+  it('a vouched Stage B is a different submit from the one the service refused', () => {
+    const plain = abacusPrintSignature({
+      ...base,
+      startPolicy: 'hold',
+      twoStage: { stage: 'B', continuesJobId: 'job-a', variant: 'tpu-floor' },
+    })
+    expect(
+      abacusPrintSignature({
+        ...base,
+        startPolicy: 'hold',
+        twoStage: { stage: 'B', continuesJobId: 'job-a', variant: 'tpu-floor', vouched: true },
+      })
+    ).not.toBe(plain)
+  })
 })

@@ -260,8 +260,13 @@ function extractApplied(body: unknown): Record<string, ParamScalarValue> | undef
 }
 
 /** Which job a submit is (Gitea #38): the ordinary one-job print, or one of the
- *  two stages of a feet-first split print. */
-type SubmitStage = 'single' | 'stage-a' | 'stage-b'
+ *  two stages of a feet-first split print. `stage-b-vouched` is Stage B submitted on
+ *  the operator's word that the plate holds Stage A's parts, past the ledger checks
+ *  that would otherwise refuse it — see TwoStageChain.vouchedByOperator. */
+type SubmitStage = 'single' | 'stage-a' | 'stage-b' | 'stage-b-vouched'
+
+const isStageB = (stage: SubmitStage): boolean =>
+  stage === 'stage-b' || stage === 'stage-b-vouched'
 
 const stageTagStyle = {
   marginLeft: 6,
@@ -540,10 +545,14 @@ export function PrintPanel(props: PrintPanelProps) {
       const staged = stage !== 'single'
       const seam = staged && twoStage.ok ? twoStage : null
       if (staged && !seam) throw new Error('This design can no longer print in two stages')
-      const priorStage = stage === 'stage-b' ? twoStageRecord : null
-      if (stage === 'stage-b' && !priorStage) {
+      const priorStage = isStageB(stage) ? twoStageRecord : null
+      if (isStageB(stage) && !priorStage) {
         throw new Error('No Stage A on record for this printer — print Stage A first')
       }
+      // The operator's assertion about the plate. It never relaxes the check below that
+      // this is the SAME model Stage A was sliced from: that one is what stops a whole
+      // abacus printing on top of the feet, and the service enforces it too.
+      const vouched = stage === 'stage-b-vouched'
       // The variant is Stage A's choice and Stage B's inheritance (the record).
       const variant: TwoStageVariant = priorStage ? recordVariant(priorStage) : stageAVariant
       const feetOnlyStage = staged && variant === 'feet-only'
@@ -570,7 +579,7 @@ export function PrintPanel(props: PrintPanelProps) {
       // Stage B is held, never auto-started: the operator has to have swapped the
       // spool and left the plate alone, and the chained-start park reasons (bed
       // check, spool swap) are theirs to acknowledge on the job card.
-      const policy: TicketStartPolicy = stage === 'stage-b' ? 'hold' : startPolicy
+      const policy: TicketStartPolicy = isStageB(stage) ? 'hold' : startPolicy
 
       // The race covers the whole bundle (frame + marker part passes) — the
       // bundle promise resolves only after all renders land. The 3MF builds from
@@ -681,6 +690,7 @@ export function PrintPanel(props: PrintPanelProps) {
                   // A retry after a failed Stage B has to be a NEW job, not a replay
                   // of the failed one — see `retryOf`.
                   ...(priorStage.stageBJobId ? { retryOf: priorStage.stageBJobId } : {}),
+                  ...(vouched ? { vouched: true as const } : {}),
                 }
               : { stage: 'A', atZMm: seam.atZMm, feedFamily: seam.feedFamily, variant }
             : null,
@@ -728,7 +738,12 @@ export function PrintPanel(props: PrintPanelProps) {
           ? {
               seamToolOverrides: TWO_STAGE_SEAM_TOOL_OVERRIDES,
               ...(priorStage
-                ? { chain: { continuesJobId: priorStage.stageAJobId } }
+                ? {
+                    chain: {
+                      continuesJobId: priorStage.stageAJobId,
+                      ...(vouched ? { vouchedByOperator: true as const } : {}),
+                    },
+                  }
                 : {
                     split: {
                       atZMm: seam.atZMm,
@@ -1430,8 +1445,9 @@ export function PrintPanel(props: PrintPanelProps) {
                     ? 'The feet seam has to land on a layer boundary'
                     : null
               }
-              submitting={submit.isPending && submit.variables === 'stage-b'}
+              submitting={submit.isPending && isStageB(submit.variables ?? 'single')}
               onSubmitStageB={() => submit.mutate('stage-b')}
+              onVouchStageB={() => submit.mutate('stage-b-vouched')}
               onForget={forgetTwoStage}
             />
           )}

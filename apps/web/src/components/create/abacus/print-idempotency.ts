@@ -51,6 +51,9 @@ export type TwoStageSignature =
        *  one — which is what keeps a lost-response resend a safe replay, since the
        *  record only learns an attempt's id once its submit returned. */
       readonly retryOf?: string
+      /** The operator vouched for the plate (see TwoStageChain). A vouched submit is a
+       *  different declaration from the one the service refused, so it is a different job. */
+      readonly vouched?: true
     }
 
 /** Everything a submit encodes that changes the physical artifact. `slotLabels`
