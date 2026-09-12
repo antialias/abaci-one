@@ -40,7 +40,18 @@ export type TwoStageSignature =
       readonly feedFamily: string
       readonly variant: TwoStageVariant
     }
-  | { readonly stage: 'B'; readonly continuesJobId: string; readonly variant: TwoStageVariant }
+  | {
+      readonly stage: 'B'
+      readonly continuesJobId: string
+      readonly variant: TwoStageVariant
+      /** The Stage B attempt this one replaces, when an earlier one failed or was
+       *  canceled (a clog, a knocked-off part). THH dedupes on the key ALONE, so a
+       *  retry that reused the dead attempt's key would get the dead attempt's view
+       *  back at 202 and never print. Absent while the first attempt is the only
+       *  one — which is what keeps a lost-response resend a safe replay, since the
+       *  record only learns an attempt's id once its submit returned. */
+      readonly retryOf?: string
+    }
 
 /** Everything a submit encodes that changes the physical artifact. `slotLabels`
  *  are the catalog spool names the model embeds; the rest are the user's knobs. */
