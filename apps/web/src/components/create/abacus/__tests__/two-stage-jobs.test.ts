@@ -100,4 +100,48 @@ describe('two-stage idempotency (Gitea #38)', () => {
       })
     ).not.toBe(b)
   })
+
+  it('a retry after a failed Stage B is a different key, and only then', () => {
+    const b = abacusPrintSignature({
+      ...base,
+      startPolicy: 'hold',
+      twoStage: { stage: 'B', continuesJobId: 'job-a', variant: 'tpu-floor' },
+    })
+    // Resending the FIRST attempt (its response was lost, so the record still has no
+    // Stage B id) must replay the one job — that is what an idempotency key is for.
+    expect(
+      abacusPrintSignature({
+        ...base,
+        startPolicy: 'hold',
+        twoStage: { stage: 'B', continuesJobId: 'job-a', variant: 'tpu-floor' },
+      })
+    ).toBe(b)
+    // Once an attempt has failed and a human decides to go again, it has to be a NEW
+    // job: THH dedupes on the key alone, so reusing this one returns the dead attempt
+    // at 202 and nothing prints.
+    const retry = abacusPrintSignature({
+      ...base,
+      startPolicy: 'hold',
+      twoStage: {
+        stage: 'B',
+        continuesJobId: 'job-a',
+        variant: 'tpu-floor',
+        retryOf: 'job-b1',
+      },
+    })
+    expect(retry).not.toBe(b)
+    // …and the retry is itself resendable: a second failure names a different attempt.
+    expect(
+      abacusPrintSignature({
+        ...base,
+        startPolicy: 'hold',
+        twoStage: {
+          stage: 'B',
+          continuesJobId: 'job-a',
+          variant: 'tpu-floor',
+          retryOf: 'job-b2',
+        },
+      })
+    ).not.toBe(retry)
+  })
 })

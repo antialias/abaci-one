@@ -674,7 +674,14 @@ export function PrintPanel(props: PrintPanelProps) {
           kitLayout,
           twoStage: seam
             ? priorStage
-              ? { stage: 'B', continuesJobId: priorStage.stageAJobId, variant }
+              ? {
+                  stage: 'B',
+                  continuesJobId: priorStage.stageAJobId,
+                  variant,
+                  // A retry after a failed Stage B has to be a NEW job, not a replay
+                  // of the failed one — see `retryOf`.
+                  ...(priorStage.stageBJobId ? { retryOf: priorStage.stageBJobId } : {}),
+                }
               : { stage: 'A', atZMm: seam.atZMm, feedFamily: seam.feedFamily, variant }
             : null,
         }),
