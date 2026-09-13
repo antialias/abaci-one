@@ -21,6 +21,8 @@ const meta: Meta<typeof TwoStageHandoffCard> = {
     onSubmitStageB: () => {},
     onVouchStageB: () => {},
     onForget: () => {},
+    unattendedStart: false,
+    onUnattendedStartChange: () => {},
   },
   decorators: [
     (Story) => (
@@ -89,6 +91,13 @@ export const ReadyForStageB: Story = {
  *  still the last thing on the plate, so it can be submitted again. */
 export const ReadyForStageBRetry: Story = {
   args: { view: { kind: 'ready-for-b', retry: true } },
+}
+
+/** The opt-in ticked (things-haunt-house `chain.startWhenFeedClears`): this Stage B will
+ *  start itself once the printer reports the external spool gone, with no tap. Off by
+ *  default; the caveat under the box is the whole reason it is a choice. */
+export const ReadyForStageBUnattended: Story = {
+  args: { view: { kind: 'ready-for-b', retry: false }, unattendedStart: true },
 }
 
 /** The Stage B render + upload is in flight; the submit gate blocks a second

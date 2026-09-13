@@ -93,9 +93,11 @@ import {
   handoffView,
   jobIdFromSubmitBody,
   loadTwoStageRecord,
+  loadUnattendedStart,
   recordVariant,
   safeStorage,
   saveTwoStageRecord,
+  saveUnattendedStart,
   sha256Hex,
   TWO_STAGE_FEED_FAMILY,
   TWO_STAGE_REAR_BAND_MM,
@@ -457,6 +459,18 @@ export function PrintPanel(props: PrintPanelProps) {
     if (printerId) clearTwoStageRecord(safeStorage(), printerId)
     setTwoStageRecord(null)
   }
+  // Opt-in, off by default: let the service start Stage B itself once its sensor reports
+  // the external spool gone (`chain.startWhenFeedClears`). A preference about this
+  // operator's printer, kept per browser; read at submit, so it shapes the NEXT Stage B
+  // ticket and never a job the service already holds.
+  const [unattendedStart, setUnattendedStart] = useState(false)
+  useEffect(() => {
+    setUnattendedStart(loadUnattendedStart(safeStorage()))
+  }, [])
+  const setUnattendedStartPersisted = (on: boolean) => {
+    saveUnattendedStart(safeStorage(), on)
+    setUnattendedStart(on)
+  }
   // The experimental feet-only variant (Gitea #45): Stage A prints ONLY the feet
   // and Stage B prints PLA supports around them from layer 1. A checkbox beside
   // the mode, off by default. Stage B never reads it — the record carries the
@@ -691,6 +705,7 @@ export function PrintPanel(props: PrintPanelProps) {
                   // of the failed one — see `retryOf`.
                   ...(priorStage.stageBJobId ? { retryOf: priorStage.stageBJobId } : {}),
                   ...(vouched ? { vouched: true as const } : {}),
+                  ...(unattendedStart ? { unattended: true as const } : {}),
                 }
               : { stage: 'A', atZMm: seam.atZMm, feedFamily: seam.feedFamily, variant }
             : null,
@@ -742,6 +757,7 @@ export function PrintPanel(props: PrintPanelProps) {
                     chain: {
                       continuesJobId: priorStage.stageAJobId,
                       ...(vouched ? { vouchedByOperator: true as const } : {}),
+                      ...(unattendedStart ? { startWhenFeedClears: true as const } : {}),
                     },
                   }
                 : {
@@ -1449,6 +1465,8 @@ export function PrintPanel(props: PrintPanelProps) {
               onSubmitStageB={() => submit.mutate('stage-b')}
               onVouchStageB={() => submit.mutate('stage-b-vouched')}
               onForget={forgetTwoStage}
+              unattendedStart={unattendedStart}
+              onUnattendedStartChange={setUnattendedStartPersisted}
             />
           )}
 

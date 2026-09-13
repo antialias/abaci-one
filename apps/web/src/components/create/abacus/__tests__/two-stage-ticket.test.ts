@@ -55,6 +55,16 @@ describe('buildAbacusTicket — two-stage feet (Gitea #38 / THH #456)', () => {
     })
     expect(t.chain).toEqual({ continuesJobId: 'job-a' })
     expect(t.split).toBeUndefined()
+    // The opt-in unattended start rides the chain untouched (chain.startWhenFeedClears).
+    expect(
+      buildAbacusTicket({
+        ...base,
+        startPolicy: 'auto',
+        idempotencyKey: 'idem-b2',
+        chain: { continuesJobId: 'job-a', startWhenFeedClears: true },
+        seamToolOverrides: TWO_STAGE_SEAM_TOOL_OVERRIDES,
+      }).chain
+    ).toEqual({ continuesJobId: 'job-a', startWhenFeedClears: true })
     expect(t.filaments).toEqual([
       { slotId: '0.1', overrides: TWO_STAGE_SEAM_TOOL_OVERRIDES },
       { slotId: '0.2' },

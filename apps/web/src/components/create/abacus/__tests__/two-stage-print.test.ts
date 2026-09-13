@@ -14,10 +14,12 @@ import {
   handoffView,
   jobIdFromSubmitBody,
   loadTwoStageRecord,
+  loadUnattendedStart,
   recordVariant,
   STAGE_A_PREP_STEPS,
   STAGE_B_HANDOFF_STEPS,
   saveTwoStageRecord,
+  saveUnattendedStart,
   sha256Hex,
   stageBHandoffSteps,
   TWO_STAGE_PROCESS,
@@ -179,6 +181,20 @@ describe('the Stage A record', () => {
     expect(loadTwoStageRecord(s, 'x1c')).toBeNull()
     expect(loadTwoStageRecord(null, 'x1c')).toBeNull()
     expect(() => saveTwoStageRecord(undefined, rec)).not.toThrow()
+  })
+  it('the unattended-start opt-in is off until turned on, round-trips, and is not on the record', () => {
+    const s = store()
+    expect(loadUnattendedStart(s)).toBe(false)
+    saveUnattendedStart(s, true)
+    expect(loadUnattendedStart(s)).toBe(true)
+    // A preference about the printer, not the design: forgetting the print keeps it.
+    saveTwoStageRecord(s, rec)
+    clearTwoStageRecord(s, 'x1c')
+    expect(loadUnattendedStart(s)).toBe(true)
+    saveUnattendedStart(s, false)
+    expect(loadUnattendedStart(s)).toBe(false)
+    expect(loadUnattendedStart(null)).toBe(false)
+    expect(() => saveUnattendedStart(undefined, true)).not.toThrow()
   })
   it('carries the variant and the interface pick; a pre-#45 record is the TPU floor (Gitea #45)', () => {
     const s = store()

@@ -159,4 +159,17 @@ describe('two-stage idempotency (Gitea #38)', () => {
       })
     ).not.toBe(plain)
   })
+
+  it('a Stage B that may start with no tap (chain.startWhenFeedClears) is a different submit from one that waits', () => {
+    const waits = abacusPrintSignature({
+      ...base,
+      twoStage: { stage: 'B', continuesJobId: 'job-a', variant: 'tpu-floor' },
+    })
+    expect(
+      abacusPrintSignature({
+        ...base,
+        twoStage: { stage: 'B', continuesJobId: 'job-a', variant: 'tpu-floor', unattended: true },
+      })
+    ).not.toBe(waits)
+  })
 })
