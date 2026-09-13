@@ -265,8 +265,7 @@ function extractApplied(body: unknown): Record<string, ParamScalarValue> | undef
  *  that would otherwise refuse it — see TwoStageChain.vouchedByOperator. */
 type SubmitStage = 'single' | 'stage-a' | 'stage-b' | 'stage-b-vouched'
 
-const isStageB = (stage: SubmitStage): boolean =>
-  stage === 'stage-b' || stage === 'stage-b-vouched'
+const isStageB = (stage: SubmitStage): boolean => stage === 'stage-b' || stage === 'stage-b-vouched'
 
 const stageTagStyle = {
   marginLeft: 6,
@@ -576,10 +575,11 @@ export function PrintPanel(props: PrintPanelProps) {
         throw new Error('The frame has no loaded spool to print the supports in')
       }
       const supportBodySlotId = feetOnlyStage && frameSpool ? frameSpool.id : null
-      // Stage B is held, never auto-started: the operator has to have swapped the
-      // spool and left the plate alone, and the chained-start park reasons (bed
-      // check, spool swap) are theirs to acknowledge on the job card.
-      const policy: TicketStartPolicy = isStageB(stage) ? 'hold' : startPolicy
+      // Stage B auto-starts like everything else. The one thing that has to
+      // happen between the stages — unloading the external spool — is read off
+      // the printer's own sensor by the gateway (`awaiting_spool_swap`), which
+      // parks the job until the spool is actually gone; a `hold` on top of that
+      // only added a Start tap that decided nothing.
 
       // The race covers the whole bundle (frame + marker part passes) — the
       // bundle promise resolves only after all renders land. The 3MF builds from
@@ -676,7 +676,7 @@ export function PrintPanel(props: PrintPanelProps) {
           filamentMap,
           slotLabels,
           style: ticketStyle,
-          startPolicy: policy,
+          startPolicy,
           supportInterfaceSlotId: interfacePick,
           printerBed,
           wipeTower,
@@ -730,7 +730,7 @@ export function PrintPanel(props: PrintPanelProps) {
         bodies: model.bodies,
         catalog,
         style: ticketStyle,
-        startPolicy: policy,
+        startPolicy,
         idempotencyKey: idem.key,
         supportInterfaceSlotId: interfacePick,
         supportBodySlotId,

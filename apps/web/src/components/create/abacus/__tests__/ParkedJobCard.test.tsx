@@ -1,9 +1,11 @@
 /**
  * ParkedJobCard (gh#9) — the parked-job resolver. Pins the contract that keeps
  * a stalled auto-start recoverable: acknowledging sends EVERY parked reason
- * code (THH refuses otherwise), a bare `ready` job starts with none, a printing
- * job offers Stop (never Start), overrides are two-tap, and a missing bed photo
- * self-hides. Presentational, so it renders with plain props — no live service.
+ * code (THH refuses otherwise), a bare `ready` job starts with none, Start is
+ * ONE tap (the reasons are on the card and a start is undoable from it), a
+ * printing job offers Stop (never Start) and Stop alone is two-tap because it
+ * is not undoable, and a missing bed photo self-hides. Presentational, so it
+ * renders with plain props — no live service.
  */
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
@@ -63,42 +65,26 @@ describe('ParkedJobCard', () => {
 
     const start = container.querySelector('[data-action="acknowledge-start"]') as HTMLButtonElement
     fireEvent.click(start)
-    fireEvent.click(start)
     expect(onStart).toHaveBeenCalledWith(['filament_profile_unverified:0'])
   })
 
-  it('acknowledging is two-tap and sends EVERY reason code', () => {
+  it('acknowledging is ONE tap and sends EVERY reason code', () => {
     const onStart = vi.fn()
     const { container } = render(
       <ParkedJobCard job={needsAttention} onStart={onStart} onCancel={vi.fn()} />
     )
     const start = container.querySelector('[data-action="acknowledge-start"]') as HTMLButtonElement
+    // The button says what it does, and the consequence is on it for a reader.
     expect(start.textContent).toBe('Acknowledge & start')
+    expect(start.getAttribute('aria-label')).toBe(
+      'Acknowledge and start, despite: The bed does not look clear.; A verdict failed.'
+    )
 
-    // First tap arms — no call yet.
-    fireEvent.click(start)
-    expect(onStart).not.toHaveBeenCalled()
-    expect(start.textContent).toBe('Start anyway?')
-
-    // Second tap commits with all codes, in order.
+    // One tap commits with all codes, in order — no arming, no "anyway?".
     fireEvent.click(start)
     expect(onStart).toHaveBeenCalledTimes(1)
     expect(onStart).toHaveBeenCalledWith(['bed_not_clear', 'verdict:x'])
-  })
-
-  it('blur disarms an armed override', () => {
-    const onStart = vi.fn()
-    const { container } = render(
-      <ParkedJobCard job={needsAttention} onStart={onStart} onCancel={vi.fn()} />
-    )
-    const start = container.querySelector('[data-action="acknowledge-start"]') as HTMLButtonElement
-    fireEvent.click(start)
-    expect(start.textContent).toBe('Start anyway?')
-    fireEvent.blur(start)
     expect(start.textContent).toBe('Acknowledge & start')
-    // A subsequent single click only re-arms, it does not commit.
-    fireEvent.click(start)
-    expect(onStart).not.toHaveBeenCalled()
   })
 
   it('a bare ready job starts with an empty acknowledge list', () => {
@@ -112,8 +98,10 @@ describe('ParkedJobCard', () => {
     )
     const start = container.querySelector('[data-action="acknowledge-start"]') as HTMLButtonElement
     expect(start.textContent).toBe('Start print')
+    // Nothing to override, nothing to confirm: no aria-label, one tap.
+    expect(start.getAttribute('aria-label')).toBeNull()
     fireEvent.click(start)
-    fireEvent.click(start)
+    expect(onStart).toHaveBeenCalledTimes(1)
     expect(onStart).toHaveBeenCalledWith([])
   })
 

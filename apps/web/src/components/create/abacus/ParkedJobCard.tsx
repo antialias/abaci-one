@@ -5,13 +5,15 @@
 // and captures why. This card turns that standstill into something the user
 // can act on in place: it shows the situation honestly (the service's own
 // reason sentences + the latest bed photo) AND the remediation (start it
-// anyway, or cancel it). Every override is a deliberate two-tap so a stray
-// click can't wave a job onto a dirty bed.
+// anyway, or cancel it). Start is one tap: the reasons are on the card, the
+// button says what it does, and a start can be undone from this same card
+// seconds later. Stop on a running print is the one two-tap, because that
+// cannot be undone.
 //
 // Presentational and hook-free of data: the roster read + the start/cancel
 // mutations live in useAbacusPrintJobs; here everything arrives as props, so
 // every state is reproducible in Storybook without a live print service. The
-// only local state is UI ceremony (two-tap arming, hiding a broken photo).
+// only local state is UI ceremony (arming Stop, hiding a broken photo).
 
 import { useState } from 'react'
 import { button, notice, STUDIO } from '@/components/studio/theme'
@@ -66,9 +68,9 @@ export function ParkedJobCard({
   startFailure = null,
   cancelFailure = null,
 }: ParkedJobCardProps) {
-  // Two-tap ceremony: the first tap arms, the second commits. onBlur disarms,
-  // so tabbing or clicking away cancels an armed override.
-  const [armed, setArmed] = useState<'start' | 'stop' | null>(null)
+  // Stop is two-tap: the first tap arms, the second commits, onBlur disarms.
+  // Start is not — see the header.
+  const [stopArmed, setStopArmed] = useState(false)
   // A verdict-only park has no bed photo (404); hide the <img> when it fails.
   // Key the broken flag to updatedAt so a re-park's fresh frame gets a new try:
   // a different token makes frameBroken derive back to false with no effect.
@@ -99,20 +101,15 @@ export function ParkedJobCard({
 
   const handleStart = () => {
     if (startPending) return
-    if (armed !== 'start') {
-      setArmed('start')
-      return
-    }
-    setArmed(null)
     onStart(job.attention.map((r) => r.code))
   }
   const handleStop = () => {
     if (cancelPending) return
-    if (armed !== 'stop') {
-      setArmed('stop')
+    if (!stopArmed) {
+      setStopArmed(true)
       return
     }
-    setArmed(null)
+    setStopArmed(false)
     onCancel(true)
   }
   const handleCancel = () => {
@@ -179,7 +176,6 @@ export function ParkedJobCard({
             type="button"
             data-action="acknowledge-start"
             onClick={handleStart}
-            onBlur={() => setArmed((a) => (a === 'start' ? null : a))}
             disabled={startPending || chainStartDisabled}
             title={
               chainStartDisabled
@@ -187,9 +183,7 @@ export function ParkedJobCard({
                 : undefined
             }
             aria-label={
-              armed === 'start' && hasReasons
-                ? `Start anyway, despite: ${reasonText(job)}`
-                : undefined
+              hasReasons ? `Acknowledge and start, despite: ${reasonText(job)}` : undefined
             }
             style={{
               ...button('primary', { disabled: startPending || chainStartDisabled }),
@@ -198,11 +192,9 @@ export function ParkedJobCard({
           >
             {startPending
               ? 'Starting…'
-              : armed === 'start'
-                ? 'Start anyway?'
-                : job.phase === 'needs_attention'
-                  ? 'Acknowledge & start'
-                  : 'Start print'}
+              : job.phase === 'needs_attention'
+                ? 'Acknowledge & start'
+                : 'Start print'}
           </button>
         )}
 
@@ -211,11 +203,11 @@ export function ParkedJobCard({
             type="button"
             data-action="stop-print"
             onClick={handleStop}
-            onBlur={() => setArmed((a) => (a === 'stop' ? null : a))}
+            onBlur={() => setStopArmed(false)}
             disabled={cancelPending}
             style={{ ...button('danger', { disabled: cancelPending }), flex: 1 }}
           >
-            {cancelPending ? 'Stopping…' : armed === 'stop' ? 'Stop the print?' : 'Stop print'}
+            {cancelPending ? 'Stopping…' : stopArmed ? 'Stop the print?' : 'Stop print'}
           </button>
         ) : (
           parked && (

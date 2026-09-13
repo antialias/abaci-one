@@ -137,9 +137,8 @@ export const StageBNotListedYet: Story = {
   args: { view: { kind: 'stage-b-open', phase: null } },
 }
 
-/** Stage B sliced and held (`ready` under a `hold` start policy — it is never
- *  auto-started): the operator starts it from its job card once the spool swap
- *  is done. */
+/** Stage B sliced and sitting `ready` — the shape of a `hold` start policy, or
+ *  the moment before an `auto` one goes. Whatever it needs is on its job card. */
 export const StageBHeld: Story = {
   args: { view: { kind: 'stage-b-open', phase: 'ready' } },
 }
