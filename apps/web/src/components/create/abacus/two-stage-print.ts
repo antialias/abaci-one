@@ -524,7 +524,7 @@ export const STAGE_B_HANDOFF_STEPS: readonly string[] = [
   'Leave the plate exactly where it is — Stage B prints onto the feet.',
   'Unload the external TPU95 spool and reconnect the AMS PTFE tube.',
   'Check the AMS TPU tray the feet were mapped to is still loaded.',
-  'Submit Stage B below, then start it from its job card once the printer clears the spool check.',
+  'Print Stage B below — it starts by itself once the printer sees the external spool is gone.',
 ]
 
 /** The hand-off per variant: the feet-only Stage B goes back to layer 1 around

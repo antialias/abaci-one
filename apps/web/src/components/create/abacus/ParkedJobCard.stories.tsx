@@ -18,7 +18,7 @@ const meta: Meta<typeof ParkedJobCard> = {
   component: ParkedJobCard,
   tags: ['autodocs'],
   args: {
-    // Internal two-tap arming is still exercisable in the canvas with no-ops.
+    // Stop's two-tap arming is still exercisable in the canvas with no-ops.
     onStart: () => {},
     onCancel: () => {},
   },
@@ -63,7 +63,7 @@ function job(overrides: Partial<JobRow>): JobRow {
 }
 
 /** The common case: the printer's vision check couldn't confirm a clear bed,
- *  so the print is held for a human to look and start-anyway (two-tap). */
+ *  so the print is held for a human to look and start anyway — one tap. */
 export const BedNotClear: Story = {
   args: {
     job: job({
@@ -187,9 +187,9 @@ export const StageAAwaitingExternalSpool: Story = {
   },
 }
 
-/** Stage B (body, chained) sliced and held: it is never auto-started, so this
- *  is the normal resting state between the operator's spool swap and the
- *  start. Plain Start, no reasons. */
+/** A chained Stage B sliced and held with nothing wrong: plain Start, no
+ *  reasons. (Abaci submits its own stages `auto`, so this is the `hold` shape
+ *  another client — or the cockpit's ▶ — would see.) */
 export const StageBReadyHeld: Story = {
   args: {
     job: job({
