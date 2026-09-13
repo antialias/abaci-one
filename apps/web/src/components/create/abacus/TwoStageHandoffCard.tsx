@@ -11,6 +11,7 @@ import {
   stageBHandoffSteps,
   TWO_STAGE_VARIANT_COPY,
   type TwoStageVariant,
+  UNATTENDED_START_COPY,
 } from './two-stage-print'
 
 export interface TwoStageHandoffCardProps {
@@ -31,6 +32,11 @@ export interface TwoStageHandoffCardProps {
   onVouchStageB: () => void
   /** Drop the record: the panel goes back to the one-job / Stage A choice. */
   onForget: () => void
+  /** Opt-in, off by default: the next Stage B is submitted with `chain.startWhenFeedClears`,
+   *  so a Stage B parked only on the external spool starts itself when the printer reports
+   *  the spool gone. The panel persists it; the card shows it and flips it. */
+  unattendedStart: boolean
+  onUnattendedStartChange: (on: boolean) => void
 }
 
 export function TwoStageHandoffCard({
@@ -43,7 +49,33 @@ export function TwoStageHandoffCard({
   onSubmitStageB,
   onVouchStageB,
   onForget,
+  unattendedStart,
+  onUnattendedStartChange,
 }: TwoStageHandoffCardProps) {
+  // The one control on this card that can make the printer move with nobody pressing
+  // anything. Offered wherever a Stage B can be submitted — the plain submit and the
+  // vouched one chain the same way — and nowhere else, since it only shapes the NEXT
+  // ticket. The consequence sits under the box in both states, not in a tooltip.
+  const unattendedToggle = (
+    <label
+      data-element="unattended-start"
+      style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}
+    >
+      <input
+        type="checkbox"
+        data-action="toggle-unattended-start"
+        checked={unattendedStart}
+        onChange={(e) => onUnattendedStartChange(e.target.checked)}
+        style={{ marginTop: 2 }}
+      />
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <span>{UNATTENDED_START_COPY.label}</span>
+        <span style={STUDIO.type.note}>
+          {unattendedStart ? UNATTENDED_START_COPY.on : UNATTENDED_START_COPY.off}
+        </span>
+      </span>
+    </label>
+  )
   // The override, offered in the two places an operator can be standing in front of good
   // parts the ledger has written off: a stage that ended badly, and a chain the service
   // refuses. Deliberately verbose — it trades away every check the service would have run.
@@ -111,6 +143,7 @@ export function TwoStageHandoffCard({
             about the job, not about the plate: a stage stopped after its parts were down leaves
             them there, and they are still printable.
           </span>
+          {unattendedToggle}
           {vouchOffer(
             "If Stage A's parts are on the plate, say so and Stage B will print onto them.",
             'primary'
@@ -147,6 +180,7 @@ export function TwoStageHandoffCard({
               <li key={step}>{step}</li>
             ))}
           </ol>
+          {unattendedToggle}
           <button
             type="button"
             data-action="submit-stage-b"

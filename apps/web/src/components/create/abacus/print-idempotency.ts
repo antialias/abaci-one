@@ -54,6 +54,10 @@ export type TwoStageSignature =
       /** The operator vouched for the plate (see TwoStageChain). A vouched submit is a
        *  different declaration from the one the service refused, so it is a different job. */
       readonly vouched?: true
+      /** The submit asked the service to start Stage B itself once the external feed
+       *  clears (see TwoStageChain.startWhenFeedClears). A ticket that may move the
+       *  printer with no tap is a different declaration from one that waits for it. */
+      readonly unattended?: true
     }
 
 /** Everything a submit encodes that changes the physical artifact. `slotLabels`

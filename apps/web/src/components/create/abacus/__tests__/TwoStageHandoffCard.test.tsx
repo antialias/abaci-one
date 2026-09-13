@@ -23,6 +23,8 @@ function renderCard(over: Partial<TwoStageHandoffCardProps> = {}) {
     onSubmitStageB: vi.fn(),
     onVouchStageB: vi.fn(),
     onForget: vi.fn(),
+    unattendedStart: false,
+    onUnattendedStartChange: vi.fn(),
     ...over,
   }
   render(<TwoStageHandoffCard {...props} />)
@@ -71,5 +73,46 @@ describe('TwoStageHandoffCard', () => {
   ] as const)('offers nothing to vouch for while %s', (_label, view) => {
     renderCard({ view })
     expect(screen.queryByRole('button', { name: /print Stage B anyway/i })).toBeNull()
+  })
+})
+
+/** The opt-in unattended start (things-haunt-house `chain.startWhenFeedClears`): the one
+ *  control that can make the printer move with nobody pressing anything, so it is off
+ *  until the operator ticks it and the consequence is on the card in both states. */
+describe('the unattended Stage B start', () => {
+  const box = () => screen.getByRole('checkbox', { name: /start Stage B by itself/i })
+
+  it('is off by default, and says so: Stage B waits for one tap', () => {
+    renderCard()
+    expect(box()).not.toBeChecked()
+    expect(screen.getByText(/waits for one tap on its job card/i)).toBeTruthy()
+    expect(screen.queryByText(/with no tap/i)).toBeNull()
+  })
+
+  it('ticking it hands the choice to the panel, which owns the persisted preference', () => {
+    const props = renderCard()
+    fireEvent.click(box())
+    expect(props.onUnattendedStartChange).toHaveBeenCalledWith(true)
+  })
+
+  it('on, the caveat is right under the box: the sensor sees the spool, not the tube or your hands', () => {
+    renderCard({ unattendedStart: true })
+    expect(box()).toBeChecked()
+    expect(screen.getByText(/with no tap/i)).toBeTruthy()
+    expect(screen.getByText(/not the AMS tube, the door or your hands/i)).toBeTruthy()
+  })
+
+  it('is offered with the vouch too, since a vouched Stage B chains the same way', () => {
+    renderCard({ view: { kind: 'stage-a-ended', phase: 'canceled' } })
+    expect(box()).not.toBeChecked()
+  })
+
+  it.each([
+    { kind: 'stage-a-running', phase: 'printing' } as const,
+    { kind: 'stage-b-open', phase: 'needs_attention' } as const,
+    { kind: 'done' } as const,
+  ])('is not on the card at $kind — it only shapes the next submit', (view) => {
+    renderCard({ view })
+    expect(screen.queryByRole('checkbox')).toBeNull()
   })
 })

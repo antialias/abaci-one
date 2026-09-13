@@ -64,6 +64,12 @@ export interface TwoStageChain extends TicketChain {
    *  wins. What it cannot do is conjure the other half of a split: the service still refuses
    *  a chain it holds no retained half for, rather than print a whole model onto the parts. */
   readonly vouchedByOperator?: true
+  /** Start Stage B with no human tap once the printer reports the external feed clear
+   *  (things-haunt-house `chain.startWhenFeedClears`). Opt-in per ticket, off by default:
+   *  it is the one field that lets the nozzle move with nobody having pressed anything.
+   *  The service still parks the job while its sensor sees a spool, and every OTHER reason
+   *  to park still waits for a tap — only the feed park clears itself. */
+  readonly startWhenFeedClears?: true
 }
 
 /** Said in full before the operator vouches, because the service will not check any of it. */
@@ -463,6 +469,42 @@ export function clearTwoStageRecord(
   }
 }
 
+// ---- the unattended Stage B start (things-haunt-house `chain.startWhenFeedClears`) ----
+//
+// Off by default. On, Stage B is submitted with `chain.startWhenFeedClears`, and a Stage B
+// parked ONLY because the external spool is still loaded starts itself the moment the
+// printer's sensor reports the feed clear — no tap. It is a preference about the operator's
+// own printer, not about a design, so it is kept once per browser rather than on the
+// two-stage record; and it is read at submit, so flipping it never changes a job the
+// service already holds. Its own key: it must not ride along when a record is forgotten.
+
+export const UNATTENDED_START_STORAGE_KEY = 'abacus.print.start-when-feed-clears'
+
+export function loadUnattendedStart(storage: RecordStorage | null | undefined): boolean {
+  try {
+    return storage?.getItem(UNATTENDED_START_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function saveUnattendedStart(storage: RecordStorage | null | undefined, on: boolean): void {
+  try {
+    if (on) storage?.setItem(UNATTENDED_START_STORAGE_KEY, '1')
+    else storage?.removeItem(UNATTENDED_START_STORAGE_KEY)
+  } catch {
+    // quota / private mode: the choice then lives only as long as the tab
+  }
+}
+
+/** The toggle's words. The label is the promise; `on` is the caveat that has to sit right
+ *  under a ticked box, because the sensor reports the spool and nothing else. */
+export const UNATTENDED_START_COPY = {
+  label: 'Start Stage B by itself once the spool is out',
+  on: 'On: submit Stage B now and go swap the spool — the moment the printer reports the external feed clear, the print starts with no tap. The sensor sees the spool, not the AMS tube, the door or your hands: pull the spool, reconnect the tube, close the door, and expect it to go.',
+  off: 'Off: a Stage B submitted before the spool is out parks until you unload it, then waits for one tap on its job card.',
+} as const
+
 /** Hex SHA-256 of the model bytes — the same digest THH keys the retained half on. */
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
   // A fresh copy: `bytes` may be a view into a larger (or shared) buffer.
@@ -524,7 +566,7 @@ export const STAGE_B_HANDOFF_STEPS: readonly string[] = [
   'Leave the plate exactly where it is — Stage B prints onto the feet.',
   'Unload the external TPU95 spool and reconnect the AMS PTFE tube.',
   'Check the AMS TPU tray the feet were mapped to is still loaded.',
-  'Print Stage B below — it starts by itself once the printer sees the external spool is gone.',
+  'Print Stage B below — with the spool already out it starts straight away; submitted sooner, it parks until the printer sees the spool gone.',
 ]
 
 /** The hand-off per variant: the feet-only Stage B goes back to layer 1 around
