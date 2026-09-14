@@ -284,49 +284,78 @@ describe('modulePose — the two end poses', () => {
   }
 })
 
-describe('modulePose — sliding_dovetail enters from behind', () => {
+describe('modulePose — sliding_dovetail runs nose-through-mouth, per side', () => {
   // cols = 5 anchors module 2; module 3 is the FIRST traveller (right side),
-  // module 1 the second (left side)
+  // module 1 the second (left side). The scad puts the male rail on every
+  // module's RIGHT face (nose at the front, deep anchor at the rear) and the
+  // groove in the LEFT face (mouth at the rear), so a right-side module
+  // carries the GROOVE and a left-side module carries the RAIL — and they
+  // slide in opposite directions along the seam.
   const pose = (i: number, u: number) => modulePose('sliding_dovetail', i, 5, at(i, 5, u), DIMS)
+  const stage = DIMS.depth * ASSEMBLY.slideBehindFactor
 
-  it('lines up BEHIND the seat (−Y), aligned in X, before it slides', () => {
+  it("stages a right-side (groove) module in FRONT (−Y): its rear mouth at the neighbour's nose", () => {
     const q = pose(3, ASSEMBLY.approachFraction)
     expect(q.x).toBeCloseTo(-3 * DIMS.gap, 10) // already in its column
-    expect(q.y).toBeCloseTo(DIMS.depth * ASSEMBLY.slideBehindFactor, 10) // a full depth back
+    expect(q.y).toBeCloseTo(-stage, 10)
     expect(q.z).toBe(0)
   })
 
-  it('stages left-side modules the same way, closing +X onto the anchor', () => {
+  it("stages a left-side (rail) module BEHIND (+Y): its nose at the neighbour's rear mouth", () => {
     const q = pose(1, ASSEMBLY.approachFraction)
     expect(q.x).toBeCloseTo(-1 * DIMS.gap, 10)
-    expect(q.y).toBeCloseTo(DIMS.depth * ASSEMBLY.slideBehindFactor, 10)
+    expect(q.y).toBeCloseTo(stage, 10)
     expect(q.z).toBe(0)
   })
 
-  it('slides from the narrow entry toward the wide anchor (−Y) through phase B', () => {
+  it('slides a groove-carrier REARWARD (+Y) through phase B, x parked on the seat', () => {
     let prev = pose(3, ASSEMBLY.approachFraction).y
     for (let u = 0.45; u <= ASSEMBLY.clickAt; u += 0.02) {
       const q = pose(3, u)
       expect(q.x).toBeCloseTo(-3 * DIMS.gap, 10)
-      expect(q.y).toBeLessThan(prev)
+      expect(q.y).toBeGreaterThan(prev)
       prev = q.y
     }
   })
 
-  it('clicks into the wide final anchor and settles onto it', () => {
-    expect(pose(3, ASSEMBLY.clickAt).y).toBeCloseTo(-ASSEMBLY.clickOvershootMm, 10)
-    expect(pose(3, 1).y).toBeCloseTo(0, 10)
-    // …and the settle comes back from the far side
-    expect(pose(3, 0.97).y).toBeLessThan(0)
-    expect(pose(3, 0.97).y).toBeGreaterThan(-ASSEMBLY.clickOvershootMm)
+  it('slides a rail-carrier FORWARD (−Y) through phase B — the mirror of the groove side', () => {
+    let prev = pose(1, ASSEMBLY.approachFraction).y
+    for (let u = 0.45; u <= ASSEMBLY.clickAt; u += 0.02) {
+      const q = pose(1, u)
+      expect(q.x).toBeCloseTo(-1 * DIMS.gap, 10)
+      expect(q.y).toBeLessThan(prev)
+      prev = q.y
+    }
+    // the two sides trace exactly mirrored Y paths (same windows, same u)
+    for (const u of [0.45, 0.6, 0.8, ASSEMBLY.clickAt, 0.97, 1]) {
+      expect(pose(1, u).y).toBeCloseTo(-pose(3, u).y, 10)
+    }
   })
 
-  it('never overshoots past the detent and never leaves the Y/X plane', () => {
+  it('clicks the detent on the far side of the seat from where it staged, then settles', () => {
+    // groove-carrier: staged −Y, so the flick is +Y
+    expect(pose(3, ASSEMBLY.clickAt).y).toBeCloseTo(ASSEMBLY.clickOvershootMm, 10)
+    expect(pose(3, 1).y).toBeCloseTo(0, 10)
+    expect(pose(3, 0.97).y).toBeGreaterThan(0)
+    expect(pose(3, 0.97).y).toBeLessThan(ASSEMBLY.clickOvershootMm)
+    // rail-carrier: staged +Y, so the flick is −Y
+    expect(pose(1, ASSEMBLY.clickAt).y).toBeCloseTo(-ASSEMBLY.clickOvershootMm, 10)
+    expect(pose(1, 1).y).toBeCloseTo(0, 10)
+    expect(pose(1, 0.97).y).toBeLessThan(0)
+    expect(pose(1, 0.97).y).toBeGreaterThan(-ASSEMBLY.clickOvershootMm)
+  })
+
+  it('never overshoots past the detent, never crosses to the other side, never leaves the Y/X plane', () => {
+    const anchor = anchorModule(5)
     for (const i of travelOrder(5)) {
+      const dir = i > anchor ? -1 : 1
       for (const s of SAMPLES) {
         const q = modulePose('sliding_dovetail', i, 5, s, DIMS)
-        expect(q.y).toBeGreaterThanOrEqual(-ASSEMBLY.clickOvershootMm - 1e-9)
-        expect(q.y).toBeLessThanOrEqual(DIMS.depth + 1e-9)
+        // y stays between the stage (dir·depth) and the detent flick (−dir·overshoot)
+        const lo = Math.min(dir * stage, -dir * ASSEMBLY.clickOvershootMm)
+        const hi = Math.max(dir * stage, -dir * ASSEMBLY.clickOvershootMm)
+        expect(q.y).toBeGreaterThanOrEqual(lo - 1e-9)
+        expect(q.y).toBeLessThanOrEqual(hi + 1e-9)
         expect(q.z).toBe(0)
       }
     }
