@@ -147,6 +147,55 @@ export const PrintingNozzleConfirm: Story = {
   },
 }
 
+/** The printer paused itself on a fault mid-print (the abacus Stage B of
+ *  2026-09-13): the service's sentence is the printer's own facts plus what
+ *  our file does at that layer, and each code links to Bambu's page for it. */
+export const PrintingPausedFault: Story = {
+  args: {
+    job: job({
+      name: 'Abacus — 7 columns (Stage B)',
+      phase: 'printing',
+      attention: [
+        {
+          code: 'print_paused_fault',
+          detail:
+            'Printer paused at reported layer 6 (8%). It reported HMS 07FF-2000-0002-0004. Our file at that layer changes from filament 2 (PLA, slot 0.1) to filament 0 (TPU, slot 0.3), load 4 of filament 0 in this file.',
+          printer: {
+            gcodeState: 'PAUSE',
+            hms: [
+              {
+                hex: '07FF-2000-0002-0004',
+                wiki: 'https://wiki.bambulab.com/en/x1/troubleshooting/hmscode/07FF_2000_0002_0004',
+                lvl: 3,
+              },
+            ],
+            layer: 6,
+            percent: 8,
+            totalLayers: 68,
+          },
+        },
+      ],
+    }),
+  },
+}
+
+/** Paused mid-print with nothing reported — a hand on the printer's screen. */
+export const PrintingPausedNoCode: Story = {
+  args: {
+    job: job({
+      name: 'Abacus — 7 columns',
+      phase: 'printing',
+      attention: [
+        {
+          code: 'print_paused',
+          detail: 'Printer paused at reported layer 12 (40%). It reported no error code.',
+          printer: { gcodeState: 'PAUSE', hms: [], layer: 12, percent: 40, totalLayers: 68 },
+        },
+      ],
+    }),
+  },
+}
+
 /** A start that was refused: the service's honest, coded reason renders inline
  *  through the same copy the submit panel uses. */
 export const StartRefused: Story = {

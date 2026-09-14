@@ -1,7 +1,8 @@
 // Abacus Studio — the parked-job resolver (Gitea #9).
 //
 // When an auto-start print can't just go — the bed isn't clear, a verdict
-// failed, the printer paused mid-print for a nozzle check — THH parks the job
+// failed, the printer paused mid-print for a nozzle check or on a fault of its
+// own (its codes are linked to the printer's own pages, never explained) — THH parks the job
 // and captures why. This card turns that standstill into something the user
 // can act on in place: it shows the situation honestly (the service's own
 // reason sentences + the latest bed photo) AND the remediation (start it
@@ -88,9 +89,18 @@ export function ParkedJobCard({
   const hasUnverifiedProfile = job.attention.some((reason) =>
     reason.code.startsWith('filament_profile_unverified:')
   )
+  // A mid-print pause the printer raised itself (THH `print_paused_fault` /
+  // `print_paused`): the service reports the printer's own facts and no
+  // diagnosis, and nothing resumes on its own — unlike the nozzle-confirm pause.
+  const faultPause = job.attention.some((reason) => reason.code === 'print_paused_fault')
+  const plainPause = job.attention.some((reason) => reason.code === 'print_paused')
 
   const title = printing
-    ? 'Paused mid-print — confirm at the printer, then it resumes.'
+    ? faultPause
+      ? 'Paused mid-print — the printer reported an error. Read its codes, then resume or stop at the printer.'
+      : plainPause
+        ? 'Paused mid-print — the printer reported no error. Resume or stop at the printer.'
+        : 'Paused mid-print — confirm at the printer, then it resumes.'
     : job.phase === 'needs_attention'
       ? chainStartDisabled
         ? 'Prepared, but chained starts are switched off on this print service.'
@@ -165,6 +175,31 @@ export function ParkedJobCard({
               style={{ color: amber, overflowWrap: 'anywhere' }}
             >
               {reason.detail ?? reason.code}
+              {reason.printer && reason.printer.hms.length > 0 && (
+                // Each code links to the printer maker's own page for it — the
+                // printer's word on what its code means, not ours.
+                <div data-element="parked-job-printer-codes" style={{ marginTop: 2 }}>
+                  Printer codes:{' '}
+                  {reason.printer.hms.map((alert, i) => (
+                    <span key={alert.hex}>
+                      {i > 0 && ', '}
+                      {alert.wiki ? (
+                        <a
+                          data-element="parked-job-hms"
+                          href={alert.wiki}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: 'inherit' }}
+                        >
+                          {alert.hex}
+                        </a>
+                      ) : (
+                        <span data-element="parked-job-hms">{alert.hex}</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              )}
             </li>
           ))}
         </ul>
