@@ -137,6 +137,65 @@ describe('ParkedJobCard', () => {
     expect(onCancel).toHaveBeenCalledWith(true)
   })
 
+  it('a fault pause says the printer reported an error and links each code to its own page', () => {
+    const paused = job({
+      phase: 'printing',
+      attention: [
+        {
+          code: 'print_paused_fault',
+          detail:
+            'Printer paused at reported layer 6 (8%). It reported HMS 07FF-2000-0002-0004. Our file at that layer changes from filament 2 (PLA, slot 0.1) to filament 0 (TPU, slot 0.3), load 4 of filament 0 in this file.',
+          printer: {
+            gcodeState: 'PAUSE',
+            hms: [
+              {
+                hex: '07FF-2000-0002-0004',
+                wiki: 'https://wiki.bambulab.com/en/x1/troubleshooting/hmscode/07FF_2000_0002_0004',
+              },
+              { hex: '0300-4000' },
+            ],
+            layer: 6,
+            percent: 8,
+          },
+        },
+      ],
+    })
+    const { container } = render(
+      <ParkedJobCard job={paused} onStart={vi.fn()} onCancel={vi.fn()} />
+    )
+    expect(screen.getByText(/the printer reported an error/)).toBeInTheDocument()
+    // The service's sentence, verbatim — no diagnosis added here.
+    expect(screen.getByText(/Printer paused at reported layer 6/)).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: '07FF-2000-0002-0004' })
+    expect(link).toHaveAttribute(
+      'href',
+      'https://wiki.bambulab.com/en/x1/troubleshooting/hmscode/07FF_2000_0002_0004'
+    )
+    // A code the service could not link is still shown, as text.
+    expect(screen.getByText('0300-4000')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '0300-4000' })).toBeNull()
+    expect(container.querySelector('[data-action="acknowledge-start"]')).toBeNull()
+    expect(container.querySelector('[data-action="stop-print"]')).not.toBeNull()
+  })
+
+  it('a pause with no reported error says so and shows no code links', () => {
+    const paused = job({
+      phase: 'printing',
+      attention: [
+        {
+          code: 'print_paused',
+          detail: 'Printer paused at reported layer 12 (40%). It reported no error code.',
+          printer: { gcodeState: 'PAUSE', hms: [], layer: 12, percent: 40 },
+        },
+      ],
+    })
+    const { container } = render(
+      <ParkedJobCard job={paused} onStart={vi.fn()} onCancel={vi.fn()} />
+    )
+    expect(screen.getByText(/the printer reported no error/)).toBeInTheDocument()
+    expect(container.querySelector('[data-element="parked-job-printer-codes"]')).toBeNull()
+  })
+
   it('hides the bed photo when the frame endpoint has none', () => {
     const { container } = render(
       <ParkedJobCard job={needsAttention} onStart={vi.fn()} onCancel={vi.fn()} />

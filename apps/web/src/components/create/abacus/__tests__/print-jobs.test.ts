@@ -175,6 +175,57 @@ describe('normalizeJobs — resolve fields', () => {
     },
   }
 
+  it('carries a mid-print pause reason’s printer facts, keeping only linkable alerts', () => {
+    const [row] = normalizeJobs([
+      {
+        jobId: 'j-paused',
+        phase: 'printing',
+        attention: {
+          reasons: [
+            {
+              code: 'print_paused_fault',
+              detail:
+                'Printer paused at reported layer 6 (8%). It reported HMS 07FF-2000-0002-0004.',
+              printer: {
+                gcodeState: 'PAUSE',
+                printError: '0x00000000',
+                hms: [
+                  { hex: '07FF-2000-0002-0004', wiki: 'https://wiki.bambulab.com/x', lvl: 3 },
+                  { hex: '0300-4000', wiki: 'javascript:alert(1)' },
+                  { attr: 1, code: 2 },
+                  'junk',
+                ],
+                layer: 6,
+                percent: 8,
+                totalLayers: 68,
+                observedAt: 1_784_700_000,
+              },
+            },
+            { code: 'other', detail: 'no printer block' },
+          ],
+        },
+      },
+    ])
+    expect(row.attention).toEqual([
+      {
+        code: 'print_paused_fault',
+        detail: 'Printer paused at reported layer 6 (8%). It reported HMS 07FF-2000-0002-0004.',
+        printer: {
+          gcodeState: 'PAUSE',
+          printError: '0x00000000',
+          hms: [
+            { hex: '07FF-2000-0002-0004', wiki: 'https://wiki.bambulab.com/x', lvl: 3 },
+            { hex: '0300-4000' },
+          ],
+          layer: 6,
+          percent: 8,
+          totalLayers: 68,
+        },
+      },
+      { code: 'other', detail: 'no printer block' },
+    ])
+  })
+
   it('projects attention reasons, startPolicy, acknowledged, and updatedAt', () => {
     const [row] = normalizeJobs([parkedJob])
     expect(row.phase).toBe('needs_attention')

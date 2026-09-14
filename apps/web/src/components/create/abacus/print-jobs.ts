@@ -97,7 +97,31 @@ const UNKNOWN_FAILURE: Omit<JobFailureView, 'technical'> = {
  *  must acknowledge to start. `frameRef` (when present) marks the reason that
  *  carries the bed photo — informational; the photo loads from the job-level
  *  `attention-frame` endpoint, not this ref. */
-export type AttentionReason = { code: string; detail: string | null; frameRef?: string | null }
+export type AttentionReason = {
+  code: string
+  detail: string | null
+  frameRef?: string | null
+  /** The printer's own facts at a mid-print pause (`print_paused_fault` /
+   *  `print_paused`), verbatim from the service — rendered, never interpreted. */
+  printer?: PrinterFacts
+}
+
+/** One HMS alert the printer reported: both halves of its identity in Bambu's
+ *  own hex form (`07FF-2000-0002-0004`) and, when the service knew both halves,
+ *  the wiki page Bambu files it under. */
+export type PrinterHmsRecord = { hex: string; wiki?: string; lvl?: number }
+
+/** What the printer said at a pause — its state, error code and alerts, and
+ *  where it reported being. The `detail` sentence already reads these out; the
+ *  structured copy is for linking each code to the printer's own page. */
+export type PrinterFacts = {
+  gcodeState?: string
+  printError?: string
+  hms: PrinterHmsRecord[]
+  layer?: number
+  percent?: number
+  totalLayers?: number
+}
 
 /** One thing the service COULDN'T verify, from the job's `notices[]` (THH #429).
  *
@@ -219,7 +243,35 @@ function normalizeAuthoring(
   }
 }
 
-/** The service's `attention: {reasons: [{code, detail, frameRef?}]}` — a job is
+/** A reason's `printer` block. Only the shapes the card renders are kept; an
+ *  alert without its hex identity is dropped rather than shown as a blank link,
+ *  and a wiki link that is not https is not a link. */
+function normalizePrinterFacts(value: unknown): PrinterFacts | undefined {
+  if (typeof value !== 'object' || value === null) return undefined
+  const rec = value as Record<string, unknown>
+  const hms: PrinterHmsRecord[] = []
+  if (Array.isArray(rec.hms)) {
+    for (const item of rec.hms) {
+      if (typeof item !== 'object' || item === null) continue
+      const alert = item as Record<string, unknown>
+      if (typeof alert.hex !== 'string' || alert.hex.length === 0) continue
+      const record: PrinterHmsRecord = { hex: alert.hex }
+      if (typeof alert.wiki === 'string' && alert.wiki.startsWith('https://'))
+        record.wiki = alert.wiki
+      if (typeof alert.lvl === 'number') record.lvl = alert.lvl
+      hms.push(record)
+    }
+  }
+  const facts: PrinterFacts = { hms }
+  if (typeof rec.gcodeState === 'string') facts.gcodeState = rec.gcodeState
+  if (typeof rec.printError === 'string') facts.printError = rec.printError
+  if (typeof rec.layer === 'number') facts.layer = rec.layer
+  if (typeof rec.percent === 'number') facts.percent = rec.percent
+  if (typeof rec.totalLayers === 'number') facts.totalLayers = rec.totalLayers
+  return facts
+}
+
+/** The service's `attention: {reasons: [{code, detail, frameRef?, printer?}]}` — a job is
  *  only actionable through the reasons it reports, so a reason without a usable
  *  `code` is dropped rather than guessed at. */
 function normalizeAttention(value: unknown): AttentionReason[] {
@@ -236,6 +288,8 @@ function normalizeAttention(value: unknown): AttentionReason[] {
       detail: typeof rec.detail === 'string' && rec.detail.length > 0 ? rec.detail : null,
     }
     if (typeof rec.frameRef === 'string' && rec.frameRef.length > 0) reason.frameRef = rec.frameRef
+    const printer = normalizePrinterFacts(rec.printer)
+    if (printer) reason.printer = printer
     out.push(reason)
   }
   return out
