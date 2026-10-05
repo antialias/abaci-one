@@ -2,17 +2,9 @@
 
 ## Shared Infrastructure — CRITICAL
 
-This repo contains `infra/terraform/gitea.tf`, which manages **shared k8s infrastructure** used by multiple projects (weather-display, abaci.one, etc.) — not just this flashcard app. This is known organizational debt (tracked in weather-display#235).
+`infra/terraform/` still declares **shared k8s infrastructure** used by many projects, not just this app: the Woodpecker server, ArgoCD, cert-manager and the monitoring stack. This is known organizational debt (platform#25); shared pieces move to the platform repo when they are next touched, and are never edited here.
 
-### What gitea.tf manages
-
-- **Gitea server**: deployment (`gitea/gitea:1.25-rootless`), service, ingress (`git.dev.abaci.one`, `firmware.dev.abaci.one`), config (app.ini via ConfigMap)
-- **Act runner**: deployment with DinD sidecar, runner config
-- **Local Docker registry**: deployment (`registry:2`), service, PVC
-- **Init containers**: `init-config` (copies app.ini), `fix-dbfs-logs` (workaround for go-gitea/gitea#35110 — remove after Gitea >= 1.26, tracked in weather-display#234)
-- **Setup jobs**: admin user creation, repo migration from GitHub
-- **Namespace**: `gitea` on k3s at `192.168.86.37`
-- **DB**: SQLite at `/data/gitea/gitea.db` (NFS PVC from NAS)
+**Gitea is no longer here.** Gitea, its registry, their volumes and the `gitea` namespace moved to platform `k8s/gitea` on 2026-10-05 (git.dev.abaci.one/antialias/platform). Change them there. `woodpecker.tf` and `claude-issue-bot.tf` still put objects in the `gitea` namespace and name its PVC and `gitea-admin` Secret as literals.
 
 ### Applying terraform changes
 

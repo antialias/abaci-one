@@ -67,7 +67,7 @@ resource "kubernetes_persistent_volume" "woodpecker" {
 resource "kubernetes_persistent_volume_claim" "woodpecker" {
   metadata {
     name      = "woodpecker"
-    namespace = kubernetes_namespace.gitea.metadata[0].name
+    namespace = "gitea"
   }
 
   spec {
@@ -96,7 +96,7 @@ resource "kubernetes_persistent_volume_claim" "woodpecker" {
 resource "kubernetes_deployment" "woodpecker_server" {
   metadata {
     name      = "woodpecker-server"
-    namespace = kubernetes_namespace.gitea.metadata[0].name
+    namespace = "gitea"
     labels = {
       app = "woodpecker-server"
     }
@@ -167,7 +167,7 @@ resource "kubernetes_deployment" "woodpecker_server" {
 
           env {
             name  = "WOODPECKER_GITEA_URL"
-            value = "http://gitea.${kubernetes_namespace.gitea.metadata[0].name}.svc.cluster.local:3000"
+            value = "http://gitea.gitea.svc.cluster.local:3000"
           }
 
           # Keep browser OAuth redirects on the public Gitea hostname while the
@@ -213,7 +213,7 @@ resource "kubernetes_deployment" "woodpecker_server" {
           # Allow webhooks from Gitea running in the same cluster
           env {
             name  = "WOODPECKER_WEBHOOK_HOST"
-            value = "http://woodpecker-server.${kubernetes_namespace.gitea.metadata[0].name}.svc.cluster.local:8000"
+            value = "http://woodpecker-server.gitea.svc.cluster.local:8000"
           }
 
           # Admin user (your Gitea username)
@@ -265,7 +265,7 @@ resource "kubernetes_deployment" "woodpecker_server" {
 resource "kubernetes_service" "woodpecker_server" {
   metadata {
     name      = "woodpecker-server"
-    namespace = kubernetes_namespace.gitea.metadata[0].name
+    namespace = "gitea"
   }
 
   spec {
@@ -303,7 +303,7 @@ resource "kubernetes_service" "woodpecker_server" {
 resource "kubernetes_service" "woodpecker_server_grpc_lan" {
   metadata {
     name      = "woodpecker-server-grpc-lan"
-    namespace = kubernetes_namespace.gitea.metadata[0].name
+    namespace = "gitea"
   }
 
   spec {
@@ -339,7 +339,7 @@ resource "kubernetes_service" "woodpecker_server_grpc_lan" {
 resource "kubernetes_ingress_v1" "woodpecker" {
   metadata {
     name      = "woodpecker"
-    namespace = kubernetes_namespace.gitea.metadata[0].name
+    namespace = "gitea"
 
     annotations = {
       "cert-manager.io/cluster-issuer"                   = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
@@ -382,7 +382,7 @@ resource "kubernetes_ingress_v1" "woodpecker" {
 resource "kubernetes_ingress_v1" "woodpecker_redirect" {
   metadata {
     name      = "woodpecker-redirect"
-    namespace = kubernetes_namespace.gitea.metadata[0].name
+    namespace = "gitea"
 
     annotations = {
       "traefik.ingress.kubernetes.io/router.entrypoints" = "web"

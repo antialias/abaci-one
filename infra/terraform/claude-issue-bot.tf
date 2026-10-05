@@ -28,9 +28,10 @@
 #                         never returns a hook's secret, so a changed WEBHOOK_SECRET is NOT detected
 #                         — rotating it means deleting the affected hooks first, then re-running.
 #
-# The webhook SSRF allowlist (NAS IP added to [webhook] ALLOWED_HOST_LIST) is in gitea.tf.
-# All admin operations reuse gitea.tf's patterns: the gitea CLI on the data PVC (user/token,
-# mirroring gitea_admin_setup) and the admin-API-curl job (webhook, mirroring gitea_repo_setup).
+# Gitea itself (namespace, data PVC, gitea-admin Secret, and the webhook SSRF allowlist with the
+# NAS IP in [webhook] ALLOWED_HOST_LIST) is declared in platform's k8s/gitea, hence the literal
+# names here. Admin operations use the gitea CLI on the data PVC (user/token) and an
+# admin-API-curl job (webhook).
 
 # Bot password: generated, never needed by a human (only the minted token matters, and that is
 # surfaced separately). Stored in a Secret for idempotent reference across applies.
@@ -42,7 +43,7 @@ resource "random_password" "claude_bot" {
 resource "kubernetes_secret" "claude_bot" {
   metadata {
     name      = "claude-bot-credentials"
-    namespace = kubernetes_namespace.gitea.metadata[0].name
+    namespace = "gitea"
   }
 
   data = {
@@ -67,7 +68,7 @@ resource "kubernetes_secret" "claude_bot" {
 resource "kubernetes_job" "claude_bot_provision" {
   metadata {
     name      = "claude-bot-provision"
-    namespace = kubernetes_namespace.gitea.metadata[0].name
+    namespace = "gitea"
   }
 
   spec {
@@ -92,7 +93,7 @@ resource "kubernetes_job" "claude_bot_provision" {
           args = [
             <<-EOT
               echo "Waiting for Gitea to be ready..."
-              until wget -q --spider http://gitea.${kubernetes_namespace.gitea.metadata[0].name}.svc.cluster.local:3000/api/healthz; do
+              until wget -q --spider http://gitea.gitea.svc.cluster.local:3000/api/healthz; do
                 echo "Gitea not ready, waiting..."
                 sleep 5
               done
@@ -191,14 +192,12 @@ resource "kubernetes_job" "claude_bot_provision" {
         volume {
           name = "data"
           persistent_volume_claim {
-            claim_name = kubernetes_persistent_volume_claim.gitea.metadata[0].name
+            claim_name = "gitea"
           }
         }
       }
     }
   }
-
-  depends_on = [kubernetes_job.gitea_admin_setup]
 }
 
 # ---------------------------------------------------------------------------
@@ -216,7 +215,7 @@ resource "kubernetes_job" "claude_bot_webhooks" {
 
   metadata {
     name      = "claude-bot-webhooks"
-    namespace = kubernetes_namespace.gitea.metadata[0].name
+    namespace = "gitea"
   }
 
   spec {
@@ -240,7 +239,7 @@ resource "kubernetes_job" "claude_bot_webhooks" {
           args = [
             <<-EOT
               echo "Waiting for Gitea to be ready..."
-              until wget -q --spider http://gitea.${kubernetes_namespace.gitea.metadata[0].name}.svc.cluster.local:3000/api/healthz; do
+              until wget -q --spider http://gitea.gitea.svc.cluster.local:3000/api/healthz; do
                 echo "Gitea not ready, waiting..."
                 sleep 5
               done
@@ -257,7 +256,7 @@ resource "kubernetes_job" "claude_bot_webhooks" {
             name = "GITEA_ADMIN_USER"
             value_from {
               secret_key_ref {
-                name = kubernetes_secret.gitea_admin.metadata[0].name
+                name = "gitea-admin"
                 key  = "username"
               }
             }
@@ -267,7 +266,7 @@ resource "kubernetes_job" "claude_bot_webhooks" {
             name = "GITEA_ADMIN_PASSWORD"
             value_from {
               secret_key_ref {
-                name = kubernetes_secret.gitea_admin.metadata[0].name
+                name = "gitea-admin"
                 key  = "password"
               }
             }
@@ -275,7 +274,7 @@ resource "kubernetes_job" "claude_bot_webhooks" {
 
           env {
             name  = "GITEA_URL"
-            value = "http://gitea.${kubernetes_namespace.gitea.metadata[0].name}.svc.cluster.local:3000"
+            value = "http://gitea.gitea.svc.cluster.local:3000"
           }
 
           env {

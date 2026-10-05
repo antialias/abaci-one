@@ -316,5 +316,5 @@ runtime now lives in yoto-bridge. Existing scrape bearer Secrets are unchanged;
 reproducible CI management is still platform#25 item 4.
 
 **The shared stack stays here**: `helm_release.kube_prometheus_stack`, cluster-wide
-node health, ArgoCD, cert-manager, Gitea. Apps own their wiring; platform owns the
-shared capability and contract.
+node health, ArgoCD, cert-manager. Gitea moved to platform `k8s/gitea` on 2026-10-05.
+Apps own their wiring; platform owns the shared capability and contract.
