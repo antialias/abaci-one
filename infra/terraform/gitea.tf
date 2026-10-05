@@ -597,6 +597,11 @@ resource "kubernetes_deployment" "gitea" {
             }
           }
 
+          # healthz answers slowly while the built-in OCI registry commits a pushed
+          # layer to the NFS-backed PVC. At the 1s default, both probes failed during
+          # a Scry image push (2026-10-05): readiness pulled gitea out of the Service
+          # (503s), then liveness restarted it mid-upload (502s). Applied live with
+          # kubectl the same day; this codifies it.
           liveness_probe {
             http_get {
               path = "/api/healthz"
@@ -604,6 +609,7 @@ resource "kubernetes_deployment" "gitea" {
             }
             initial_delay_seconds = 30
             period_seconds        = 30
+            timeout_seconds       = 10
           }
 
           readiness_probe {
@@ -613,6 +619,7 @@ resource "kubernetes_deployment" "gitea" {
             }
             initial_delay_seconds = 10
             period_seconds        = 10
+            timeout_seconds       = 10
           }
         }
 
