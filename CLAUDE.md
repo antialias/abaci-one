@@ -2,9 +2,9 @@
 
 ## Shared Infrastructure — CRITICAL
 
-`infra/terraform/` still declares **shared k8s infrastructure** used by many projects, not just this app: the Woodpecker server, ArgoCD, cert-manager and the monitoring stack. This is known organizational debt (platform#25); shared pieces move to the platform repo when they are next touched, and are never edited here.
+`infra/terraform/` still declares **shared k8s infrastructure** used by many projects, not just this app: ArgoCD, cert-manager and the monitoring stack. This is known organizational debt (platform#25); shared pieces move to the platform repo when they are next touched, and are never edited here.
 
-**Gitea is no longer here.** Gitea, its registry, their volumes and the `gitea` namespace moved to platform `k8s/gitea` on 2026-10-05 (git.dev.abaci.one/antialias/platform). Change them there. `woodpecker.tf` and `claude-issue-bot.tf` still put objects in the `gitea` namespace and name its PVC and `gitea-admin` Secret as literals.
+**Gitea and Woodpecker are no longer here.** Gitea, its registry, their volumes and the `gitea` namespace moved to platform `k8s/gitea` on 2026-10-05, and the Woodpecker server, its volume and its LAN gRPC port to platform `k8s/woodpecker` on 2026-10-11 (git.dev.abaci.one/antialias/platform). Change them there. `claude-issue-bot.tf` still puts objects in the `gitea` namespace and names its PVC and `gitea-admin` Secret as literals.
 
 ### Applying terraform changes
 
