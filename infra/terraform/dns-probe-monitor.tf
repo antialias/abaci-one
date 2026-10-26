@@ -16,7 +16,7 @@
 #      a fast dual-probe "pre-outage signal" panel row.
 #
 # All three applies use the same null_resource + kubectl idiom as
-# null_resource.app_service_monitor / node_saturation_tuned_rule (kubernetes_manifest
+# null_resource.app_service_monitor (kubernetes_manifest
 # is avoided — it validates CRDs at plan time, before the operator CRDs exist). They
 # are idempotent (kubectl apply), so they cleanly reconcile the pre-existing
 # hand-applied objects with NO terraform import step (the scrape/rule/dashboard were
@@ -25,7 +25,6 @@
 # "already exists" error / import dance against that pre-existing ConfigMap.
 
 resource "null_resource" "dns_exporter_scrape" {
-  depends_on = [helm_release.kube_prometheus_stack]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -41,7 +40,6 @@ resource "null_resource" "dns_exporter_scrape" {
 }
 
 resource "null_resource" "dns_probe_alerts" {
-  depends_on = [helm_release.kube_prometheus_stack]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -61,7 +59,6 @@ resource "null_resource" "dns_probe_alerts" {
 # create|label|apply pipe is idempotent and keeps the label in the applied manifest
 # (so a future apply never strips it).
 resource "null_resource" "grafana_dashboard_dns_probe" {
-  depends_on = [helm_release.kube_prometheus_stack]
 
   provisioner "local-exec" {
     command = <<-EOT

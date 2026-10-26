@@ -38,7 +38,6 @@
 # hand-applied objects with no import step).
 
 resource "null_resource" "claude_usage_scrape" {
-  depends_on = [helm_release.kube_prometheus_stack]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -54,7 +53,6 @@ resource "null_resource" "claude_usage_scrape" {
 }
 
 resource "null_resource" "claude_usage_alerts" {
-  depends_on = [helm_release.kube_prometheus_stack]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -74,7 +72,6 @@ resource "null_resource" "claude_usage_alerts" {
 # by the stack's alertmanagerConfigSelector={}), so it changes routing LIVE with no
 # Helm re-apply — same null_resource+kubectl idiom as the rule/scrape above.
 resource "null_resource" "claude_usage_alertmanagerconfig" {
-  depends_on = [helm_release.kube_prometheus_stack]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -91,7 +88,6 @@ resource "null_resource" "claude_usage_alertmanagerconfig" {
 
 # Grafana picks this up via the kube-prometheus-stack sidecar (grafana_dashboard="1").
 resource "null_resource" "grafana_dashboard_claude_usage" {
-  depends_on = [helm_release.kube_prometheus_stack]
 
   provisioner "local-exec" {
     command = <<-EOT

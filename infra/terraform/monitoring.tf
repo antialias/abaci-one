@@ -1,207 +1,8 @@
-# Monitoring Stack - Prometheus + Grafana
-#
-# Deploys kube-prometheus-stack for metrics collection and visualization.
-# - Grafana: grafana.dev.abaci.one (dashboards and alerting UI)
-# - Prometheus: prometheus.dev.abaci.one (metrics storage and queries)
-#
-# Architecture:
-# - Prometheus scrapes /metrics from abaci-app pods
-# - Grafana provides dashboards and alerting UI
-# - ServiceMonitor defines what to scrape and how often
-
-resource "kubernetes_namespace" "monitoring" {
-  metadata {
-    name = "monitoring"
-
-    labels = {
-      "app.kubernetes.io/managed-by" = "terraform"
-    }
-  }
-}
-
-# kube-prometheus-stack Helm release
-resource "helm_release" "kube_prometheus_stack" {
-  name       = "kube-prometheus-stack"
-  repository = "https://prometheus-community.github.io/helm-charts"
-  chart      = "kube-prometheus-stack"
-  version    = "58.0.0"
-  namespace  = kubernetes_namespace.monitoring.metadata[0].name
-
-  # Timeout for large CRD installation
-  timeout = 900
-
-  values = [yamlencode({
-    prometheus = {
-      prometheusSpec = {
-        retention = "15d"
-        storageSpec = {
-          volumeClaimTemplate = {
-            spec = {
-              storageClassName = "local-path"
-              resources = {
-                requests = {
-                  storage = "10Gi"
-                }
-              }
-            }
-          }
-        }
-        # Allow ServiceMonitors from any namespace
-        serviceMonitorSelectorNilUsesHelmValues = false
-        # Resource limits for small cluster
-        resources = {
-          requests = {
-            memory = "512Mi"
-            cpu    = "200m"
-          }
-          limits = {
-            memory = "2Gi"
-            cpu    = "1000m"
-          }
-        }
-      }
-    }
-    grafana = {
-      adminPassword = var.grafana_admin_password
-      # Allow trusted dashboards to inject raw HTML/CSS via Text panels (used by the netwatch
-      # "Space Weather × Equipment EMI" dashboard to paint a full-page background). All dashboards
-      # are provisioned by us via the ConfigMap sidecar, so there is no untrusted-HTML exposure.
-      env = {
-        GF_PANELS_DISABLE_SANITIZE_HTML = "true"
-      }
-      persistence = {
-        enabled          = true
-        size             = "2Gi"
-        storageClassName = "local-path"
-      }
-      # Disable built-in ingress - we create our own
-      ingress = {
-        enabled = false
-      }
-      # Resource limits
-      resources = {
-        requests = {
-          memory = "128Mi"
-          cpu    = "100m"
-        }
-        limits = {
-          memory = "512Mi"
-          cpu    = "500m"
-        }
-      }
-      # Sidecar for dashboard provisioning from ConfigMaps
-      sidecar = {
-        dashboards = {
-          enabled = true
-          label   = "grafana_dashboard"
-          # Watch ConfigMaps in all namespaces
-          searchNamespace = "ALL"
-        }
-      }
-    }
-    alertmanager = {
-      enabled = true
-      config = {
-        global = {
-          smtp_smarthost     = "smtp.gmail.com:587"
-          smtp_from          = "hallock@gmail.com"
-          smtp_auth_username = "hallock@gmail.com"
-          smtp_auth_password = var.smtp_password
-          smtp_require_tls   = true
-        }
-        route = {
-          receiver        = "email"
-          group_by        = ["alertname"]
-          group_wait      = "30s"
-          group_interval  = "5m"
-          repeat_interval = "4h"
-        }
-        # NOTE: Claude Code usage/quota alerts are NOT routed here. They carry
-        # alertroute="claude-usage" and are routed to the NAS alert-bridge
-        # (Telegram + HA critical push) by a namespaced AlertmanagerConfig CR —
-        # see claude-usage-monitor.tf / files/claude-usage-alertmanagerconfig.yaml.
-        # That keeps the whole claude-usage chain on the same null_resource+kubectl
-        # idiom as its scrape/rule/dashboard (no Helm re-apply needed to change it).
-        receivers = [
-          {
-            name = "email"
-            email_configs = [
-              {
-                to            = "hallock@gmail.com"
-                send_resolved = true
-                headers = {
-                  Subject = "{{ template \"custom_subject\" . }}"
-                }
-                html = "{{ template \"custom_html\" . }}"
-              }
-            ]
-          },
-          {
-            name = "null"
-          }
-        ]
-        templates = ["/etc/alertmanager/configmaps/alertmanager-email-templates/*.tmpl"]
-      }
-      alertmanagerSpec = {
-        configMaps = ["alertmanager-email-templates"]
-      }
-      templateFiles = {}
-    }
-    # Suppress the two stock node-exporter alerts that fire on every Woodpecker CI
-    # build burst: builds run on this node's HOST dockerd and saturate all 4 vCPUs
-    # in short, self-terminating bursts invisible to k8s cAdvisor (15d history: 122
-    # distinct load/core>2 bursts, longest continuous ~20-40 min; a wedged node
-    # stays pegged indefinitely). Tuned, build-burst-tolerant replacements are
-    # applied by null_resource.node_saturation_tuned_rule below. Per-alert disable
-    # is honored by chart 58.0.0, so this removes ONLY these two alerts and leaves
-    # every other node-exporter rule intact.
-    defaultRules = {
-      disabled = {
-        NodeSystemSaturation = true
-        NodeCPUHighUsage     = true
-      }
-    }
-    # Disable components not needed for single-app monitoring
-    kubeStateMetrics = {
-      enabled = true
-    }
-    nodeExporter = {
-      enabled = true
-    }
-    # Disable some default ServiceMonitors we don't need
-    kubeApiServer = {
-      enabled = false
-    }
-    kubeControllerManager = {
-      enabled = false
-    }
-    kubeScheduler = {
-      enabled = false
-    }
-    kubeProxy = {
-      enabled = false
-    }
-    kubeEtcd = {
-      enabled = false
-    }
-  })]
-
-  depends_on = [kubernetes_namespace.monitoring]
-}
-
-# AlertManager email template — human-readable alerts for a solo operator.
-resource "kubernetes_config_map" "alertmanager_email_templates" {
-  metadata {
-    name      = "alertmanager-email-templates"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
-  }
-
-  data = {
-    "custom.tmpl" = file("${path.module}/files/alertmanager-email.tmpl")
-  }
-
-  depends_on = [helm_release.kube_prometheus_stack]
-}
+# Shared monitoring moved to platform k8s/monitoring on 2026-10-26, applied by CI:
+# kube-prometheus-stack, Alertmanager templates, Grafana/Prometheus ingresses,
+# and node alert rules. That platform root creates the "monitoring" namespace.
+# App-side resources stay here: Tempo and its datasource, product and testing
+# dashboards, pushgateway and its scrape, and the app ServiceMonitor.
 
 # =============================================================================
 # Grafana Tempo - Distributed Tracing
@@ -214,7 +15,7 @@ resource "helm_release" "tempo" {
   repository = "https://grafana.github.io/helm-charts"
   chart      = "tempo"
   version    = "1.7.2"
-  namespace  = kubernetes_namespace.monitoring.metadata[0].name
+  namespace  = "monitoring"
 
   timeout = 300
 
@@ -222,14 +23,14 @@ resource "helm_release" "tempo" {
     tempo = {
       # Retention period for traces
       retention = "168h" # 7 days
-      # Resource limits for small cluster
+      # declared to match the hand patch of 2026-07-23 so the next apply changes nothing
       resources = {
         requests = {
-          memory = "256Mi"
-          cpu    = "100m"
+          memory = "512Mi"
+          cpu    = "40m"
         }
         limits = {
-          memory = "512Mi"
+          memory = "1Gi"
           cpu    = "500m"
         }
       }
@@ -253,7 +54,6 @@ resource "helm_release" "tempo" {
     }
   })]
 
-  depends_on = [kubernetes_namespace.monitoring]
 }
 
 # Add Tempo as a datasource in Grafana
@@ -261,7 +61,7 @@ resource "helm_release" "tempo" {
 resource "kubernetes_config_map" "grafana_datasource_tempo" {
   metadata {
     name      = "grafana-datasource-tempo"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    namespace = "monitoring"
     labels = {
       grafana_datasource = "1"
     }
@@ -297,171 +97,7 @@ resource "kubernetes_config_map" "grafana_datasource_tempo" {
     })
   }
 
-  depends_on = [helm_release.tempo, helm_release.kube_prometheus_stack]
-}
-
-# Grafana Ingress with TLS (grafana.dev.abaci.one)
-resource "kubernetes_ingress_v1" "grafana" {
-  metadata {
-    name      = "grafana"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
-    annotations = {
-      "cert-manager.io/cluster-issuer"                   = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
-      "traefik.ingress.kubernetes.io/router.entrypoints" = "websecure"
-    }
-  }
-
-  spec {
-    ingress_class_name = "traefik"
-
-    tls {
-      hosts       = ["grafana.dev.${var.app_domain}"]
-      secret_name = "grafana-tls"
-    }
-
-    rule {
-      host = "grafana.dev.${var.app_domain}"
-
-      http {
-        path {
-          path      = "/"
-          path_type = "Prefix"
-
-          backend {
-            service {
-              name = "kube-prometheus-stack-grafana"
-              port {
-                number = 80
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  depends_on = [helm_release.kube_prometheus_stack, null_resource.cert_manager_issuers]
-}
-
-# HTTP to HTTPS redirect for grafana subdomain
-resource "kubernetes_ingress_v1" "grafana_http_redirect" {
-  metadata {
-    name      = "grafana-http-redirect"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
-    annotations = {
-      "traefik.ingress.kubernetes.io/router.entrypoints" = "web"
-      # Use the redirect middleware from the abaci namespace
-      "traefik.ingress.kubernetes.io/router.middlewares" = "${var.namespace}-redirect-https@kubernetescrd"
-    }
-  }
-
-  spec {
-    ingress_class_name = "traefik"
-
-    rule {
-      host = "grafana.dev.${var.app_domain}"
-
-      http {
-        path {
-          path      = "/"
-          path_type = "Prefix"
-
-          backend {
-            service {
-              name = "kube-prometheus-stack-grafana"
-              port {
-                number = 80
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  depends_on = [helm_release.kube_prometheus_stack]
-}
-
-# Prometheus Ingress with TLS (prometheus.dev.abaci.one)
-resource "kubernetes_ingress_v1" "prometheus" {
-  metadata {
-    name      = "prometheus"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
-    annotations = {
-      "cert-manager.io/cluster-issuer"                   = var.use_staging_certs ? "letsencrypt-staging" : "letsencrypt-prod"
-      "traefik.ingress.kubernetes.io/router.entrypoints" = "websecure"
-    }
-  }
-
-  spec {
-    ingress_class_name = "traefik"
-
-    tls {
-      hosts       = ["prometheus.dev.${var.app_domain}"]
-      secret_name = "prometheus-tls"
-    }
-
-    rule {
-      host = "prometheus.dev.${var.app_domain}"
-
-      http {
-        path {
-          path      = "/"
-          path_type = "Prefix"
-
-          backend {
-            service {
-              name = "kube-prometheus-stack-prometheus"
-              port {
-                number = 9090
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  depends_on = [helm_release.kube_prometheus_stack, null_resource.cert_manager_issuers]
-}
-
-# HTTP to HTTPS redirect for prometheus subdomain
-resource "kubernetes_ingress_v1" "prometheus_http_redirect" {
-  metadata {
-    name      = "prometheus-http-redirect"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
-    annotations = {
-      "traefik.ingress.kubernetes.io/router.entrypoints" = "web"
-      # Use the redirect middleware from the abaci namespace
-      "traefik.ingress.kubernetes.io/router.middlewares" = "${var.namespace}-redirect-https@kubernetescrd"
-    }
-  }
-
-  spec {
-    ingress_class_name = "traefik"
-
-    rule {
-      host = "prometheus.dev.${var.app_domain}"
-
-      http {
-        path {
-          path      = "/"
-          path_type = "Prefix"
-
-          backend {
-            service {
-              name = "kube-prometheus-stack-prometheus"
-              port {
-                number = 9090
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  depends_on = [helm_release.kube_prometheus_stack]
+  depends_on = [helm_release.tempo]
 }
 
 # ServiceMonitor for abaci-app
@@ -469,7 +105,6 @@ resource "kubernetes_ingress_v1" "prometheus_http_redirect" {
 # Using null_resource with kubectl because kubernetes_manifest validates CRDs at plan time,
 # but the ServiceMonitor CRD only exists after kube-prometheus-stack is installed.
 resource "null_resource" "app_service_monitor" {
-  depends_on = [helm_release.kube_prometheus_stack]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -484,7 +119,7 @@ resource "null_resource" "app_service_monitor" {
       kind: ServiceMonitor
       metadata:
         name: abaci-app
-        namespace: ${kubernetes_namespace.monitoring.metadata[0].name}
+        namespace: monitoring
         labels:
           app: abaci-app
       spec:
@@ -503,81 +138,8 @@ resource "null_resource" "app_service_monitor" {
   }
 
   triggers = {
-    namespace     = kubernetes_namespace.monitoring.metadata[0].name
+    namespace     = "monitoring"
     app_namespace = var.namespace
-  }
-}
-
-# =============================================================================
-# Tuned node-saturation alerts (build-burst tolerant)
-# =============================================================================
-# Replaces the two stock node-exporter alerts disabled via defaultRules.disabled
-# above. They fired on nearly every Woodpecker CI build (builds run on this node's
-# HOST dockerd and saturate all 4 vCPUs in short self-terminating bursts invisible
-# to k8s cAdvisor). Tuned thresholds (load/core > 3 for 2h; CPU > 95% for 1h) ride
-# out transient build bursts while still firing on a genuinely wedged/runaway node;
-# fast availability alerts (KubeNodeNotReady/KubeletDown @15m, TargetDown @10m)
-# remain the hard-failure net. Applied out-of-band via kubectl-apply (same idiom as
-# null_resource.app_service_monitor + the hand-applied disk-pressure-early-warning /
-# dns-probe-alerts CRs). kubernetes_manifest is intentionally avoided: it validates
-# against the operator CRDs at plan time, before they exist.
-resource "null_resource" "node_saturation_tuned_rule" {
-  depends_on = [helm_release.kube_prometheus_stack]
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      export KUBECONFIG=${pathexpand(var.kubeconfig_path)}
-
-      # Wait for CRDs to be available
-      kubectl wait --for=condition=Established crd/prometheusrules.monitoring.coreos.com --timeout=120s
-
-      # Apply tuned PrometheusRule (replaces the two stock alerts disabled above).
-      # Inner heredoc is QUOTED (<<'EOF') so the shell does not expand the Prometheus
-      # template vars ($value / $labels) in the rule annotations.
-      cat <<'EOF' | kubectl apply -f -
-      apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
-      metadata:
-        name: node-saturation-tuned
-        namespace: monitoring
-        labels:
-          app: kube-prometheus-stack
-          release: kube-prometheus-stack
-      spec:
-        groups:
-          - name: node-saturation-tuned
-            rules:
-              - alert: NodeSystemSaturation
-                annotations:
-                  description: |
-                    System load per core at {{ $labels.instance }} has been above 3 for the last 2 hours, is currently at {{ printf "%.2f" $value }}.
-                    This indicates sustained CPU saturation beyond a normal CI build burst (which clears within ~45 min) and can cause this instance becoming unresponsive.
-                  runbook_url: https://runbooks.prometheus-operator.dev/runbooks/node/nodesystemsaturation
-                  summary: System saturated, load per core is very high (sustained).
-                expr: |-
-                  node_load1{job="node-exporter"}
-                  / count without (cpu, mode) (node_cpu_seconds_total{job="node-exporter", mode="idle"}) > 3
-                for: 2h
-                labels:
-                  severity: warning
-              - alert: NodeCPUHighUsage
-                annotations:
-                  description: |
-                    CPU usage at {{ $labels.instance }} has been above 95% for the last 1 hour, is currently at {{ printf "%.2f" $value }}%.
-                    Sustained at this level for an hour indicates a wedged/runaway node rather than a transient CI build burst.
-                  runbook_url: https://runbooks.prometheus-operator.dev/runbooks/node/nodecpuhighusage
-                  summary: High CPU usage (sustained).
-                expr: sum without(mode) (avg without (cpu) (rate(node_cpu_seconds_total{job="node-exporter", mode!="idle"}[2m]))) * 100 > 95
-                for: 1h
-                labels:
-                  severity: info
-      EOF
-    EOT
-  }
-
-  triggers = {
-    # Bump to force re-apply when the rule body changes.
-    rule_version = "2026-06-11-load3-2h-cpu95-1h"
   }
 }
 
@@ -590,7 +152,7 @@ resource "null_resource" "node_saturation_tuned_rule" {
 resource "kubernetes_config_map" "grafana_dashboard_product" {
   metadata {
     name      = "grafana-dashboard-product"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    namespace = "monitoring"
     labels = {
       grafana_dashboard = "1"
     }
@@ -1265,457 +827,13 @@ resource "kubernetes_config_map" "grafana_dashboard_product" {
     })
   }
 
-  depends_on = [helm_release.kube_prometheus_stack]
-}
-
-# Disk pressure early-warning PrometheusRule.
-# The default kube-prometheus-stack alerts fire at <5% / <3% free — too late,
-# kubelet evicts at 15% free. This fires at 20% free to give advance warning.
-resource "null_resource" "disk_pressure_alert" {
-  depends_on = [helm_release.kube_prometheus_stack]
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      export KUBECONFIG=${pathexpand(var.kubeconfig_path)}
-
-      kubectl wait --for=condition=Established crd/prometheusrules.monitoring.coreos.com --timeout=120s
-
-      cat <<EOF | kubectl apply -f -
-      apiVersion: monitoring.coreos.com/v1
-      kind: PrometheusRule
-      metadata:
-        name: disk-pressure-early-warning
-        namespace: ${kubernetes_namespace.monitoring.metadata[0].name}
-        labels:
-          app: kube-prometheus-stack
-          release: kube-prometheus-stack
-      spec:
-        groups:
-        - name: disk-pressure-early-warning
-          rules:
-          - alert: NodeDiskPressureImminent
-            expr: |
-              (
-                node_filesystem_avail_bytes{job="node-exporter",fstype!="",mountpoint="/"} /
-                node_filesystem_size_bytes{job="node-exporter",fstype!="",mountpoint="/"}
-              ) < 0.20
-            for: 10m
-            labels:
-              severity: warning
-            annotations:
-              summary: "Node root filesystem is above 80% usage"
-              description: "{{ \$labels.instance }} root filesystem has only {{ \$value | humanizePercentage }} free. Kubelet eviction triggers at 85%."
-      EOF
-    EOT
-  }
-
-  triggers = {
-    rule_version = "1"
-  }
-}
-
-# Ops Metrics Dashboard - Infrastructure and CI/CD monitoring
-resource "kubernetes_config_map" "grafana_dashboard_ops" {
-  metadata {
-    name      = "grafana-dashboard-ops"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
-    labels = {
-      grafana_dashboard = "1"
-    }
-  }
-
-  data = {
-    "ops-metrics.json" = jsonencode({
-      annotations = { list = [] }
-      editable    = true
-      panels = [
-        # Row: Gitea Runner
-        {
-          collapsed = false
-          gridPos   = { h = 1, w = 24, x = 0, y = 0 }
-          id        = 100
-          title     = "Gitea Runner"
-          type      = "row"
-        },
-        # Gitea Runner Memory
-        {
-          datasource = { type = "prometheus", uid = "prometheus" }
-          fieldConfig = {
-            defaults = {
-              color = { mode = "palette-classic" }
-              unit  = "bytes"
-            }
-          }
-          gridPos = { h = 8, w = 8, x = 0, y = 1 }
-          id      = 101
-          options = {
-            legend  = { calcs = ["last"], displayMode = "table", placement = "bottom" }
-            tooltip = { mode = "multi" }
-          }
-          targets = [
-            {
-              expr         = "container_memory_working_set_bytes{namespace=\"gitea-runner\", container!=\"\", container!=\"POD\"}"
-              legendFormat = "{{container}}"
-              refId        = "A"
-            }
-          ]
-          title = "Runner Memory Usage"
-          type  = "timeseries"
-        },
-        # Gitea Runner CPU
-        {
-          datasource = { type = "prometheus", uid = "prometheus" }
-          fieldConfig = {
-            defaults = {
-              color = { mode = "palette-classic" }
-              unit  = "percentunit"
-            }
-          }
-          gridPos = { h = 8, w = 8, x = 8, y = 1 }
-          id      = 102
-          options = {
-            legend  = { calcs = ["mean", "max"], displayMode = "table", placement = "bottom" }
-            tooltip = { mode = "multi" }
-          }
-          targets = [
-            {
-              expr         = "rate(container_cpu_usage_seconds_total{namespace=\"gitea-runner\", container!=\"\", container!=\"POD\"}[5m])"
-              legendFormat = "{{container}}"
-              refId        = "A"
-            }
-          ]
-          title = "Runner CPU Usage"
-          type  = "timeseries"
-        },
-        # Gitea Runner Network I/O
-        {
-          datasource = { type = "prometheus", uid = "prometheus" }
-          fieldConfig = {
-            defaults = {
-              color = { mode = "palette-classic" }
-              unit  = "Bps"
-            }
-          }
-          gridPos = { h = 8, w = 8, x = 16, y = 1 }
-          id      = 103
-          options = {
-            legend  = { calcs = ["mean"], displayMode = "table", placement = "bottom" }
-            tooltip = { mode = "multi" }
-          }
-          targets = [
-            {
-              expr         = "rate(container_network_receive_bytes_total{namespace=\"gitea-runner\"}[5m])"
-              legendFormat = "RX"
-              refId        = "A"
-            },
-            {
-              expr         = "rate(container_network_transmit_bytes_total{namespace=\"gitea-runner\"}[5m])"
-              legendFormat = "TX"
-              refId        = "B"
-            }
-          ]
-          title = "Runner Network I/O"
-          type  = "timeseries"
-        },
-        # Row: Node Resources
-        {
-          collapsed = false
-          gridPos   = { h = 1, w = 24, x = 0, y = 9 }
-          id        = 200
-          title     = "Node Resources"
-          type      = "row"
-        },
-        # Node Disk Usage Gauge
-        {
-          datasource = { type = "prometheus", uid = "prometheus" }
-          fieldConfig = {
-            defaults = {
-              color = {
-                mode = "thresholds"
-              }
-              max = 1
-              min = 0
-              thresholds = {
-                mode = "percentage"
-                steps = [
-                  { color = "green", value = null },
-                  { color = "yellow", value = 80 },
-                  { color = "red", value = 85 }
-                ]
-              }
-              unit = "percentunit"
-            }
-          }
-          gridPos = { h = 8, w = 6, x = 0, y = 10 }
-          id      = 210
-          options = {
-            orientation          = "auto"
-            reduceOptions        = { calcs = ["lastNotNull"], fields = "", values = false }
-            showThresholdLabels  = false
-            showThresholdMarkers = true
-          }
-          targets = [
-            {
-              expr  = "1 - (node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"\"})"
-              refId = "A"
-            }
-          ]
-          title = "Root Disk %"
-          type  = "gauge"
-        },
-        # Node Memory Gauge
-        {
-          datasource = { type = "prometheus", uid = "prometheus" }
-          fieldConfig = {
-            defaults = {
-              color = {
-                mode = "thresholds"
-              }
-              max = 1
-              min = 0
-              thresholds = {
-                mode = "percentage"
-                steps = [
-                  { color = "green", value = null },
-                  { color = "yellow", value = 70 },
-                  { color = "red", value = 85 }
-                ]
-              }
-              unit = "percentunit"
-            }
-          }
-          gridPos = { h = 8, w = 6, x = 6, y = 10 }
-          id      = 201
-          options = {
-            orientation          = "auto"
-            reduceOptions        = { calcs = ["lastNotNull"], fields = "", values = false }
-            showThresholdLabels  = false
-            showThresholdMarkers = true
-          }
-          targets = [
-            {
-              expr  = "1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)"
-              refId = "A"
-            }
-          ]
-          title = "Node Memory %"
-          type  = "gauge"
-        },
-        # Node Memory Breakdown
-        {
-          datasource = { type = "prometheus", uid = "prometheus" }
-          fieldConfig = {
-            defaults = {
-              color = { mode = "palette-classic" }
-              unit  = "bytes"
-            }
-          }
-          gridPos = { h = 8, w = 8, x = 12, y = 10 }
-          id      = 202
-          options = {
-            legend  = { calcs = ["last"], displayMode = "table", placement = "right" }
-            tooltip = { mode = "multi" }
-          }
-          targets = [
-            {
-              expr         = "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes"
-              legendFormat = "Used"
-              refId        = "A"
-            },
-            {
-              expr         = "node_memory_Cached_bytes"
-              legendFormat = "Cached"
-              refId        = "B"
-            },
-            {
-              expr         = "node_memory_Buffers_bytes"
-              legendFormat = "Buffers"
-              refId        = "C"
-            },
-            {
-              expr         = "node_memory_MemAvailable_bytes"
-              legendFormat = "Available"
-              refId        = "D"
-            }
-          ]
-          title = "Node Memory Breakdown"
-          type  = "timeseries"
-        },
-        # Node CPU Usage
-        {
-          datasource = { type = "prometheus", uid = "prometheus" }
-          fieldConfig = {
-            defaults = {
-              color = { mode = "palette-classic" }
-              unit  = "percentunit"
-              max   = 1
-            }
-          }
-          gridPos = { h = 8, w = 4, x = 20, y = 10 }
-          id      = 203
-          options = {
-            legend  = { calcs = ["mean", "max"], displayMode = "table", placement = "bottom" }
-            tooltip = { mode = "multi" }
-          }
-          targets = [
-            {
-              expr         = "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))"
-              legendFormat = "Total CPU"
-              refId        = "A"
-            },
-            {
-              expr         = "avg(rate(node_cpu_seconds_total{mode=\"iowait\"}[5m]))"
-              legendFormat = "I/O Wait"
-              refId        = "B"
-            }
-          ]
-          title = "Node CPU Usage"
-          type  = "timeseries"
-        },
-        # Row: Disk I/O
-        {
-          collapsed = false
-          gridPos   = { h = 1, w = 24, x = 0, y = 18 }
-          id        = 300
-          title     = "Disk I/O"
-          type      = "row"
-        },
-        # Disk Read/Write Throughput
-        {
-          datasource = { type = "prometheus", uid = "prometheus" }
-          fieldConfig = {
-            defaults = {
-              color = { mode = "palette-classic" }
-              unit  = "Bps"
-            }
-          }
-          gridPos = { h = 8, w = 12, x = 0, y = 19 }
-          id      = 301
-          options = {
-            legend  = { calcs = ["mean", "max"], displayMode = "table", placement = "bottom" }
-            tooltip = { mode = "multi" }
-          }
-          targets = [
-            {
-              expr         = "rate(node_disk_read_bytes_total[5m])"
-              legendFormat = "Read {{device}}"
-              refId        = "A"
-            },
-            {
-              expr         = "rate(node_disk_written_bytes_total[5m])"
-              legendFormat = "Write {{device}}"
-              refId        = "B"
-            }
-          ]
-          title = "Disk Throughput"
-          type  = "timeseries"
-        },
-        # Disk I/O Utilization
-        {
-          datasource = { type = "prometheus", uid = "prometheus" }
-          fieldConfig = {
-            defaults = {
-              color = { mode = "palette-classic" }
-              unit  = "percentunit"
-              max   = 1
-            }
-          }
-          gridPos = { h = 8, w = 12, x = 12, y = 19 }
-          id      = 302
-          options = {
-            legend  = { calcs = ["mean", "max"], displayMode = "table", placement = "bottom" }
-            tooltip = { mode = "multi" }
-          }
-          targets = [
-            {
-              expr         = "rate(node_disk_io_time_seconds_total[5m])"
-              legendFormat = "{{device}} Util %"
-              refId        = "A"
-            }
-          ]
-          title = "Disk I/O Utilization"
-          type  = "timeseries"
-        },
-        # Row: Pod Status
-        {
-          collapsed = false
-          gridPos   = { h = 1, w = 24, x = 0, y = 27 }
-          id        = 400
-          title     = "Pod Status"
-          type      = "row"
-        },
-        # Namespace Memory by Pod
-        {
-          datasource = { type = "prometheus", uid = "prometheus" }
-          fieldConfig = {
-            defaults = {
-              color = { mode = "palette-classic" }
-              unit  = "bytes"
-            }
-          }
-          gridPos = { h = 8, w = 12, x = 0, y = 28 }
-          id      = 401
-          options = {
-            legend  = { calcs = ["last"], displayMode = "table", placement = "right" }
-            tooltip = { mode = "multi" }
-          }
-          targets = [
-            {
-              expr         = "sum by (namespace) (container_memory_working_set_bytes{container!=\"\", container!=\"POD\"})"
-              legendFormat = "{{namespace}}"
-              refId        = "A"
-            }
-          ]
-          title = "Memory by Namespace"
-          type  = "timeseries"
-        },
-        # Container Restarts
-        {
-          datasource = { type = "prometheus", uid = "prometheus" }
-          fieldConfig = {
-            defaults = {
-              color = { mode = "palette-classic" }
-              unit  = "short"
-            }
-          }
-          gridPos = { h = 8, w = 12, x = 12, y = 28 }
-          id      = 402
-          options = {
-            legend  = { calcs = ["last"], displayMode = "table", placement = "right" }
-            tooltip = { mode = "multi" }
-          }
-          targets = [
-            {
-              expr         = "increase(kube_pod_container_status_restarts_total[1h])"
-              legendFormat = "{{namespace}}/{{pod}}"
-              refId        = "A"
-            }
-          ]
-          title = "Container Restarts (1h)"
-          type  = "timeseries"
-        },
-      ]
-      refresh       = "30s"
-      schemaVersion = 39
-      tags          = ["ops", "infrastructure"]
-      templating    = { list = [] }
-      time          = { from = "now-1h", to = "now" }
-      timepicker    = {}
-      timezone      = "browser"
-      title         = "Ops Metrics"
-      uid           = "ops-metrics"
-      version       = 1
-    })
-  }
-
-  depends_on = [helm_release.kube_prometheus_stack]
 }
 
 # Testing Dashboard - E2E Smoke Tests + Unit Test Coverage
 resource "kubernetes_config_map" "grafana_dashboard_testing" {
   metadata {
     name      = "grafana-dashboard-testing"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    namespace = "monitoring"
     labels = {
       grafana_dashboard = "1"
     }
@@ -2450,7 +1568,6 @@ resource "kubernetes_config_map" "grafana_dashboard_testing" {
     })
   }
 
-  depends_on = [helm_release.kube_prometheus_stack]
 }
 
 # =============================================================================
@@ -2466,11 +1583,10 @@ resource "kubernetes_config_map" "grafana_dashboard_testing" {
 # (job="smoke-tests", app="abaci-app") with no pod label. See smoke-tests.tf
 # (PUSHGATEWAY_URL) and apps/web/scripts/smoke-test-runner.ts.
 resource "kubernetes_deployment" "pushgateway" {
-  depends_on = [helm_release.kube_prometheus_stack]
 
   metadata {
     name      = "pushgateway"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    namespace = "monitoring"
     labels = {
       app = "pushgateway"
     }
@@ -2559,7 +1675,7 @@ resource "kubernetes_deployment" "pushgateway" {
 resource "kubernetes_service" "pushgateway" {
   metadata {
     name      = "pushgateway"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    namespace = "monitoring"
     labels = {
       app = "pushgateway"
     }
@@ -2583,7 +1699,7 @@ resource "kubernetes_service" "pushgateway" {
 # retains its identity. null_resource + kubectl for the same CRD-at-plan-time
 # reason as app_service_monitor above.
 resource "null_resource" "pushgateway_service_monitor" {
-  depends_on = [helm_release.kube_prometheus_stack, kubernetes_service.pushgateway]
+  depends_on = [kubernetes_service.pushgateway]
 
   provisioner "local-exec" {
     command = <<-EOT
@@ -2598,7 +1714,7 @@ resource "null_resource" "pushgateway_service_monitor" {
       kind: ServiceMonitor
       metadata:
         name: pushgateway
-        namespace: ${kubernetes_namespace.monitoring.metadata[0].name}
+        namespace: monitoring
         labels:
           app: pushgateway
       spec:
@@ -2607,7 +1723,7 @@ resource "null_resource" "pushgateway_service_monitor" {
             app: pushgateway
         namespaceSelector:
           matchNames:
-          - ${kubernetes_namespace.monitoring.metadata[0].name}
+          - monitoring
         endpoints:
         - port: http
           path: /metrics
@@ -2618,6 +1734,6 @@ resource "null_resource" "pushgateway_service_monitor" {
   }
 
   triggers = {
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    namespace = "monitoring"
   }
 }

@@ -165,18 +165,6 @@ variable "ghcr_username" {
   default     = "antialias"
 }
 
-variable "grafana_admin_password" {
-  description = "Admin password for Grafana dashboard"
-  type        = string
-  sensitive   = true
-}
-
-variable "smtp_password" {
-  description = "Gmail app password for AlertManager SMTP notifications"
-  type        = string
-  sensitive   = true
-}
-
 # --- claude-issue-bot (answers Gitea issue-comment questions; service deployed on the NAS) ---
 # See infra/terraform/claude-issue-bot.tf and the antialias/claude-issue-bot repo.
 

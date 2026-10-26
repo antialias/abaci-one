@@ -309,12 +309,24 @@ All three Prometheus targets remained up. App source commits: home-infra `4b7a2e
 yoto-bridge `5aa93ee`; OpenClaw's corrected apply path is `0c466fd`.
 
 **Do not apply this root to perform these migrations.** Its unrelated ArgoCD
-configuration discrepancy can prune two live PVCs. The original 30 state-owned
-monitoring resources remain here until they are otherwise being touched. In
-particular, the older `abaci-song-doorbell` scrape stays here even though the
-runtime now lives in yoto-bridge. Existing scrape bearer Secrets are unchanged;
-reproducible CI management is still platform#25 item 4.
+configuration discrepancy can prune two live PVCs. Existing scrape bearer Secrets
+are unchanged; reproducible CI management is still platform#25 item 4.
 
-**The shared stack stays here**: `helm_release.kube_prometheus_stack`, cluster-wide
-node health, ArgoCD, cert-manager. Gitea moved to platform `k8s/gitea` on 2026-10-05.
+**The shared monitoring stack moved to platform `k8s/monitoring` on 2026-10-26**:
+kube-prometheus-stack, Alertmanager templates, Grafana/Prometheus ingresses and
+the node alert rules (including node health). Woodpecker CI applies that root; a
+Helm change needs a manual run on `main` with `ROOT=monitoring`. The Ops dashboard
+(Gitea Runner panels for a runner that no longer exists) was deleted the same day,
+not moved. The old `abaci-song-doorbell` scrape is no longer declared here.
+
+This root retains the app-side monitoring blocks in `monitoring.tf`:
+`helm_release.tempo`, `kubernetes_config_map.grafana_datasource_tempo`,
+`null_resource.app_service_monitor`, `kubernetes_config_map.grafana_dashboard_product`,
+`kubernetes_config_map.grafana_dashboard_testing`, `kubernetes_deployment.pushgateway`,
+`kubernetes_service.pushgateway`, and `null_resource.pushgateway_service_monitor`.
+`claude-usage-monitor.tf` and `dns-probe-monitor.tf` also remain until they move to
+home-infra and netwatch, respectively. The platform root creates the `monitoring`
+namespace used by these resources.
+
+ArgoCD and cert-manager remain here. Gitea moved to platform `k8s/gitea` on 2026-10-05.
 Apps own their wiring; platform owns the shared capability and contract.
