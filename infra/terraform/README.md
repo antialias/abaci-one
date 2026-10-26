@@ -324,9 +324,12 @@ This root retains the app-side monitoring blocks in `monitoring.tf`:
 `null_resource.app_service_monitor`, `kubernetes_config_map.grafana_dashboard_product`,
 `kubernetes_config_map.grafana_dashboard_testing`, `kubernetes_deployment.pushgateway`,
 `kubernetes_service.pushgateway`, and `null_resource.pushgateway_service_monitor`.
-`claude-usage-monitor.tf` and `dns-probe-monitor.tf` also remain until they move to
-home-infra and netwatch, respectively. The platform root creates the `monitoring`
-namespace used by these resources.
+The Claude usage monitor moved to home-infra the same day
+(`services/claude-usage-exporter/infra/terraform/`, with its promtool tests, live-verify
+script and dashboard tool under `services/claude-usage-exporter/infra/tools/`) and the DNS
+probe monitor to netwatch, which already declared its scrape and dashboard; their seven
+state records were removed from this root's state. The platform root creates the
+`monitoring` namespace used by the resources that stay.
 
 ArgoCD and cert-manager remain here. Gitea moved to platform `k8s/gitea` on 2026-10-05.
 Apps own their wiring; platform owns the shared capability and contract.
