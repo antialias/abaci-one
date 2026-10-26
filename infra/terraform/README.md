@@ -331,5 +331,6 @@ probe monitor to netwatch, which already declared its scrape and dashboard; thei
 state records were removed from this root's state. The platform root creates the
 `monitoring` namespace used by the resources that stay.
 
-ArgoCD and cert-manager remain here. Gitea moved to platform `k8s/gitea` on 2026-10-05.
+ArgoCD and cert-manager remain here. Gitea moved to platform `k8s/gitea` on 2026-10-05 and the
+Woodpecker server to platform `k8s/woodpecker` on 2026-10-11 (b8337c4b4).
 Apps own their wiring; platform owns the shared capability and contract.
