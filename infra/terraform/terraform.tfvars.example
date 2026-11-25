@@ -15,9 +15,9 @@ auth_secret       = "generate-with-openssl-rand-base64-32"
 # switch_media_url   = "http://192.168.86.51:8788"
 # switch_media_login = "..."                                # the app's proxy login
 
-# Optional - text calls through the claude-switch-proxy
-# llm_switch_api_key       = "..."                         # the proxy's client secret (also used by claude_code)
-# llm_default_provider     = "claude_code"                 # only once the image has the claude CLI
+# Optional - text and vision calls as `claude -p` through the claude-switch-proxy
+# llm_switch_api_key       = "..."                         # the proxy's client secret (feeds LLM_CLAUDE_CODE_API_KEY)
+# llm_default_provider     = "claude_code"                 # kill switch: "openai"
 # llm_claude_code_model    = "claude-sonnet-5"             # or "claude-abaci" once the brain has that class
 # Optional - ElevenLabs music through the proxy's door
 # elevenlabs_api_base_url  = "http://192.168.86.51:8788/elevenlabs"

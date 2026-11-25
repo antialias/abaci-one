@@ -55,7 +55,6 @@ export {
 	spawnClaudeCli,
 } from "./providers/claude-code";
 export { OpenAIProvider } from "./providers/openai";
-export { OpenAIResponsesProvider } from "./providers/openai-responses";
 export type { RetryOptions } from "./retry";
 // Retry utilities (for advanced usage)
 export {

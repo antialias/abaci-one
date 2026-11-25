@@ -4,7 +4,7 @@ Type-safe LLM client with multi-provider support, Zod schema validation, and ret
 
 ## Features
 
-- **Multi-provider support**: OpenAI, Anthropic, the switch proxy's OpenAI wire (`switch`), and Claude Code through the proxy (`claude_code`)
+- **Multi-provider support**: Claude Code through the switch proxy (`claude_code`, the default in production), with OpenAI and Anthropic as fallbacks
 - **Type-safe responses**: Zod schema validation with full TypeScript inference
 - **Schema-driven prompts**: Zod `.describe()` annotations are automatically included in prompts
 - **Retry with feedback**: Failed validations are fed back to the LLM for correction

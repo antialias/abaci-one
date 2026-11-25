@@ -17,14 +17,6 @@ const PROVIDER_DEFAULTS: Record<string, Partial<ProviderConfig>> = {
 		baseUrl: "https://api.anthropic.com/v1",
 		defaultModel: "claude-sonnet-4-20250514",
 	},
-	// The house claude-switch-proxy's OpenAI-compatible wire. Deliberately NO
-	// baseUrl default: the generic fallback would invent
-	// https://api.switch.com/v1 — a real third-party domain that must never
-	// see the proxy client secret — so LLM_SWITCH_BASE_URL is required (the
-	// client factory refuses the invented fallback).
-	switch: {
-		defaultModel: "abaci",
-	},
 	// Claude Code in print mode through the switch proxy. Deliberately NO
 	// baseUrl default: the generic fallback would invent
 	// https://api.claude_code.com/v1, a host that must never see the proxy
