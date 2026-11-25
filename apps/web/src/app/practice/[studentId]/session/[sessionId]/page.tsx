@@ -6,6 +6,8 @@ import {
   getRecentSessionResults,
   getSessionPlan,
 } from '@/lib/curriculum/server'
+import { isEnabled } from '@/lib/feature-flags'
+import { getEffectiveTierForStudent } from '@/lib/subscription'
 import { getUserId } from '@/lib/viewer'
 import { SummaryClient } from '../../summary/SummaryClient'
 
@@ -56,6 +58,14 @@ export default async function SessionPage({ params }: SessionPageProps) {
   // stored per-session value could be poisoned by legacy/idle-capped samples.
   const avgSecondsPerProblem = paceAssessment.avgSecondsPerProblem
 
+  // Same gate as the latest-session summary page: a past session shows its song
+  // (and the family's "make my song now" card) too.
+  const [songFlagEnabled, tierResult] = await Promise.all([
+    isEnabled('session-song.enabled'),
+    getEffectiveTierForStudent(studentId, viewerId),
+  ])
+  const songEnabled = songFlagEnabled && tierResult.tier === 'family'
+
   return (
     <SummaryClient
       studentId={studentId}
@@ -64,6 +74,7 @@ export default async function SessionPage({ params }: SessionPageProps) {
       avgSecondsPerProblem={avgSecondsPerProblem}
       paceAssessment={paceAssessment}
       problemHistory={problemHistory}
+      songEnabled={songEnabled}
     />
   )
 }
