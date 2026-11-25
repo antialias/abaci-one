@@ -129,6 +129,15 @@ RUN ARCH=$(uname -m) && \
     mv "typst-${TYPST_ARCH}/typst" /usr/local/bin/typst && \
     chmod +x /usr/local/bin/typst
 
+# Claude Code CLI stage - the claude_code LLM provider runs `claude -p`.
+# The npm package needs Node 22 to install, but what it installs is one
+# self-contained native binary, so only that binary goes into the runner.
+FROM node:22-slim AS claude-cli
+ARG CLAUDE_CODE_VERSION=2.1.332
+RUN npm install -g --no-audit --no-fund "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" && \
+    cp "$(readlink -f "$(command -v claude)")" /usr/local/bin/claude-native && \
+    /usr/local/bin/claude-native --version
+
 # Production image
 FROM node:20-slim AS runner
 WORKDIR /app
@@ -150,6 +159,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy typst binary from typst-builder stage
 COPY --from=typst-builder /usr/local/bin/typst /usr/local/bin/typst
+
+# Claude Code CLI for the claude_code LLM provider (checked to run here)
+COPY --from=claude-cli /usr/local/bin/claude-native /usr/local/bin/claude
+RUN claude --version
 
 # Create non-root user
 RUN addgroup --system --gid 1001 nodejs && \

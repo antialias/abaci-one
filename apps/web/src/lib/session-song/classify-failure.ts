@@ -12,6 +12,50 @@ export interface ClassifiedSongFailure {
 
 const KID_SAFE_MESSAGE = "Couldn't make a song this time. A grown-up will help."
 
+type Remediation = ClassifiedSongFailure['remediation']
+
+/** Who failed, for the owner's message: the music service or the text model's provider. */
+type FailureSource = 'elevenlabs' | 'claude_code' | 'openai'
+
+const SOURCE_MESSAGES: Record<
+  FailureSource,
+  { missing: string; auth: string; remediation: Remediation }
+> = {
+  elevenlabs: {
+    missing:
+      'Missing ElevenLabs Music API key. Set ELEVENLABS_MUSIC_API_KEY in the app-env Kubernetes secret.',
+    auth: 'The ElevenLabs Music API key is invalid. Update ELEVENLABS_MUSIC_API_KEY in the app-env Kubernetes secret.',
+    remediation: {
+      label: 'ElevenLabs API keys',
+      href: 'https://elevenlabs.io/app/settings/api-keys',
+    },
+  },
+  claude_code: {
+    missing:
+      'Claude Code is not set up: set LLM_CLAUDE_CODE_API_KEY (the switch proxy client secret) and LLM_CLAUDE_CODE_BASE_URL, and check the claude CLI is in the image.',
+    auth: "The switch proxy refused the app's client secret. Check LLM_CLAUDE_CODE_API_KEY against the proxy's client secret.",
+    remediation: null,
+  },
+  openai: {
+    missing: 'Missing OpenAI API key. Set LLM_OPENAI_API_KEY in the app-env Kubernetes secret.',
+    auth: 'The OpenAI API key is invalid. Update LLM_OPENAI_API_KEY in the app-env Kubernetes secret.',
+    remediation: { label: 'OpenAI API keys', href: 'https://platform.openai.com/account/api-keys' },
+  },
+}
+
+function failureSource(lower: string): FailureSource {
+  if (
+    lower.includes('elevenlabs') ||
+    lower.includes('eleven_labs') ||
+    lower.includes('music_api')
+  ) {
+    return 'elevenlabs'
+  }
+  // llm-client prefixes its errors with the provider's name.
+  if (lower.includes('claude_code') || lower.includes('claude code')) return 'claude_code'
+  return 'openai'
+}
+
 export function classifySongFailure(rawError: unknown): ClassifiedSongFailure {
   const message =
     rawError instanceof Error
@@ -26,42 +70,35 @@ export function classifySongFailure(rawError: unknown): ClassifiedSongFailure {
     lower.includes('environment variable is not set') ||
     lower.includes('missing env') ||
     lower.includes('missing environment variable') ||
-    lower.includes('elevenlabs_music_api_key')
+    lower.includes('elevenlabs_music_api_key') ||
+    lower.includes('is not configured') ||
+    lower.includes('cli not found')
   ) {
-    const isElevenLabs =
-      lower.includes('elevenlabs') || lower.includes('eleven_labs') || lower.includes('music_api')
-    const envName = isElevenLabs ? 'ELEVENLABS_MUSIC_API_KEY' : 'LLM_OPENAI_API_KEY'
+    const source = SOURCE_MESSAGES[failureSource(lower)]
     return {
       kind: 'missing_config',
       userMessage: KID_SAFE_MESSAGE,
-      ownerMessage: isElevenLabs
-        ? `Missing ElevenLabs Music API key. Set ${envName} in the app-env Kubernetes secret.`
-        : `Missing OpenAI API key. Set ${envName} in the app-env Kubernetes secret.`,
-      remediation: isElevenLabs
-        ? { label: 'ElevenLabs API keys', href: 'https://elevenlabs.io/app/settings/api-keys' }
-        : { label: 'OpenAI API keys', href: 'https://platform.openai.com/account/api-keys' },
+      ownerMessage: source.missing,
+      remediation: source.remediation,
     }
   }
 
-  // Auth failures — OpenAI / ElevenLabs return 401 with consistent strings.
+  // Auth failures — 401 with consistent strings (OpenAI, ElevenLabs, the proxy).
   if (
     lower.includes('401') ||
     lower.includes('incorrect api key') ||
     lower.includes('invalid api key') ||
     lower.includes('invalid_api_key') ||
     lower.includes('unauthorized') ||
-    lower.includes('authentication failed')
+    lower.includes('authentication failed') ||
+    lower.includes('authentication_failed')
   ) {
-    const isElevenLabs = lower.includes('elevenlabs') || lower.includes('eleven_labs')
+    const source = SOURCE_MESSAGES[failureSource(lower)]
     return {
       kind: 'auth_invalid',
       userMessage: KID_SAFE_MESSAGE,
-      ownerMessage: isElevenLabs
-        ? 'The ElevenLabs Music API key is invalid. Update ELEVENLABS_MUSIC_API_KEY in the app-env Kubernetes secret.'
-        : 'The OpenAI API key is invalid. Update LLM_OPENAI_API_KEY in the app-env Kubernetes secret.',
-      remediation: isElevenLabs
-        ? { label: 'ElevenLabs API keys', href: 'https://elevenlabs.io/app/settings/api-keys' }
-        : { label: 'OpenAI API keys', href: 'https://platform.openai.com/account/api-keys' },
+      ownerMessage: source.auth,
+      remediation: source.remediation,
     }
   }
 

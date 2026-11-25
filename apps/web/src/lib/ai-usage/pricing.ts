@@ -67,6 +67,20 @@ export const PRICING: Record<string, PricingEntry> = {
     pricing: { inputPerMillion: 0.6, outputPerMillion: 2.5 },
   },
 
+  // --- Claude Code through the switch proxy (provider claude_code) ---
+  // Served by the household's Claude subscriptions, so there is no per-token
+  // bill; priced as an API-key equivalent so the ledger still shows what the
+  // traffic is worth. The rate assumes Sonnet's long-standing $3/$15 list
+  // price — correct it if Sonnet 5's differs. Missing row would price as $0.
+  'claude_code/claude-sonnet-5': {
+    type: 'tokens',
+    pricing: { inputPerMillion: 3, outputPerMillion: 15 },
+  },
+  'claude_code/claude-abaci': {
+    type: 'tokens',
+    pricing: { inputPerMillion: 3, outputPerMillion: 15 },
+  },
+
   // --- OpenAI Realtime ---
   'openai/gpt-realtime-1.5': {
     type: 'audio',

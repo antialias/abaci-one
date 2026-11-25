@@ -8,6 +8,7 @@ import {
 import { Logger } from "./logger";
 import type { StreamMiddleware } from "./middleware";
 import { AnthropicProvider } from "./providers/anthropic";
+import { ClaudeCodeProvider } from "./providers/claude-code";
 import { OpenAIProvider } from "./providers/openai";
 import { OpenAIResponsesProvider } from "./providers/openai-responses";
 import { executeWithRetry } from "./retry";
@@ -67,6 +68,22 @@ const providerFactories: Record<string, ProviderFactory> = {
 			);
 		}
 		return new OpenAIProvider(providerConfig);
+	},
+	// Claude Code in print mode (`claude -p`), pointed at the switch proxy.
+	// Configured via LLM_CLAUDE_CODE_API_KEY (the proxy client secret) and
+	// LLM_CLAUDE_CODE_BASE_URL (the proxy root); see providers/claude-code.ts.
+	claude_code: (config, name) => {
+		const providerConfig = getProviderConfig(config, name);
+		if (!providerConfig) throw new ProviderNotConfiguredError(name);
+		// Same guard as `switch`: the generic fallback would invent
+		// https://api.claude_code.com/v1 and hand it the proxy secret.
+		if (providerConfig.baseUrl === "https://api.claude_code.com/v1") {
+			throw new Error(
+				"claude_code provider requires an explicit LLM_CLAUDE_CODE_BASE_URL " +
+					"(the switch proxy's root, e.g. http://nas:8787)",
+			);
+		}
+		return new ClaudeCodeProvider(providerConfig);
 	},
 };
 

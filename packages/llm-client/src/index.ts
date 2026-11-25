@@ -45,6 +45,13 @@ export {
 	type PersistenceOptions,
 } from "./middleware/persistence";
 export { AnthropicProvider } from "./providers/anthropic";
+export {
+	type ClaudeCliResult,
+	type ClaudeCliRun,
+	type ClaudeCliRunner,
+	ClaudeCodeProvider,
+	spawnClaudeCli,
+} from "./providers/claude-code";
 // Providers (for advanced usage / custom providers)
 export { BaseProvider } from "./providers/base";
 export { OpenAIProvider } from "./providers/openai";

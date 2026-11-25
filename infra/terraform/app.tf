@@ -20,6 +20,7 @@ resource "kubernetes_secret" "app_env" {
     EMAIL_FROM                     = var.email_from
     LLM_OPENAI_API_KEY             = var.openai_api_key
     LLM_SWITCH_API_KEY             = var.llm_switch_api_key
+    LLM_CLAUDE_CODE_API_KEY        = var.llm_switch_api_key
     GEMINI_API_KEY                 = var.gemini_api_key
     ELEVENLABS_MUSIC_API_KEY       = var.elevenlabs_music_api_key
     COVERAGE_API_TOKEN             = var.coverage_api_token
@@ -91,6 +92,15 @@ resource "kubernetes_config_map" "app_config" {
     LLM_SWITCH_BASE_URL      = var.llm_switch_base_url
     LLM_SWITCH_DEFAULT_MODEL = "abaci"
     LLM_DEFAULT_PROVIDER     = var.llm_default_provider
+    # Claude Code in print mode (`claude -p`) through the same proxy, using its
+    # native Claude wire; the key is the same proxy client secret. Selected by
+    # llm_default_provider = "claude_code".
+    LLM_CLAUDE_CODE_BASE_URL      = var.llm_claude_code_base_url
+    LLM_CLAUDE_CODE_DEFAULT_MODEL = var.llm_claude_code_model
+    # ElevenLabs music: empty = ElevenLabs itself; the proxy's door is
+    # http://<nas>:8788/elevenlabs (then elevenlabs_music_api_key is the app's
+    # proxy login, base64 "name:password").
+    ELEVENLABS_API_BASE_URL = var.elevenlabs_api_base_url
   }
 }
 
