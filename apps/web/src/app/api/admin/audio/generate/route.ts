@@ -1,11 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { startAudioGeneration } from '@/lib/tasks/audio-generate'
+import { generationRefusal } from '@/lib/audio/voices'
 import { withAuth } from '@/lib/auth/withAuth'
+import { startAudioGeneration } from '@/lib/tasks/audio-generate'
 
 /**
  * POST /api/admin/audio/generate
  *
- * Starts a background task to generate all missing TTS clips for a given voice.
+ * Starts a background task to generate all missing TTS clips for an
+ * ElevenLabs voice. Retired OpenAI voices are refused (400).
  * Returns the task ID for tracking via the background task system.
  *
  * Body: { voice: string }
@@ -26,6 +28,12 @@ export const POST = withAuth(
         (!Array.isArray(clipIds) || !clipIds.every((id: unknown) => typeof id === 'string'))
       ) {
         return NextResponse.json({ error: 'clipIds must be an array of strings' }, { status: 400 })
+      }
+
+      // Only ElevenLabs voices generate; retired OpenAI folders are play-only.
+      const refusal = generationRefusal(voice.trim())
+      if (refusal) {
+        return NextResponse.json({ error: refusal }, { status: 400 })
       }
 
       const taskId = await startAudioGeneration({

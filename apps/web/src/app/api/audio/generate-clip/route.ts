@@ -5,18 +5,20 @@
  * Body: { voice: string, clipId: string, text: string, tone: string }
  * Returns: audio/mpeg bytes (or JSON error)
  *
- * Generates a clip via OpenAI TTS, caches it to disk, and returns the audio.
- * If the clip already exists on disk, returns the cached version.
+ * Generates a clip via ElevenLabs (lib/speech), caches it to disk, and returns
+ * the audio. If the clip already exists on disk, returns the cached version,
+ * for any voice; only ElevenLabs voices generate (retired OpenAI voices are
+ * refused with 400).
  */
 
-import { openAiMediaBaseUrl } from '@/lib/openai-base'
 import { createHash } from 'crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
-import { recordTtsUsage } from '@/lib/ai-usage/helpers'
 import { AiFeature } from '@/lib/ai-usage/features'
+import { isSafeVoiceFolder } from '@/lib/audio/voices'
 import { withAuth } from '@/lib/auth/withAuth'
+import { SpeechError, synthesizeSpeech } from '@/lib/speech/synthesize'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
@@ -43,19 +45,8 @@ export const POST = withAuth(async (request, { userId }) => {
     }
 
     // Prevent directory traversal
-    if (
-      voice.includes('/') ||
-      voice.includes('..') ||
-      clipId.includes('/') ||
-      clipId.includes('..')
-    ) {
+    if (!isSafeVoiceFolder(voice) || clipId.includes('/') || clipId.includes('..')) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
-    }
-
-    // Check API key
-    const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 })
     }
 
     // Disk cache check — return existing file if present
@@ -74,31 +65,14 @@ export const POST = withAuth(async (request, { userId }) => {
       }
     }
 
-    // Call OpenAI TTS
-    const response = await fetch(`${openAiMediaBaseUrl()}/audio/speech`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini-tts',
-        voice,
-        input: text,
-        instructions: tone || undefined,
-        response_format: 'mp3',
-      }),
+    // Only ElevenLabs voices generate; synthesizeSpeech refuses retired
+    // OpenAI folders (play-only) with a 400 and a message saying why.
+    const { audio: buffer } = await synthesizeSpeech({
+      voice,
+      text,
+      tone,
+      usage: { userId, feature: AiFeature.TTS_CLIP },
     })
-
-    if (!response.ok) {
-      const errText = await response.text()
-      console.error('[generate-clip] OpenAI error:', response.status, errText)
-      return NextResponse.json({ error: `OpenAI error: ${response.status}` }, { status: 502 })
-    }
-
-    const arrayBuffer = await response.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    recordTtsUsage(text, 'gpt-4o-mini-tts', { userId, feature: AiFeature.TTS_CLIP })
 
     // Save to disk cache
     mkdirSync(voiceDir, { recursive: true })
@@ -112,6 +86,10 @@ export const POST = withAuth(async (request, { userId }) => {
       },
     })
   } catch (error) {
+    if (error instanceof SpeechError) {
+      console.error('[generate-clip] speech error:', error.kind, error.message)
+      return NextResponse.json({ error: error.message }, { status: error.httpStatus })
+    }
     console.error('[generate-clip] Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

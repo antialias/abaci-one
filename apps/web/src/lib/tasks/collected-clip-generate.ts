@@ -1,14 +1,14 @@
-import { openAiMediaBaseUrl } from '@/lib/openai-base'
+import { inArray } from 'drizzle-orm'
 import { existsSync, mkdirSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { db } from '@/db'
-import { ttsCollectedClips, ttsCollectedClipSay } from '@/db/schema'
-import { inArray } from 'drizzle-orm'
+import { ttsCollectedClipSay, ttsCollectedClips } from '@/db/schema'
+import { AiFeature } from '../ai-usage/features'
+import { resolveCanonicalText } from '../audio/clipHash'
+import { generationRefusal } from '../audio/voices'
+import { describeSpeechFailure, synthesizeSpeech } from '../speech/synthesize'
 import { createTask } from '../task-manager'
 import type { CollectedClipGenerateEvent } from './events'
-import { resolveCanonicalText } from '../audio/clipHash'
-import { recordTtsUsage } from '../ai-usage/helpers'
-import { AiFeature } from '../ai-usage/features'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
@@ -40,10 +40,13 @@ function resolveSayText(
 }
 
 /**
- * Start a background task to generate OpenAI TTS mp3s for collected clips.
+ * Start a background task to generate mp3s for collected clips in an
+ * ElevenLabs voice (lib/speech). Retired OpenAI voices are refused before
+ * anything is generated.
  *
- * Collected clips store their tone as freeform text which is passed directly
- * to the OpenAI `instructions` param. Files are saved as `{clipId}.mp3`.
+ * Collected clips store their tone as freeform text (or a registered tone
+ * name); lib/audio/toneDirections turns it into an audio tag. Files are saved
+ * as `{clipId}.mp3`.
  */
 export async function startCollectedClipGeneration(
   input: CollectedClipGenerateInput
@@ -53,9 +56,9 @@ export async function startCollectedClipGeneration(
     CollectedClipGenerateOutput,
     CollectedClipGenerateEvent
   >('collected-clip-generate', input, async (handle, config) => {
-    const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      handle.fail('LLM_OPENAI_API_KEY is not configured')
+    const refusal = generationRefusal(config.voice)
+    if (refusal) {
+      handle.fail(refusal)
       return
     }
 
@@ -167,46 +170,22 @@ export async function startCollectedClipGeneration(
       const inputText = resolveSayText(sayByClipId, clip.id) ?? clip.id
 
       try {
-        const response = await fetch(`${openAiMediaBaseUrl()}/audio/speech`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini-tts',
-            voice: config.voice,
-            input: inputText,
-            instructions: clip.tone,
-            response_format: 'mp3',
-          }),
+        const { audio } = await synthesizeSpeech({
+          voice: config.voice,
+          text: inputText,
+          tone: clip.tone,
+          usage: config._userId
+            ? {
+                userId: config._userId,
+                feature: AiFeature.TTS_COLLECTED,
+                backgroundTaskId: handle.id,
+              }
+            : undefined,
         })
-
-        if (!response.ok) {
-          const errText = await response.text()
-          errors++
-          const errorMsg = `HTTP ${response.status}: ${errText}`
-          consecutiveErrors++
-          lastErrorMessage = errorMsg
-          handle.emit({
-            type: 'cc_clip_error',
-            clipId: clip.id,
-            error: errorMsg,
-          })
-        } else {
-          const arrayBuffer = await response.arrayBuffer()
-          writeFileSync(join(voiceDir, `${clip.id}.mp3`), Buffer.from(arrayBuffer))
-          generated++
-          consecutiveErrors = 0
-          if (config._userId) {
-            recordTtsUsage(inputText, 'gpt-4o-mini-tts', {
-              userId: config._userId,
-              feature: AiFeature.TTS_COLLECTED,
-              backgroundTaskId: handle.id,
-            })
-          }
-          handle.emit({ type: 'cc_clip_done', clipId: clip.id })
-        }
+        writeFileSync(join(voiceDir, `${clip.id}.mp3`), audio)
+        generated++
+        consecutiveErrors = 0
+        handle.emit({ type: 'cc_clip_done', clipId: clip.id })
       } catch (err) {
         errors++
         const errorMsg = err instanceof Error ? err.message : String(err)
@@ -221,7 +200,7 @@ export async function startCollectedClipGeneration(
 
       // Abort early on systemic failures
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-        const friendlyMsg = describeSystemicError(lastErrorMessage, config.voice)
+        const friendlyMsg = describeSpeechFailure(lastErrorMessage, config.voice)
         handle.fail(friendlyMsg)
         return
       }
@@ -244,24 +223,4 @@ export async function startCollectedClipGeneration(
       total: clips.length,
     })
   })
-}
-
-/** Map raw error messages to user-friendly descriptions for systemic failures. */
-function describeSystemicError(rawError: string, voice: string): string {
-  if (rawError.includes('EACCES') || rawError.includes('permission denied')) {
-    return `Permission denied writing audio files for voice "${voice}". The server cannot write to the audio storage directory. An admin needs to fix the directory permissions.`
-  }
-  if (rawError.includes('ENOSPC') || rawError.includes('no space')) {
-    return `Disk full — not enough space to write audio files for voice "${voice}".`
-  }
-  if (rawError.includes('ENOENT')) {
-    return `Audio storage directory not found for voice "${voice}". The volume may not be mounted.`
-  }
-  if (rawError.includes('HTTP 401') || rawError.includes('HTTP 403')) {
-    return `OpenAI API authentication failed. Check that LLM_OPENAI_API_KEY is valid.`
-  }
-  if (rawError.includes('HTTP 429')) {
-    return `OpenAI API rate limit exceeded. Try again later or reduce batch size.`
-  }
-  return `Generation failed after repeated errors: ${rawError}`
 }

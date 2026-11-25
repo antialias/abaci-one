@@ -1,18 +1,19 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
-import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
-import { useTTS } from '@/hooks/useTTS'
-import { useBackgroundTask } from '@/hooks/useBackgroundTask'
-import { useGenerateCollectedClips, collectedClipKeys } from '@/hooks/useCollectedClips'
-import type { CollectedClipGenerateOutput } from '@/lib/tasks/collected-clip-generate'
-import type { VoiceSourceData, TtsSay } from '@/lib/audio/TtsAudioManager'
-import { computeClipHash } from '@/lib/audio/clipHash'
-import { getClipMeta } from '@/lib/audio/audioClipRegistry'
-import { ALL_VOICES } from '@/lib/audio/voices'
+import { useQueryClient } from '@tanstack/react-query'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Z_INDEX } from '@/constants/zIndex'
+import { useAudioManagerInstance } from '@/contexts/AudioManagerContext'
+import { useBackgroundTask } from '@/hooks/useBackgroundTask'
+import { collectedClipKeys, useGenerateCollectedClips } from '@/hooks/useCollectedClips'
+import { useElevenLabsVoices } from '@/hooks/useElevenLabsVoices'
+import { useTTS } from '@/hooks/useTTS'
+import { getClipMeta } from '@/lib/audio/audioClipRegistry'
+import { computeClipHash } from '@/lib/audio/clipHash'
+import type { TtsSay, VoiceSourceData } from '@/lib/audio/TtsAudioManager'
+import { isElevenLabsVoice } from '@/lib/audio/voices'
+import type { CollectedClipGenerateOutput } from '@/lib/tasks/collected-clip-generate'
 import { css } from '../../../styled-system/css'
 
 // ---------------------------------------------------------------------------
@@ -64,6 +65,7 @@ interface TtsTestPanelProps {
 export function TtsTestPanel({ voiceChain }: TtsTestPanelProps) {
   const manager = useAudioManagerInstance()
   const queryClient = useQueryClient()
+  const { voices: elevenLabsVoices, voiceLabel } = useElevenLabsVoices()
 
   // -- Always-visible state --
   const [text, setText] = useState('')
@@ -733,7 +735,7 @@ export function TtsTestPanel({ voiceChain }: TtsTestPanelProps) {
                           {idx + 1}.
                         </span>
                         <span className={css({ width: '100px', color: '#f0f6fc' })}>
-                          {voiceName}
+                          {'name' in entry.source ? voiceLabel(entry.source.name) : voiceName}
                         </span>
                         <span
                           className={css({
@@ -750,25 +752,27 @@ export function TtsTestPanel({ voiceChain }: TtsTestPanelProps) {
                               : 'no mp3'}
                         </span>
                         {/* Preview link for pregenerated voices without clip */}
-                        {entry.source.type === 'pregenerated' && !entry.hasClip && (
-                          <button
-                            data-action={`preview-${voiceName}`}
-                            onClick={() => handlePreview(voiceName)}
-                            disabled={previewingVoice === voiceName}
-                            className={css({
-                              fontSize: '11px',
-                              background: 'none',
-                              border: 'none',
-                              color: '#58a6ff',
-                              cursor: 'pointer',
-                              padding: 0,
-                              textDecoration: 'underline',
-                              '&:disabled': { opacity: 0.5, cursor: 'wait' },
-                            })}
-                          >
-                            {previewingVoice === voiceName ? 'playing...' : 'preview'}
-                          </button>
-                        )}
+                        {entry.source.type === 'pregenerated' &&
+                          !entry.hasClip &&
+                          isElevenLabsVoice(entry.source.name) && (
+                            <button
+                              data-action={`preview-${voiceName}`}
+                              onClick={() => handlePreview(voiceName)}
+                              disabled={previewingVoice === voiceName}
+                              className={css({
+                                fontSize: '11px',
+                                background: 'none',
+                                border: 'none',
+                                color: '#58a6ff',
+                                cursor: 'pointer',
+                                padding: 0,
+                                textDecoration: 'underline',
+                                '&:disabled': { opacity: 0.5, cursor: 'wait' },
+                              })}
+                            >
+                              {previewingVoice === voiceName ? 'playing...' : 'preview'}
+                            </button>
+                          )}
                         {isFirst && (
                           <span className={css({ color: '#58a6ff', fontSize: '11px' })}>
                             &larr; will speak
@@ -844,6 +848,7 @@ export function TtsTestPanel({ voiceChain }: TtsTestPanelProps) {
                               s.type === 'pregenerated'
                           )
                           .map((s) => s.name)
+                          .filter(isElevenLabsVoice)
                         return chainPregen.length > 0 && chainPregen.every((v) => genVoices.has(v))
                       })()}
                       onCheckedChange={() => {
@@ -853,6 +858,7 @@ export function TtsTestPanel({ voiceChain }: TtsTestPanelProps) {
                               s.type === 'pregenerated'
                           )
                           .map((s) => s.name)
+                          .filter(isElevenLabsVoice)
                         setGenVoices((prev) => {
                           const allSelected = chainPregen.every((v) => prev.has(v))
                           const next = new Set(prev)
@@ -894,7 +900,7 @@ export function TtsTestPanel({ voiceChain }: TtsTestPanelProps) {
                       })}
                     />
 
-                    {ALL_VOICES.map((v) => (
+                    {elevenLabsVoices.map(({ folder: v, name }) => (
                       <DropdownMenu.CheckboxItem
                         key={v}
                         data-action={`toggle-gen-${v}`}
@@ -918,7 +924,7 @@ export function TtsTestPanel({ voiceChain }: TtsTestPanelProps) {
                         <DropdownMenu.ItemIndicator className={css({ width: '16px' })}>
                           &#10003;
                         </DropdownMenu.ItemIndicator>
-                        <span>{v}</span>
+                        <span>{name}</span>
                       </DropdownMenu.CheckboxItem>
                     ))}
                   </DropdownMenu.Content>

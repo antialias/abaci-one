@@ -1,26 +1,33 @@
 'use client'
 
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
-import { AppNavBar } from '@/components/AppNavBar'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { AdminNav } from '@/components/AdminNav'
-import { TtsTestPanel } from '@/components/admin/TtsTestPanel'
+import { AppNavBar } from '@/components/AppNavBar'
 import { ClipRecorder } from '@/components/admin/ClipRecorder'
 import { MicLevelMeter } from '@/components/admin/MicLevelMeter'
+import { TtsTestPanel } from '@/components/admin/TtsTestPanel'
+import { Z_INDEX } from '@/constants/zIndex'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import {
+  collectedClipKeys,
   useCollectedClips,
   useGenerateCollectedClips,
-  collectedClipKeys,
 } from '@/hooks/useCollectedClips'
-import type { CollectedClipGenerateOutput } from '@/lib/tasks/collected-clip-generate'
+import { useElevenLabsVoices } from '@/hooks/useElevenLabsVoices'
 import { isHashClipId } from '@/lib/audio/clipHash'
-import { ALL_VOICES, VOICE_PROVIDERS, getVoiceMeta } from '@/lib/audio/voices'
-import { Z_INDEX } from '@/constants/zIndex'
-import { css } from '../../../../styled-system/css'
 import type { VoiceSourceData } from '@/lib/audio/voiceSource'
+import {
+  getVoiceMeta,
+  isElevenLabsVoice,
+  isReservedVoiceName,
+  isRetiredVoice,
+} from '@/lib/audio/voices'
+import { SPEECH_MODEL } from '@/lib/speech/model'
+import type { CollectedClipGenerateOutput } from '@/lib/tasks/collected-clip-generate'
+import { css } from '../../../../styled-system/css'
 
 interface AudioStatus {
   activeVoice: string
@@ -51,6 +58,11 @@ export default function AdminAudioPage() {
   const reportAudioRef = useRef<HTMLAudioElement | null>(null)
   const queryClient = useQueryClient()
   const { data: session } = useSession()
+  const {
+    voices: elevenLabsVoices,
+    error: elevenLabsVoicesError,
+    voiceLabel,
+  } = useElevenLabsVoices()
 
   // React Query: collected clips with per-voice generation status
   const { data: ccData, isLoading: collectedClipsLoading } = useCollectedClips(ccGenVoice, {
@@ -132,7 +144,7 @@ export default function AdminAudioPage() {
     setVoiceChainDirty(true)
   }
 
-  const handleReportIn = useCallback(async (voiceName: string) => {
+  const handleReportIn = useCallback(async (voiceName: string, displayName: string) => {
     if (reportAudioRef.current) {
       reportAudioRef.current.pause()
       reportAudioRef.current = null
@@ -144,7 +156,7 @@ export default function AdminAudioPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           voice: voiceName,
-          text: `Hey! I'm ${voiceName}, reporting for duty. You picked me, great choice.`,
+          text: `Hey! I'm ${displayName}, reporting for duty. You picked me, great choice.`,
           tone: 'Sassy, confident, and a little cheeky. Short punchy delivery with loads of personality. Have fun with it.',
         }),
       })
@@ -156,7 +168,7 @@ export default function AdminAudioPage() {
         } catch {
           // response wasn't JSON
         }
-        setError(`Report-in failed for ${voiceName}: ${detail}`)
+        setError(`Report-in failed for ${displayName}: ${detail}`)
         setReportingVoice(null)
         return
       }
@@ -169,14 +181,14 @@ export default function AdminAudioPage() {
         URL.revokeObjectURL(url)
       }
       audio.onerror = () => {
-        setError(`Report-in audio playback failed for ${voiceName}`)
+        setError(`Report-in audio playback failed for ${displayName}`)
         setReportingVoice(null)
         URL.revokeObjectURL(url)
       }
       audio.play()
     } catch (err) {
       setError(
-        `Report-in network error for ${voiceName}: ${err instanceof Error ? err.message : String(err)}`
+        `Report-in network error for ${displayName}: ${err instanceof Error ? err.message : String(err)}`
       )
       setReportingVoice(null)
     }
@@ -591,7 +603,7 @@ export default function AdminAudioPage() {
                           </span>
                           <span className={css({ color: '#f0f6fc', fontWeight: '600', flex: 1 })}>
                             {source.type === 'pregenerated'
-                              ? source.name
+                              ? voiceLabel(source.name)
                               : source.type === 'custom'
                                 ? source.name
                                 : source.type === 'generate'
@@ -612,9 +624,9 @@ export default function AdminAudioPage() {
                               (() => {
                                 const meta = getVoiceMeta(source.name)
                                 const providerLabel = meta
-                                  ? `${meta.provider.name} ${meta.model.name}`
+                                  ? `${meta.provider} ${meta.model}`
                                   : 'unknown'
-                                const formatLabel = meta?.model.format ?? 'unknown'
+                                const formatLabel = meta?.format ?? 'unknown'
                                 return (
                                   <>
                                     <span
@@ -690,10 +702,10 @@ export default function AdminAudioPage() {
                               </span>
                             )}
                           </span>
-                          {source.type === 'pregenerated' && (
+                          {source.type === 'pregenerated' && isElevenLabsVoice(source.name) && (
                             <button
                               data-action={`report-in-${source.name}`}
-                              onClick={() => handleReportIn(source.name)}
+                              onClick={() => handleReportIn(source.name, voiceLabel(source.name))}
                               disabled={reportingVoice === source.name}
                               className={css({
                                 background: 'none',
@@ -707,7 +719,7 @@ export default function AdminAudioPage() {
                                 '&:hover': { borderColor: '#58a6ff', color: '#58a6ff' },
                                 '&:disabled': { opacity: 0.7 },
                               })}
-                              title={`Hear ${source.name} introduce itself`}
+                              title={`Hear ${voiceLabel(source.name)} introduce itself`}
                             >
                               {reportingVoice === source.name
                                 ? '\u25B6 ...'
@@ -825,25 +837,52 @@ export default function AdminAudioPage() {
                               )
                               const total = status?.totalCollectedClips ?? 0
 
-                              // Build grouped provider sections, filtering out voices already in chain
-                              const providerGroups = VOICE_PROVIDERS.map((provider) => {
-                                const modelGroups = provider.models
-                                  .map((model) => {
-                                    const available = model.voices.filter(
-                                      (v) => !chainPregenNames.has(v)
-                                    )
-                                    const sorted = [...available].sort((a, b) => {
-                                      const genA = status?.voiceClipCounts?.[a] ?? 0
-                                      const genB = status?.voiceClipCounts?.[b] ?? 0
-                                      const pctA = total > 0 ? genA / total : 0
-                                      const pctB = total > 0 ? genB / total : 0
-                                      return pctB - pctA
-                                    })
-                                    return { model, voices: sorted }
-                                  })
-                                  .filter((g) => g.voices.length > 0)
-                                return { provider, modelGroups }
-                              }).filter((g) => g.modelGroups.length > 0)
+                              // Voices grouped by provider, leaving out those already in the chain:
+                              // ElevenLabs voices from the door, then retired OpenAI folders that
+                              // still hold clips (play only, never generated into again).
+                              const byCoverage = (a: string, b: string) =>
+                                (status?.voiceClipCounts?.[b] ?? 0) -
+                                (status?.voiceClipCounts?.[a] ?? 0)
+                              const providerGroups = [
+                                {
+                                  provider: { id: 'elevenlabs', name: 'ElevenLabs' },
+                                  modelGroups: [
+                                    {
+                                      model: {
+                                        id: SPEECH_MODEL,
+                                        name: SPEECH_MODEL,
+                                        format: 'mp3',
+                                      },
+                                      voices: elevenLabsVoices
+                                        .map((v) => v.folder)
+                                        .filter((f) => !chainPregenNames.has(f))
+                                        .sort(byCoverage),
+                                    },
+                                  ],
+                                },
+                                {
+                                  provider: { id: 'openai', name: 'OpenAI' },
+                                  modelGroups: [
+                                    {
+                                      model: {
+                                        id: 'retired',
+                                        name: 'retired · plays only',
+                                        format: 'mp3',
+                                      },
+                                      voices: Object.keys(status?.voiceClipCounts ?? {})
+                                        .filter(
+                                          (f) => isRetiredVoice(f) && !chainPregenNames.has(f)
+                                        )
+                                        .sort(byCoverage),
+                                    },
+                                  ],
+                                },
+                              ]
+                                .map((g) => ({
+                                  ...g,
+                                  modelGroups: g.modelGroups.filter((m) => m.voices.length > 0),
+                                }))
+                                .filter((g) => g.modelGroups.length > 0)
 
                               const hasAnyAvailable =
                                 providerGroups.length > 0 || !hasBrowser || !hasGenerate
@@ -862,7 +901,7 @@ export default function AdminAudioPage() {
                                 )
                               }
 
-                              const multipleProviders = VOICE_PROVIDERS.length > 1
+                              const multipleProviders = providerGroups.length > 1
                               const sectionSep = (
                                 <DropdownMenu.Separator
                                   className={css({
@@ -917,7 +956,7 @@ export default function AdminAudioPage() {
                                             fontSize: '13px',
                                           })}
                                         >
-                                          {v}
+                                          {voiceLabel(v)}
                                         </span>
                                         <span
                                           className={css({
@@ -970,7 +1009,7 @@ export default function AdminAudioPage() {
 
                               const sections: React.ReactNode[] = []
 
-                              // Auto-generate — on-demand via OpenAI API
+                              // Auto-generate — on-demand via ElevenLabs
                               if (!hasGenerate) {
                                 sections.push(
                                   <DropdownMenu.Item
@@ -1016,7 +1055,7 @@ export default function AdminAudioPage() {
                                       </span>
                                     </div>
                                     <div className={css({ color: '#8b949e', fontSize: '12px' })}>
-                                      Generates missing clips via OpenAI when needed
+                                      Generates missing clips via ElevenLabs when needed
                                     </div>
                                   </DropdownMenu.Item>
                                 )
@@ -1244,7 +1283,7 @@ export default function AdminAudioPage() {
                                 const name = newCustomVoiceName.trim()
                                 if (!name) return
                                 if (
-                                  ALL_VOICES.includes(name) ||
+                                  isReservedVoiceName(name) ||
                                   voiceChain.some(
                                     (s) =>
                                       (s.type === 'pregenerated' || s.type === 'custom') &&
@@ -1283,7 +1322,7 @@ export default function AdminAudioPage() {
                               const name = newCustomVoiceName.trim()
                               if (!name) return
                               if (
-                                ALL_VOICES.includes(name) ||
+                                isReservedVoiceName(name) ||
                                 voiceChain.some(
                                   (s) =>
                                     (s.type === 'pregenerated' || s.type === 'custom') &&
@@ -1423,7 +1462,7 @@ export default function AdminAudioPage() {
                         const generated = status?.voiceClipCounts?.[ccGenVoice] ?? 0
                         const total = status?.totalCollectedClips ?? 0
                         if (total === 0) return ''
-                        return `${total} clips \u00b7 viewing ${ccGenVoice} (${generated}/${total})`
+                        return `${total} clips \u00b7 viewing ${voiceLabel(ccGenVoice)} (${generated}/${total})`
                       })()}
                     </span>
                     <span className={css({ color: '#8b949e', fontSize: '12px' })}>
@@ -1468,11 +1507,32 @@ export default function AdminAudioPage() {
                           fontSize: '13px',
                         })}
                       >
-                        {ALL_VOICES.map((v) => (
-                          <option key={v} value={v}>
-                            {v}
-                          </option>
-                        ))}
+                        {elevenLabsVoices.length > 0 && (
+                          <optgroup label="ElevenLabs">
+                            {elevenLabsVoices.map((v) => (
+                              <option key={v.folder} value={v.folder}>
+                                {v.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {(() => {
+                          const retired = Object.keys(status?.voiceClipCounts ?? {}).filter(
+                            isRetiredVoice
+                          )
+                          if (isRetiredVoice(ccGenVoice) && !retired.includes(ccGenVoice)) {
+                            retired.push(ccGenVoice)
+                          }
+                          return retired.length > 0 ? (
+                            <optgroup label="Retired OpenAI (plays only)">
+                              {retired.map((v) => (
+                                <option key={v} value={v}>
+                                  {v}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ) : null
+                        })()}
                         {(() => {
                           const customVoices = voiceChain
                             .filter((s) => s.type === 'custom')
@@ -1488,7 +1548,20 @@ export default function AdminAudioPage() {
                           ) : null
                         })()}
                       </select>
-                      {!isCustomVoice &&
+                      {isRetiredVoice(ccGenVoice) && (
+                        <span
+                          data-element="cc-retired-note"
+                          className={css({ color: '#8b949e', fontSize: '12px' })}
+                        >
+                          Retired voice: clips play, new ones can&rsquo;t be generated
+                        </span>
+                      )}
+                      {elevenLabsVoicesError && (
+                        <span className={css({ color: '#f85149', fontSize: '12px' })}>
+                          ElevenLabs voices unavailable: {elevenLabsVoicesError}
+                        </span>
+                      )}
+                      {isElevenLabsVoice(ccGenVoice) &&
                         (() => {
                           const missingCount = collectedClips.filter(
                             (c) => !ccGeneratedFor[c.id]
@@ -1562,7 +1635,7 @@ export default function AdminAudioPage() {
                               '&:hover': { textDecoration: 'underline' },
                             })}
                           >
-                            Remove clips for &ldquo;{ccGenVoice}&rdquo;
+                            Remove clips for &ldquo;{voiceLabel(ccGenVoice)}&rdquo;
                           </button>
                         ) : null
                       })()}
@@ -1655,12 +1728,11 @@ export default function AdminAudioPage() {
                                 fontWeight: '600',
                               })}
                             >
-                              {ccGenVoice}
+                              {voiceLabel(ccGenVoice)}
                               {meta && (
                                 <span className={css({ color: '#8b949e', fontWeight: '400' })}>
                                   {' '}
-                                  &middot; {meta.provider.name} {meta.model.name} &middot;{' '}
-                                  {meta.model.format}
+                                  &middot; {meta.provider} {meta.model} &middot; {meta.format}
                                 </span>
                               )}
                             </span>
@@ -2092,7 +2164,7 @@ export default function AdminAudioPage() {
                                                     isDeactivated
                                                       ? 'Deactivated'
                                                       : isGenerated
-                                                        ? `Generated for ${ccGenVoice}`
+                                                        ? `Generated for ${voiceLabel(ccGenVoice)}`
                                                         : 'Not generated'
                                                   }
                                                   className={css({
@@ -2338,7 +2410,7 @@ export default function AdminAudioPage() {
                                                       </button>
                                                     )}
                                                   </div>
-                                                ) : (
+                                                ) : isElevenLabsVoice(ccGenVoice) ? (
                                                   <button
                                                     data-action="generate-cc-clip"
                                                     onClick={() => handleCcGenerate([clip.id])}
@@ -2363,7 +2435,7 @@ export default function AdminAudioPage() {
                                                   >
                                                     {isGenerated ? 'Regen' : 'Generate'}
                                                   </button>
-                                                )}
+                                                ) : null}
                                               </td>
                                             </tr>
                                             {/* ClipRecorder inline row */}

@@ -1,3 +1,5 @@
+import { isElevenLabsVoice } from './voices'
+
 /** Serializable plain-object form, used for DB storage, API wire format, and UI state. */
 export type VoiceSourceData =
   | { type: 'pregenerated'; name: string }
@@ -41,8 +43,13 @@ export class PregeneratedVoice extends VoiceSource {
     return { type: this.type, name: this.name } as const
   }
 
+  /**
+   * Only ElevenLabs folders (`el-…`) generate. Retired OpenAI folders (onyx,
+   * nova, …) keep playing their clips but never get new ones, so a folder
+   * never mixes two voices.
+   */
   canGenerate() {
-    return true
+    return isElevenLabsVoice(this.name)
   }
 
   async generate(clipId: string, text: string, tone: string): Promise<Blob | null> {

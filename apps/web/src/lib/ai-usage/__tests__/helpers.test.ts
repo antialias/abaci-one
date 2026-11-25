@@ -137,17 +137,18 @@ describe('usage recording helpers', () => {
   })
 
   describe('recordTtsUsage', () => {
-    it('records character count from input text', () => {
-      helpers.recordTtsUsage('Hello, world!', 'gpt-4o-mini-tts', {
+    it('records the characters sent to ElevenLabs under provider elevenlabs', () => {
+      helpers.recordTtsUsage('[excited] Hello, world!', 'eleven_v3', {
         userId: 'user-789',
         feature: AiFeature.TTS_CLIP,
       })
 
       expect(mockRecordAiUsage).toHaveBeenCalledWith(
         expect.objectContaining({
+          provider: 'elevenlabs',
           apiType: 'tts',
-          inputCharacters: 13, // "Hello, world!".length
-          model: 'gpt-4o-mini-tts',
+          inputCharacters: 23, // "[excited] Hello, world!".length
+          model: 'eleven_v3',
         })
       )
     })
