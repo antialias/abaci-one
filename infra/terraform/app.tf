@@ -91,6 +91,10 @@ resource "kubernetes_config_map" "app_config" {
     # Claude wire; the key is the proxy client secret.
     LLM_CLAUDE_CODE_BASE_URL      = var.llm_claude_code_base_url
     LLM_CLAUDE_CODE_DEFAULT_MODEL = var.llm_claude_code_model
+    # Runs at once per pod (~120 MiB each): kids' chat shares these slots with
+    # flowchart and worksheet jobs. 4 runs ≈ 480 MiB against the 1536Mi limit
+    # (the app itself peaked at ~240 MiB, 2026-11-25).
+    LLM_CLAUDE_CODE_MAX_CONCURRENCY = "4"
     # ElevenLabs music: empty = ElevenLabs itself; the proxy's door is
     # http://<nas>:8788/elevenlabs (then elevenlabs_music_api_key is the app's
     # proxy login, base64 "name:password").
