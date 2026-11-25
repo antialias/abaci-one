@@ -16,6 +16,12 @@ import { NextResponse } from 'next/server'
 import { validateMcpApiKey } from '@/lib/mcp/auth'
 import { listResources, readResource } from '@/lib/mcp/resources'
 import {
+  SONG_TOOLS,
+  listSessionSongs,
+  retrySessionSong,
+  type SongStatusFilter,
+} from '@/lib/mcp/song-tools'
+import {
   MCP_TOOLS,
   listStudents,
   verifyPlayerAccess,
@@ -142,7 +148,7 @@ export async function POST(request: Request) {
       case 'tools/list': {
         return NextResponse.json(
           jsonRpcSuccess(id, {
-            tools: MCP_TOOLS,
+            tools: [...MCP_TOOLS, ...SONG_TOOLS],
           })
         )
       }
@@ -308,6 +314,17 @@ async function executeTool(
 
     case 'list_observation_links':
       return listObservationLinks(playerId, args.session_id as string)
+
+    // Session song tools
+    case 'list_session_songs':
+      return listSessionSongs(
+        playerId,
+        (args.status as SongStatusFilter | undefined) ?? 'all',
+        (args.limit as number | undefined) ?? 20
+      )
+
+    case 'retry_session_song':
+      return retrySessionSong(playerId, args.song_id as string, userId)
 
     default:
       throw new Error(`Unknown tool: ${toolName}`)
