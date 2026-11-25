@@ -1,9 +1,9 @@
 import { existsSync, readFileSync, statSync } from 'fs'
-import { join } from 'path'
 import { NextResponse } from 'next/server'
-import { getAllPostsMetadata, getPostBySlug } from '@/lib/blog'
-import { IMAGE_PROVIDERS } from '@/lib/tasks/blog-image-generate'
+import { join } from 'path'
 import { withAuth } from '@/lib/auth/withAuth'
+import { getAllPostsMetadata, getPostBySlug } from '@/lib/blog'
+import { getImageClassStatus } from '@/lib/images/switch-images'
 
 const BLOG_IMAGES_DIR = join(process.cwd(), 'public', 'blog')
 const EMBEDS_DIR = join(process.cwd(), 'content', 'blog', 'embeds')
@@ -11,7 +11,7 @@ const EMBEDS_DIR = join(process.cwd(), 'content', 'blog', 'embeds')
 /**
  * GET /api/admin/blog-images/status
  *
- * Returns blog posts with their hero image status and available providers.
+ * Returns blog posts with their hero image status and available image classes.
  */
 export const GET = withAuth(
   async () => {
@@ -74,21 +74,7 @@ export const GET = withAuth(
       }
     })
 
-    const providers = IMAGE_PROVIDERS.map((p) => {
-      const hasKey =
-        'envKeyAlt' in p
-          ? !!(process.env[p.envKey] || process.env[p.envKeyAlt!])
-          : !!process.env[p.envKey]
-
-      return {
-        id: p.id,
-        name: p.name,
-        available: hasKey,
-        models: p.models.map((m) => ({ id: m.id, name: m.name })),
-      }
-    })
-
-    return NextResponse.json({ posts, providers })
+    return NextResponse.json({ posts, ...(await getImageClassStatus()) })
   },
   { role: 'admin' }
 )

@@ -1,10 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { css } from '../../../../styled-system/css'
-import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
-import type { CanvasPreviewTarget, AIPreviewTarget, PreviewTarget } from '@/lib/homepage-previews'
+import { AppNavBar } from '@/components/AppNavBar'
+import { ImageClassSelect, type ImageClassStatus } from '@/components/admin/ImageClassSelect'
+import type { AIPreviewTarget, CanvasPreviewTarget, PreviewTarget } from '@/lib/homepage-previews'
+import { css } from '../../../../styled-system/css'
 
 // Dynamic import: the registry imports render functions that reference browser APIs
 // (Canvas 2D). We only need them client-side for canvas capture.
@@ -21,16 +22,8 @@ interface TargetStatus {
   sizeBytes?: number
 }
 
-interface ProviderInfo {
-  id: string
-  name: string
-  available: boolean
-  models: Array<{ id: string; name: string }>
-}
-
-interface StatusResponse {
+interface StatusResponse extends ImageClassStatus {
   targets: TargetStatus[]
-  providers: ProviderInfo[]
 }
 
 function formatBytes(bytes: number): string {
@@ -43,12 +36,8 @@ export default function HomepagePreviewsAdmin() {
   const [status, setStatus] = useState<StatusResponse | null>(null)
   const [generating, setGenerating] = useState<Set<string>>(new Set())
   const [errors, setErrors] = useState<Map<string, string>>(new Map())
-  const [selectedValue, setSelectedValue] = useState('')
+  const [imageClass, setImageClass] = useState('')
   const registryRef = useRef<Awaited<ReturnType<typeof loadRegistry>> | null>(null)
-
-  const [selectedProvider, selectedModel] = selectedValue.includes(':')
-    ? selectedValue.split(':')
-    : ['', '']
 
   // Fetch status
   const fetchStatus = useCallback(async () => {
@@ -58,17 +47,12 @@ export default function HomepagePreviewsAdmin() {
       const data: StatusResponse = await res.json()
       setStatus(data)
 
-      // Auto-select first available provider
-      if (!selectedValue && data.providers.length > 0) {
-        const available = data.providers.find((p) => p.available)
-        if (available && available.models.length > 0) {
-          setSelectedValue(`${available.id}:${available.models[0].id}`)
-        }
-      }
+      // Default to the app's default image class
+      setImageClass((current) => current || data.defaultImageClass)
     } catch (err) {
       console.error('Failed to fetch homepage preview status:', err)
     }
-  }, [selectedValue])
+  }, [])
 
   useEffect(() => {
     fetchStatus()
@@ -148,10 +132,13 @@ export default function HomepagePreviewsAdmin() {
 
   // Generate an AI preview
   async function generateAI(targetId: string) {
-    if (!selectedProvider || !selectedModel) {
+    if (!status?.configured) {
       setErrors((prev) => {
         const next = new Map(prev)
-        next.set(targetId, 'Select an AI provider first')
+        next.set(
+          targetId,
+          "Image generation isn't configured: set SWITCH_MEDIA_URL and SWITCH_MEDIA_LOGIN"
+        )
         return next
       })
       return
@@ -170,8 +157,7 @@ export default function HomepagePreviewsAdmin() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: targetId,
-          provider: selectedProvider,
-          model: selectedModel,
+          imageClass,
         }),
       })
 
@@ -248,7 +234,7 @@ export default function HomepagePreviewsAdmin() {
           </h1>
           <p className={css({ fontSize: '13px', color: '#8b949e' })}>
             Generate preview images for homepage exploration cards. Canvas targets render
-            client-side; AI targets use image generation providers.
+            client-side; AI targets go through the image proxy.
             {status && (
               <>
                 {' '}
@@ -274,24 +260,14 @@ export default function HomepagePreviewsAdmin() {
             border: '1px solid #30363d',
           })}
         >
-          {/* Provider selector (for AI targets) */}
-          <select
-            data-action="select-provider"
-            value={selectedValue}
-            onChange={(e) => setSelectedValue(e.target.value)}
+          {/* Image class selector (for AI targets) */}
+          <ImageClassSelect
+            status={status}
+            value={imageClass}
+            onChange={setImageClass}
             disabled={generating.size > 0}
             className={selectStyle}
-          >
-            <option value="">AI Provider...</option>
-            {status?.providers.map((p) =>
-              p.models.map((m) => (
-                <option key={`${p.id}:${m.id}`} value={`${p.id}:${m.id}`} disabled={!p.available}>
-                  {p.name} / {m.name}
-                  {!p.available ? ' (no key)' : ''}
-                </option>
-              ))
-            )}
-          </select>
+          />
 
           {/* Generate All Canvas */}
           <button
@@ -385,7 +361,7 @@ export default function HomepagePreviewsAdmin() {
                 color: '#f0f6fc',
               })}
             >
-              AI Targets (provider-generated)
+              AI Targets (AI-generated)
             </h2>
             <div
               className={css({

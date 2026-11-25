@@ -1,5 +1,5 @@
 import { createId } from '@paralleldrive/cuid2'
-import { integer, real, sqliteTable, text, index } from 'drizzle-orm/sqlite-core'
+import { index, integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 
 /**
  * AI usage tracking table — records every external AI/ML API call with
@@ -21,10 +21,14 @@ export const aiUsage = sqliteTable(
     /** Feature that caused the usage — typed by AiFeature const */
     feature: text('feature').notNull(),
 
-    /** AI provider: 'openai' | 'anthropic' | 'gemini' | 'elevenlabs' */
+    /**
+     * AI provider: 'openai' | 'anthropic' | 'elevenlabs' | 'switch' | …
+     * Images are 'switch' (the switch proxy; model = serving member, class in
+     * metadata). Older image rows say 'gemini' or 'openai'.
+     */
     provider: text('provider').notNull(),
 
-    /** Model used: 'gpt-5.2', 'gpt-4o-mini', 'gpt-image-1', etc. */
+    /** Model used: 'gpt-5.2', 'gpt-4o-mini', 'runway/gpt_image_2', etc. */
     model: text('model').notNull(),
 
     /**

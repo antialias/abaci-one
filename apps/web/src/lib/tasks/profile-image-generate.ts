@@ -20,30 +20,35 @@
  *   speaking variants → no dependents
  */
 
-import { createTask } from '../task-manager'
-import { getImageProvider } from '../image-providers'
+import { AiFeature } from '../ai-usage/features'
+import { recordImageGenUsage } from '../ai-usage/helpers'
+import { CHARACTER_PROVIDERS } from '../character/characters'
 import { generateAndStoreImage } from '../image-generation'
 import { imageExists, readStaticImage } from '../image-storage'
-import { CHARACTER_PROVIDERS } from '../character/characters'
-import type { ProfileImageGenerateEvent } from './events'
-import { recordImageGenUsage } from '../ai-usage/helpers'
-import { AiFeature } from '../ai-usage/features'
+import {
+  DEFAULT_IMAGE_CLASS,
+  isImageGenerationConfigured,
+  NOT_CONFIGURED_MESSAGE,
+} from '../images/switch-images'
 import {
   getVariantSuffix,
   type ProfileSize,
-  type ProfileTheme,
   type ProfileState,
+  type ProfileTheme,
 } from '../profile-variants'
+import { createTask } from '../task-manager'
+import type { ProfileImageGenerateEvent } from './events'
+
 export {
   getVariantSuffix,
   type ProfileSize,
-  type ProfileTheme,
   type ProfileState,
+  type ProfileTheme,
 } from '../profile-variants'
 
 export interface ProfileImageGenerateInput {
-  provider: 'gemini' | 'openai'
-  model: string
+  /** Image class to ask the switch proxy for; defaults to DEFAULT_IMAGE_CLASS. */
+  imageClass?: string
   characterId: string
   size: ProfileSize
   theme: ProfileTheme
@@ -162,20 +167,11 @@ export async function startProfileImageGeneration(
   >('profile-image-generate', input, async (handle, config) => {
     const configState: ProfileState = config.state ?? 'idle'
 
-    const provider = getImageProvider(config.provider)
-    if (!provider) {
-      handle.fail(`Unknown image provider: ${config.provider}`)
+    if (!isImageGenerationConfigured()) {
+      handle.fail(NOT_CONFIGURED_MESSAGE)
       return
     }
-
-    if (!provider.isAvailable()) {
-      const { envKey, envKeyAlt } = provider.meta
-      const keys = envKeyAlt ? `${envKey} or ${envKeyAlt}` : envKey
-      handle.fail(
-        `No API key configured for ${provider.meta.name}. Set ${keys} in your environment.`
-      )
-      return
-    }
+    const imageClass = config.imageClass || DEFAULT_IMAGE_CLASS
 
     const character = CHARACTER_PROVIDERS[config.characterId]
     if (!character) {
@@ -212,8 +208,7 @@ export async function startProfileImageGeneration(
       size: config.size,
       theme: config.theme,
       state: configState,
-      model: config.model,
-      provider: config.provider,
+      imageClass,
     })
 
     const variantLabel = suffix ? suffix.slice(1) : 'base'
@@ -268,17 +263,16 @@ export async function startProfileImageGeneration(
 
     try {
       const result = await generateAndStoreImage({
-        provider: config.provider,
-        model: config.model,
+        imageClass,
         prompt: fullPrompt,
-        imageOptions: { size: { width: 1024, height: 1024 } },
+        size: { width: 1024, height: 1024 },
         storageTarget,
         referenceImage,
       })
 
-      const sizeBytes = result.sizeBytes ?? 0
-      if (config._userId) {
-        recordImageGenUsage(config.provider, config.model, {
+      const sizeBytes = result.status === 'generated' ? result.sizeBytes : 0
+      if (config._userId && result.status === 'generated') {
+        recordImageGenUsage(result, {
           userId: config._userId,
           feature: AiFeature.IMAGE_PROFILE,
           backgroundTaskId: handle.id,

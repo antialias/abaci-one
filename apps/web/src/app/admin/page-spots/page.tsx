@@ -1,14 +1,15 @@
 'use client'
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { css } from '../../../../styled-system/css'
-import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
-import { useBackgroundTask } from '@/hooks/useBackgroundTask'
+import { AppNavBar } from '@/components/AppNavBar'
+import { ImageClassSelect, type ImageClassStatus } from '@/components/admin/ImageClassSelect'
 import { ContentSpot } from '@/components/page-spots/ContentSpot'
-import { pageSpotKeys } from '@/lib/queryKeys'
+import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type { SpotConfig } from '@/lib/page-spots/types'
+import { pageSpotKeys } from '@/lib/queryKeys'
+import { css } from '../../../../styled-system/css'
 
 // ---------------------------------------------------------------------------
 // Types for the status API response
@@ -31,16 +32,8 @@ interface PageStatus {
   spots: SpotStatus[]
 }
 
-interface ProviderInfo {
-  id: string
-  name: string
-  available: boolean
-  models: Array<{ id: string; name: string }>
-}
-
-interface StatusResponse {
+interface StatusResponse extends ImageClassStatus {
   pages: PageStatus[]
-  providers: ProviderInfo[]
   components: Array<{ id: string; label: string; description: string }>
 }
 
@@ -196,7 +189,7 @@ export default function PageSpotsAdmin() {
                 key={spot.id}
                 pageId={activePageId}
                 spot={spot}
-                providers={data.providers}
+                imageClassStatus={data}
                 components={data.components}
                 onRefresh={() => queryClient.invalidateQueries({ queryKey: pageSpotKeys.status() })}
               />
@@ -215,13 +208,13 @@ export default function PageSpotsAdmin() {
 function SpotCard({
   pageId,
   spot,
-  providers,
+  imageClassStatus,
   components,
   onRefresh,
 }: {
   pageId: string
   spot: SpotStatus
-  providers: ProviderInfo[]
+  imageClassStatus: ImageClassStatus
   components: Array<{ id: string; label: string; description: string }>
   onRefresh: () => void
 }) {
@@ -302,7 +295,7 @@ function SpotCard({
           config={spot.config}
           imageUrl={spot.imageUrl}
           imageSizeBytes={spot.imageSizeBytes}
-          providers={providers}
+          imageClassStatus={imageClassStatus}
           aspectRatio={spot.aspectRatio}
           onRefresh={onRefresh}
         />
@@ -349,7 +342,7 @@ function GeneratedSpotEditor({
   config,
   imageUrl,
   imageSizeBytes,
-  providers,
+  imageClassStatus,
   aspectRatio,
   onRefresh,
 }: {
@@ -358,32 +351,22 @@ function GeneratedSpotEditor({
   config: {
     type: 'generated'
     prompt: string
-    provider?: 'gemini' | 'openai'
-    model?: string
+    imageClass?: string
     focalPoint?: { x: number; y: number }
   }
   imageUrl: string | null
   imageSizeBytes?: number
-  providers: ProviderInfo[]
+  imageClassStatus: ImageClassStatus
   aspectRatio: string | null
   onRefresh: () => void
 }) {
   const [prompt, setPrompt] = useState(config.prompt)
-  const [provider, setProvider] = useState(
-    config.provider ?? providers.find((p) => p.available)?.id ?? ''
+  const [imageClass, setImageClass] = useState(
+    config.imageClass ?? imageClassStatus.defaultImageClass
   )
-  const [model, setModel] = useState(config.model ?? '')
   const [taskId, setTaskId] = useState<string | null>(null)
   const [focalX, setFocalX] = useState(config.focalPoint?.x ?? 50)
   const [focalY, setFocalY] = useState(config.focalPoint?.y ?? 50)
-
-  const selectedProvider = providers.find((p) => p.id === provider)
-  const availableModels = selectedProvider?.models ?? []
-
-  // Auto-select first model if none selected
-  if (!model && availableModels.length > 0) {
-    setModel(availableModels[0].id)
-  }
 
   const task = useBackgroundTask(taskId)
 
@@ -406,15 +389,14 @@ function GeneratedSpotEditor({
       await saveConfigMutation.mutateAsync({
         type: 'generated',
         prompt,
-        provider: provider as 'gemini' | 'openai',
-        model,
+        imageClass,
         focalPoint: { x: focalX, y: focalY },
       })
 
       const res = await fetch('/api/admin/page-spots/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageId, spotId, provider, model, forceRegenerate: true }),
+        body: JSON.stringify({ pageId, spotId, imageClass, forceRegenerate: true }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -433,8 +415,7 @@ function GeneratedSpotEditor({
       await saveConfigMutation.mutateAsync({
         type: 'generated',
         prompt,
-        provider: provider as 'gemini' | 'openai',
-        model,
+        imageClass,
         focalPoint: { x: focalX, y: focalY },
       })
 
@@ -455,11 +436,10 @@ function GeneratedSpotEditor({
     saveConfigMutation.mutate({
       type: 'generated',
       prompt,
-      provider: provider as 'gemini' | 'openai',
-      model,
+      imageClass,
       focalPoint: { x: focalX, y: focalY },
     })
-  }, [prompt, provider, model, focalX, focalY, saveConfigMutation])
+  }, [prompt, imageClass, focalX, focalY, saveConfigMutation])
 
   const isGenerating = task.state?.status === 'pending' || task.state?.status === 'running'
 
@@ -509,34 +489,16 @@ function GeneratedSpotEditor({
         </div>
       </div>
 
-      {/* Provider / Model */}
+      {/* Image class */}
       <div className={css({ display: 'flex', gap: '12px' })}>
         <div className={css({ flex: 1 })}>
-          <div className={labelStyle}>Provider</div>
-          <select
-            value={provider}
-            onChange={(e) => {
-              setProvider(e.target.value)
-              setModel('')
-            }}
+          <div className={labelStyle}>Image class</div>
+          <ImageClassSelect
+            status={imageClassStatus}
+            value={imageClass}
+            onChange={setImageClass}
             className={selectStyle}
-          >
-            {providers.map((p) => (
-              <option key={p.id} value={p.id} disabled={!p.available}>
-                {p.name} {!p.available && '(no key)'}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className={css({ flex: 1 })}>
-          <div className={labelStyle}>Model</div>
-          <select value={model} onChange={(e) => setModel(e.target.value)} className={selectStyle}>
-            {availableModels.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       </div>
 
@@ -571,7 +533,7 @@ function GeneratedSpotEditor({
         <button
           onClick={() => generateMutation.mutate()}
           className={primaryBtnStyle}
-          disabled={isGenerating || !prompt || !provider || !model}
+          disabled={isGenerating || !prompt || !imageClassStatus.configured}
         >
           {isGenerating
             ? `Generating... ${task.state?.progress ?? 0}%`

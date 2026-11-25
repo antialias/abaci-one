@@ -5,17 +5,17 @@
  * thumbnail and stores it directly.
  */
 
-import { createTask, createChildTask, type TaskHandle } from '../task-manager'
-import { generateAndStoreImage } from '../image-generation'
-import type { PostcardThumbnailGenerateEvent } from './events'
-import { recordImageGenUsage } from '../ai-usage/helpers'
 import { AiFeature } from '../ai-usage/features'
+import { recordImageGenUsage } from '../ai-usage/helpers'
+import { generateAndStoreImage } from '../image-generation'
+import { createChildTask, createTask, type TaskHandle } from '../task-manager'
+import type { PostcardThumbnailGenerateEvent } from './events'
 
 export interface PostcardThumbnailGenerateInput {
   postcardId: string
   prompt: string
-  providerId: string
-  modelId: string
+  /** Image class to ask the switch proxy for. */
+  imageClass: string
   _userId?: string
 }
 
@@ -31,17 +31,16 @@ type Handler = (
 ) => Promise<void>
 
 const handler: Handler = async (handle, config) => {
-  const { postcardId, prompt, providerId, modelId } = config
+  const { postcardId, prompt, imageClass } = config
 
-  handle.emit({ type: 'thumbnail_generating', postcardId, provider: providerId, model: modelId })
+  handle.emit({ type: 'thumbnail_generating', postcardId, imageClass })
   handle.setProgress(10, 'Generating thumbnail...')
 
   try {
     const result = await generateAndStoreImage({
-      provider: providerId,
-      model: modelId,
+      imageClass,
       prompt,
-      imageOptions: { size: { width: 256, height: 192 } },
+      size: { width: 256, height: 192 },
       storageTarget: {
         type: 'persistent',
         category: 'postcards',
@@ -49,8 +48,8 @@ const handler: Handler = async (handle, config) => {
       },
     })
 
-    if (config._userId) {
-      recordImageGenUsage(providerId as 'openai' | 'gemini', modelId, {
+    if (config._userId && result.status === 'generated') {
+      recordImageGenUsage(result, {
         userId: config._userId,
         feature: AiFeature.IMAGE_POSTCARD_THUMB,
         backgroundTaskId: handle.id,
@@ -61,13 +60,13 @@ const handler: Handler = async (handle, config) => {
       type: 'thumbnail_generated',
       postcardId,
       thumbnailUrl: result.publicUrl,
-      sizeBytes: result.sizeBytes ?? 0,
+      sizeBytes: result.status === 'generated' ? result.sizeBytes : 0,
     })
 
     handle.complete({
       postcardId,
       thumbnailUrl: result.publicUrl,
-      sizeBytes: result.sizeBytes ?? 0,
+      sizeBytes: result.status === 'generated' ? result.sizeBytes : 0,
     })
   } catch (err) {
     const error = err instanceof Error ? err.message : 'Thumbnail generation failed'

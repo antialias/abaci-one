@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { storeImage } from '@/lib/image-storage'
-import { generateAndStoreImage } from '@/lib/image-generation'
-import { getPreviewTarget } from '@/lib/homepage-previews'
 import { withAuth } from '@/lib/auth/withAuth'
+import { getPreviewTarget } from '@/lib/homepage-previews'
+import { generateAndStoreImage } from '@/lib/image-generation'
+import { storeImage } from '@/lib/image-storage'
+import { parseImageClassParam } from '@/lib/images/switch-images'
 
 /**
  * POST /api/admin/homepage-previews/generate
@@ -13,13 +14,13 @@ import { withAuth } from '@/lib/auth/withAuth'
  *    Body: { id, imageData }   — imageData is a base64 data URL
  *
  * 2. AI generation:
- *    Body: { id, provider, model }
+ *    Body: { id, imageClass? }
  */
 export const POST = withAuth(
   async (request: NextRequest) => {
     try {
       const body = await request.json()
-      const { id, imageData, provider, model } = body
+      const { id, imageData } = body
 
       if (!id || typeof id !== 'string') {
         return NextResponse.json({ error: 'id is required' }, { status: 400 })
@@ -65,28 +66,23 @@ export const POST = withAuth(
         )
       }
 
-      if (!provider || !model) {
-        return NextResponse.json(
-          { error: 'AI targets require provider and model' },
-          { status: 400 }
-        )
+      const parsedClass = parseImageClassParam(body.imageClass)
+      if (!parsedClass.ok) {
+        return NextResponse.json({ error: parsedClass.error }, { status: 400 })
       }
 
       const result = await generateAndStoreImage({
-        provider,
-        model,
+        imageClass: parsedClass.imageClass,
         prompt: target.prompt,
         storageTarget,
-        imageOptions: {
-          size: { width: target.width, height: target.height },
-        },
+        size: { width: target.width, height: target.height },
       })
 
       return NextResponse.json({
         id,
         status: result.status,
         publicUrl: result.publicUrl,
-        sizeBytes: result.sizeBytes,
+        sizeBytes: result.status === 'generated' ? result.sizeBytes : undefined,
       })
     } catch (error) {
       console.error('Error generating homepage preview:', error)

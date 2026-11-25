@@ -1,10 +1,12 @@
 /**
- * Generate illustrations for number line constants using Gemini image generation.
+ * Generate illustrations for number line constants through the switch proxy's
+ * Images API (the proxy picks who draws each image class).
  *
  * Usage:
- *   GEMINI_API_KEY=... npx tsx apps/web/scripts/generate-constant-images.ts
+ *   SWITCH_MEDIA_URL=... SWITCH_MEDIA_LOGIN=... npx tsx apps/web/scripts/generate-constant-images.ts
  *
  * Options:
+ *   --class <c>    Image class to ask for (default: image-best)
  *   --only <id>    Generate images only for a specific constant (e.g. --only pi)
  *   --style <s>    Generate only one style: "metaphor" or "math"
  *   --dry-run      Print prompts without calling the API
@@ -14,13 +16,15 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import {
   MATH_CONSTANTS,
-  METAPHOR_PROMPT_PREFIX,
   MATH_PROMPT_PREFIX,
+  METAPHOR_PROMPT_PREFIX,
 } from '../src/components/toys/number-line/constants/constantsData'
-
-const API_KEY = process.env.GEMINI_API_KEY
-const MODEL = 'gemini-2.0-flash-exp'
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`
+import {
+  DEFAULT_IMAGE_CLASS,
+  generateImage,
+  isImageGenerationConfigured,
+  NOT_CONFIGURED_MESSAGE,
+} from '../src/lib/images/switch-images'
 
 const OUT_DIR = path.resolve(__dirname, '../public/images/constants')
 
@@ -59,7 +63,7 @@ function buildJobs(onlyId?: string, onlyStyle?: string): GenerationJob[] {
   return jobs
 }
 
-async function generateImage(job: GenerationJob): Promise<void> {
+async function generateJob(job: GenerationJob, imageClass: string): Promise<void> {
   // Skip if image already exists
   if (fs.existsSync(job.outPath)) {
     console.log(`  SKIP ${path.basename(job.outPath)} (already exists)`)
@@ -69,45 +73,12 @@ async function generateImage(job: GenerationJob): Promise<void> {
   console.log(`  GEN  ${path.basename(job.outPath)}`)
   console.log(`       prompt: ${job.prompt.slice(0, 80)}...`)
 
-  const body = {
-    contents: [{ parts: [{ text: job.prompt }] }],
-    generationConfig: {
-      responseModalities: ['IMAGE', 'TEXT'],
-      imageDimension: 'SQUARE_500x500',
-    },
-  }
-
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+  const { imageBuffer, member } = await generateImage({
+    prompt: job.prompt,
+    imageClass,
+    size: { width: 1024, height: 1024 },
   })
-
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(`API error ${res.status} for ${job.constantId}-${job.style}: ${text}`)
-  }
-
-  const data = await res.json()
-
-  // Extract base64 image from response
-  const parts = data.candidates?.[0]?.content?.parts
-  if (!parts) {
-    throw new Error(
-      `No parts in response for ${job.constantId}-${job.style}: ${JSON.stringify(data).slice(0, 200)}`
-    )
-  }
-
-  const imagePart = parts.find((p: { inlineData?: { mimeType: string; data: string } }) =>
-    p.inlineData?.mimeType?.startsWith('image/')
-  )
-  if (!imagePart) {
-    throw new Error(
-      `No image part in response for ${job.constantId}-${job.style}: ${JSON.stringify(parts.map((p: Record<string, unknown>) => Object.keys(p))).slice(0, 200)}`
-    )
-  }
-
-  const imageBuffer = Buffer.from(imagePart.inlineData.data, 'base64')
+  if (member) console.log(`       drawn by ${member}`)
   fs.writeFileSync(job.outPath, imageBuffer)
   console.log(`  OK   ${path.basename(job.outPath)} (${(imageBuffer.length / 1024).toFixed(0)} KB)`)
 }
@@ -120,8 +91,11 @@ async function main() {
   const styleIdx = args.indexOf('--style')
   const onlyStyle = styleIdx !== -1 ? args[styleIdx + 1] : undefined
 
-  if (!dryRun && !API_KEY) {
-    console.error('Error: GEMINI_API_KEY environment variable is required')
+  const classIdx = args.indexOf('--class')
+  const imageClass = classIdx !== -1 ? args[classIdx + 1] : DEFAULT_IMAGE_CLASS
+
+  if (!dryRun && !isImageGenerationConfigured()) {
+    console.error(`Error: ${NOT_CONFIGURED_MESSAGE}`)
     process.exit(1)
   }
 
@@ -147,7 +121,7 @@ async function main() {
   for (const job of jobs) {
     try {
       const existed = fs.existsSync(job.outPath)
-      await generateImage(job)
+      await generateJob(job, imageClass)
       if (existed) skipped++
       else success++
     } catch (err) {

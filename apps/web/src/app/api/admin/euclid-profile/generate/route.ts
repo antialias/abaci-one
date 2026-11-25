@@ -2,13 +2,14 @@
  * One-off API route to generate a profile picture for Εὐκλείδης (Euclid).
  *
  * POST /api/admin/euclid-profile/generate
- * Body: { provider?: 'gemini' | 'openai', model?: string, forceRegenerate?: boolean }
+ * Body: { imageClass?: string, forceRegenerate?: boolean }
  *
  * Stores the result at /public/images/euclid-profile.png
  */
 
 import { NextResponse } from 'next/server'
 import { generateAndStoreImage } from '@/lib/image-generation'
+import { parseImageClassParam } from '@/lib/images/switch-images'
 
 const PROMPT = [
   'Portrait of Euclid (Εὐκλείδης) of Alexandria, depicted as an iPhone contact profile picture.',
@@ -22,15 +23,15 @@ const PROMPT = [
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}))
-    const provider = body.provider || 'gemini'
-    const model =
-      body.model || (provider === 'gemini' ? 'gemini-3-pro-image-preview' : 'gpt-image-1')
+    const parsedClass = parseImageClassParam(body.imageClass)
+    if (!parsedClass.ok) {
+      return NextResponse.json({ error: parsedClass.error }, { status: 400 })
+    }
 
     const result = await generateAndStoreImage({
-      provider,
-      model,
+      imageClass: parsedClass.imageClass,
       prompt: PROMPT,
-      imageOptions: { size: { width: 1024, height: 1024 } },
+      size: { width: 1024, height: 1024 },
       storageTarget: {
         type: 'static',
         relativePath: 'images/euclid-profile.png',

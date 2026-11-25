@@ -11,17 +11,21 @@
  * progress tracking, and admin visibility.
  */
 
-import { createTask, awaitTask } from '../task-manager'
-import { getImageProvider } from '../image-providers'
-import { storeImage, readPersistentImage } from '../image-storage'
-import { startPostcardImageGenerate } from './postcard-image-generate'
-import { startPostcardReview } from './postcard-review'
-import { startPostcardThumbnailGenerate } from './postcard-thumbnail-generate'
+import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { readPersistentImage, storeImage } from '../image-storage'
+import {
+  DEFAULT_IMAGE_CLASS,
+  isImageGenerationConfigured,
+  NOT_CONFIGURED_MESSAGE,
+} from '../images/switch-images'
+import { awaitTask, createTask } from '../task-manager'
 import type { PostcardGenerateEvent } from './events'
+import { startPostcardImageGenerate } from './postcard-image-generate'
 import type { PostcardReviewOutput } from './postcard-review'
+import { startPostcardReview } from './postcard-review'
+import { startPostcardThumbnailGenerate } from './postcard-thumbnail-generate'
 
 const MAX_REVIEW_ATTEMPTS = 3
 
@@ -132,16 +136,13 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
         handle.setProgress(10, 'Skipping scene render, generating image directly')
       }
 
-      // 4. Select provider
-      const gemini = getImageProvider('gemini')
-      const openai = getImageProvider('openai')
-      const provider = gemini?.isAvailable() ? gemini : openai?.isAvailable() ? openai : null
-      if (!provider) {
+      // 4. Image generation must be configured (the switch proxy picks who draws)
+      if (!isImageGenerationConfigured()) {
         await db
           .update(schema.numberLinePostcards)
           .set({ status: 'failed', updatedAt: new Date() })
           .where(eq(schema.numberLinePostcards.id, postcardId))
-        handle.fail('No image generation provider available')
+        handle.fail(NOT_CONFIGURED_MESSAGE)
         return
       }
 
@@ -173,14 +174,12 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
         `The overall postcard should feel warm, playful, and nostalgic — like a keepsake from a fun mathematical adventure. Include the number ${displayNum} as a character or prominent element.`,
       ].join('\n')
 
-      const modelId =
-        provider.meta.id === 'gemini' ? 'gemini-3-pro-image-preview' : provider.meta.models[0].id
+      const imageClass = DEFAULT_IMAGE_CLASS
 
       handle.emit({
         type: 'postcard_generating_image',
         postcardId,
-        provider: provider.meta.id,
-        model: modelId,
+        imageClass,
       })
 
       // 5. Generate-review loop via subtasks
@@ -203,8 +202,7 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
             {
               postcardId,
               prompt,
-              providerId: provider.meta.id,
-              modelId,
+              imageClass,
               attempt,
               referenceImageKey,
               _userId: input.userId,
@@ -289,8 +287,7 @@ export async function startPostcardGenerate(input: PostcardGenerateInput): Promi
           {
             postcardId,
             prompt: thumbnailPrompt,
-            providerId: provider.meta.id,
-            modelId,
+            imageClass,
             _userId: input.userId,
           },
           input.userId,

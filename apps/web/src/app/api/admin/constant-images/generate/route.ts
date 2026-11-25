@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { MATH_CONSTANTS } from '@/components/toys/number-line/constants/constantsData'
-import { startImageGeneration } from '@/lib/tasks/image-generate'
-import type { ImageGenerateInput } from '@/lib/tasks/image-generate'
 import { withAuth } from '@/lib/auth/withAuth'
+import { parseImageClassParam } from '@/lib/images/switch-images'
+import type { ImageGenerateInput } from '@/lib/tasks/image-generate'
+import { startImageGeneration } from '@/lib/tasks/image-generate'
 
-const VALID_PROVIDERS = ['gemini', 'openai'] as const
 const VALID_STYLES = ['metaphor', 'math'] as const
 const VALID_THEMES = ['light', 'dark'] as const
 
@@ -12,26 +12,18 @@ const VALID_THEMES = ['light', 'dark'] as const
  * POST /api/admin/constant-images/generate
  *
  * Starts a background task to generate constant illustrations.
- * Body: { provider: string, model: string, targets?: Array<{constantId, style}>, forceRegenerate?: boolean }
+ * Body: { imageClass?: string, targets?: Array<{constantId, style}>, forceRegenerate?: boolean }
  * Response: { taskId: string }
  */
 export const POST = withAuth(
   async (request, { userId }) => {
     try {
       const body = await request.json()
-      const { provider, model, targets, forceRegenerate, theme } = body
+      const { targets, forceRegenerate, theme } = body
 
-      // Validate provider
-      if (!provider || !VALID_PROVIDERS.includes(provider)) {
-        return NextResponse.json(
-          { error: `provider must be one of: ${VALID_PROVIDERS.join(', ')}` },
-          { status: 400 }
-        )
-      }
-
-      // Validate model
-      if (typeof model !== 'string' || model.trim().length === 0) {
-        return NextResponse.json({ error: 'model must be a non-empty string' }, { status: 400 })
+      const parsedClass = parseImageClassParam(body.imageClass)
+      if (!parsedClass.ok) {
+        return NextResponse.json({ error: parsedClass.error }, { status: 400 })
       }
 
       // Validate top-level theme (used for default "generate all" path)
@@ -86,8 +78,7 @@ export const POST = withAuth(
       }
 
       const taskId = await startImageGeneration({
-        provider,
-        model: model.trim(),
+        imageClass: parsedClass.imageClass,
         targets: resolvedTargets,
         forceRegenerate: !!forceRegenerate,
         _userId: userId,

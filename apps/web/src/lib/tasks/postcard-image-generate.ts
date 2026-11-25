@@ -1,23 +1,27 @@
 /**
  * Subtask: Generate a single postcard AI image.
  *
- * Takes a prompt + provider config, generates the image, stores it as a draft,
+ * Takes a prompt + image class, generates the image, stores it as a draft,
  * and returns the storage path. The parent orchestrator (postcard-generate)
  * decides whether to accept, retry, or discard based on review results.
  */
 
-import { createTask, createChildTask, type TaskHandle } from '../task-manager'
-import { getImageProvider } from '../image-providers'
-import { storeImage, readPersistentImage } from '../image-storage'
-import { recordImageGenUsage } from '@/lib/ai-usage/helpers'
 import { AiFeature } from '@/lib/ai-usage/features'
+import { recordImageGenUsage } from '@/lib/ai-usage/helpers'
+import { readPersistentImage, storeImage } from '../image-storage'
+import {
+  generateImage,
+  isImageGenerationConfigured,
+  NOT_CONFIGURED_MESSAGE,
+} from '../images/switch-images'
+import { createChildTask, createTask, type TaskHandle } from '../task-manager'
 import type { PostcardImageGenerateEvent } from './events'
 
 export interface PostcardImageGenerateInput {
   postcardId: string
   prompt: string
-  providerId: string
-  modelId: string
+  /** Image class to ask the switch proxy for. */
+  imageClass: string
   attempt: number
   /** Storage key for reference image (category/filename), if any */
   referenceImageKey?: string
@@ -37,20 +41,18 @@ type Handler = (
 ) => Promise<void>
 
 const handler: Handler = async (handle, config) => {
-  const { postcardId, prompt, providerId, modelId, attempt, referenceImageKey } = config
+  const { postcardId, prompt, imageClass, attempt, referenceImageKey } = config
 
-  const provider = getImageProvider(providerId)
-  if (!provider || !provider.isAvailable()) {
-    handle.emit({ type: 'image_error', postcardId, error: `Provider ${providerId} unavailable` })
-    handle.fail(`Provider ${providerId} unavailable`)
+  if (!isImageGenerationConfigured()) {
+    handle.emit({ type: 'image_error', postcardId, error: NOT_CONFIGURED_MESSAGE })
+    handle.fail(NOT_CONFIGURED_MESSAGE)
     return
   }
 
   handle.emit({
     type: 'image_generating',
     postcardId,
-    provider: providerId,
-    model: modelId,
+    imageClass,
     attempt,
   })
   handle.setProgress(10, 'Generating image...')
@@ -63,15 +65,15 @@ const handler: Handler = async (handle, config) => {
     if (result) referenceImage = result.buffer
   }
 
-  const genResult = await provider.generate({
-    model: modelId,
+  const genResult = await generateImage({
+    imageClass,
     prompt,
-    options: { size: { width: 1024, height: 768 } },
+    size: { width: 1024, height: 768 },
     referenceImage,
   })
 
   if (config._userId) {
-    recordImageGenUsage(providerId as 'openai' | 'gemini', modelId, {
+    recordImageGenUsage(genResult, {
       userId: config._userId,
       feature: AiFeature.IMAGE_GENERATE,
       backgroundTaskId: handle.id,

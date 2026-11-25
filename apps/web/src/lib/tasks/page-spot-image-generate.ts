@@ -1,18 +1,20 @@
-import { createTask } from '../task-manager'
-import { getImageProvider } from '../image-providers'
+import { AiFeature } from '../ai-usage/features'
+import { recordImageGenUsage } from '../ai-usage/helpers'
 import { generateAndStoreImage } from '../image-generation'
 import { imageExists } from '../image-storage'
+import {
+  DEFAULT_IMAGE_CLASS,
+  isImageGenerationConfigured,
+  NOT_CONFIGURED_MESSAGE,
+} from '../images/switch-images'
+import { createTask } from '../task-manager'
 import type { PageSpotImageGenerateEvent } from './events'
-import { recordImageGenUsage } from '../ai-usage/helpers'
-import { AiFeature } from '../ai-usage/features'
-
-export { IMAGE_PROVIDERS } from '../image-providers'
 
 export interface PageSpotImageGenerateInput {
   pageId: string
   spotId: string
-  provider: 'gemini' | 'openai'
-  model: string
+  /** Image class to ask the switch proxy for; defaults to DEFAULT_IMAGE_CLASS. */
+  imageClass?: string
   prompt: string
   forceRegenerate?: boolean
   _userId?: string
@@ -36,20 +38,11 @@ export async function startPageSpotImageGeneration(
     PageSpotImageGenerateOutput,
     PageSpotImageGenerateEvent
   >('page-spot-generate', input, async (handle, config) => {
-    const provider = getImageProvider(config.provider)
-    if (!provider) {
-      handle.fail(`Unknown image provider: ${config.provider}`)
+    if (!isImageGenerationConfigured()) {
+      handle.fail(NOT_CONFIGURED_MESSAGE)
       return
     }
-
-    if (!provider.isAvailable()) {
-      const { envKey, envKeyAlt } = provider.meta
-      const keys = envKeyAlt ? `${envKey} or ${envKeyAlt}` : envKey
-      handle.fail(
-        `No API key configured for ${provider.meta.name}. Set ${keys} in your environment.`
-      )
-      return
-    }
+    const imageClass = config.imageClass || DEFAULT_IMAGE_CLASS
 
     const storageTarget = {
       type: 'static' as const,
@@ -74,22 +67,20 @@ export async function startPageSpotImageGeneration(
       type: 'spot_started',
       pageId: config.pageId,
       spotId: config.spotId,
-      model: config.model,
-      provider: config.provider,
+      imageClass,
     })
 
     handle.setProgress(10, 'Generating image...')
 
     try {
       const result = await generateAndStoreImage({
-        provider: config.provider,
-        model: config.model,
+        imageClass,
         prompt: config.prompt,
         storageTarget,
       })
 
-      if (config._userId) {
-        recordImageGenUsage(config.provider, config.model, {
+      if (config._userId && result.status === 'generated') {
+        recordImageGenUsage(result, {
           userId: config._userId,
           feature: AiFeature.IMAGE_PAGE_SPOT,
           backgroundTaskId: handle.id,
@@ -101,13 +92,13 @@ export async function startPageSpotImageGeneration(
         pageId: config.pageId,
         spotId: config.spotId,
         filePath: result.publicUrl,
-        sizeBytes: result.sizeBytes ?? 0,
+        sizeBytes: result.status === 'generated' ? result.sizeBytes : 0,
       })
 
       handle.complete({
         status: 'generated',
         publicUrl: result.publicUrl,
-        sizeBytes: result.sizeBytes,
+        sizeBytes: result.status === 'generated' ? result.sizeBytes : undefined,
       })
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err)
