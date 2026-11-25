@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
-import { generateFlowchartEmbeddings, EMBEDDING_VERSION } from '@/lib/flowcharts/embedding'
+import { withAuth } from '@/lib/auth/withAuth'
 import { invalidateEmbeddingCache } from '@/lib/flowcharts/embedding-search'
+import { reembedFlowchart } from '@/lib/tasks/flowchart-embed'
 
 /**
  * POST /api/flowcharts/[id]/embedding
@@ -29,21 +29,7 @@ export const POST = withAuth(async (_request, { params }) => {
       return NextResponse.json({ error: 'Flowchart not found' }, { status: 404 })
     }
 
-    const { embedding, promptEmbedding } = await generateFlowchartEmbeddings({
-      title: fc.title,
-      description: fc.description,
-      topicDescription: null,
-      difficulty: fc.difficulty,
-    })
-
-    await db
-      .update(schema.teacherFlowcharts)
-      .set({
-        embedding,
-        promptEmbedding,
-        embeddingVersion: EMBEDDING_VERSION,
-      })
-      .where(eq(schema.teacherFlowcharts.id, id))
+    await reembedFlowchart(fc)
 
     invalidateEmbeddingCache()
 

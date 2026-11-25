@@ -60,7 +60,7 @@ function computeContentHash(): string {
 
 /**
  * Lazily compute and cache embeddings for all seed profiles.
- * Uses a single batched API call for efficiency.
+ * Embedded in-process in batches (@/lib/embeddings).
  * The promise is shared so concurrent calls don't duplicate work.
  */
 async function getProfileEmbeddings(): Promise<Map<string, Float32Array>> {

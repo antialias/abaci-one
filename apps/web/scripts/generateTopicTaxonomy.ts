@@ -1,5 +1,6 @@
 #!/usr/bin/env npx tsx
 import dotenv from 'dotenv'
+
 dotenv.config({ path: '.env.local' })
 dotenv.config() // .env as fallback
 
@@ -13,28 +14,33 @@ dotenv.config() // .env as fallback
  *
  * Labels are informed by word frequencies from existing flowcharts.
  *
+ * Labels come from an LLM; their vectors are computed in-process with the app's
+ * embedding model (src/lib/embeddings — run `pnpm embeddings:fetch-model` once).
+ *
  * Usage:
- *   npx tsx scripts/generateTopicTaxonomy.ts          # Generate from scratch
+ *   npx tsx scripts/generateTopicTaxonomy.ts           # Generate from scratch
  *   npx tsx scripts/generateTopicTaxonomy.ts --expand  # Add new labels to existing taxonomy
+ *   npx tsx scripts/generateTopicTaxonomy.ts --reembed # Keep the labels, recompute every
+ *                                                      # vector with the current model (no LLM)
  */
 
-import { writeFileSync, readFileSync, existsSync } from 'fs'
-import { join } from 'path'
-import Database from 'better-sqlite3'
 import { LLMClient } from '@soroban/llm-client'
+import Database from 'better-sqlite3'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { join } from 'path'
 import { z } from 'zod'
-import { EMBEDDING_MODEL, EMBEDDING_DIMENSIONS } from '../src/lib/flowcharts/embedding'
+import { embedTexts } from '../src/lib/embeddings'
+import {
+  buildLabelEmbeddingContent,
+  parseTaxonomyFiles,
+  serializeTaxonomyFiles,
+  type TaxonomyIndex,
+} from '../src/lib/flowcharts/taxonomy-embedding'
 
 const OUTPUT_DIR = join(__dirname, '../src/lib/flowcharts')
 const JSON_PATH = join(OUTPUT_DIR, 'topic-taxonomy.json')
 const BIN_PATH = join(OUTPUT_DIR, 'topic-taxonomy.bin')
 const DB_PATH = join(__dirname, '../data/sqlite.db')
-
-interface TaxonomyIndex {
-  version: string
-  model: string
-  labels: string[]
-}
 
 // Common stop words to exclude from frequency analysis
 const STOP_WORDS = new Set([
@@ -330,43 +336,36 @@ function deduplicateLabels(labels: string[]): string[] {
   return result
 }
 
+/**
+ * Embed labels exactly as the DB taxonomy does (src/lib/flowcharts/generate-taxonomy.ts),
+ * so both sources share one space.
+ */
 async function embedLabels(labels: string[]): Promise<Float32Array[]> {
-  const llm = new LLMClient()
-
   console.log(`Embedding ${labels.length} labels...`)
-  const response = await llm.embed({
-    input: labels,
-    model: EMBEDDING_MODEL,
-  })
-
-  return response.embeddings
+  return embedTexts(labels.map(buildLabelEmbeddingContent))
 }
 
 function writeTaxonomy(labels: string[], embeddings: Float32Array[]): void {
-  // Write JSON index
-  const index: TaxonomyIndex = {
-    version: '2.0.0',
-    model: EMBEDDING_MODEL,
-    labels,
-  }
-  writeFileSync(JSON_PATH, JSON.stringify(index, null, 2) + '\n')
-  console.log(`Wrote ${JSON_PATH} (${labels.length} labels)`)
+  const { index, bin } = serializeTaxonomyFiles(labels, embeddings)
+  writeFileSync(JSON_PATH, `${JSON.stringify(index, null, 2)}\n`)
+  console.log(`Wrote ${JSON_PATH} (${labels.length} labels, model ${index.model})`)
+  writeFileSync(BIN_PATH, bin)
+  console.log(`Wrote ${BIN_PATH} (${bin.byteLength} bytes)`)
+}
 
-  // Write binary embeddings (packed Float32Arrays)
-  const bytesPerLabel = EMBEDDING_DIMENSIONS * Float32Array.BYTES_PER_ELEMENT
-  const totalBytes = labels.length * bytesPerLabel
-  const buffer = Buffer.alloc(totalBytes)
-
-  for (let i = 0; i < embeddings.length; i++) {
-    const src = Buffer.from(embeddings[i].buffer)
-    src.copy(buffer, i * bytesPerLabel)
-  }
-
-  writeFileSync(BIN_PATH, buffer)
-  console.log(`Wrote ${BIN_PATH} (${totalBytes} bytes)`)
+/** Recompute every label's vector with the current model, keeping the labels. */
+async function reembed(): Promise<void> {
+  const index: TaxonomyIndex = JSON.parse(readFileSync(JSON_PATH, 'utf-8'))
+  console.log(`Re-embedding ${index.labels.length} labels (were ${index.model})`)
+  writeTaxonomy(index.labels, await embedLabels(index.labels))
 }
 
 async function main() {
+  if (process.argv.includes('--reembed')) {
+    await reembed()
+    return
+  }
+
   const isExpand = process.argv.includes('--expand')
 
   // Load existing flowchart content for word frequency analysis
@@ -382,17 +381,9 @@ async function main() {
   if (isExpand && existsSync(JSON_PATH) && existsSync(BIN_PATH)) {
     console.log('Loading existing taxonomy for expansion...')
     const index: TaxonomyIndex = JSON.parse(readFileSync(JSON_PATH, 'utf-8'))
-    existingLabels = index.labels
-
-    const binBuffer = readFileSync(BIN_PATH)
-    const bytesPerLabel = EMBEDDING_DIMENSIONS * Float32Array.BYTES_PER_ELEMENT
-    for (let i = 0; i < existingLabels.length; i++) {
-      const offset = i * bytesPerLabel
-      const slice = binBuffer.subarray(offset, offset + bytesPerLabel)
-      const ab = new ArrayBuffer(bytesPerLabel)
-      new Uint8Array(ab).set(slice)
-      existingEmbeddings.push(new Float32Array(ab))
-    }
+    const existing = parseTaxonomyFiles(index, readFileSync(BIN_PATH))
+    existingLabels = existing.labels
+    existingEmbeddings.push(...existing.embeddings)
 
     console.log(`Existing taxonomy: ${existingLabels.length} labels`)
   }

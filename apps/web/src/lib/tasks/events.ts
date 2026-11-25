@@ -174,6 +174,7 @@ export type FlowchartEmbedEvent =
       embeddedCount: number
       skippedCount: number
       flowcharts: Array<{ id: string; title: string }>
+      taxonomyReembedded: number
     }
   | {
       type: 'embed_error'

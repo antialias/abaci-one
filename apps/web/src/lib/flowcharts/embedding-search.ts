@@ -1,7 +1,9 @@
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { isCurrentDimension } from '@/lib/embeddings/model'
+import { cosineSimilarity } from '@/lib/embeddings/similarity'
 import type { FlowchartMeta } from './definitions'
-import { bufferToEmbedding, generateEmbedding, EMBEDDING_VERSION } from './embedding'
+import { bufferToEmbedding, EMBEDDING_VERSION, generateEmbedding } from './embedding'
 
 /**
  * In-memory cache for flowchart embeddings.
@@ -22,32 +24,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 let embeddingCache: Map<string, CachedEmbedding> | null = null
 let cacheTimestamp = 0
 
-/**
- * Calculate cosine similarity between two embedding vectors.
- * Returns a value between -1 and 1, where 1 means identical.
- */
-export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
-  if (a.length !== b.length) {
-    throw new Error(`Embedding dimension mismatch: ${a.length} vs ${b.length}`)
-  }
-
-  let dotProduct = 0
-  let normA = 0
-  let normB = 0
-
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i]
-    normA += a[i] * a[i]
-    normB += b[i] * b[i]
-  }
-
-  const denominator = Math.sqrt(normA) * Math.sqrt(normB)
-  if (denominator === 0) {
-    return 0
-  }
-
-  return dotProduct / denominator
-}
+export { cosineSimilarity }
 
 /**
  * Get all published flowchart embeddings from the database.
@@ -82,11 +59,19 @@ export async function getAllFlowchartEmbeddings(): Promise<Map<string, CachedEmb
   })
 
   for (const fc of flowcharts) {
-    // Only include if has valid embedding
-    if (fc.embedding && fc.embeddingVersion === EMBEDDING_VERSION) {
+    // Only vectors from the current model: the version stamp says which model
+    // wrote the row, and the length check catches a mislabelled row. Anything
+    // else (e.g. old OpenAI vectors awaiting re-embedding) is left out of search
+    // rather than compared against vectors from a different space.
+    if (
+      fc.embedding &&
+      fc.embeddingVersion === EMBEDDING_VERSION &&
+      isCurrentDimension(fc.embedding)
+    ) {
+      const promptOk = fc.promptEmbedding && isCurrentDimension(fc.promptEmbedding)
       cache.set(fc.id, {
         embedding: bufferToEmbedding(fc.embedding),
-        promptEmbedding: fc.promptEmbedding ? bufferToEmbedding(fc.promptEmbedding) : null,
+        promptEmbedding: promptOk ? bufferToEmbedding(fc.promptEmbedding!) : null,
         timestamp: now,
         source: 'database',
         meta: {
