@@ -7,10 +7,10 @@
  * ALL text-LLM traffic in the app can be repointed at an OpenAI-compatible
  * proxy with a single env change.
  *
- * Media/realtime endpoints (`…/audio/speech`, `…/images/*`,
- * `…/realtime/sessions`) intentionally do NOT follow `LLM_OPENAI_BASE_URL`:
- * a chat-only proxy has no audio/image/realtime routes, so pointing text at a
- * proxy must not strand them. They stay on api.openai.com unless
+ * Media/realtime endpoints (`…/audio/speech`, `…/realtime/sessions`)
+ * intentionally do NOT follow `LLM_OPENAI_BASE_URL`: a chat-only proxy has no audio/realtime routes, so pointing text at a
+ * proxy must not strand them. (Images don't come here at all: they go
+ * through the switch proxy, see `src/lib/images/switch-images.ts`.) They stay on api.openai.com unless
  * `OPENAI_MEDIA_BASE_URL` is set explicitly.
  *
  * (Deliberately NOT `LLM_OPENAI_MEDIA_BASE_URL`: the llm-client config loader
@@ -34,7 +34,7 @@ export function openAiTextBaseUrl(): string {
   return stripTrailingSlash(process.env.LLM_OPENAI_BASE_URL || DEFAULT_OPENAI_BASE_URL)
 }
 
-/** Base URL for media/realtime calls (`…/audio/speech`, `…/images/*`, `…/realtime/*`). */
+/** Base URL for media/realtime calls (`…/audio/speech`, `…/realtime/*`). Images use the switch proxy. */
 export function openAiMediaBaseUrl(): string {
   return stripTrailingSlash(process.env.OPENAI_MEDIA_BASE_URL || DEFAULT_OPENAI_BASE_URL)
 }

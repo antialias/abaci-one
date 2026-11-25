@@ -4,16 +4,17 @@
  * Start a background task to generate a profile image for a character.
  * Returns { taskId } for the client to track via useBackgroundTask.
  *
- * Body: { provider?, model?, size?, theme?, cascade?, forceRegenerate? }
+ * Body: { imageClass?, size?, theme?, cascade?, forceRegenerate? }
  */
 
-import { NextResponse, type NextRequest } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { CHARACTER_PROVIDERS } from '@/lib/character/characters'
+import { parseImageClassParam } from '@/lib/images/switch-images'
 import {
-  startProfileImageGeneration,
   type ProfileSize,
-  type ProfileTheme,
   type ProfileState,
+  type ProfileTheme,
+  startProfileImageGeneration,
 } from '@/lib/tasks/profile-image-generate'
 
 type RouteContext = { params: Promise<{ id: string }> }
@@ -27,17 +28,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   try {
     const body = await request.json().catch(() => ({}))
-    const imageProvider = body.provider || 'gemini'
-    const model =
-      body.model || (imageProvider === 'gemini' ? 'gemini-3-pro-image-preview' : 'gpt-image-1')
+    const parsedClass = parseImageClassParam(body.imageClass)
+    if (!parsedClass.ok) {
+      return NextResponse.json({ error: parsedClass.error }, { status: 400 })
+    }
     const size: ProfileSize = body.size || 'default'
     const theme: ProfileTheme = body.theme || 'default'
     const state: ProfileState = body.state || 'idle'
     const cascade: boolean = body.cascade ?? false
 
     const taskId = await startProfileImageGeneration({
-      provider: imageProvider,
-      model,
+      imageClass: parsedClass.imageClass,
       characterId: id,
       size,
       theme,

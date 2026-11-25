@@ -108,6 +108,9 @@ Global decorators are in `.storybook/preview.tsx`. It wraps all stories with: `S
 
 **`AppNavBar` contains multiple sub-components internally** (e.g., `HamburgerMenu` is defined inside `AppNavBar.tsx`, not in a separate file). If a stack trace references a function name, search the *importing file's* imports, not just files matching that function name.
 
+### Image Generation
+All image generation goes through the switch proxy's Images API (`src/lib/images/switch-images.ts`). Code names an **image class** (`DEFAULT_IMAGE_CLASS` = `image-best`; the proxy's `GET /v1/models` lists the rest) and the proxy picks who draws it — never add per-vendor image code or a `model` field. Admin pages offer the live class list. For laptop/dev use, set `SWITCH_MEDIA_URL` and `SWITCH_MEDIA_LOGIN` in `.env.local`.
+
 ---
 
 ## Database Access

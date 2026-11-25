@@ -1,17 +1,17 @@
 import { existsSync, statSync } from 'fs'
-import { join } from 'path'
 import { NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/withAuth'
+import { join } from 'path'
 import {
   MATH_CONSTANTS,
-  METAPHOR_PROMPT_PREFIX,
   MATH_PROMPT_PREFIX,
+  METAPHOR_PROMPT_PREFIX,
 } from '@/components/toys/number-line/constants/constantsData'
 import {
-  PHI_EXPLORE_SUBJECTS,
   PHI_EXPLORE_PROMPT_PREFIX,
+  PHI_EXPLORE_SUBJECTS,
 } from '@/components/toys/number-line/constants/phiExploreData'
-import { IMAGE_PROVIDERS } from '@/lib/tasks/image-generate'
+import { withAuth } from '@/lib/auth/withAuth'
+import { getImageClassStatus } from '@/lib/images/switch-images'
 
 const IMAGES_DIR = join(process.cwd(), 'public', 'images', 'constants')
 const PHI_EXPLORE_DIR = join(IMAGES_DIR, 'phi-explore')
@@ -19,7 +19,7 @@ const PHI_EXPLORE_DIR = join(IMAGES_DIR, 'phi-explore')
 /**
  * GET /api/admin/constant-images/status
  *
- * Returns which constant images exist on disk and available providers.
+ * Returns which constant images exist on disk and available image classes.
  */
 export const GET = withAuth(
   async () => {
@@ -56,20 +56,6 @@ export const GET = withAuth(
       }
     })
 
-    const providers = IMAGE_PROVIDERS.map((p) => {
-      const hasKey =
-        'envKeyAlt' in p
-          ? !!(process.env[p.envKey] || process.env[p.envKeyAlt!])
-          : !!process.env[p.envKey]
-
-      return {
-        id: p.id,
-        name: p.name,
-        available: hasKey,
-        models: p.models.map((m) => ({ id: m.id, name: m.name })),
-      }
-    })
-
     const phiExplore = PHI_EXPLORE_SUBJECTS.map((s) => {
       const baseFile = join(PHI_EXPLORE_DIR, `${s.id}.png`)
       const baseExists = existsSync(baseFile)
@@ -84,7 +70,7 @@ export const GET = withAuth(
       }
     })
 
-    return NextResponse.json({ constants, providers, phiExplore })
+    return NextResponse.json({ constants, phiExplore, ...(await getImageClassStatus()) })
   },
   { role: 'admin' }
 )

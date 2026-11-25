@@ -1,9 +1,9 @@
 import { existsSync, statSync } from 'fs'
-import { join } from 'path'
 import { NextResponse } from 'next/server'
-import { PREVIEW_TARGETS } from '@/lib/homepage-previews'
-import { IMAGE_PROVIDERS } from '@/lib/image-providers'
+import { join } from 'path'
 import { withAuth } from '@/lib/auth/withAuth'
+import { PREVIEW_TARGETS } from '@/lib/homepage-previews'
+import { getImageClassStatus } from '@/lib/images/switch-images'
 
 const HOMEPAGE_IMAGES_DIR = join(process.cwd(), 'public', 'images', 'homepage')
 
@@ -30,21 +30,7 @@ export const GET = withAuth(
       }
     })
 
-    const providers = IMAGE_PROVIDERS.map((p) => {
-      const hasKey =
-        'envKeyAlt' in p
-          ? !!(process.env[p.envKey] || process.env[p.envKeyAlt!])
-          : !!process.env[p.envKey]
-
-      return {
-        id: p.id,
-        name: p.name,
-        available: hasKey,
-        models: p.models.map((m) => ({ id: m.id, name: m.name })),
-      }
-    })
-
-    return NextResponse.json({ targets, providers })
+    return NextResponse.json({ targets, ...(await getImageClassStatus()) })
   },
   { role: 'admin' }
 )

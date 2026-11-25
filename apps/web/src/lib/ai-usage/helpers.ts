@@ -150,22 +150,27 @@ export function recordEmbeddingUsage(
 }
 
 // ---------------------------------------------------------------------------
-// Image generation (OpenAI gpt-image-1, Gemini)
+// Image generation (switch proxy Images API, by image class)
 // ---------------------------------------------------------------------------
 
+/**
+ * Record one image drawn through the switch proxy. Provider is `'switch'`;
+ * model is the member that served it (e.g. `runway/gpt_image_2`), falling
+ * back to the class when the proxy didn't say. The class goes in metadata.
+ * No pricing row matches `switch/<member>`, so cost is unknown (null), not $0.
+ */
 export function recordImageGenUsage(
-  provider: 'openai' | 'gemini',
-  model: string,
+  served: { imageClass: string; member: string | null },
   context: UsageContext,
   metadata?: Record<string, unknown>
 ): void {
   recordAiUsage({
     ...context,
-    provider,
-    model,
+    provider: 'switch',
+    model: served.member || served.imageClass,
     apiType: 'image',
     imageCount: 1,
-    metadata: metadata ?? null,
+    metadata: { ...metadata, imageClass: served.imageClass },
   })
 }
 

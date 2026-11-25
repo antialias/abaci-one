@@ -106,19 +106,32 @@ describe('usage recording helpers', () => {
   })
 
   describe('recordImageGenUsage', () => {
-    it('records a single image generation', () => {
-      helpers.recordImageGenUsage('openai', 'gpt-image-1', {
-        userId: 'user-456',
-        feature: AiFeature.IMAGE_GENERATE,
-      })
+    it('records the serving member under provider switch, class in metadata', () => {
+      helpers.recordImageGenUsage(
+        { imageClass: 'image-best', member: 'runway/gpt_image_2' },
+        { userId: 'user-456', feature: AiFeature.IMAGE_GENERATE },
+        { constantId: 'pi' }
+      )
 
       expect(mockRecordAiUsage).toHaveBeenCalledWith(
         expect.objectContaining({
-          provider: 'openai',
-          model: 'gpt-image-1',
+          provider: 'switch',
+          model: 'runway/gpt_image_2',
           apiType: 'image',
           imageCount: 1,
+          metadata: { constantId: 'pi', imageClass: 'image-best' },
         })
+      )
+    })
+
+    it('falls back to the class when the proxy names no member', () => {
+      helpers.recordImageGenUsage(
+        { imageClass: 'image-draft', member: null },
+        { userId: 'user-456', feature: AiFeature.IMAGE_GENERATE }
+      )
+
+      expect(mockRecordAiUsage).toHaveBeenCalledWith(
+        expect.objectContaining({ provider: 'switch', model: 'image-draft' })
       )
     })
   })

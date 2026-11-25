@@ -105,8 +105,14 @@ variable "elevenlabs_api_base_url" {
   default     = ""
 }
 
-variable "gemini_api_key" {
-  description = "Google Gemini API key for image generation (postcards, blog images, etc.)"
+variable "switch_media_url" {
+  description = "Base URL of the switch proxy's media door (SWITCH_MEDIA_URL). All image generation goes through its Images API, by image class."
+  type        = string
+  default     = "http://192.168.86.51:8788"
+}
+
+variable "switch_media_login" {
+  description = "The app's switch proxy login for image generation (SWITCH_MEDIA_LOGIN), sent as a Bearer token. Empty = image generation off."
   type        = string
   sensitive   = true
   default     = ""

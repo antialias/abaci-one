@@ -21,7 +21,7 @@ resource "kubernetes_secret" "app_env" {
     LLM_OPENAI_API_KEY             = var.openai_api_key
     LLM_SWITCH_API_KEY             = var.llm_switch_api_key
     LLM_CLAUDE_CODE_API_KEY        = var.llm_switch_api_key
-    GEMINI_API_KEY                 = var.gemini_api_key
+    SWITCH_MEDIA_LOGIN             = var.switch_media_login
     ELEVENLABS_MUSIC_API_KEY       = var.elevenlabs_music_api_key
     COVERAGE_API_TOKEN             = var.coverage_api_token
     STRIPE_SECRET_KEY              = var.stripe_secret_key
@@ -101,6 +101,9 @@ resource "kubernetes_config_map" "app_config" {
     # http://<nas>:8788/elevenlabs (then elevenlabs_music_api_key is the app's
     # proxy login, base64 "name:password").
     ELEVENLABS_API_BASE_URL = var.elevenlabs_api_base_url
+    # Images: every image goes through the switch proxy's Images API, asked
+    # for by image class; switch_media_login is the app's proxy login.
+    SWITCH_MEDIA_URL = var.switch_media_url
   }
 }
 

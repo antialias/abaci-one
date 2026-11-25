@@ -1,21 +1,23 @@
 import {
-  PHI_EXPLORE_SUBJECTS,
   PHI_EXPLORE_PROMPT_PREFIX,
+  PHI_EXPLORE_SUBJECTS,
   PHI_EXPLORE_THEME_MODIFIERS,
 } from '@/components/toys/number-line/constants/phiExploreData'
-import { createTask } from '../task-manager'
-import { getImageProvider } from '../image-providers'
+import { AiFeature } from '../ai-usage/features'
+import { recordImageGenUsage } from '../ai-usage/helpers'
 import { generateAndStoreImage } from '../image-generation'
 import { imageExists } from '../image-storage'
+import {
+  DEFAULT_IMAGE_CLASS,
+  isImageGenerationConfigured,
+  NOT_CONFIGURED_MESSAGE,
+} from '../images/switch-images'
+import { createTask } from '../task-manager'
 import type { PhiExploreGenerateEvent } from './events'
-import { recordImageGenUsage } from '../ai-usage/helpers'
-import { AiFeature } from '../ai-usage/features'
-
-export { IMAGE_PROVIDERS } from '../image-providers'
 
 export interface PhiExploreGenerateInput {
-  provider: 'gemini' | 'openai'
-  model: string
+  /** Image class to ask the switch proxy for; defaults to DEFAULT_IMAGE_CLASS. */
+  imageClass?: string
   targets: Array<{ subjectId: string; theme?: 'light' | 'dark' }>
   forceRegenerate?: boolean
   _userId?: string
@@ -36,7 +38,7 @@ export interface PhiExploreGenerateOutput {
 /**
  * Start a phi explore image generation background task.
  *
- * Generates golden-ratio subject illustrations using the specified AI provider.
+ * Generates golden-ratio subject illustrations through the switch proxy, by image class.
  * Reports per-image progress via task events.
  */
 export async function startPhiExploreGeneration(input: PhiExploreGenerateInput): Promise<string> {
@@ -44,20 +46,11 @@ export async function startPhiExploreGeneration(input: PhiExploreGenerateInput):
     'phi-explore-generate',
     input,
     async (handle, config) => {
-      const provider = getImageProvider(config.provider)
-      if (!provider) {
-        handle.fail(`Unknown image provider: ${config.provider}`)
+      if (!isImageGenerationConfigured()) {
+        handle.fail(NOT_CONFIGURED_MESSAGE)
         return
       }
-
-      if (!provider.isAvailable()) {
-        const { envKey, envKeyAlt } = provider.meta
-        const keys = envKeyAlt ? `${envKey} or ${envKeyAlt}` : envKey
-        handle.fail(
-          `No API key configured for ${provider.meta.name}. Set ${keys} in your environment.`
-        )
-        return
-      }
+      const imageClass = config.imageClass || DEFAULT_IMAGE_CLASS
 
       // Build lookup for subject data
       const subjectMap = new Map(PHI_EXPLORE_SUBJECTS.map((s) => [s.id, s]))
@@ -116,8 +109,7 @@ export async function startPhiExploreGeneration(input: PhiExploreGenerateInput):
         handle.emit({
           type: 'image_started',
           subjectId: target.subjectId,
-          model: config.model,
-          provider: config.provider,
+          imageClass,
           ...(target.theme && { theme: target.theme }),
         })
 
@@ -135,18 +127,17 @@ export async function startPhiExploreGeneration(input: PhiExploreGenerateInput):
 
         try {
           const result = await generateAndStoreImage({
-            provider: config.provider,
-            model: config.model,
+            imageClass,
             prompt: fullPrompt,
             storageTarget,
           })
 
-          const sizeBytes = result.sizeBytes ?? 0
+          const sizeBytes = result.status === 'generated' ? result.sizeBytes : 0
 
           generated++
           consecutiveErrors = 0
-          if (config._userId) {
-            recordImageGenUsage(config.provider, config.model, {
+          if (config._userId && result.status === 'generated') {
+            recordImageGenUsage(result, {
               userId: config._userId,
               feature: AiFeature.IMAGE_PHI_EXPLORE,
               backgroundTaskId: handle.id,

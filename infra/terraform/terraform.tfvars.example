@@ -8,9 +8,12 @@ auth_secret       = "generate-with-openssl-rand-base64-32"
 # kid_songs_doorbell_url        = "http://192.168.86.51:9117/v1/abaci-song-sync"
 # kid_songs_doorbell_secret     = "set-a-secret-of-at-least-32-characters"
 
-# Optional - AI features (flowchart generation, image generation, etc.)
+# Optional - AI features (flowchart generation, etc.)
 # openai_api_key    = "sk-..."
-# gemini_api_key    = "AI..."
+
+# Optional - image generation through the switch proxy's Images API (by image class)
+# switch_media_url   = "http://192.168.86.51:8788"
+# switch_media_login = "..."                                # the app's proxy login
 
 # Optional - text calls through the claude-switch-proxy
 # llm_switch_api_key       = "..."                         # the proxy's client secret (also used by claude_code)

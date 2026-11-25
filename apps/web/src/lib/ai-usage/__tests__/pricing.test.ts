@@ -98,6 +98,16 @@ describe('estimateCost', () => {
       })
       expect(cost).toBe(0)
     })
+
+    it('returns null (unknown, not $0) for switch-proxy image rows', () => {
+      const cost = estimateCost({
+        provider: 'switch',
+        model: 'runway/gpt_image_2',
+        apiType: 'image',
+        imageCount: 1,
+      })
+      expect(cost).toBeNull()
+    })
   })
 
   describe('audio-based models', () => {

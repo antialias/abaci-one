@@ -1,26 +1,32 @@
-import { getImageProvider } from './image-providers'
-import type { ImageOptions } from './image-providers'
-import { imageExists, storeImage } from './image-storage'
 import type { ImageStorageTarget } from './image-storage'
+import { imageExists, storeImage } from './image-storage'
+import type { ImageSize } from './images/switch-images'
+import { generateImage } from './images/switch-images'
 
 export type { ImageStorageTarget } from './image-storage'
 
 export interface GenerateAndStoreRequest {
-  provider: string
-  model: string
+  /** Image class to ask the switch proxy for; defaults to DEFAULT_IMAGE_CLASS. */
+  imageClass?: string
   prompt: string
-  imageOptions?: ImageOptions
+  size?: ImageSize
   storageTarget: ImageStorageTarget
   skipIfExists?: boolean
   /** Optional reference image for image-to-image generation (e.g. theme variants). */
   referenceImage?: Buffer
 }
 
-export interface GenerateAndStoreResult {
-  status: 'generated' | 'skipped'
-  publicUrl: string
-  sizeBytes?: number
-}
+export type GenerateAndStoreResult =
+  | { status: 'skipped'; publicUrl: string }
+  | {
+      status: 'generated'
+      publicUrl: string
+      sizeBytes: number
+      /** Class that served the image. */
+      imageClass: string
+      /** Proxy member that drew it (e.g. `runway/gpt_image_2`), if reported. */
+      member: string | null
+    }
 
 export async function generateAndStoreImage(
   req: GenerateAndStoreRequest
@@ -33,18 +39,13 @@ export async function generateAndStoreImage(
     return { status: 'skipped', publicUrl }
   }
 
-  const provider = getImageProvider(req.provider)
-  if (!provider) {
-    throw new Error(`Unknown image provider: ${req.provider}`)
-  }
-
-  const { imageBuffer } = await provider.generate({
-    model: req.model,
+  const { imageBuffer, imageClass, member } = await generateImage({
+    imageClass: req.imageClass,
     prompt: req.prompt,
-    options: req.imageOptions,
+    size: req.size,
     referenceImage: req.referenceImage,
   })
 
   const { publicUrl, sizeBytes } = storeImage(req.storageTarget, imageBuffer)
-  return { status: 'generated', publicUrl, sizeBytes }
+  return { status: 'generated', publicUrl, sizeBytes, imageClass, member }
 }

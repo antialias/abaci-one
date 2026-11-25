@@ -1,11 +1,11 @@
 import { existsSync, statSync } from 'fs'
-import { join } from 'path'
 import { NextResponse } from 'next/server'
+import { join } from 'path'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getAllPageSpotGroups } from '@/lib/page-spots/spotDefinitions'
+import { getImageClassStatus } from '@/lib/images/switch-images'
 import { loadPageSpotConfig, spotImageExists, spotImageUrl } from '@/lib/page-spots/loadSpotConfig'
-import { IMAGE_PROVIDERS } from '@/lib/tasks/blog-image-generate'
 import { getSpotComponentList } from '@/lib/page-spots/spotComponentList'
+import { getAllPageSpotGroups } from '@/lib/page-spots/spotDefinitions'
 
 const CONTENT_DIR = join(process.cwd(), 'content', 'page-spots')
 const PUBLIC_DIR = join(process.cwd(), 'public', 'page-spots')
@@ -14,7 +14,7 @@ const PUBLIC_DIR = join(process.cwd(), 'public', 'page-spots')
  * GET /api/admin/page-spots/status
  *
  * Returns all pages/spots with their config state, image/html existence,
- * available providers, and component list.
+ * available image classes, and component list.
  */
 export const GET = withAuth(
   async () => {
@@ -62,23 +62,9 @@ export const GET = withAuth(
       }
     })
 
-    const providers = IMAGE_PROVIDERS.map((p) => {
-      const hasKey =
-        'envKeyAlt' in p
-          ? !!(process.env[p.envKey] || process.env[p.envKeyAlt!])
-          : !!process.env[p.envKey]
-
-      return {
-        id: p.id,
-        name: p.name,
-        available: hasKey,
-        models: p.models.map((m) => ({ id: m.id, name: m.name })),
-      }
-    })
-
     const components = getSpotComponentList()
 
-    return NextResponse.json({ pages, providers, components })
+    return NextResponse.json({ pages, components, ...(await getImageClassStatus()) })
   },
   { role: 'admin' }
 )

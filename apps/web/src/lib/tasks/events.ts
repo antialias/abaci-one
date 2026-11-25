@@ -325,8 +325,7 @@ export type ImageGenerateEvent =
       type: 'image_started'
       constantId: string
       style: 'metaphor' | 'math'
-      model: string
-      provider: string
+      imageClass: string
       theme?: 'light' | 'dark'
     }
   | {
@@ -367,8 +366,7 @@ export type PhiExploreGenerateEvent =
   | {
       type: 'image_started'
       subjectId: string
-      model: string
-      provider: string
+      imageClass: string
       theme?: 'light' | 'dark'
     }
   | {
@@ -406,27 +404,18 @@ export type BlogImageGenerateEvent =
   | {
       type: 'image_started'
       slug: string
-      model: string
-      provider: string
+      imageClass: string
     }
   | {
       type: 'image_complete'
       slug: string
       filePath: string
       sizeBytes: number
-      usedFallback?: boolean
     }
   | {
       type: 'image_error'
       slug: string
       error: string
-    }
-  | {
-      type: 'image_fallback'
-      slug: string
-      primaryError: string
-      fallbackProvider: string
-      fallbackModel: string
     }
   | {
       type: 'batch_progress'
@@ -450,8 +439,7 @@ export type PageSpotImageGenerateEvent =
       type: 'spot_started'
       pageId: string
       spotId: string
-      model: string
-      provider: string
+      imageClass: string
     }
   | {
       type: 'spot_complete'
@@ -486,8 +474,7 @@ export type ProfileImageGenerateEvent =
       size: ProfileSize
       theme: ProfileTheme
       state: ProfileState
-      model: string
-      provider: string
+      imageClass: string
     }
   | {
       type: 'image_complete'
@@ -616,8 +603,7 @@ export type PostcardGenerateEvent =
   | {
       type: 'postcard_generating_image'
       postcardId: string
-      provider: string
-      model: string
+      imageClass: string
     }
   | {
       type: 'postcard_reviewing'
@@ -649,8 +635,7 @@ export type PostcardImageGenerateEvent =
   | {
       type: 'image_generating'
       postcardId: string
-      provider: string
-      model: string
+      imageClass: string
       attempt: number
     }
   | {
@@ -697,8 +682,7 @@ export type PostcardThumbnailGenerateEvent =
   | {
       type: 'thumbnail_generating'
       postcardId: string
-      provider: string
-      model: string
+      imageClass: string
     }
   | {
       type: 'thumbnail_generated'

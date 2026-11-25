@@ -93,7 +93,10 @@ export const PRICING: Record<string, PricingEntry> = {
     pricing: { perMillionCharacters: 12 },
   },
 
-  // --- OpenAI Image ---
+  // --- OpenAI Image (historical rows; new images go through the switch proxy) ---
+  // Switch-proxy image rows (`switch/<member>`) deliberately have no entry:
+  // the proxy picks the member, so there is no fixed per-call price and
+  // estimateCost returns null (unknown) rather than a made-up figure.
   'openai/gpt-image-1': {
     type: 'image',
     pricing: { perImage: 0.04 }, // varies by quality/size
@@ -105,7 +108,7 @@ export const PRICING: Record<string, PricingEntry> = {
     pricing: { inputPerMillion: 0.13, outputPerMillion: 0 },
   },
 
-  // --- Google Gemini ---
+  // --- Google Gemini (historical image rows only) ---
   'gemini/gemini-2.5-flash-image': {
     type: 'image',
     pricing: { perImage: 0.039 },

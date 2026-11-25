@@ -1,22 +1,21 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
-import { getSpotDefinition } from '@/lib/page-spots/spotDefinitions'
+import { parseImageClassParam } from '@/lib/images/switch-images'
 import { loadSpotConfig } from '@/lib/page-spots/loadSpotConfig'
+import { getSpotDefinition } from '@/lib/page-spots/spotDefinitions'
 import { startPageSpotImageGeneration } from '@/lib/tasks/page-spot-image-generate'
-
-const VALID_PROVIDERS = ['gemini', 'openai'] as const
 
 /**
  * POST /api/admin/page-spots/generate
  *
  * Starts a background task to generate an image for a page spot.
- * Body: { pageId, spotId, provider?, model?, forceRegenerate? }
+ * Body: { pageId, spotId, imageClass?, forceRegenerate? }
  */
 export const POST = withAuth(
   async (request: NextRequest, { userId }) => {
     try {
       const body = await request.json()
-      const { pageId, spotId, provider, model, forceRegenerate } = body
+      const { pageId, spotId, forceRegenerate } = body
 
       if (!pageId || !spotId) {
         return NextResponse.json({ error: 'pageId and spotId are required' }, { status: 400 })
@@ -39,26 +38,16 @@ export const POST = withAuth(
         return NextResponse.json({ error: 'Spot has no prompt configured' }, { status: 400 })
       }
 
-      // Use provider/model from request or fall back to config
-      const resolvedProvider = provider ?? config.provider
-      const resolvedModel = model ?? config.model
-
-      if (!resolvedProvider || !VALID_PROVIDERS.includes(resolvedProvider)) {
-        return NextResponse.json(
-          { error: `provider must be one of: ${VALID_PROVIDERS.join(', ')}` },
-          { status: 400 }
-        )
-      }
-
-      if (!resolvedModel || typeof resolvedModel !== 'string') {
-        return NextResponse.json({ error: 'model must be a non-empty string' }, { status: 400 })
+      // Use the image class from the request, else the spot's config, else the default
+      const parsedClass = parseImageClassParam(body.imageClass ?? config.imageClass)
+      if (!parsedClass.ok) {
+        return NextResponse.json({ error: parsedClass.error }, { status: 400 })
       }
 
       const taskId = await startPageSpotImageGeneration({
         pageId,
         spotId,
-        provider: resolvedProvider,
-        model: resolvedModel,
+        imageClass: parsedClass.imageClass,
         prompt: config.prompt,
         forceRegenerate: !!forceRegenerate,
         _userId: userId,

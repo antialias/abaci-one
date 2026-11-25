@@ -1,28 +1,29 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
-import { css } from '../../../../styled-system/css'
-import { AppNavBar } from '@/components/AppNavBar'
+import { useCallback, useEffect, useState } from 'react'
 import { AdminNav } from '@/components/AdminNav'
-import { useBackgroundTask } from '@/hooks/useBackgroundTask'
+import { AppNavBar } from '@/components/AppNavBar'
+import { ImageClassSelect, type ImageClassStatus } from '@/components/admin/ImageClassSelect'
 import type { TaskState } from '@/hooks/useBackgroundTask'
-import type {
-  ProfileImageGenerateOutput,
-  ProfileSize,
-  ProfileTheme,
-  ProfileState,
-} from '@/lib/tasks/profile-image-generate'
+import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type {
   CharacterData,
   CharacterSummary,
   ModeData,
+  ModeTransition,
   PersonalityBlock,
   ToolData,
-  ModeTransition,
   VoiceConfig,
 } from '@/lib/character/characters'
 import type { PromptBreakdown, PromptSection } from '@/lib/character/promptBreakdown'
+import type {
+  ProfileImageGenerateOutput,
+  ProfileSize,
+  ProfileState,
+  ProfileTheme,
+} from '@/lib/tasks/profile-image-generate'
+import { css } from '../../../../styled-system/css'
 
 // ── Styles ──────────────────────────────────────────────────────────
 
@@ -537,8 +538,19 @@ function IdentityCard({
 }) {
   const [editingPrompt, setEditingPrompt] = useState(false)
   const [profilePrompt, setProfilePrompt] = useState(data.identity.profilePrompt)
-  const [genProvider, setGenProvider] = useState('gemini')
-  const [genModel, setGenModel] = useState('')
+  const [imageClassStatus, setImageClassStatus] = useState<ImageClassStatus | null>(null)
+  const [imageClass, setImageClass] = useState('')
+
+  useEffect(() => {
+    fetch('/api/admin/image-classes')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((status: ImageClassStatus | null) => {
+        if (!status) return
+        setImageClassStatus(status)
+        setImageClass((current) => current || status.defaultImageClass)
+      })
+      .catch(() => {})
+  }, [])
 
   // Tab state for idle vs speaking grid view
   const [viewState, setViewState] = useState<ProfileState>('idle')
@@ -554,9 +566,6 @@ function IdentityCard({
   // Cache bust counter — increments when any task completes
   const [imageCacheBust, setImageCacheBust] = useState(0)
 
-  const resolvedModel =
-    genModel || (genProvider === 'gemini' ? 'gemini-3-pro-image-preview' : 'gpt-image-1')
-
   const fireGenerate = useCallback(
     async (opts: {
       size: ProfileSize
@@ -569,8 +578,7 @@ function IdentityCard({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            provider: genProvider,
-            model: resolvedModel,
+            imageClass,
             size: opts.size,
             theme: opts.theme,
             state: opts.state ?? 'idle',
@@ -585,7 +593,7 @@ function IdentityCard({
         return null
       }
     },
-    [data.identity.id, genProvider, resolvedModel]
+    [data.identity.id, imageClass]
   )
 
   // Handle state changes from TaskTracker instances
@@ -897,22 +905,12 @@ function IdentityCard({
           <div style={{ marginTop: 16 }}>
             <div className={labelStyle}>Generate Profile Image</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <select
+              <ImageClassSelect
+                status={imageClassStatus}
+                value={imageClass}
+                onChange={setImageClass}
+                disabled={isGenerating}
                 className={selectStyle}
-                value={genProvider}
-                onChange={(e) => setGenProvider(e.target.value)}
-                disabled={isGenerating}
-              >
-                <option value="gemini">Gemini</option>
-                <option value="openai">OpenAI</option>
-              </select>
-              <input
-                className={inputStyle}
-                style={{ width: 220 }}
-                placeholder={resolvedModel}
-                value={genModel}
-                onChange={(e) => setGenModel(e.target.value)}
-                disabled={isGenerating}
               />
 
               {/* Generate All (cascade) button */}

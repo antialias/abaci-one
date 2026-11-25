@@ -966,7 +966,7 @@ The illustration system borrows directly from the existing character image infra
 - **Reference image chaining** (like profile variant cascades)
 - **Style modifiers** layered on a locked base style (like size/theme/state modifiers)
 - **Image-to-image generation** to maintain visual identity across scenes
-- **Multi-provider support** (Gemini, OpenAI — both support image-to-image)
+- **Image classes through the switch proxy** (the proxy picks the provider; edits support image-to-image)
 
 #### The Consistency Problem
 
@@ -1169,8 +1169,7 @@ If a character consistently looks wrong across multiple illustrations, the agent
 | Existing System | Reuse in WriteSmith |
 |----------------|---------------------|
 | `image-generation.ts` | Core generation + storage interface |
-| `image-providers/gemini.ts` | Gemini image-to-image with reference images |
-| `image-providers/openai.ts` | OpenAI image generation + edits |
+| `images/switch-images.ts` | Image generation + edits (reference images) via the switch proxy, by image class |
 | `image-storage.ts` | Persistent storage (NFS/data dir) + serving via API |
 | `profile-image-generate.ts` | Cascade pattern, modifier system, reference chaining |
 | `profile-variants.ts` | Variant naming scheme (adapt for illustration IDs) |

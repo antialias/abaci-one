@@ -1,16 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { css } from '../../../../styled-system/css'
-import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
+import { AppNavBar } from '@/components/AppNavBar'
+import { ImageClassSelect, type ImageClassStatus } from '@/components/admin/ImageClassSelect'
+import {
+  RECT_RATIO,
+  SUBDIVISIONS,
+} from '@/components/toys/number-line/constants/demos/goldenRatioDemo'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
 import type { ImageGenerateOutput } from '@/lib/tasks/image-generate'
 import type { PhiExploreGenerateOutput } from '@/lib/tasks/phi-explore-generate'
-import {
-  SUBDIVISIONS,
-  RECT_RATIO,
-} from '@/components/toys/number-line/constants/demos/goldenRatioDemo'
+import { css } from '../../../../styled-system/css'
 
 interface AlignmentConfig {
   scale: number
@@ -62,16 +63,8 @@ interface PhiExploreImageStatus {
   darkExists: boolean
 }
 
-interface ProviderInfo {
-  id: string
-  name: string
-  available: boolean
-  models: Array<{ id: string; name: string }>
-}
-
-interface StatusResponse {
+interface StatusResponse extends ImageClassStatus {
   constants: ConstantImageStatus[]
-  providers: ProviderInfo[]
   phiExplore: PhiExploreImageStatus[]
 }
 
@@ -79,15 +72,14 @@ interface StatusResponse {
  * Admin page for generating constant illustration images.
  *
  * Shows all 11 math constants with their metaphor/math image slots,
- * allows selecting an AI provider/model, and triggers generation
+ * allows selecting an image class, and triggers generation
  * as a background task with real-time progress.
  */
 export default function ConstantImagesPage() {
   const [status, setStatus] = useState<StatusResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [provider, setProvider] = useState<string>('')
-  const [model, setModel] = useState<string>('')
+  const [imageClass, setImageClass] = useState<string>('')
   const [pipelineQueue, setPipelineQueue] = useState<PipelinePhase[]>([])
   const [taskId, setTaskId] = useState<string | null>(null)
   const [expandedPrompts, setExpandedPrompts] = useState<Set<string>>(new Set())
@@ -105,7 +97,6 @@ export default function ConstantImagesPage() {
   const [alignmentData, setAlignmentData] = useState<AlignmentData>({})
   const [aligningKey, setAligningKey] = useState<AlignmentKey | null>(null)
 
-  const providerInitRef = useRef(false)
   const pipelineAdvancingRef = useRef(false)
 
   const { state: taskState, cancel: cancelTask } = useBackgroundTask<ImageGenerateOutput>(taskId)
@@ -237,15 +228,8 @@ export default function ConstantImagesPage() {
         setAlignmentData(alignData)
       }
 
-      // Auto-select first available provider/model (once)
-      if (!providerInitRef.current) {
-        const available = data.providers.find((p) => p.available)
-        if (available) {
-          setProvider(available.id)
-          setModel(available.models[0]?.id ?? '')
-        }
-        providerInitRef.current = true
-      }
+      // Default to the app's default image class (once)
+      setImageClass((current) => current || data.defaultImageClass)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load status')
     } finally {
@@ -358,8 +342,7 @@ export default function ConstantImagesPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            provider,
-            model,
+            imageClass,
             targets: themedTargets,
             forceRegenerate,
             ...(themeOverride && !themedTargets && { theme: themeOverride }),
@@ -377,7 +360,7 @@ export default function ConstantImagesPage() {
         setPipelineQueue([])
       }
     },
-    [provider, model]
+    [imageClass]
   )
 
   const handlePhiGenerate = useCallback(
@@ -397,8 +380,7 @@ export default function ConstantImagesPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            provider,
-            model,
+            imageClass,
             targets: opts?.targets,
             forceRegenerate: opts?.forceRegenerate,
             theme: opts?.theme,
@@ -415,7 +397,7 @@ export default function ConstantImagesPage() {
         setError(err instanceof Error ? err.message : 'Failed to start phi explore generation')
       }
     },
-    [provider, model]
+    [imageClass]
   )
 
   // Pipeline advancement: when a task completes and there's more in the queue, advance
@@ -488,28 +470,6 @@ export default function ConstantImagesPage() {
       return next
     })
   }
-
-  // Provider/model change handler
-  const handleProviderChange = (value: string) => {
-    // value is "provider:model"
-    const [p, m] = value.split(':')
-    setProvider(p)
-    setModel(m)
-  }
-
-  // Build provider options for dropdown
-  const providerOptions = useMemo(() => {
-    if (!status) return []
-    return status.providers.flatMap((p) =>
-      p.models.map((m) => ({
-        value: `${p.id}:${m.id}`,
-        label: `${p.name} — ${m.name}${!p.available ? ' (no key)' : ''}`,
-        disabled: !p.available,
-      }))
-    )
-  }, [status])
-
-  const selectedValue = `${provider}:${model}`
 
   // Pipeline progress info
   const pipelinePhaseIndex = pipelineQueue.length > 0 ? 3 - pipelineQueue.length : -1
@@ -589,11 +549,11 @@ export default function ConstantImagesPage() {
             border: '1px solid #30363d',
           })}
         >
-          {/* Provider/model selector */}
-          <select
-            data-action="select-provider"
-            value={selectedValue}
-            onChange={(e) => handleProviderChange(e.target.value)}
+          {/* Image class selector */}
+          <ImageClassSelect
+            status={status}
+            value={imageClass}
+            onChange={setImageClass}
             disabled={isGenerating}
             className={css({
               backgroundColor: '#21262d',
@@ -605,19 +565,13 @@ export default function ConstantImagesPage() {
               cursor: 'pointer',
               '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
             })}
-          >
-            {providerOptions.map((opt) => (
-              <option key={opt.value} value={opt.value} disabled={opt.disabled}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          />
 
           {/* Generate All Pipeline button */}
           <button
             data-action="generate-all-pipeline"
             onClick={handlePipelineGenerate}
-            disabled={isGenerating || !provider}
+            disabled={isGenerating || !imageClass}
             className={css({
               fontSize: '13px',
               backgroundColor: '#8957e5',
@@ -638,7 +592,7 @@ export default function ConstantImagesPage() {
           <button
             data-action="generate-all-missing"
             onClick={() => handleGenerate()}
-            disabled={isGenerating || baseMissing === 0 || !provider}
+            disabled={isGenerating || baseMissing === 0 || !imageClass}
             className={css({
               fontSize: '13px',
               backgroundColor: '#238636',
@@ -659,7 +613,7 @@ export default function ConstantImagesPage() {
           <button
             data-action="generate-all-force"
             onClick={() => handleGenerate(undefined, true)}
-            disabled={isGenerating || !provider}
+            disabled={isGenerating || !imageClass}
             className={css({
               fontSize: '13px',
               backgroundColor: '#21262d',
@@ -855,7 +809,7 @@ export default function ConstantImagesPage() {
                 expandedPrompts={expandedPrompts}
                 onTogglePrompt={togglePrompt}
                 onRegenerate={(constantId, style) => handleGenerate([{ constantId, style }], true)}
-                provider={provider}
+                imageClass={imageClass}
               />
             ))}
           </div>
@@ -904,7 +858,7 @@ export default function ConstantImagesPage() {
               <button
                 data-action="phi-generate-pipeline"
                 onClick={handlePhiPipelineGenerate}
-                disabled={isPhiGenerating || !provider}
+                disabled={isPhiGenerating || !imageClass}
                 className={css({
                   fontSize: '13px',
                   backgroundColor: '#8957e5',
@@ -924,7 +878,7 @@ export default function ConstantImagesPage() {
               <button
                 data-action="phi-generate-missing"
                 onClick={() => handlePhiGenerate({})}
-                disabled={isPhiGenerating || phiBaseMissing === 0 || !provider}
+                disabled={isPhiGenerating || phiBaseMissing === 0 || !imageClass}
                 className={css({
                   fontSize: '13px',
                   backgroundColor: '#238636',
@@ -944,7 +898,7 @@ export default function ConstantImagesPage() {
               <button
                 data-action="phi-regenerate-all"
                 onClick={() => handlePhiGenerate({ forceRegenerate: true })}
-                disabled={isPhiGenerating || !provider}
+                disabled={isPhiGenerating || !imageClass}
                 className={css({
                   fontSize: '13px',
                   backgroundColor: '#21262d',
@@ -964,7 +918,7 @@ export default function ConstantImagesPage() {
               <button
                 data-action="phi-generate-light"
                 onClick={() => handlePhiGenerate({ theme: 'light' })}
-                disabled={isPhiGenerating || phiLightMissing === 0 || !provider}
+                disabled={isPhiGenerating || phiLightMissing === 0 || !imageClass}
                 className={css({
                   fontSize: '13px',
                   backgroundColor: '#21262d',
@@ -984,7 +938,7 @@ export default function ConstantImagesPage() {
               <button
                 data-action="phi-generate-dark"
                 onClick={() => handlePhiGenerate({ theme: 'dark' })}
-                disabled={isPhiGenerating || phiDarkMissing === 0 || !provider}
+                disabled={isPhiGenerating || phiDarkMissing === 0 || !imageClass}
                 className={css({
                   fontSize: '13px',
                   backgroundColor: '#21262d',
@@ -1178,7 +1132,7 @@ export default function ConstantImagesPage() {
                           forceRegenerate: true,
                         })
                       }
-                      provider={provider}
+                      imageClass={imageClass}
                       aligningTheme={aligningTheme}
                       onToggleAlign={(theme) =>
                         setAligningKey((prev) =>
@@ -1221,7 +1175,7 @@ function ConstantCard({
   expandedPrompts,
   onTogglePrompt,
   onRegenerate,
-  provider,
+  imageClass,
 }: {
   constant: ConstantImageStatus
   isGenerating: boolean
@@ -1229,7 +1183,7 @@ function ConstantCard({
   expandedPrompts: Set<string>
   onTogglePrompt: (key: string) => void
   onRegenerate: (constantId: string, style: 'metaphor' | 'math') => void
-  provider: string
+  imageClass: string
 }) {
   return (
     <div
@@ -1330,7 +1284,7 @@ function ConstantCard({
           isExpanded={expandedPrompts.has(`${constant.id}-metaphor`)}
           onTogglePrompt={() => onTogglePrompt(`${constant.id}-metaphor`)}
           onRegenerate={() => onRegenerate(constant.id, 'metaphor')}
-          provider={provider}
+          imageClass={imageClass}
         />
         <ImageSlot
           constant={constant}
@@ -1341,7 +1295,7 @@ function ConstantCard({
           isExpanded={expandedPrompts.has(`${constant.id}-math`)}
           onTogglePrompt={() => onTogglePrompt(`${constant.id}-math`)}
           onRegenerate={() => onRegenerate(constant.id, 'math')}
-          provider={provider}
+          imageClass={imageClass}
         />
       </div>
     </div>
@@ -1357,7 +1311,7 @@ function ImageSlot({
   isExpanded,
   onTogglePrompt,
   onRegenerate,
-  provider,
+  imageClass,
 }: {
   constant: ConstantImageStatus
   style: 'metaphor' | 'math'
@@ -1367,7 +1321,7 @@ function ImageSlot({
   isExpanded: boolean
   onTogglePrompt: () => void
   onRegenerate: () => void
-  provider: string
+  imageClass: string
 }) {
   const variants: Array<{ key: string; label: string; suffix: string; exists: boolean }> = [
     { key: 'base', label: 'base', suffix: '', exists: info.exists },
@@ -1489,7 +1443,7 @@ function ImageSlot({
         <button
           data-action={`regenerate-${constant.id}-${style}`}
           onClick={onRegenerate}
-          disabled={isGenerating || !provider}
+          disabled={isGenerating || !imageClass}
           className={css({
             flex: 1,
             fontSize: '11px',
@@ -1551,7 +1505,7 @@ function PhiExploreCard({
   isExpanded,
   onTogglePrompt,
   onRegenerate,
-  provider,
+  imageClass,
   aligningTheme,
   onToggleAlign,
 }: {
@@ -1561,7 +1515,7 @@ function PhiExploreCard({
   isExpanded: boolean
   onTogglePrompt: () => void
   onRegenerate: () => void
-  provider: string
+  imageClass: string
   aligningTheme: 'light' | 'dark' | null
   onToggleAlign: (theme: 'light' | 'dark') => void
 }) {
@@ -1734,7 +1688,7 @@ function PhiExploreCard({
           <button
             data-action={`regenerate-phi-${subject.id}`}
             onClick={onRegenerate}
-            disabled={isGenerating || !provider}
+            disabled={isGenerating || !imageClass}
             className={css({
               flex: 1,
               fontSize: '11px',

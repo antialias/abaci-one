@@ -12,8 +12,8 @@
 export interface GeneratedSpotConfig {
   type: 'generated'
   prompt: string
-  provider?: 'gemini' | 'openai'
-  model?: string
+  /** Image class to ask the switch proxy for; defaults to DEFAULT_IMAGE_CLASS. */
+  imageClass?: string
   /** Focal-point crop — percentages from top-left (0–100) */
   focalPoint?: { x: number; y: number }
 }

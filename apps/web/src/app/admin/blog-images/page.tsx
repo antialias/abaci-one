@@ -1,16 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { css } from '../../../../styled-system/css'
-import { AppNavBar } from '@/components/AppNavBar'
 import { AdminNav } from '@/components/AdminNav'
+import { AppNavBar } from '@/components/AppNavBar'
 import { BlogCropEditor } from '@/components/admin/BlogCropEditor'
+import { ImageClassSelect, type ImageClassStatus } from '@/components/admin/ImageClassSelect'
 import { RefinePromptModal } from '@/components/admin/RefinePromptModal'
+import { HeroComponentBanner } from '@/components/blog/HeroComponentBanner'
 import { useBackgroundTask } from '@/hooks/useBackgroundTask'
-import type { BlogImageGenerateOutput } from '@/lib/tasks/blog-image-generate'
 import { getHeroComponentList } from '@/lib/blog/heroComponentRegistry'
 import { getInlineComponentList } from '@/lib/blog/inlineComponentRegistry'
-import { HeroComponentBanner } from '@/components/blog/HeroComponentBanner'
+import type { BlogImageGenerateOutput } from '@/lib/tasks/blog-image-generate'
+import { css } from '../../../../styled-system/css'
 
 type HeroType = 'generated' | 'storybook' | 'component' | 'html'
 
@@ -37,16 +38,8 @@ interface BlogPostStatus {
   embeds: EmbedStatus[]
 }
 
-interface ProviderInfo {
-  id: string
-  name: string
-  available: boolean
-  models: Array<{ id: string; name: string }>
-}
-
-interface StatusResponse {
+interface StatusResponse extends ImageClassStatus {
   posts: BlogPostStatus[]
-  providers: ProviderInfo[]
 }
 
 function formatBytes(bytes: number): string {
@@ -412,8 +405,7 @@ const EMBED_CAPTURE_DEFAULTS: Record<string, string> = {
 
 export default function BlogImagesAdmin() {
   const [status, setStatus] = useState<StatusResponse | null>(null)
-  const [selectedValue, setSelectedValue] = useState('')
-  const [fallbackValue, setFallbackValue] = useState('')
+  const [imageClass, setImageClass] = useState('')
   const [taskId, setTaskId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [cropEditorSlug, setCropEditorSlug] = useState<string | null>(null)
@@ -467,15 +459,6 @@ export default function BlogImagesAdmin() {
 
   const isGenerating = taskState?.status === 'running' || taskState?.status === 'pending'
 
-  // Parse selected provider/model
-  const [selectedProvider, selectedModel] = selectedValue.includes(':')
-    ? selectedValue.split(':')
-    : ['', '']
-
-  const [fallbackProvider, fallbackModel] = fallbackValue.includes(':')
-    ? fallbackValue.split(':')
-    : ['', '']
-
   // Fetch status
   const fetchStatus = useCallback(async () => {
     try {
@@ -492,17 +475,12 @@ export default function BlogImagesAdmin() {
       setStatus(data)
       setError(null)
 
-      // Auto-select first available provider
-      if (!selectedValue && data.providers.length > 0) {
-        const available = data.providers.find((p) => p.available)
-        if (available && available.models.length > 0) {
-          setSelectedValue(`${available.id}:${available.models[0].id}`)
-        }
-      }
+      // Default to the app's default image class
+      setImageClass((current) => current || data.defaultImageClass)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load status')
     }
-  }, [selectedValue])
+  }, [])
 
   useEffect(() => {
     fetchStatus()
@@ -531,21 +509,16 @@ export default function BlogImagesAdmin() {
     targets: Array<{ slug: string; prompt: string }>,
     forceRegenerate = false
   ) {
-    if (!selectedProvider || !selectedModel) {
-      setError('Select a provider and model first')
+    if (!status?.configured) {
+      setError("Image generation isn't configured: set SWITCH_MEDIA_URL and SWITCH_MEDIA_LOGIN")
       return
     }
     setError(null)
     try {
       const payload: Record<string, unknown> = {
-        provider: selectedProvider,
-        model: selectedModel,
+        imageClass,
         targets,
         forceRegenerate,
-      }
-      if (fallbackProvider && fallbackModel) {
-        payload.fallbackProvider = fallbackProvider
-        payload.fallbackModel = fallbackModel
       }
       const res = await fetch('/api/admin/blog-images/generate', {
         method: 'POST',
@@ -1053,9 +1026,8 @@ export default function BlogImagesAdmin() {
     }
   }
 
-  // Build per-slug error and fallback maps from task events
+  // Build per-slug error map from task events
   const slugErrors = new Map<string, string>()
-  const slugFallbacks = new Map<string, string>()
   const currentSlugRef = { value: '' }
   for (const event of taskState?.events ?? []) {
     if (event.eventType === 'image_started') {
@@ -1065,23 +1037,10 @@ export default function BlogImagesAdmin() {
       if (payload.slug && payload.error) {
         slugErrors.set(payload.slug, payload.error)
       }
-    } else if (event.eventType === 'image_fallback') {
-      const payload = event.payload as {
-        slug?: string
-        primaryError?: string
-        fallbackProvider?: string
-      }
-      if (payload.slug) {
-        slugFallbacks.set(
-          payload.slug,
-          `Primary failed: ${payload.primaryError} — trying ${payload.fallbackProvider}...`
-        )
-      }
     } else if (event.eventType === 'image_complete') {
       const payload = event.payload as { slug?: string }
       if (payload.slug) {
         slugErrors.delete(payload.slug)
-        slugFallbacks.delete(payload.slug)
       }
     }
   }
@@ -1164,48 +1123,13 @@ export default function BlogImagesAdmin() {
             border: '1px solid #30363d',
           })}
         >
-          <select
-            data-action="select-provider"
-            value={selectedValue}
-            onChange={(e) => setSelectedValue(e.target.value)}
+          <ImageClassSelect
+            status={status}
+            value={imageClass}
+            onChange={setImageClass}
             disabled={isGenerating}
             className={selectStyle}
-          >
-            <option value="">Provider...</option>
-            {status?.providers.map((p) =>
-              p.models.map((m) => (
-                <option key={`${p.id}:${m.id}`} value={`${p.id}:${m.id}`} disabled={!p.available}>
-                  {p.name} / {m.name}
-                  {!p.available ? ' (no key)' : ''}
-                </option>
-              ))
-            )}
-          </select>
-
-          <select
-            data-action="select-fallback"
-            value={fallbackValue}
-            onChange={(e) => setFallbackValue(e.target.value)}
-            disabled={isGenerating}
-            className={selectStyle}
-          >
-            <option value="">No fallback</option>
-            {status?.providers.map((p) =>
-              p.models.map((m) => {
-                const val = `${p.id}:${m.id}`
-                return (
-                  <option
-                    key={`fb-${val}`}
-                    value={val}
-                    disabled={!p.available || val === selectedValue}
-                  >
-                    Fallback: {p.name} / {m.name}
-                    {!p.available ? ' (no key)' : ''}
-                  </option>
-                )
-              })
-            )}
-          </select>
+          />
 
           <button
             data-action="generate-all-missing"
@@ -1630,22 +1554,6 @@ export default function BlogImagesAdmin() {
                                 crop: {post.heroCrop}
                               </span>
                             )}
-                          </div>
-                        )}
-                        {slugFallbacks.get(post.slug) && !slugError && (
-                          <div
-                            className={css({
-                              marginTop: '8px',
-                              padding: '6px 10px',
-                              backgroundColor: 'rgba(210, 153, 34, 0.1)',
-                              border: '1px solid rgba(210, 153, 34, 0.3)',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              color: '#d29922',
-                              wordBreak: 'break-word',
-                            })}
-                          >
-                            {slugFallbacks.get(post.slug)}
                           </div>
                         )}
                         {slugError && (
