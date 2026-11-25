@@ -131,25 +131,6 @@ export function recordLlmClientStreamUsage(
 }
 
 // ---------------------------------------------------------------------------
-// @soroban/llm-client embed() response
-// Response shape: { usage: { promptTokens, totalTokens }, model }
-// ---------------------------------------------------------------------------
-
-export function recordEmbeddingUsage(
-  response: { usage: { promptTokens: number; totalTokens: number }; model: string },
-  context: UsageContext
-): void {
-  recordAiUsage({
-    ...context,
-    provider: 'openai',
-    model: response.model,
-    apiType: 'embedding',
-    inputTokens: response.usage.promptTokens,
-    outputTokens: response.usage.totalTokens - response.usage.promptTokens,
-  })
-}
-
-// ---------------------------------------------------------------------------
 // Image generation (switch proxy Images API, by image class)
 // ---------------------------------------------------------------------------
 

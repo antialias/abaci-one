@@ -6,7 +6,6 @@ export {
   recordOpenAiResponsesStreamUsage,
   recordLlmClientUsage,
   recordLlmClientStreamUsage,
-  recordEmbeddingUsage,
   recordImageGenUsage,
   recordTtsUsage,
   recordRealtimeHeartbeat,
@@ -16,6 +15,5 @@ export {
 export {
   createUsageRecordingMiddleware,
   trackedCall,
-  trackedEmbed,
   type UsageRecordingContext,
 } from './llm-middleware'

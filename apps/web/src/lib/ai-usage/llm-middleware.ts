@@ -3,7 +3,6 @@
  *
  * - createUsageRecordingMiddleware: StreamMiddleware that auto-records on stream completion
  * - trackedCall: wraps llm.call() with automatic usage recording
- * - trackedEmbed: wraps llm.embed() with automatic usage recording
  *
  * IMPORTANT: This module is transitively imported by client components via
  * llm.ts → worksheet-parsing → PhotoViewerEditor → SummaryClient.
@@ -17,8 +16,6 @@ import type {
   LLMClient,
   LLMRequest,
   LLMResponse,
-  EmbeddingRequest,
-  EmbeddingResponse,
 } from '@soroban/llm-client'
 import type { z } from 'zod'
 import type { AiFeatureValue } from './features'
@@ -69,19 +66,5 @@ export async function trackedCall<T extends z.ZodType>(
   const response = await llm.call(request)
   const { recordLlmClientUsage } = await import('./helpers')
   recordLlmClientUsage(response, context)
-  return response
-}
-
-/**
- * Call llm.embed() and record usage automatically.
- */
-export async function trackedEmbed(
-  llm: LLMClient,
-  request: EmbeddingRequest,
-  context: UsageRecordingContext
-): Promise<EmbeddingResponse> {
-  const response = await llm.embed(request)
-  const { recordEmbeddingUsage } = await import('./helpers')
-  recordEmbeddingUsage(response, context)
   return response
 }
