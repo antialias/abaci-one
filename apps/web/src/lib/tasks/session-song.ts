@@ -12,8 +12,6 @@
 
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { mkdir, writeFile } from 'fs/promises'
-import { atomicWriteSong } from '@/lib/kid-songs/atomicWriteSong'
-import { ringKidSongsDoorbell } from '@/lib/kid-songs/doorbell'
 import { dirname, join } from 'path'
 import { db, schema } from '@/db'
 import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
@@ -26,6 +24,8 @@ import type {
 import { AiFeature } from '@/lib/ai-usage/features'
 import { recordElevenLabsUsage } from '@/lib/ai-usage/helpers'
 import { getFlag } from '@/lib/feature-flags'
+import { atomicWriteSong } from '@/lib/kid-songs/atomicWriteSong'
+import { ringKidSongsDoorbell } from '@/lib/kid-songs/doorbell'
 import { getSocketIO } from '@/lib/socket-io'
 import {
   type CompositionPlan,
@@ -39,9 +39,12 @@ import {
   SongCompositionValidationError,
   type SongPlanValidationPolicy,
 } from '../session-song/composition-plan-validation'
-import { resolveSongGenres, selectSongConcept } from '../session-song/concept-selector'
 import { extractSessionStats, type SongPromptInput } from '../session-song/extract-session-stats'
-import { generateSongPrompt, type SongCompositionOutput } from '../session-song/prompt-generator'
+import {
+  generateSongPrompt,
+  type SongCompositionOutput,
+  summarizeRecentSongs,
+} from '../session-song/prompt-generator'
 import { createTask, type TaskHandle } from '../task-manager'
 import type { SessionSongEvent } from './events'
 
@@ -92,48 +95,17 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null
 }
 
-function nestedRecord(value: unknown, key: string): Record<string, unknown> | null {
-  return asRecord(asRecord(value)?.[key])
-}
-
-function stringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : []
-}
-
-function getRecentSongConceptIds(
-  songs: Array<{ promptInput: unknown; llmOutput: unknown }>
-): string[] {
-  return songs
-    .map((song) => {
-      const promptConcept = nestedRecord(song.promptInput, 'songConcept')
-      const outputConcept = nestedRecord(song.llmOutput, 'songConcept')
-      return promptConcept?.id ?? outputConcept?.id
-    })
-    .filter((id): id is string => typeof id === 'string' && id.length > 0)
-}
-
-function getRecentSongGenreTags(songs: Array<{ llmOutput: unknown }>): string[] {
-  return songs.flatMap((song) => {
-    const plan = nestedRecord(song.llmOutput, 'plan')
-    return stringArray(plan?.positive_global_styles)
-  })
-}
-
-function seedPart(value: unknown): string {
-  if (value instanceof Date) return String(value.getTime())
-  if (value == null) return ''
-  return String(value)
-}
-
-function buildConceptSeed(
-  input: SessionSongInput,
-  plan: { createdAt?: unknown; completedAt?: unknown }
-) {
-  return [input.playerId, input.sessionPlanId, seedPart(plan.completedAt), seedPart(plan.createdAt)]
-    .filter(Boolean)
-    .join(':')
+/** The kid's last 10 finished songs, most recently finished first, as the writer sees them. */
+async function getRecentSongSummaries(playerId: string) {
+  const rows = await db
+    .select({ llmOutput: schema.sessionSongs.llmOutput })
+    .from(schema.sessionSongs)
+    .where(
+      and(eq(schema.sessionSongs.playerId, playerId), eq(schema.sessionSongs.status, 'completed'))
+    )
+    .orderBy(desc(schema.sessionSongs.completedAt))
+    .limit(10)
+  return summarizeRecentSongs(rows.map((row) => row.llmOutput))
 }
 
 async function getSongPlanValidationPolicy(userId?: string): Promise<SongPlanValidationPolicy> {
@@ -224,20 +196,7 @@ async function buildSongPromptInput(input: SessionSongInput): Promise<SongPrompt
     }
   })
 
-  const recentSongs = await db
-    .select({
-      promptInput: schema.sessionSongs.promptInput,
-      llmOutput: schema.sessionSongs.llmOutput,
-    })
-    .from(schema.sessionSongs)
-    .where(
-      and(
-        eq(schema.sessionSongs.playerId, input.playerId),
-        eq(schema.sessionSongs.status, 'completed')
-      )
-    )
-    .orderBy(desc(schema.sessionSongs.createdAt))
-    .limit(10)
+  const recentSongs = await getRecentSongSummaries(input.playerId)
 
   const [gameBreakResult] = await db
     .select()
@@ -255,20 +214,11 @@ async function buildSongPromptInput(input: SessionSongInput): Promise<SongPrompt
     breakReason: plan.breakReason ?? null,
     breakResults: plan.breakResults ?? null,
   })
-  const conceptContext = {
-    seed: buildConceptSeed(input, plan),
-    recentConceptIds: getRecentSongConceptIds(recentSongs),
-    recentGenreTags: getRecentSongGenreTags(recentSongs),
-    genrePreference: rawGenre,
-  }
-  const songConcept = selectSongConcept(stats, conceptContext)
-  const genrePreference = resolveSongGenres(rawGenre, songConcept, conceptContext)
-
   return {
     playerName: player.name,
     disabled: false,
-    promptInput: { ...stats, songConcept },
-    genrePreference,
+    promptInput: { ...stats, recentSongs },
+    genrePreference: rawGenre,
   }
 }
 
@@ -572,20 +522,7 @@ export async function startSessionSongGeneration(
           }
         })
 
-        const recentSongs = await db
-          .select({
-            promptInput: schema.sessionSongs.promptInput,
-            llmOutput: schema.sessionSongs.llmOutput,
-          })
-          .from(schema.sessionSongs)
-          .where(
-            and(
-              eq(schema.sessionSongs.playerId, input.playerId),
-              eq(schema.sessionSongs.status, 'completed')
-            )
-          )
-          .orderBy(desc(schema.sessionSongs.createdAt))
-          .limit(10)
+        const recentSongs = await getRecentSongSummaries(input.playerId)
 
         // Look up game break result for this session (if any).
         // The smart trigger only fires in the last practice part, so game break
@@ -606,15 +543,8 @@ export async function startSessionSongGeneration(
           breakReason: plan.breakReason ?? null,
           breakResults: plan.breakResults ?? null,
         })
-        const conceptContext = {
-          seed: buildConceptSeed(input, plan),
-          recentConceptIds: getRecentSongConceptIds(recentSongs),
-          recentGenreTags: getRecentSongGenreTags(recentSongs),
-          genrePreference: rawGenre,
-        }
-        const songConcept = selectSongConcept(stats, conceptContext)
-        const genrePreference = resolveSongGenres(rawGenre, songConcept, conceptContext)
-        const promptInput = { ...stats, songConcept }
+        const genrePreference = rawGenre
+        const promptInput = { ...stats, recentSongs }
 
         // Update song record with prompt input
         await setSongStatus(songId, input.sessionPlanId, 'prompt_generating', {

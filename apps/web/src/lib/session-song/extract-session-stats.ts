@@ -24,7 +24,6 @@ import type {
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { getSkillDisplayName } from '@/utils/skillSearch'
-import type { SongConcept } from './concept-selector'
 
 // ============================================================================
 // Types
@@ -62,6 +61,13 @@ export interface SongSkillSpotlight {
   exampleProblems: string[]
 }
 
+export interface RecentSongSummary {
+  title: string
+  styles: string[]
+  /** The first lines of the chorus (or the first section when there is none) */
+  hook: string[]
+}
+
 export interface SongPromptInput {
   player: {
     name: string
@@ -89,8 +95,8 @@ export interface SongPromptInput {
     problemMoments: SongProblemMoment[]
     skillSpotlights: SongSkillSpotlight[]
   }
-  /** Optional deterministic story concept selected after evidence extraction. */
-  songConcept?: SongConcept
+  /** The kid's latest songs, newest first, so the writer can make this one different. */
+  recentSongs?: RecentSongSummary[]
   history: {
     recentSessionCount: number
     averageAccuracy: number

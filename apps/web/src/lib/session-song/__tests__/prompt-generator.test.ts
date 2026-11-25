@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SongPromptInput } from '../extract-session-stats'
-import { buildSongUserPrompt } from '../prompt-generator'
+import { buildSongUserPrompt, summarizeRecentSongs } from '../prompt-generator'
 
 function makeInput(overrides: Partial<SongPromptInput> = {}): SongPromptInput {
   const base: SongPromptInput = {
@@ -60,34 +60,75 @@ function makeInput(overrides: Partial<SongPromptInput> = {}): SongPromptInput {
 }
 
 describe('buildSongUserPrompt', () => {
-  it('includes selected song concept details when provided', () => {
+  it("lists the kid's recent songs and asks for something unlike them", () => {
     const prompt = buildSongUserPrompt(
       makeInput({
-        songConcept: {
-          id: 'comeback-case-file',
-          title: 'Comeback Case File',
-          lens: 'a detective replay of the solved problem',
-          fitReason: '9 + 6 = 15 was solved after 3 attempts',
-          hookSeeds: ['9 + 6 = 15', '3 attempts', '+6 = +10 - 4'],
-          requiredDetails: ['9 + 6 = 15', '3 attempts'],
-          recommendedGenres: ['electro-swing', 'hip-hop'],
-          avoid: ['invented problems or scores'],
-        },
+        recentSongs: [
+          {
+            title: "Sonia's Comeback Case File",
+            styles: ['children', 'electro-swing'],
+            hook: ['Case file open', 'clue by clue'],
+          },
+        ],
       })
     )
 
-    expect(prompt).toContain('Song concept:')
-    expect(prompt).toContain('Concept: Comeback Case File (comeback-case-file)')
-    expect(prompt).toContain('Lens: a detective replay of the solved problem')
-    expect(prompt).toContain('Hook seeds: 9 + 6 = 15 | 3 attempts | +6 = +10 - 4')
-    expect(prompt).toContain('Must use factual details: 9 + 6 = 15 | 3 attempts')
+    expect(prompt).toContain('Make yours unlike all of them')
+    expect(prompt).toContain(
+      '- "Sonia\'s Comeback Case File" | sound: children, electro-swing | hook: Case file open / clue by clue'
+    )
   })
 
-  it('still builds a usable prompt when no concept has been selected', () => {
+  it('says so when the kid has no earlier songs', () => {
     const prompt = buildSongUserPrompt(makeInput())
 
-    expect(prompt).toContain('Practice drama:')
+    expect(prompt).toContain('This kid has no earlier songs yet.')
     expect(prompt).toContain('Specific problem moments:')
-    expect(prompt).not.toContain('Song concept:')
+  })
+
+  it('offers the standout moment without making it the story', () => {
+    const prompt = buildSongUserPrompt(makeInput())
+
+    expect(prompt).toContain('One standout moment (use it or not): the 9 + 6 = 15 comeback')
+    expect(prompt).not.toContain('Song concept')
+  })
+})
+
+describe('summarizeRecentSongs', () => {
+  it('takes the title, sound, and chorus lines from stored songs', () => {
+    const summaries = summarizeRecentSongs([
+      {
+        title: 'Nine Plus Six Express',
+        plan: {
+          positive_global_styles: ['children', 'bluegrass'],
+          negative_global_styles: ['sad'],
+          sections: [
+            { section_name: 'Verse 1', lines: ['All aboard'] },
+            { section_name: 'Chorus', lines: ['Choo choo', 'nine plus six', 'fifteen!', 'again'] },
+          ],
+        },
+      },
+    ])
+
+    expect(summaries).toEqual([
+      {
+        title: 'Nine Plus Six Express',
+        styles: ['children', 'bluegrass'],
+        hook: ['Choo choo', 'nine plus six', 'fifteen!'],
+      },
+    ])
+  })
+
+  it('uses the first section when there is no chorus, and skips unreadable rows', () => {
+    const summaries = summarizeRecentSongs([
+      null,
+      { title: 42 },
+      {
+        title: 'Lullaby for Ten',
+        plan: { sections: [{ section_name: 'Opening', lines: ['Hush'] }] },
+      },
+    ])
+
+    expect(summaries).toEqual([{ title: 'Lullaby for Ten', styles: [], hook: ['Hush'] }])
   })
 })
