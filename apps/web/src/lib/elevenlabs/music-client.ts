@@ -50,7 +50,18 @@ export interface GenerateMusicResult {
 // Configuration
 // ============================================================================
 
-const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io'
+const ELEVENLABS_DEFAULT_BASE = 'https://api.elevenlabs.io'
+
+/**
+ * Where music requests go. ELEVENLABS_API_BASE_URL points them at the switch
+ * proxy's ElevenLabs door (`http://<nas>:8788/elevenlabs`), which takes the
+ * same paths and bodies and pays from the brain's ElevenLabs accounts; there,
+ * ELEVENLABS_MUSIC_API_KEY is the app's proxy login, not an ElevenLabs key.
+ * Read at call time so runtime env wins over anything bundled.
+ */
+export function elevenLabsBaseUrl(): string {
+  return (process.env.ELEVENLABS_API_BASE_URL || ELEVENLABS_DEFAULT_BASE).replace(/\/+$/, '')
+}
 const MUSIC_MODEL = 'music_v1'
 
 function getApiKey(): string {
@@ -150,7 +161,7 @@ export async function generateMusic(request: GenerateMusicRequest): Promise<Gene
     with_timestamps: true,
   }
 
-  const response = await fetch(`${ELEVENLABS_API_BASE}/v1/music/detailed`, {
+  const response = await fetch(`${elevenLabsBaseUrl()}/v1/music/detailed`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

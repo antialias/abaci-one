@@ -12,6 +12,14 @@ auth_secret       = "generate-with-openssl-rand-base64-32"
 # openai_api_key    = "sk-..."
 # gemini_api_key    = "AI..."
 
+# Optional - text calls through the claude-switch-proxy
+# llm_switch_api_key       = "..."                         # the proxy's client secret (also used by claude_code)
+# llm_default_provider     = "claude_code"                 # only once the image has the claude CLI
+# llm_claude_code_model    = "claude-sonnet-5"             # or "claude-abaci" once the brain has that class
+# Optional - ElevenLabs music through the proxy's door
+# elevenlabs_api_base_url  = "http://192.168.86.51:8788/elevenlabs"
+# elevenlabs_music_api_key = "<base64 of abaci:password>"  # the proxy login, not an ElevenLabs key
+
 # Optional - Stripe billing (product, prices, and webhook are auto-created by Terraform)
 # stripe_secret_key = "sk_live_..."
 

@@ -4,7 +4,7 @@ Type-safe LLM client with multi-provider support, Zod schema validation, and ret
 
 ## Features
 
-- **Multi-provider support**: OpenAI, Anthropic (more coming)
+- **Multi-provider support**: OpenAI, Anthropic, the switch proxy's OpenAI wire (`switch`), and Claude Code through the proxy (`claude_code`)
 - **Type-safe responses**: Zod schema validation with full TypeScript inference
 - **Schema-driven prompts**: Zod `.describe()` annotations are automatically included in prompts
 - **Retry with feedback**: Failed validations are fed back to the LLM for correction
@@ -34,7 +34,29 @@ LLM_OPENAI_BASE_URL=https://api.openai.com/v1  # optional
 # Anthropic
 LLM_ANTHROPIC_API_KEY=sk-ant-...
 LLM_ANTHROPIC_BASE_URL=https://api.anthropic.com/v1  # optional
+
+# Claude Code (`claude -p`) through the claude-switch-proxy
+LLM_CLAUDE_CODE_API_KEY=...                        # the proxy's client secret
+LLM_CLAUDE_CODE_BASE_URL=http://192.168.86.51:8787 # required; a trailing /v1 is dropped
+LLM_CLAUDE_CODE_DEFAULT_MODEL=claude-sonnet-5      # optional
+LLM_CLAUDE_CODE_CLI_PATH=/usr/local/bin/claude     # optional, default `claude`
+LLM_CLAUDE_CODE_MAX_CONCURRENCY=2                  # optional, CLI processes at once
+LLM_CLAUDE_CODE_HOME=/tmp/claude-code-llm          # optional, the CLI's scratch home
 ```
+
+### The `claude_code` provider
+
+Runs each `call()` as one Claude Code process in print mode (`claude -p --bare`,
+no tools, no settings, no session saved), pointed at the switch proxy with the
+proxy secret as `ANTHROPIC_AUTH_TOKEN`. The schema goes to `--json-schema` and
+the answer comes back as the run's structured output. The process gets a
+minimal environment (no app secrets) and a scratch home.
+
+- `call()` only: `stream()` and `embed()` are not supported, nor `images` yet.
+- A refused request (401, 429, 5xx) stops the run at its first retry event
+  rather than letting the CLI retry on its own; llm-client's retry decides.
+- A usage limit reads as a 429; a CLI that refuses its own arguments as a 400.
+- The server needs the `claude` binary: the Dockerfile copies it into the image.
 
 ## Usage
 

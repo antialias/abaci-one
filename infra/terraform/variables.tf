@@ -82,9 +82,27 @@ variable "llm_switch_base_url" {
 }
 
 variable "llm_default_provider" {
-  description = "Default @soroban/llm-client text provider (LLM_DEFAULT_PROVIDER). \"switch\" routes default text calls through the claude-switch-proxy; kill switch = set back to \"openai\" and apply (streaming/reasoning and media calls stay pinned to openai regardless). Deliberately defaults to \"openai\": set llm_default_provider = \"switch\" in terraform.tfvars only once the app image containing the switch provider factory is deployed, so an unrelated scoped apply can never flip the provider ahead of the code."
+  description = "Default @soroban/llm-client text provider (LLM_DEFAULT_PROVIDER). \"claude_code\" runs default text calls as `claude -p` through the claude-switch-proxy (needs an image with the claude CLI); \"switch\" uses the proxy's OpenAI wire; kill switch = set back to \"openai\" and apply (streaming/reasoning and media calls stay pinned to openai regardless). Deliberately defaults to \"openai\": set llm_default_provider = \"switch\" in terraform.tfvars only once the app image containing the switch provider factory is deployed, so an unrelated scoped apply can never flip the provider ahead of the code."
   type        = string
   default     = "openai"
+}
+
+variable "llm_claude_code_base_url" {
+  description = "Root URL of the claude-switch-proxy for Claude Code (LLM_CLAUDE_CODE_BASE_URL → ANTHROPIC_BASE_URL). No /v1: Claude Code appends /v1/messages itself."
+  type        = string
+  default     = "http://192.168.86.51:8787"
+}
+
+variable "llm_claude_code_model" {
+  description = "Model or class id the claude_code provider asks the proxy for (LLM_CLAUDE_CODE_DEFAULT_MODEL), e.g. claude-sonnet-5, or claude-abaci once the brain has that class."
+  type        = string
+  default     = "claude-sonnet-5"
+}
+
+variable "elevenlabs_api_base_url" {
+  description = "Base URL for ElevenLabs music (ELEVENLABS_API_BASE_URL). Empty = https://api.elevenlabs.io. The switch proxy's door is http://192.168.86.51:8788/elevenlabs; with it, elevenlabs_music_api_key must be the app's proxy login (base64 \"name:password\")."
+  type        = string
+  default     = ""
 }
 
 variable "gemini_api_key" {

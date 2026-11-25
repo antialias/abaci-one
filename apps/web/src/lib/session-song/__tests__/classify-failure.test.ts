@@ -27,6 +27,37 @@ describe('classifySongFailure', () => {
     expect(result.remediation?.href).toContain('elevenlabs.io')
   })
 
+  it('names Claude Code, not OpenAI, when the claude_code provider is not configured', () => {
+    const result = classifySongFailure(
+      "Provider 'claude_code' is not configured. Check your environment variables."
+    )
+    expect(result.kind).toBe('missing_config')
+    expect(result.ownerMessage).toContain('LLM_CLAUDE_CODE_API_KEY')
+    expect(result.ownerMessage).not.toContain('OpenAI')
+  })
+
+  it('reads a missing claude CLI as missing_config', () => {
+    const result = classifySongFailure(
+      "claude_code provider: Claude Code CLI not found at 'claude' (set LLM_CLAUDE_CODE_CLI_PATH)"
+    )
+    expect(result.kind).toBe('missing_config')
+    expect(result.ownerMessage).toContain('claude CLI')
+  })
+
+  it('reads the proxy refusing the client secret as auth_invalid for the proxy', () => {
+    const result = classifySongFailure('claude_code API error (401): authentication_failed')
+    expect(result.kind).toBe('auth_invalid')
+    expect(result.ownerMessage).toContain('switch proxy')
+    expect(result.remediation).toBeNull()
+  })
+
+  it('reads a Claude usage limit through the proxy as rate_limited', () => {
+    const result = classifySongFailure(
+      'claude_code API error (429): Claude AI usage limit reached|1790000000'
+    )
+    expect(result.kind).toBe('rate_limited')
+  })
+
   it('classifies "insufficient credits" as quota_exceeded', () => {
     const result = classifySongFailure(new Error('elevenlabs: insufficient credits available'))
     expect(result.kind).toBe('quota_exceeded')
