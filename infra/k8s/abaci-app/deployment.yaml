@@ -49,7 +49,11 @@ spec:
               memory: "512Mi"
               cpu: "75m"
             limits:
-              memory: "1Gi"
+              # The claude_code LLM provider runs `claude -p` inside this
+              # container: ~120 MiB peak per run (measured 2026-11-25), up to 2
+              # at once, on top of an app that idles near 800 MiB. 1Gi left no
+              # room; an overrun would OOM-kill the whole pod, not just the run.
+              memory: "1536Mi"
               cpu: "2000m"
           livenessProbe:
             httpGet:
