@@ -15,13 +15,12 @@
  *   "lost" states rather than silently masking a broken channel.
  */
 
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createSocket } from '@/lib/socket'
-import { sessionSongKeys } from '@/lib/queryKeys'
-import { api } from '@/lib/queryClient'
-
 import type { SessionSongFailureKind } from '@/db/schema/session-songs'
+import { api } from '@/lib/queryClient'
+import { sessionSongKeys } from '@/lib/queryKeys'
+import { createSocket } from '@/lib/socket'
 import type { SongLyricsSection } from '@/lib/song/alignment'
 
 interface SessionSongData {
@@ -40,6 +39,8 @@ interface SessionSongData {
   errorDetail: string | null
   /** True when the requesting viewer is the player's account owner or an admin. */
   viewerIsOwner: boolean
+  /** True when this failed song can be filled in now from the session page. */
+  canRetry?: boolean
   createdAt: number | null
   completedAt: number | null
 }
@@ -72,6 +73,23 @@ export function useSessionSong({ playerId, planId, enabled = true }: UseSessionS
       return res.json() as Promise<SessionSongResponse>
     },
     enabled: enabled && !!planId,
+  })
+
+  // Fill in a missing song. The server re-checks eligibility; the socket's phase
+  // events carry the song from here, and onSettled refetches once for the new state.
+  const retryMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api(`curriculum/${playerId}/sessions/plans/${planId}/song/retry`, {
+        method: 'POST',
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(body?.error ?? 'Could not start the song')
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: sessionSongKeys.forPlan(planId ?? '') })
+    },
   })
 
   useEffect(() => {
@@ -147,6 +165,10 @@ export function useSessionSong({ playerId, planId, enabled = true }: UseSessionS
     failureKind: song?.failureKind ?? null,
     errorDetail: song?.errorDetail ?? null,
     viewerIsOwner: song?.viewerIsOwner ?? false,
+    canRetry: song?.canRetry ?? false,
+    retry: retryMutation.mutate,
+    isRetrying: retryMutation.isPending,
+    retryError: retryMutation.error?.message ?? null,
     isLoading: query.isLoading,
     connectionState,
     reconnect,

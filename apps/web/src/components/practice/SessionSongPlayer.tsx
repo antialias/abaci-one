@@ -10,17 +10,17 @@
  * States:
  * - Generating: animated shimmer with "Creating your song..." text
  * - Ready: <SyncedLyricsPlayer variant="compact" />
- * - Failed: <SongFailureCard>
+ * - Failed: <SongFailureCard>, with a "make my song" button once the cause has cleared
  * - Absent: renders nothing (don't show errors to kids)
  */
 
 import { useEffect, useRef } from 'react'
-import { useElapsedMs } from '@/hooks/useElapsedMs'
-import { useSessionSong } from '@/hooks/useSessionSong'
 import { ShareSongPopover } from '@/components/song/ShareSongPopover'
 import { SyncedLyricsPlayer } from '@/components/song/SyncedLyricsPlayer'
-import { SongFailureCard } from './SongFailureCard'
+import { useElapsedMs } from '@/hooks/useElapsedMs'
+import { useSessionSong } from '@/hooks/useSessionSong'
 import { css } from '../../../styled-system/css'
+import { SongFailureCard } from './SongFailureCard'
 
 interface SessionSongPlayerProps {
   playerId: string
@@ -71,6 +71,10 @@ export function SessionSongPlayer({
     failureKind,
     errorDetail,
     viewerIsOwner,
+    canRetry,
+    retry,
+    isRetrying,
+    retryError,
     connectionState,
     reconnect,
   } = useSessionSong({
@@ -108,6 +112,10 @@ export function SessionSongPlayer({
         failureKind={failureKind}
         errorDetail={errorDetail}
         viewerIsOwner={viewerIsOwner}
+        canRetry={canRetry}
+        onRetry={() => retry()}
+        retrying={isRetrying}
+        retryError={retryError}
       />
     )
   }
