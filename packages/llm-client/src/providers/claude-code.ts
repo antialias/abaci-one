@@ -2,6 +2,7 @@ import type {
 	ProviderConfig,
 	ProviderRequest,
 	ProviderResponse,
+	ProviderStreamEvent,
 	ReasoningEffort,
 } from "../types";
 import {
@@ -32,6 +33,22 @@ import { BaseProvider } from "./base";
  * (database URLs, other keys) reach it, and the secret goes only to the
  * proxy's base URL.
  *
+ * The prompt goes in as one `stream-json` user message, so images (data URLs)
+ * travel as base64 image blocks beside the text. The zod schema goes to
+ * --json-schema and the answer is the run's structured output; a text request
+ * (LLMClient.streamText) has no schema and its answer is the run's text.
+ *
+ * stream() adds --include-partial-messages and maps the CLI's stream events
+ * onto llm-client's: thinking (summarized) and, in a structured call, the
+ * model's prose before its answer become `reasoning`; the structured answer's
+ * JSON (or a text answer) becomes `output_delta`.
+ *
+ * Model and class ids: a request naming an OpenAI model (gpt-*, o1, o3, …) is
+ * left over from before and gets the configured default instead. Claude Code
+ * knows nothing about a proxy class id such as `claude-abaci`, and for a model
+ * it does not know it sends no thinking and ignores --effort; the run declares
+ * the requested id as a custom model with those capabilities so both apply.
+ *
  * Failures: Claude Code retries a refused request by itself, silently, for
  * minutes. The run is read as `stream-json`, which reports each of those
  * retries; the first one ends the run and becomes an LLMApiError carrying the
@@ -49,6 +66,8 @@ export interface ClaudeCliRun {
 	timeoutMs: number;
 	/** Called for each stdout line; return "stop" to end the process. */
 	onLine: (line: string) => "stop" | undefined;
+	/** Aborting ends the process (a caller that stopped reading a stream). */
+	signal?: AbortSignal;
 }
 
 export interface ClaudeCliResult {
@@ -63,6 +82,16 @@ export type ClaudeCliRunner = (run: ClaudeCliRun) => Promise<ClaudeCliResult>;
 const SYSTEM_PROMPT =
 	"You are a component of the abaci.one learning app. Do exactly what the " +
 	"request asks and give your answer through the structured output.";
+
+const TEXT_SYSTEM_PROMPT =
+	"You are a component of the abaci.one learning app. Do exactly what the " +
+	"request asks and reply in plain text.";
+
+/** What Claude Code is told a proxy model or class id can do. */
+const MODEL_CAPABILITIES = "effort,thinking,adaptive_thinking";
+
+/** Model ids that belong to OpenAI, not to the proxy's Claude wire. */
+const OPENAI_MODEL = /^(gpt-|chatgpt-|o\d)/i;
 
 const DEFAULT_MAX_CONCURRENCY = 2;
 const STDERR_LIMIT = 8 * 1024;
@@ -163,6 +192,15 @@ export const spawnClaudeCli: ClaudeCliRunner = (run) =>
 			end();
 		}, run.timeoutMs);
 
+		if (run.signal) {
+			const onAbort = () => {
+				stopped = true;
+				end();
+			};
+			if (run.signal.aborted) onAbort();
+			else run.signal.addEventListener("abort", onAbort, { once: true });
+		}
+
 		const handle = (line: string) => {
 			if (stopped || !line.trim()) return;
 			if (run.onLine(line) === "stop") {
@@ -222,53 +260,89 @@ export class ClaudeCodeProvider extends BaseProvider {
 	}
 
 	async call(request: ProviderRequest): Promise<ProviderResponse> {
-		if (request.images?.length) {
-			throw new Error(
-				"claude_code provider does not take images yet; pin this call to another provider",
-			);
+		let response: ProviderResponse | undefined;
+		for await (const event of this.run(request, false)) {
+			if (event.type === "result") response = event.response;
 		}
+		if (!response) {
+			throw new LLMNetworkError(this.name, new Error("claude gave no result"));
+		}
+		return response;
+	}
 
+	stream(
+		request: ProviderRequest,
+	): AsyncGenerator<ProviderStreamEvent, void, unknown> {
+		return this.run(request, true);
+	}
+
+	/**
+	 * One `claude -p` run. Streaming, its events are yielded as they arrive;
+	 * either way the last thing yielded is the `result`. Stopping early (a
+	 * consumer that breaks out) ends the process.
+	 */
+	private async *run(
+		request: ProviderRequest,
+		streaming: boolean,
+	): AsyncGenerator<ProviderStreamEvent, void, unknown> {
 		const opts = this.config.options ?? {};
 		const limit =
 			Number.parseInt(String(opts.max_concurrency ?? ""), 10) ||
 			DEFAULT_MAX_CONCURRENCY;
 		const timeoutMs = request.timeoutMs ?? 120_000;
+		const model = this.resolveModel(request.model);
+		const stdin = this.buildInput(request);
 
 		let result: ResultEvent | undefined;
 		let retry: RetryEvent | undefined;
+		const events = new EventQueue<ProviderStreamEvent>();
+		const mapper = new StreamMapper(request.textOutput === true);
+		const abort = new AbortController();
 
-		const run = await withSlot(limit, async () => {
+		const finished = withSlot(limit, () =>
+			this.runner({
+				command: String(opts.cli_path ?? "claude"),
+				args: this.buildArgs(request, model, streaming),
+				stdin,
+				env: this.buildEnv(model),
+				cwd: this.home(),
+				timeoutMs,
+				signal: abort.signal,
+				onLine: (line) => {
+					const event = parseLine(line);
+					if (!event) return undefined;
+					if (event.type === "system" && event.subtype === "api_retry") {
+						retry = {
+							status:
+								typeof event.error_status === "number"
+									? event.error_status
+									: null,
+							error: String(event.error ?? "api_retry"),
+							retryDelayMs:
+								typeof event.retry_delay_ms === "number"
+									? event.retry_delay_ms
+									: undefined,
+						};
+						return "stop";
+					}
+					if (event.type === "result") {
+						result = event as unknown as ResultEvent;
+					} else if (streaming) {
+						for (const mapped of mapper.map(event)) events.push(mapped);
+					}
+					return undefined;
+				},
+			}),
+		).finally(() => events.close());
+		// Read below, after the stream drains; never an unhandled rejection.
+		finished.catch(() => {});
+
+		try {
+			yield* events;
+
+			let run: ClaudeCliResult;
 			try {
-				return await this.runner({
-					command: String(opts.cli_path ?? "claude"),
-					args: this.buildArgs(request),
-					stdin: this.buildPrompt(request),
-					env: this.buildEnv(),
-					cwd: this.home(),
-					timeoutMs,
-					onLine: (line) => {
-						const event = parseLine(line);
-						if (!event) return undefined;
-						if (event.type === "system" && event.subtype === "api_retry") {
-							retry = {
-								status:
-									typeof event.error_status === "number"
-										? event.error_status
-										: null,
-								error: String(event.error ?? "api_retry"),
-								retryDelayMs:
-									typeof event.retry_delay_ms === "number"
-										? event.retry_delay_ms
-										: undefined,
-							};
-							return "stop";
-						}
-						if (event.type === "result") {
-							result = event as unknown as ResultEvent;
-						}
-						return undefined;
-					},
-				});
+				run = await finished;
 			} catch (err) {
 				const e = err as NodeJS.ErrnoException;
 				if (e?.code === "ENOENT") {
@@ -278,8 +352,23 @@ export class ClaudeCodeProvider extends BaseProvider {
 				}
 				throw new LLMNetworkError(this.name, e);
 			}
-		});
 
+			yield {
+				type: "result",
+				response: this.toResponse(run, result, retry, timeoutMs, request),
+			};
+		} finally {
+			abort.abort();
+		}
+	}
+
+	private toResponse(
+		run: ClaudeCliResult,
+		result: ResultEvent | undefined,
+		retry: RetryEvent | undefined,
+		timeoutMs: number,
+		request: ProviderRequest,
+	): ProviderResponse {
 		if (retry) {
 			if (retry.status === null) {
 				throw new LLMNetworkError(
@@ -320,11 +409,14 @@ export class ClaudeCodeProvider extends BaseProvider {
 			throw new LLMApiError(this.name, status, text.slice(0, 500));
 		}
 
-		const content = this.readContent(result);
+		const content = request.textOutput
+			? String(result.result ?? "").trim()
+			: this.readContent(result);
 		const u = result.usage ?? {};
 		return {
 			content,
-			rawContent: JSON.stringify(content),
+			rawContent:
+				typeof content === "string" ? content : JSON.stringify(content),
 			usage: {
 				promptTokens:
 					(u.input_tokens ?? 0) +
@@ -336,31 +428,73 @@ export class ClaudeCodeProvider extends BaseProvider {
 		};
 	}
 
-	private buildArgs(request: ProviderRequest): string[] {
+	/** An OpenAI model id left in a request gets the configured default. */
+	private resolveModel(model: string): string {
+		return !model || OPENAI_MODEL.test(model)
+			? this.config.defaultModel
+			: model;
+	}
+
+	private buildArgs(
+		request: ProviderRequest,
+		model: string,
+		streaming: boolean,
+	): string[] {
+		const text = request.textOutput === true;
+		const system = text
+			? (request.system ?? TEXT_SYSTEM_PROMPT)
+			: request.system
+				? `${SYSTEM_PROMPT}\n\n${request.system}`
+				: SYSTEM_PROMPT;
 		const args = [
 			"-p",
 			"--bare",
 			"--model",
-			request.model,
+			model,
 			"--system-prompt",
-			SYSTEM_PROMPT,
+			system,
 			"--tools",
 			"",
 			"--setting-sources",
 			"",
 			"--no-session-persistence",
+			"--input-format",
+			"stream-json",
 			"--output-format",
 			"stream-json",
 			"--verbose",
-			"--json-schema",
-			JSON.stringify(cliSchema(request.jsonSchema)),
 		];
+		if (streaming) {
+			args.push(
+				"--include-partial-messages",
+				"--thinking-display",
+				"summarized",
+			);
+		}
+		if (!text) {
+			args.push("--json-schema", JSON.stringify(cliSchema(request.jsonSchema)));
+		}
 		const effort = request.reasoningEffort && EFFORT[request.reasoningEffort];
 		if (effort) args.push("--effort", effort);
 		return args;
 	}
 
-	private buildEnv(): Record<string, string> {
+	/** The prompt (and any images) as one stream-json user message. */
+	private buildInput(request: ProviderRequest): string {
+		const prompt = request.textOutput
+			? request.prompt
+			: this.buildPrompt({ ...request, system: undefined });
+		const content: Array<Record<string, unknown>> = (request.images ?? []).map(
+			(image) => imageBlock(image, this.name),
+		);
+		content.push({ type: "text", text: prompt });
+		return `${JSON.stringify({
+			type: "user",
+			message: { role: "user", content },
+		})}\n`;
+	}
+
+	private buildEnv(model: string): Record<string, string> {
 		const home = this.home();
 		return {
 			PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin",
@@ -368,6 +502,8 @@ export class ClaudeCodeProvider extends BaseProvider {
 			CLAUDE_CONFIG_DIR: `${home}/.claude`,
 			ANTHROPIC_BASE_URL: proxyRoot(this.config.baseUrl),
 			ANTHROPIC_AUTH_TOKEN: this.config.apiKey,
+			ANTHROPIC_CUSTOM_MODEL_OPTION: model,
+			ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES: MODEL_CAPABILITIES,
 			DISABLE_AUTOUPDATER: "1",
 			DISABLE_TELEMETRY: "1",
 			DISABLE_ERROR_REPORTING: "1",
@@ -417,5 +553,132 @@ function parseLine(line: string): Record<string, unknown> | null {
 		return parsed && typeof parsed === "object" ? parsed : null;
 	} catch {
 		return null;
+	}
+}
+
+/** A data URL as an Anthropic base64 image block. */
+function imageBlock(
+	dataUrl: string,
+	provider: string,
+): Record<string, unknown> {
+	const match = /^data:([^;,]+);base64,(.+)$/s.exec(dataUrl);
+	if (!match) {
+		// Not retryable: the same image would be refused again.
+		throw new LLMApiError(
+			provider,
+			400,
+			"claude_code provider takes images as base64 data URLs (data:<type>;base64,…)",
+		);
+	}
+	return {
+		type: "image",
+		source: { type: "base64", media_type: match[1], data: match[2] },
+	};
+}
+
+/**
+ * Maps Claude Code's stream-json events onto llm-client stream events.
+ * Reasoning from separate blocks is joined with a blank line, since the
+ * persistence middleware accumulates every reasoning delta into one text.
+ */
+class StreamMapper {
+	private readonly blocks = new Map<number, string>();
+	private reasoningBlocks = 0;
+	private reasoningOpen = false;
+
+	constructor(private readonly textOutput: boolean) {}
+
+	map(event: Record<string, unknown>): ProviderStreamEvent[] {
+		if (event.type === "system" && event.subtype === "init") {
+			return [{ type: "started", responseId: String(event.session_id ?? "") }];
+		}
+		if (event.type !== "stream_event") return [];
+		const inner = event.event as Record<string, unknown> | undefined;
+		if (!inner) return [];
+		const index = typeof inner.index === "number" ? inner.index : 0;
+
+		if (inner.type === "message_start") {
+			this.blocks.clear();
+			return [];
+		}
+		if (inner.type === "content_block_start") {
+			const block = inner.content_block as { type?: string } | undefined;
+			this.blocks.set(index, block?.type ?? "");
+			this.reasoningOpen = false;
+			return [];
+		}
+		if (inner.type !== "content_block_delta") return [];
+		const delta = inner.delta as Record<string, unknown> | undefined;
+		if (!delta) return [];
+
+		if (delta.type === "thinking_delta") {
+			return this.reasoning(String(delta.thinking ?? ""));
+		}
+		if (delta.type === "text_delta") {
+			const text = String(delta.text ?? "");
+			if (this.textOutput) return text ? [output(text)] : [];
+			// Before a structured answer, the model's prose is its working.
+			return this.reasoning(text);
+		}
+		if (delta.type === "input_json_delta" && !this.textOutput) {
+			const json = String(delta.partial_json ?? "");
+			return json ? [output(json)] : [];
+		}
+		return [];
+	}
+
+	private reasoning(text: string): ProviderStreamEvent[] {
+		if (!text) return [];
+		let chunk = text;
+		if (!this.reasoningOpen) {
+			if (this.reasoningBlocks > 0) chunk = `\n\n${text}`;
+			this.reasoningBlocks++;
+			this.reasoningOpen = true;
+		}
+		return [
+			{
+				type: "reasoning",
+				text: chunk,
+				summaryIndex: this.reasoningBlocks - 1,
+				isDelta: true,
+			},
+		];
+	}
+}
+
+function output(text: string): ProviderStreamEvent {
+	return { type: "output_delta", text, outputIndex: 0 };
+}
+
+/** A push queue read with for-await; ends once closed and drained. */
+class EventQueue<T> implements AsyncIterable<T> {
+	private readonly items: T[] = [];
+	private closed = false;
+	private wake: (() => void) | undefined;
+
+	push(item: T): void {
+		if (this.closed) return;
+		this.items.push(item);
+		this.wake?.();
+	}
+
+	close(): void {
+		this.closed = true;
+		this.wake?.();
+	}
+
+	async *[Symbol.asyncIterator](): AsyncGenerator<T, void, unknown> {
+		while (true) {
+			const item = this.items.shift();
+			if (item !== undefined) {
+				yield item;
+				continue;
+			}
+			if (this.closed) return;
+			await new Promise<void>((resolve) => {
+				this.wake = resolve;
+			});
+			this.wake = undefined;
+		}
 	}
 }

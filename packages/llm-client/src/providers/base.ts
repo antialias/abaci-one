@@ -1,3 +1,4 @@
+import { buildFeedbackPrompt } from "../retry";
 import type {
   LLMProvider,
   ProviderConfig,
@@ -5,7 +6,6 @@ import type {
   ProviderResponse,
 } from "../types";
 import { LLMJsonParseError } from "../types";
-import { buildFeedbackPrompt } from "../retry";
 
 /**
  * Base class for LLM providers
@@ -34,7 +34,10 @@ export abstract class BaseProvider implements LLMProvider {
    * 3. Validation feedback (if retrying after a failed attempt)
    */
   protected buildPrompt(request: ProviderRequest): string {
-    let prompt = request.prompt;
+    // Providers without a system slot here get the standing instructions first.
+    let prompt = request.system
+      ? `${request.system}\n\n${request.prompt}`
+      : request.prompt;
 
     // Add schema documentation
     prompt += this.buildSchemaDocumentation(request.jsonSchema);

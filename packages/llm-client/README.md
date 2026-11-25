@@ -46,13 +46,22 @@ LLM_CLAUDE_CODE_HOME=/tmp/claude-code-llm          # optional, the CLI's scratch
 
 ### The `claude_code` provider
 
-Runs each `call()` as one Claude Code process in print mode (`claude -p --bare`,
+Runs each call as one Claude Code process in print mode (`claude -p --bare`,
 no tools, no settings, no session saved), pointed at the switch proxy with the
-proxy secret as `ANTHROPIC_AUTH_TOKEN`. The schema goes to `--json-schema` and
-the answer comes back as the run's structured output. The process gets a
-minimal environment (no app secrets) and a scratch home.
+proxy secret as `ANTHROPIC_AUTH_TOKEN`. The prompt and any images (base64 data
+URLs) go in as one `stream-json` user message. The schema goes to
+`--json-schema` and the answer comes back as the run's structured output. The
+process gets a minimal environment (no app secrets) and a scratch home.
 
-- `call()` only: `stream()` and `embed()` are not supported, nor `images` yet.
+- `call()`, `vision()`, `stream()` and `streamText()`; not `embed()`.
+- `stream()` reads `--include-partial-messages`: summarized thinking, and the
+  model's prose before its structured answer, arrive as `reasoning` events; the
+  answer's JSON arrives as `output_delta`; `complete` carries the validated data.
+  Whether there is thinking to show depends on the model that serves the class.
+- A request naming an OpenAI model (`gpt-*`, `o1`, `o3`, …) gets the provider's
+  default model instead.
+- The requested id is declared to Claude Code as a custom model that thinks and
+  takes `--effort`; without that, a class id like `claude-abaci` gets neither.
 - A refused request (401, 429, 5xx) stops the run at its first retry event
   rather than letting the CLI retry on its own; llm-client's retry decides.
 - A usage limit reads as a 429; a CLI that refuses its own arguments as a 400.
@@ -169,6 +178,30 @@ const response = await llm.vision({
 });
 ```
 
+### Streaming
+
+```typescript
+for await (const event of llm.stream({
+  prompt: "Parse this worksheet",
+  images: [imageDataUrl],
+  schema: WorksheetSchema,
+  reasoning: { effort: "medium" },
+})) {
+  if (event.type === "reasoning") showThinking(event.text);
+  else if (event.type === "output_delta") showPartialJson(event.text);
+  else if (event.type === "complete") save(event.data); // validated
+}
+
+// A free-text reply (a chat), text deltas as they come:
+for await (const event of llm.streamText({ system, prompt })) {
+  if (event.type === "output_delta") send(event.text);
+}
+```
+
+A provider without its own streaming (`openai`, `anthropic`) still serves both:
+the client makes one call and reports its result, so callers keep working when
+`LLM_DEFAULT_PROVIDER` is switched to one of them.
+
 ### Progress Tracking
 
 ```typescript
@@ -232,6 +265,8 @@ new LLMClient(configOverrides?: Partial<LLMClientConfig>, env?: Record<string, s
 
 - `call<T>(request: LLMRequest<T>): Promise<LLMResponse<T>>` - Make a structured LLM call
 - `vision<T>(request: LLMRequest<T> & { images: string[] }): Promise<LLMResponse<T>>` - Vision call
+- `stream<T>(request: LLMStreamRequest<T>): AsyncGenerator<StreamEvent<T>>` - Streamed structured call
+- `streamText(request: LLMTextStreamRequest): AsyncGenerator<StreamEvent<string>>` - Streamed free-text reply
 - `getProviders(): string[]` - List configured providers
 - `isProviderAvailable(name: string): boolean` - Check if provider is configured
 - `getDefaultProvider(): string` - Get default provider name

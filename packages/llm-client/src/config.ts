@@ -25,8 +25,10 @@ const PROVIDER_DEFAULTS: Record<string, Partial<ProviderConfig>> = {
 	switch: {
 		defaultModel: "abaci",
 	},
-	// Claude Code in print mode through the switch proxy. No baseUrl default,
-	// for the same reason as `switch`: LLM_CLAUDE_CODE_BASE_URL is required.
+	// Claude Code in print mode through the switch proxy. Deliberately NO
+	// baseUrl default: the generic fallback would invent
+	// https://api.claude_code.com/v1, a host that must never see the proxy
+	// client secret, so LLM_CLAUDE_CODE_BASE_URL is required.
 	claude_code: {
 		defaultModel: "claude-sonnet-5",
 	},

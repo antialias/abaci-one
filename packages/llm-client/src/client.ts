@@ -10,8 +10,7 @@ import type { StreamMiddleware } from "./middleware";
 import { AnthropicProvider } from "./providers/anthropic";
 import { ClaudeCodeProvider } from "./providers/claude-code";
 import { OpenAIProvider } from "./providers/openai";
-import { OpenAIResponsesProvider } from "./providers/openai-responses";
-import { executeWithRetry } from "./retry";
+import { executeWithRetry, getRetryDelay, isRetryableError } from "./retry";
 import type {
 	EmbeddingRequest,
 	EmbeddingResponse,
@@ -20,12 +19,24 @@ import type {
 	LLMRequest,
 	LLMResponse,
 	LLMStreamRequest,
+	LLMTextStreamRequest,
 	LoggingConfig,
 	ProviderRequest,
+	ProviderResponse,
+	ReasoningEffort,
 	StreamEvent,
 	ValidationFeedback,
 } from "./types";
-import { LLMApiError, ProviderNotConfiguredError } from "./types";
+import {
+	LLMApiError,
+	LLMValidationError,
+	ProviderNotConfiguredError,
+} from "./types";
+
+/** The schema a text answer is asked for from a provider that cannot stream text. */
+const TextAnswerSchema = z.object({
+	text: z.string().describe("Your whole reply, as plain text"),
+});
 
 /**
  * Factory function type for creating providers
@@ -75,8 +86,8 @@ const providerFactories: Record<string, ProviderFactory> = {
 	claude_code: (config, name) => {
 		const providerConfig = getProviderConfig(config, name);
 		if (!providerConfig) throw new ProviderNotConfiguredError(name);
-		// Same guard as `switch`: the generic fallback would invent
-		// https://api.claude_code.com/v1 and hand it the proxy secret.
+		// The generic env fallback would invent https://api.claude_code.com/v1
+		// and hand it the proxy secret: require an explicit base URL.
 		if (providerConfig.baseUrl === "https://api.claude_code.com/v1") {
 			throw new Error(
 				"claude_code provider requires an explicit LLM_CLAUDE_CODE_BASE_URL " +
@@ -210,49 +221,53 @@ export class LLMClient {
 	}
 
 	/**
-	 * Stream an LLM response with reasoning summaries
+	 * Stream an LLM response: the model's reasoning and its answer as they
+	 * arrive, then the answer validated against the schema.
 	 *
-	 * Uses the OpenAI Responses API to stream responses with:
-	 * - Reasoning summaries (shows the model's thinking process)
-	 * - Output text deltas (partial response text)
-	 * - Final validated response
+	 * Providers with their own stream() (claude_code) report reasoning and
+	 * output deltas; the others (openai, anthropic) make one call() and report
+	 * only its result, so a caller works the same whichever provider answers.
 	 *
-	 * @param request - The stream request configuration
-	 * @returns AsyncGenerator yielding stream events
+	 * An answer that fails the schema is retried with the failure fed back, as
+	 * call() does; so is a retryable failure that came before anything streamed.
 	 *
 	 * @example
 	 * ```typescript
-	 * const stream = llm.stream({
+	 * for await (const event of llm.stream({
 	 *   prompt: 'Analyze this worksheet',
 	 *   images: [imageDataUrl],
 	 *   schema: WorksheetSchema,
-	 *   reasoning: { effort: 'medium', summary: 'auto' },
-	 * });
-	 *
-	 * for await (const event of stream) {
-	 *   if (event.type === 'reasoning') {
-	 *     console.log('Thinking:', event.text);
-	 *   } else if (event.type === 'complete') {
-	 *     console.log('Result:', event.data);
-	 *   }
+	 *   reasoning: { effort: 'medium' },
+	 * })) {
+	 *   if (event.type === 'reasoning') console.log('Thinking:', event.text);
+	 *   else if (event.type === 'complete') console.log('Result:', event.data);
 	 * }
 	 * ```
 	 */
 	async *stream<T extends z.ZodType>(
 		request: LLMStreamRequest<T>,
 	): AsyncGenerator<StreamEvent<z.infer<T>>, void, unknown> {
-		// Get raw stream from provider
-		let stream: AsyncGenerator<
-			StreamEvent<z.infer<T>>,
-			void,
-			unknown
-		> = this.createRawStream(request);
+		yield* this.applyMiddleware(this.createRawStream(request));
+	}
 
-		// Apply middleware chain
+	/**
+	 * Stream a free-text answer (a chat reply). Text arrives as `output_delta`
+	 * events and `complete.data` is the whole reply. A provider that cannot
+	 * stream text answers in one piece.
+	 */
+	async *streamText(
+		request: LLMTextStreamRequest,
+	): AsyncGenerator<StreamEvent<string>, void, unknown> {
+		yield* this.applyMiddleware(this.createRawTextStream(request));
+	}
+
+	private async *applyMiddleware<D>(
+		raw: AsyncGenerator<StreamEvent<D>, void, unknown>,
+	): AsyncGenerator<StreamEvent<D>, void, unknown> {
+		let stream = raw;
 		for (const mw of this.middleware) {
 			stream = mw.wrap(stream);
 		}
-
 		yield* stream;
 	}
 
@@ -262,11 +277,14 @@ export class LLMClient {
 	private async *createRawStream<T extends z.ZodType>(
 		request: LLMStreamRequest<T>,
 	): AsyncGenerator<StreamEvent<z.infer<T>>, void, unknown> {
-		// Get logger for this request (may be overridden by request.debug)
 		const requestLogger = this.logger.withEnabled(request.debug);
-
 		const providerName = request.provider ?? this.config.defaultProvider;
 		const model = request.model ?? this.getDefaultModel(providerName);
+		const provider = this.getOrCreateProvider(providerName);
+
+		const jsonSchema = z.toJSONSchema(request.schema, {
+			unrepresentable: "any",
+		}) as Record<string, unknown>;
 
 		requestLogger.debug("Starting stream request", {
 			provider: providerName,
@@ -275,58 +293,157 @@ export class LLMClient {
 			hasImages: !!request.images?.length,
 		});
 
-		// Currently only OpenAI Responses API supports streaming with reasoning
-		if (providerName.toLowerCase() !== "openai") {
-			throw new Error(
-				`Streaming with reasoning is only supported for OpenAI. ` +
-					`Provider '${providerName}' does not support the Responses API.`,
-			);
-		}
-
-		// Get provider config
-		const providerConfig = getProviderConfig(this.config, providerName);
-		if (!providerConfig) {
-			throw new ProviderNotConfiguredError(providerName);
-		}
-
-		// Create responses provider (separate from chat completions provider)
-		const responsesProvider = new OpenAIResponsesProvider(
-			providerConfig,
-			requestLogger,
-		);
-
-		// Convert Zod schema to JSON Schema
-		const jsonSchema = z.toJSONSchema(request.schema, {
-			unrepresentable: "any",
-		}) as Record<string, unknown>;
-
-		// Default reasoning config for streaming
-		const reasoning = request.reasoning ?? {
-			effort:
-				model.includes("5.2") && !model.includes("instant")
-					? ("medium" as const)
-					: ("low" as const),
-			summary: "auto" as const,
+		const base: ProviderRequest = {
+			prompt: request.prompt,
+			system: request.system,
+			images: request.images,
+			jsonSchema,
+			model,
+			reasoningEffort:
+				request.reasoning?.effort ?? defaultReasoningEffort(model),
+			timeoutMs: request.timeoutMs ?? 300_000,
 		};
 
-		requestLogger.debug("Streaming with config", {
-			reasoning,
-			timeoutMs: request.timeoutMs,
-			schemaKeys: Object.keys(jsonSchema),
-		});
-
-		// Stream the response
-		yield* responsesProvider.stream<z.infer<T>>(
-			{
-				prompt: request.prompt,
-				images: request.images,
-				jsonSchema,
-				model,
-				reasoning,
-				timeoutMs: request.timeoutMs,
+		yield* this.runStream(
+			provider,
+			base,
+			request.maxRetries ?? this.config.defaultMaxRetries,
+			(content) => {
+				const parsed = request.schema.safeParse(content);
+				if (parsed.success) return { ok: true, data: parsed.data };
+				const issue = parsed.error.issues[0];
+				return {
+					ok: false,
+					feedback: {
+						field: issue?.path.join(".") || "root",
+						error: issue?.message ?? "Validation failed",
+						received: content,
+					},
+				};
 			},
-			request.schema as z.ZodType<z.infer<T>>,
+			{ provider: providerName, model },
 		);
+	}
+
+	private async *createRawTextStream(
+		request: LLMTextStreamRequest,
+	): AsyncGenerator<StreamEvent<string>, void, unknown> {
+		const providerName = request.provider ?? this.config.defaultProvider;
+		const model = request.model ?? this.getDefaultModel(providerName);
+		const provider = this.getOrCreateProvider(providerName);
+		const textOutput = typeof provider.stream === "function";
+
+		const base: ProviderRequest = {
+			prompt: request.prompt,
+			system: request.system,
+			images: request.images,
+			jsonSchema: z.toJSONSchema(TextAnswerSchema) as Record<string, unknown>,
+			textOutput,
+			model,
+			reasoningEffort: request.reasoningEffort ?? defaultReasoningEffort(model),
+			timeoutMs: request.timeoutMs ?? 120_000,
+		};
+
+		let sawText = false;
+		for await (const event of this.runStream(
+			provider,
+			base,
+			request.maxRetries ?? this.config.defaultMaxRetries,
+			(content) => {
+				if (textOutput && typeof content === "string") {
+					return { ok: true, data: content };
+				}
+				const parsed = TextAnswerSchema.safeParse(content);
+				return parsed.success
+					? { ok: true, data: parsed.data.text }
+					: {
+							ok: false,
+							feedback: {
+								field: "text",
+								error: "Expected the reply as a string",
+								received: content,
+							},
+						};
+			},
+			{ provider: providerName, model },
+		)) {
+			if (event.type === "output_delta") sawText = true;
+			// A provider that answered in one piece: the reply is its one delta.
+			if (event.type === "complete" && !sawText && event.data) {
+				yield { type: "output_delta", text: event.data, outputIndex: 0 };
+			}
+			yield event;
+		}
+	}
+
+	/**
+	 * One streamed request with retries. Validation failures are fed back;
+	 * retryable failures are retried only while nothing has streamed yet (a
+	 * caller already showing text would otherwise see it twice).
+	 */
+	private async *runStream<D>(
+		provider: LLMProvider,
+		base: ProviderRequest,
+		maxRetries: number,
+		validate: (
+			content: unknown,
+		) => { ok: true; data: D } | { ok: false; feedback: ValidationFeedback },
+		meta: { provider: string; model: string },
+	): AsyncGenerator<StreamEvent<D>, void, unknown> {
+		const maxAttempts = maxRetries + 1;
+		let feedback: ValidationFeedback | undefined;
+
+		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+			const providerRequest: ProviderRequest = {
+				...base,
+				validationFeedback: feedback,
+			};
+			let streamed = false;
+			let response: ProviderResponse | undefined;
+			try {
+				if (provider.stream) {
+					for await (const event of provider.stream(providerRequest)) {
+						if (event.type === "result") {
+							response = event.response;
+						} else {
+							if (event.type !== "started") streamed = true;
+							yield event;
+						}
+					}
+				} else {
+					response = await provider.call(providerRequest);
+				}
+			} catch (error) {
+				if (attempt < maxAttempts && !streamed && isRetryableError(error)) {
+					await sleep(getRetryDelay(error, attempt, 1000, 60_000));
+					continue;
+				}
+				throw error;
+			}
+			if (!response) {
+				throw new Error(`${provider.name} stream ended without a result`);
+			}
+
+			const checked = validate(response.content);
+			if (checked.ok) {
+				yield {
+					type: "complete",
+					data: checked.data,
+					usage: {
+						promptTokens: response.usage.promptTokens,
+						completionTokens: response.usage.completionTokens,
+					},
+					rawResponse: response.rawContent,
+					provider: meta.provider,
+					model: meta.model,
+				};
+				return;
+			}
+			if (attempt >= maxAttempts) {
+				throw new LLMValidationError(checked.feedback);
+			}
+			feedback = checked.feedback;
+		}
 	}
 
 	/**
@@ -470,13 +587,8 @@ export class LLMClient {
 			unrepresentable: "any", // Convert unrepresentable types to {} instead of throwing
 		}) as Record<string, unknown>;
 
-		// Determine default reasoning effort for GPT-5.2+ models
-		// Use 'medium' if thinking model and not explicitly set
 		const reasoningEffort =
-			request.reasoningEffort ??
-			(model.includes("5.2") && !model.includes("instant")
-				? "medium"
-				: undefined);
+			request.reasoningEffort ?? defaultReasoningEffort(model);
 
 		// Timeout for LLM requests (default 2 minutes)
 		const timeoutMs = request.timeoutMs ?? 120_000;
@@ -580,4 +692,18 @@ export class LLMClient {
 
 		return provider;
 	}
+}
+
+/**
+ * The reasoning effort a request gets when it names none: 'medium' for the
+ * OpenAI GPT-5.2 thinking models (as before), otherwise the provider's own.
+ */
+function defaultReasoningEffort(model: string): ReasoningEffort | undefined {
+	return model.includes("5.2") && !model.includes("instant")
+		? "medium"
+		: undefined;
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }

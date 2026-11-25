@@ -45,6 +45,8 @@ export {
 	type PersistenceOptions,
 } from "./middleware/persistence";
 export { AnthropicProvider } from "./providers/anthropic";
+// Providers (for advanced usage / custom providers)
+export { BaseProvider } from "./providers/base";
 export {
 	type ClaudeCliResult,
 	type ClaudeCliRun,
@@ -52,8 +54,6 @@ export {
 	ClaudeCodeProvider,
 	spawnClaudeCli,
 } from "./providers/claude-code";
-// Providers (for advanced usage / custom providers)
-export { BaseProvider } from "./providers/base";
 export { OpenAIProvider } from "./providers/openai";
 export { OpenAIResponsesProvider } from "./providers/openai-responses";
 export type { RetryOptions } from "./retry";
@@ -76,6 +76,7 @@ export type {
 	LLMResponse,
 	// Streaming types
 	LLMStreamRequest,
+	LLMTextStreamRequest,
 	LoggerFn,
 	LoggingConfig,
 	// Logging types
@@ -83,6 +84,7 @@ export type {
 	ProviderConfig,
 	ProviderRequest,
 	ProviderResponse,
+	ProviderStreamEvent,
 	ReasoningConfig,
 	ReasoningEffort,
 	StreamEvent,
