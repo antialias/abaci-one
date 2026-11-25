@@ -15,18 +15,19 @@ import { buildWorksheetParsingPrompt, type PromptOptions } from './prompt-builde
 import { type WorksheetParsingResult, WorksheetParsingResultSchema } from './schemas'
 
 /**
- * Available model configurations for worksheet parsing
+ * Parsing configurations: how hard the model thinks. Provider and model come
+ * from the app's default (LLM_DEFAULT_PROVIDER) unless a config names them.
  */
 export interface ModelConfig {
   /** Unique identifier for this config */
   id: string
   /** Display name for UI */
   name: string
-  /** Provider name */
-  provider: 'openai' | 'anthropic'
-  /** Model ID to use */
-  model: string
-  /** Reasoning effort (for GPT-5.2+) */
+  /** Provider name (default: the app's default provider) */
+  provider?: string
+  /** Model or class id (default: the provider's default) */
+  model?: string
+  /** Reasoning effort */
   reasoningEffort?: ReasoningEffort
   /** Description of when to use this config */
   description: string
@@ -35,40 +36,27 @@ export interface ModelConfig {
 }
 
 /**
- * Available model configurations for worksheet parsing
+ * Available configurations for worksheet parsing
  */
 export const PARSING_MODEL_CONFIGS: ModelConfig[] = [
   {
-    id: 'gpt-5.2-thinking',
-    name: 'GPT-5.2 Thinking',
-    provider: 'openai',
-    model: 'gpt-5.2',
+    id: 'default',
+    name: 'Default',
     reasoningEffort: 'medium',
     description: 'Best balance of quality and speed for worksheet analysis',
     isDefault: true,
   },
   {
-    id: 'gpt-5.2-thinking-high',
-    name: 'GPT-5.2 Thinking (High)',
-    provider: 'openai',
-    model: 'gpt-5.2',
+    id: 'thorough',
+    name: 'Thorough',
     reasoningEffort: 'high',
     description: 'More thorough reasoning, better for difficult handwriting',
   },
   {
-    id: 'gpt-5.2-instant',
-    name: 'GPT-5.2 Instant',
-    provider: 'openai',
-    model: 'gpt-5.2-chat-latest',
-    reasoningEffort: 'none',
+    id: 'fast',
+    name: 'Fast',
+    reasoningEffort: 'low',
     description: 'Faster but less accurate, good for clear worksheets',
-  },
-  {
-    id: 'claude-sonnet',
-    name: 'Claude Sonnet 4',
-    provider: 'anthropic',
-    model: 'claude-sonnet-4-20250514',
-    description: 'Alternative provider, good for comparison',
   },
 ]
 
@@ -100,7 +88,7 @@ export interface ParseWorksheetOptions {
   provider?: string
   /** Specific model to use (defaults to configured default) */
   model?: string
-  /** Reasoning effort for GPT-5.2+ models */
+  /** Reasoning effort */
   reasoningEffort?: ReasoningEffort
   /** Use a specific model config by ID */
   modelConfigId?: string
@@ -233,10 +221,10 @@ export interface StreamParseWorksheetOptions {
 }
 
 /**
- * Stream parse an abacus workbook page image with reasoning summaries
+ * Stream parse an abacus workbook page image with the model's reasoning
  *
- * Uses the OpenAI Responses API to stream the parsing process, including:
- * - Reasoning summaries (model's thinking about each problem)
+ * Streams the parsing process through the LLM client, including:
+ * - Reasoning (the model's thinking about each problem, when it shows any)
  * - Output deltas (partial structured output)
  * - Final validated result
  *
@@ -273,30 +261,10 @@ export async function* streamParseWorksheetImage(
     timeoutMs = 300_000, // 5 minutes default for streaming
   } = options
 
-  // Resolve model config
-  let provider = explicitProvider
-  let model = explicitModel
-
-  if (modelConfigId) {
-    const config = getModelConfig(modelConfigId)
-    if (config) {
-      provider = provider ?? config.provider
-      model = model ?? config.model
-    }
-  } else if (!provider && !model) {
-    // Use default config
-    const defaultConfig = getDefaultModelConfig()
-    provider = defaultConfig.provider
-    model = defaultConfig.model
-  }
-
-  // Only OpenAI supports streaming with reasoning
-  if (provider && provider !== 'openai') {
-    throw new Error(
-      `Streaming with reasoning summaries is only supported for OpenAI. ` +
-        `Use parseWorksheetImage() for provider '${provider}'.`
-    )
-  }
+  const config = (modelConfigId && getModelConfig(modelConfigId)) || getDefaultModelConfig()
+  const provider = explicitProvider ?? config.provider
+  const model = explicitModel ?? config.model
+  const effort = config.reasoningEffort ?? 'medium'
 
   // Emit progress event
   yield {
@@ -313,12 +281,9 @@ export async function* streamParseWorksheetImage(
     prompt,
     images: [imageDataUrl],
     schema: WorksheetParsingResultSchema,
-    provider: 'openai',
+    provider,
     model,
-    reasoning: {
-      effort: 'medium',
-      summary: 'auto',
-    },
+    reasoning: { effort },
     timeoutMs,
   })
 

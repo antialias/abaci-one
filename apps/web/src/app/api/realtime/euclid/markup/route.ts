@@ -5,8 +5,8 @@
  * Body: { text, propositionId, pointLabels, strict? }
  * Response: { markedText }
  *
- * Uses a fast model to insert {seg:AB}, {pt:A}, {def:N}, {post:N}, {cn:N}, {prop:N}
- * markers into plain text.
+ * Asks the app's LLM client (low reasoning effort) to insert {seg:AB}, {pt:A},
+ * {def:N}, {post:N}, {cn:N}, {prop:N} markers into plain text.
  *
  * Two modes:
  *  - Default (strict: false): sanity check via word overlap ratio — at least 60% of
@@ -17,18 +17,23 @@
  *    every word exactly.
  */
 
-import { openAiTextBaseUrl } from '@/lib/openai-base'
-import { withAuth } from '@/lib/auth/withAuth'
-import { recordOpenAiChatUsage } from '@/lib/ai-usage/helpers'
-import { AiFeature } from '@/lib/ai-usage/features'
-import { stripEntityMarkers } from '@/lib/character/parseEntityMarkers'
+import { z } from 'zod'
 import { EUCLID_ENTITY_MARKERS } from '@/components/toys/euclid/euclidEntityMarkers'
+import { AiFeature } from '@/lib/ai-usage/features'
+import { trackedCall } from '@/lib/ai-usage/llm-middleware'
+import { withAuth } from '@/lib/auth/withAuth'
+import { stripEntityMarkers } from '@/lib/character/parseEntityMarkers'
+import { llm } from '@/lib/llm'
 import { MARKER_RE, validateMarkupStrict, wordOverlapRatio } from './validation'
 
 const expandMarkers = (text: string) => stripEntityMarkers(text, EUCLID_ENTITY_MARKERS)
 
 /** Minimum word overlap ratio for non-strict (sanity check) mode. */
 const SANITY_OVERLAP_THRESHOLD = 0.6
+
+const MarkupSchema = z.object({
+  markedText: z.string().describe('The input text, unchanged except for the inserted markers'),
+})
 
 export const POST = withAuth(async (request, { userId }) => {
   const body = await request.json()
@@ -51,11 +56,6 @@ export const POST = withAuth(async (request, { userId }) => {
   // Skip if text already has markers
   if (/\{(seg|tri|ang|pt|def|post|cn|prop):/.test(text)) {
     return Response.json({ markedText: text })
-  }
-
-  const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    return Response.json({ markedText: text }) // Silently return original on missing key
   }
 
   const pointList = pointLabels?.length ? pointLabels.join(', ') : 'unknown'
@@ -145,31 +145,19 @@ CRITICAL RULES — read carefully:
 - NEVER correct spelling, grammar, or punctuation errors. The input is speech-to-text and errors are expected. Preserve them exactly.`
 
   try {
-    const response = await fetch(`${openAiTextBaseUrl()}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+    const response = await trackedCall(
+      llm,
+      {
+        system: systemPrompt,
+        prompt: `Text to mark up:\n${text}`,
+        schema: MarkupSchema,
+        reasoningEffort: 'low',
+        maxRetries: 1,
+        timeoutMs: 60_000,
       },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: text },
-        ],
-        temperature: 0,
-        max_tokens: Math.max(text.length * 4, 512),
-      }),
-    })
-
-    if (!response.ok) {
-      console.error('[euclid-markup] API error:', response.status)
-      return Response.json({ markedText: text })
-    }
-
-    const result = await response.json()
-    recordOpenAiChatUsage(result, { userId, feature: AiFeature.EUCLID_MARKUP })
-    const markedText = result.choices?.[0]?.message?.content?.trim()
+      { userId, feature: AiFeature.EUCLID_MARKUP }
+    )
+    const markedText = response.data.markedText.trim()
 
     if (!markedText) {
       return Response.json({ markedText: text })

@@ -7,12 +7,12 @@
  */
 
 import { NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/withAuth'
-import { evolveScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
 import type {
   GeneratedScenario,
   TranscriptEntry,
 } from '@/components/toys/number-line/talkToNumber/generateScenario'
+import { evolveScenario } from '@/components/toys/number-line/talkToNumber/generateScenario'
+import { withAuth } from '@/lib/auth/withAuth'
 
 export const POST = withAuth(async (request, { userId }) => {
   try {
@@ -32,13 +32,7 @@ export const POST = withAuth(async (request, { userId }) => {
       return NextResponse.json({ error: 'scenario is required' }, { status: 400 })
     }
 
-    const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 })
-    }
-
     const evolution = await evolveScenario(
-      apiKey,
       number,
       scenario,
       recentTranscripts ?? [],

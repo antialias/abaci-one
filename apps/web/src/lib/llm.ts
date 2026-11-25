@@ -24,8 +24,8 @@
  * @see packages/llm-client/README.md for full documentation
  */
 
-import { createPersistenceMiddleware, LLMClient } from '@soroban/llm-client'
 import type { StreamMiddleware } from '@soroban/llm-client'
+import { createPersistenceMiddleware, LLMClient } from '@soroban/llm-client'
 import type { TaskHandle } from './task-manager'
 import type { TaskEventBase } from './tasks/events'
 
@@ -38,12 +38,13 @@ export const LLM_SNAPSHOT_INTERVAL_MS = 3000
 
 // Create singleton instance
 // Configuration is automatically loaded from environment variables:
-// - LLM_DEFAULT_PROVIDER: Default provider (default: 'openai')
-// - LLM_DEFAULT_MODEL: Default model override
-// - LLM_OPENAI_API_KEY: OpenAI API key
-// - LLM_OPENAI_BASE_URL: OpenAI base URL (optional)
-// - LLM_ANTHROPIC_API_KEY: Anthropic API key
-// - LLM_ANTHROPIC_BASE_URL: Anthropic base URL (optional)
+// - LLM_DEFAULT_PROVIDER: 'claude_code' in production (claude -p through the
+//   switch proxy); 'openai' or 'anthropic' are the kill-switch fallbacks,
+//   which answer streamed calls in one piece
+// - LLM_CLAUDE_CODE_BASE_URL / LLM_CLAUDE_CODE_API_KEY /
+//   LLM_CLAUDE_CODE_DEFAULT_MODEL / LLM_CLAUDE_CODE_MAX_CONCURRENCY
+// - LLM_OPENAI_API_KEY: OpenAI key (fallback provider, and embeddings)
+// - LLM_ANTHROPIC_API_KEY: Anthropic key (fallback provider)
 export const llm = new LLMClient()
 
 /**

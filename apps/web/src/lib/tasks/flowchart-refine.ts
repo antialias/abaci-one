@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db, schema } from '@/db'
+import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
 import {
   getRefinementSystemPrompt,
   RefinementResultSchema,
@@ -8,7 +9,6 @@ import {
 } from '@/lib/flowchart-workshop/llm-schemas'
 import { validateTestCasesWithCoverage } from '@/lib/flowchart-workshop/test-case-validator'
 import { createTaskLLM } from '@/lib/llm'
-import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
 import { createTask } from '../task-manager'
 import type { FlowchartRefineEvent } from './events'
 
@@ -164,14 +164,9 @@ Please modify the flowchart according to this request. Return the complete updat
         )
 
         const llmStream = taskLLM.stream({
-          provider: 'openai',
-          model: 'gpt-5.2',
           prompt: fullPrompt,
           schema: RefinementResultSchema,
-          reasoning: {
-            effort: 'medium',
-            summary: 'auto',
-          },
+          reasoning: { effort: 'medium' },
           timeoutMs: 300_000,
         })
 

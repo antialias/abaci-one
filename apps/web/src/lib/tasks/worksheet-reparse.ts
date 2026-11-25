@@ -338,12 +338,7 @@ async function runReparse(
         prompt,
         images: [croppedDataUrl],
         schema: SingleProblemSchema,
-        provider: 'openai',
-        model: 'gpt-5.2',
-        reasoning: {
-          effort: 'medium',
-          summary: 'auto',
-        },
+        reasoning: { effort: 'medium' },
       })
 
       let problemResult: z.infer<typeof SingleProblemSchema> | null = null

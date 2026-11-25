@@ -12,13 +12,13 @@
  */
 
 import type {
-  StreamMiddleware,
-  StreamEvent,
+  EmbeddingRequest,
+  EmbeddingResponse,
   LLMClient,
   LLMRequest,
   LLMResponse,
-  EmbeddingRequest,
-  EmbeddingResponse,
+  StreamEvent,
+  StreamMiddleware,
 } from '@soroban/llm-client'
 import type { z } from 'zod'
 import type { AiFeatureValue } from './features'
@@ -38,9 +38,9 @@ export interface UsageRecordingContext {
  */
 export function createUsageRecordingMiddleware(
   context: UsageRecordingContext,
-  /** Provider name — passed at construction since stream events don't carry it */
+  /** Provider name, when the complete event doesn't carry one */
   provider?: string,
-  /** Model name — passed at construction since stream events don't carry it */
+  /** Model name, when the complete event doesn't carry one */
   model?: string
 ): StreamMiddleware {
   return {
@@ -50,7 +50,12 @@ export function createUsageRecordingMiddleware(
       for await (const event of stream) {
         if (event.type === 'complete') {
           const { recordLlmClientStreamUsage } = await import('./helpers')
-          recordLlmClientStreamUsage(event.usage, provider ?? 'openai', model ?? 'unknown', context)
+          recordLlmClientStreamUsage(
+            event.usage,
+            event.provider ?? provider ?? 'unknown',
+            event.model ?? model ?? 'unknown',
+            context
+          )
         }
         yield event
       }
