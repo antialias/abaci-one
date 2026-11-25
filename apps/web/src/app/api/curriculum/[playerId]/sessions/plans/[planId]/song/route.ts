@@ -5,15 +5,16 @@
  * GET  — Get song status for a session plan
  */
 
-import { NextResponse } from 'next/server'
 import { desc, eq } from 'drizzle-orm'
+import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
+import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
 import { withAuth } from '@/lib/auth/withAuth'
 import { isEnabled } from '@/lib/feature-flags'
+import { kidRetryRefusal, latestSongOutcome } from '@/lib/session-song/kid-retry'
 import { parseSongPlan } from '@/lib/song-share/songPlan'
 import { getEffectiveTierForStudent } from '@/lib/subscription'
 import { startSessionSongGeneration } from '@/lib/tasks/session-song'
-import type { SessionSongTriggerSource } from '@/db/schema/session-songs'
 
 /**
  * POST /api/curriculum/[playerId]/sessions/plans/[planId]/song
@@ -101,6 +102,10 @@ export const GET = withAuth(async (_request, { userId, userRole, params }) => {
       if (player?.userId === userId) isOwnerOrAdmin = true
     }
 
+    // Whether the family can fill this song in themselves (see kid-retry.ts).
+    const canRetry =
+      song.status === 'failed' && kidRetryRefusal(song, await latestSongOutcome()) === null
+
     const parsedPlan = parseSongPlan(song.llmOutput)
     // Per-section lyrics for the synced-lyrics player. Shaped down from the
     // full plan so we don't leak style/validation metadata to the client.
@@ -129,6 +134,7 @@ export const GET = withAuth(async (_request, { userId, userRole, params }) => {
         // Raw error string is owner/admin-only — leak nothing to other viewers.
         errorDetail: song.status === 'failed' && isOwnerOrAdmin ? song.errorMessage : null,
         viewerIsOwner: isOwnerOrAdmin,
+        canRetry,
         createdAt: song.createdAt instanceof Date ? song.createdAt.getTime() : song.createdAt,
         completedAt:
           song.completedAt instanceof Date ? song.completedAt.getTime() : song.completedAt,

@@ -1,8 +1,8 @@
 'use client'
 
-import { css } from '../../../styled-system/css'
-import { classifySongFailure } from '@/lib/session-song/classify-failure'
 import type { SessionSongFailureKind } from '@/db/schema/session-songs'
+import { classifySongFailure } from '@/lib/session-song/classify-failure'
+import { css } from '../../../styled-system/css'
 
 interface SongFailureCardProps {
   /** Classified failure kind from the server. Null for legacy rows without a classification. */
@@ -11,6 +11,12 @@ interface SongFailureCardProps {
   errorDetail: string | null
   /** Whether to show the owner-actionable second line. */
   viewerIsOwner: boolean
+  /** Whether the song can be filled in now (the cause has cleared). Shows the button. */
+  canRetry?: boolean
+  onRetry?: () => void
+  retrying?: boolean
+  /** Why the last tap didn't start the song, if it didn't. */
+  retryError?: string | null
 }
 
 /**
@@ -20,7 +26,15 @@ interface SongFailureCardProps {
  * admin), an expandable second block surfaces the underlying problem and a
  * direct remediation link.
  */
-export function SongFailureCard({ failureKind, errorDetail, viewerIsOwner }: SongFailureCardProps) {
+export function SongFailureCard({
+  failureKind,
+  errorDetail,
+  viewerIsOwner,
+  canRetry = false,
+  onRetry,
+  retrying = false,
+  retryError = null,
+}: SongFailureCardProps) {
   // Use the classifier to rebuild the messages from the kind. We also pass any
   // raw error string so the classifier's defaults match what the server stored.
   const classified = classifySongFailure(errorDetail ?? failureKind ?? 'unknown')
@@ -69,9 +83,49 @@ export function SongFailureCard({ failureKind, errorDetail, viewerIsOwner }: Son
             margin: 0,
           })}
         >
-          {classified.userMessage}
+          {canRetry && onRetry ? 'Songs are working again!' : classified.userMessage}
         </p>
       </div>
+
+      {canRetry && onRetry && (
+        <div data-element="song-retry" className={css({ mt: 3, textAlign: 'center' })}>
+          <button
+            type="button"
+            data-action="retry-song"
+            onClick={onRetry}
+            disabled={retrying}
+            className={css({
+              px: 5,
+              py: 2,
+              borderRadius: 'full',
+              bg: 'amber.500',
+              color: 'white',
+              fontSize: 'md',
+              fontWeight: 'semibold',
+              cursor: 'pointer',
+              border: 'none',
+              _hover: { bg: 'amber.600' },
+              _disabled: { opacity: 0.6, cursor: 'wait' },
+            })}
+          >
+            {retrying ? 'Starting your song…' : 'Make my song now 🎵'}
+          </button>
+          {retryError && (
+            <p
+              data-element="song-retry-error"
+              className={css({
+                mt: 2,
+                mb: 0,
+                fontSize: 'sm',
+                color: 'amber.800',
+                _dark: { color: 'amber.200' },
+              })}
+            >
+              {retryError}
+            </p>
+          )}
+        </div>
+      )}
 
       {showOwnerBlock && (
         <div
