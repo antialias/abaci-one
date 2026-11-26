@@ -38,6 +38,19 @@ export class SpeechError extends Error {
   }
 }
 
+/**
+ * How long each kind of caller waits for the door before giving up. Real
+ * clips take about 1 s; the on-demand path (a child waiting to hear a line)
+ * gives up after a few seconds so the voice chain falls through to subtitles
+ * quickly. Admin preview and bulk generation can afford to wait longer.
+ */
+export const SPEECH_TIMEOUT_MS = {
+  onDemand: 5_000,
+  preview: 15_000,
+  bulk: 30_000,
+  voiceList: 10_000,
+} as const
+
 export interface SynthesizeSpeechInput {
   /** Voice folder, e.g. `el-21m00Tcm4TlvDq8ikWAM`. */
   voice: string
@@ -46,6 +59,8 @@ export interface SynthesizeSpeechInput {
   tone?: string | null
   /** When given, the clip is recorded in ai_usage under this context. */
   usage?: UsageContext
+  /** Give up on the door after this long (504). See SPEECH_TIMEOUT_MS. */
+  timeoutMs: number
 }
 
 export interface SynthesizedSpeech {
@@ -74,6 +89,18 @@ export function speechRequestText(text: string, tone?: string | null): string {
   }
   const tagged = speechTextFor(text, tone, SPEECH_MODEL).text
   return tagged.length <= MAX_SPEECH_CHARS ? tagged : plain
+}
+
+/** Map a fetch that threw (timeout, refused connection) to a SpeechError. */
+function unreachable(err: unknown, timeoutMs: number): SpeechError {
+  if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+    return new SpeechError('upstream', `ElevenLabs timed out after ${timeoutMs} ms`, 504)
+  }
+  return new SpeechError(
+    'upstream',
+    `Could not reach ElevenLabs: ${err instanceof Error ? err.message : String(err)}`,
+    502
+  )
 }
 
 /** Pull a readable message out of an ElevenLabs-shaped error body. */
@@ -125,13 +152,10 @@ export async function synthesizeSpeech(input: SynthesizeSpeechInput): Promise<Sy
         Accept: 'audio/mpeg',
       },
       body: JSON.stringify({ text, model_id: SPEECH_MODEL }),
+      signal: AbortSignal.timeout(input.timeoutMs),
     })
   } catch (err) {
-    throw new SpeechError(
-      'upstream',
-      `Could not reach ElevenLabs: ${err instanceof Error ? err.message : String(err)}`,
-      502
-    )
+    throw unreachable(err, input.timeoutMs)
   }
 
   if (!response.ok) {
@@ -144,7 +168,12 @@ export async function synthesizeSpeech(input: SynthesizeSpeechInput): Promise<Sy
     )
   }
 
-  const audio = Buffer.from(await response.arrayBuffer())
+  let audio: Buffer
+  try {
+    audio = Buffer.from(await response.arrayBuffer())
+  } catch (err) {
+    throw unreachable(err, input.timeoutMs)
+  }
   if (audio.byteLength === 0) {
     throw new SpeechError('upstream', 'ElevenLabs returned no audio.', 502, response.status)
   }
@@ -193,13 +222,10 @@ export async function listElevenLabsVoices(): Promise<ElevenLabsVoice[]> {
   try {
     response = await fetch(`${elevenLabsBaseUrl()}/v1/voices`, {
       headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(SPEECH_TIMEOUT_MS.voiceList),
     })
   } catch (err) {
-    throw new SpeechError(
-      'upstream',
-      `Could not reach ElevenLabs: ${err instanceof Error ? err.message : String(err)}`,
-      502
-    )
+    throw unreachable(err, SPEECH_TIMEOUT_MS.voiceList)
   }
   if (!response.ok) {
     const body = await response.text().catch(() => '')

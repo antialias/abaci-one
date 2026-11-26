@@ -7,8 +7,14 @@
  *
  * Generates a clip via ElevenLabs (lib/speech), caches it to disk, and returns
  * the audio. If the clip already exists on disk, returns the cached version,
- * for any voice; only ElevenLabs voices generate (retired OpenAI voices are
- * refused with 400).
+ * for any voice. Otherwise, before anything is spent:
+ * - only ElevenLabs voices generate (retired OpenAI voices: 400);
+ * - the text must be what the clip id stands for (lib/speech/clipAuthority),
+ *   since guests can call this route;
+ * - the per-identity and pod-wide hourly caps must allow it
+ *   (lib/speech/generationBudget; 429 otherwise).
+ * The door gets SPEECH_TIMEOUT_MS.onDemand; a stuck door answers 504 and the
+ * client's voice chain falls through to subtitles.
  */
 
 import { createHash } from 'crypto'
@@ -16,11 +22,16 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
 import { AiFeature } from '@/lib/ai-usage/features'
-import { isSafeVoiceFolder } from '@/lib/audio/voices'
+import { generationRefusal, isSafePathSegment, isSafeVoiceFolder } from '@/lib/audio/voices'
 import { withAuth } from '@/lib/auth/withAuth'
-import { SpeechError, synthesizeSpeech } from '@/lib/speech/synthesize'
+import { authorizeClipText } from '@/lib/speech/clipAuthority'
+import { onDemandSpeechBudget } from '@/lib/speech/generationBudget'
+import { SPEECH_TIMEOUT_MS, SpeechError, synthesizeSpeech } from '@/lib/speech/synthesize'
 
-const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
+/** Read per request so tests (and any cwd change) see the right place. */
+function audioDir(): string {
+  return join(process.cwd(), 'data', 'audio')
+}
 
 /** Max filename length (bytes) — conservative limit for all filesystems */
 const MAX_FILENAME_LEN = 200
@@ -37,20 +48,27 @@ export const POST = withAuth(async (request, { userId }) => {
   try {
     const body = await request.json()
     const { voice, text, tone } = body
-    const clipId = safeClipId(body.clipId ?? '')
+    const requestedClipId: string = typeof body.clipId === 'string' ? body.clipId : ''
+    const clipId = safeClipId(requestedClipId)
 
     // Validate required fields
-    if (!voice || !clipId || !text) {
+    if (
+      typeof voice !== 'string' ||
+      !voice ||
+      !requestedClipId ||
+      typeof text !== 'string' ||
+      !text
+    ) {
       return NextResponse.json({ error: 'voice, clipId, and text are required' }, { status: 400 })
     }
 
     // Prevent directory traversal
-    if (!isSafeVoiceFolder(voice) || clipId.includes('/') || clipId.includes('..')) {
+    if (!isSafeVoiceFolder(voice) || !isSafePathSegment(clipId)) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
     }
 
     // Disk cache check — return existing file if present
-    const voiceDir = join(AUDIO_DIR, voice)
+    const voiceDir = join(audioDir(), voice)
     const candidates = [join(voiceDir, `${clipId}.mp3`), join(voiceDir, `cc-${clipId}.mp3`)]
     for (const path of candidates) {
       if (existsSync(path)) {
@@ -65,13 +83,34 @@ export const POST = withAuth(async (request, { userId }) => {
       }
     }
 
-    // Only ElevenLabs voices generate; synthesizeSpeech refuses retired
-    // OpenAI folders (play-only) with a 400 and a message saying why.
+    // Only ElevenLabs voices generate; retired OpenAI folders are play-only.
+    const refusal = generationRefusal(voice)
+    if (refusal) {
+      return NextResponse.json({ error: refusal }, { status: 400 })
+    }
+
+    // Speak only what the clip id stands for.
+    const authority = await authorizeClipText(requestedClipId, text, tone)
+    if (!authority.ok) {
+      return NextResponse.json({ error: authority.error }, { status: authority.status })
+    }
+
+    const identity = userId || request.headers.get('x-guest-id') || 'anonymous'
+    const budget = onDemandSpeechBudget.tryConsume(identity, authority.text.length)
+    if (!budget.ok) {
+      console.warn('[generate-clip] hourly cap reached:', budget.scope)
+      return NextResponse.json(
+        { error: 'Too many new clips this hour; try again later.' },
+        { status: 429 }
+      )
+    }
+
     const { audio: buffer } = await synthesizeSpeech({
       voice,
-      text,
-      tone,
+      text: authority.text,
+      tone: authority.tone,
       usage: { userId, feature: AiFeature.TTS_CLIP },
+      timeoutMs: SPEECH_TIMEOUT_MS.onDemand,
     })
 
     // Save to disk cache

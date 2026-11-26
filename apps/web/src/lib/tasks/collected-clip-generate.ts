@@ -6,7 +6,7 @@ import { ttsCollectedClipSay, ttsCollectedClips } from '@/db/schema'
 import { AiFeature } from '../ai-usage/features'
 import { resolveCanonicalText } from '../audio/clipHash'
 import { generationRefusal } from '../audio/voices'
-import { describeSpeechFailure, synthesizeSpeech } from '../speech/synthesize'
+import { describeSpeechFailure, SPEECH_TIMEOUT_MS, synthesizeSpeech } from '../speech/synthesize'
 import { createTask } from '../task-manager'
 import type { CollectedClipGenerateEvent } from './events'
 
@@ -171,6 +171,7 @@ export async function startCollectedClipGeneration(
 
       try {
         const { audio } = await synthesizeSpeech({
+          timeoutMs: SPEECH_TIMEOUT_MS.bulk,
           voice: config.voice,
           text: inputText,
           tone: clip.tone,

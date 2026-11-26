@@ -62,8 +62,8 @@ export function isRetiredVoice(folder: string): boolean {
   return RETIRED_SET.has(folder)
 }
 
-/** A folder name that can't escape data/audio/. */
-export function isSafeVoiceFolder(name: string): boolean {
+/** A single path segment (folder or file stem) that can't escape its parent. */
+export function isSafePathSegment(name: string): boolean {
   return (
     name.length > 0 &&
     !name.includes('/') &&
@@ -72,6 +72,9 @@ export function isSafeVoiceFolder(name: string): boolean {
     !name.includes('\0')
   )
 }
+
+/** A folder name that can't escape data/audio/. */
+export const isSafeVoiceFolder = isSafePathSegment
 
 /** Names a custom (recorded) voice may not take: they'd collide with a generated folder. */
 export function isReservedVoiceName(name: string): boolean {

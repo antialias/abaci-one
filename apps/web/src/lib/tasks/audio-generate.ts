@@ -3,7 +3,7 @@ import { join } from 'path'
 import { AiFeature } from '@/lib/ai-usage/features'
 import { AUDIO_MANIFEST } from '@/lib/audio/audioManifest'
 import { generationRefusal } from '@/lib/audio/voices'
-import { describeSpeechFailure, synthesizeSpeech } from '@/lib/speech/synthesize'
+import { describeSpeechFailure, SPEECH_TIMEOUT_MS, synthesizeSpeech } from '@/lib/speech/synthesize'
 import { createTask } from '../task-manager'
 import type { AudioGenerateEvent } from './events'
 
@@ -102,6 +102,7 @@ export async function startAudioGeneration(input: AudioGenerateInput): Promise<s
 
         try {
           const { audio } = await synthesizeSpeech({
+            timeoutMs: SPEECH_TIMEOUT_MS.bulk,
             voice: config.voice,
             text: clip.text,
             tone: clip.tone,

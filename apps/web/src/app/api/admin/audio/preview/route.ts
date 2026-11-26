@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { AiFeature } from '@/lib/ai-usage/features'
 import { withAuth } from '@/lib/auth/withAuth'
-import { SpeechError, synthesizeSpeech } from '@/lib/speech/synthesize'
+import { SPEECH_TIMEOUT_MS, SpeechError, synthesizeSpeech } from '@/lib/speech/synthesize'
 
 /**
  * POST /api/admin/audio/preview
@@ -25,6 +25,7 @@ export const POST = withAuth(
 
     try {
       const { audio } = await synthesizeSpeech({
+        timeoutMs: SPEECH_TIMEOUT_MS.preview,
         voice,
         text,
         tone,
