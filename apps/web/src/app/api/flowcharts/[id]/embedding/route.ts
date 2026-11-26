@@ -18,20 +18,14 @@ export const POST = withAuth(
 
       const fc = await db.query.teacherFlowcharts.findFirst({
         where: eq(schema.teacherFlowcharts.id, id),
-        columns: {
-          id: true,
-          title: true,
-          description: true,
-          difficulty: true,
-          status: true,
-        },
+        columns: { id: true, status: true },
       })
 
       if (!fc || fc.status !== 'published') {
         return NextResponse.json({ error: 'Flowchart not found' }, { status: 404 })
       }
 
-      await reembedFlowchart(fc)
+      await reembedFlowchart(fc.id)
 
       invalidateEmbeddingCache()
 

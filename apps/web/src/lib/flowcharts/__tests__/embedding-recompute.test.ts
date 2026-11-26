@@ -17,8 +17,19 @@ const fixtures = vi.hoisted(() => ({
   flowcharts: [] as Array<Record<string, unknown>>,
   sessions: [] as Array<{ flowchartId: string; topicDescription: string | null }>,
   taxonomy: [] as Array<Record<string, unknown>>,
-  updates: [] as Array<{ table: unknown; values: Record<string, unknown> }>,
+  updates: [] as Array<{ table: unknown; id?: unknown; values: Record<string, unknown> }>,
   embedCalls: [] as string[][],
+  /** Runs inside each embed call, e.g. to simulate a concurrent save. */
+  onEmbed: null as null | (() => void),
+}))
+
+// Inspectable stand-ins for drizzle's eq/and, so the in-memory DB below can
+// apply the same filters the real queries do.
+type Cond = { op: 'eq'; col: unknown; val: unknown } | { op: 'and'; parts: Cond[] }
+vi.mock('drizzle-orm', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('drizzle-orm')>()),
+  eq: (col: unknown, val: unknown): Cond => ({ op: 'eq', col, val }),
+  and: (...parts: Cond[]): Cond => ({ op: 'and', parts }),
 }))
 
 vi.mock('@/lib/embeddings', async () => {
@@ -32,10 +43,12 @@ vi.mock('@/lib/embeddings', async () => {
     ...model,
     embedTexts: vi.fn(async (texts: string[]) => {
       fixtures.embedCalls.push(texts)
+      fixtures.onEmbed?.()
       return texts.map((t) => vec(t.length))
     }),
     embedText: vi.fn(async (text: string) => {
       fixtures.embedCalls.push([text])
+      fixtures.onEmbed?.()
       return vec(text.length)
     }),
   }
@@ -43,10 +56,33 @@ vi.mock('@/lib/embeddings', async () => {
 
 vi.mock('@/db', async () => {
   const schema = await import('@/db/schema')
+  // Column object → the row property it maps to, for the tables used here.
+  const keyOf = (col: unknown): string => {
+    for (const table of [schema.teacherFlowcharts, schema.workshopSessions, schema.topicTaxonomy]) {
+      for (const [key, value] of Object.entries(table)) if (value === col) return key
+    }
+    throw new Error('unknown column in test condition')
+  }
+  const matches = (row: Record<string, unknown>, cond?: Cond): boolean => {
+    if (!cond) return true
+    if (cond.op === 'and') return cond.parts.every((c) => matches(row, c))
+    const have = row[keyOf(cond.col)]
+    return have instanceof Date && cond.val instanceof Date
+      ? have.getTime() === cond.val.getTime()
+      : have === cond.val
+  }
+  const rowsOf = (table: unknown) =>
+    (table === schema.teacherFlowcharts
+      ? fixtures.flowcharts
+      : table === schema.topicTaxonomy
+        ? fixtures.taxonomy
+        : []) as Array<Record<string, unknown>>
   const update = (table: unknown) => ({
     set: (values: Record<string, unknown>) => ({
-      where: async () => {
-        fixtures.updates.push({ table, values })
+      where: async (cond: Cond) => {
+        const hit = rowsOf(table).filter((r) => matches(r, cond))
+        for (const r of hit) fixtures.updates.push({ table, id: r.id, values })
+        return { rowsAffected: hit.length }
       },
     }),
   })
@@ -60,10 +96,18 @@ vi.mock('@/db', async () => {
       select,
       update,
       query: {
-        teacherFlowcharts: { findMany: vi.fn(async () => fixtures.flowcharts) },
+        teacherFlowcharts: {
+          findMany: vi.fn(async () => fixtures.flowcharts),
+          findFirst: vi.fn(async ({ where }: { where: Cond }) => {
+            // A copy, as a real query returns: later writes to the row don't show
+            const row = fixtures.flowcharts.find((r) => matches(r, where))
+            return row && { ...row }
+          }),
+        },
         workshopSessions: {
-          // The real query filters by flowchartId; the fixture keys on it too.
-          findFirst: vi.fn(async () => fixtures.sessions.shift() ?? undefined),
+          findFirst: vi.fn(async ({ where }: { where: Cond }) =>
+            fixtures.sessions.find((r) => matches(r, where))
+          ),
         },
       },
     },
@@ -102,6 +146,7 @@ beforeEach(() => {
   fixtures.taxonomy = []
   fixtures.updates = []
   fixtures.embedCalls = []
+  fixtures.onEmbed = null
   lastHandle = null
 })
 
@@ -180,6 +225,29 @@ describe('taxonomy falls back to the static files until the DB is re-embedded', 
     expect(fromDb.labels).toEqual(['Fresh'])
     expect(fromDb.breadths).toEqual([7])
   })
+  it('picks up DB changes made by another replica once the TTL passes', async () => {
+    const { loadTaxonomy, clearTaxonomyCache, TAXONOMY_CACHE_TTL_MS } = await import('../taxonomy')
+    vi.useFakeTimers()
+    try {
+      const row = (label: string) => ({
+        label,
+        embedding: blob(EMBEDDING_DIMENSIONS),
+        embeddingModel: EMBEDDING_MODEL,
+      })
+      fixtures.taxonomy = [row('Before')]
+      clearTaxonomyCache()
+      expect((await loadTaxonomy()).labels).toEqual(['Before'])
+
+      // Another replica rewrites the table; this one never hears clearTaxonomyCache().
+      fixtures.taxonomy = [row('After')]
+      vi.advanceTimersByTime(TAXONOMY_CACHE_TTL_MS - 1)
+      expect((await loadTaxonomy()).labels).toEqual(['Before'])
+      vi.advanceTimersByTime(2)
+      expect((await loadTaxonomy()).labels).toEqual(['After'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 describe('re-embed task (post-deploy step)', () => {
@@ -234,7 +302,13 @@ describe('re-embed task (post-deploy step)', () => {
         embeddingVersion: null,
       },
     ]
-    fixtures.sessions = [{ flowchartId: 'a', topicDescription: 'how to add fractions' }]
+    // Listed out of task order, and with a session for a row that is skipped, so
+    // a lookup that ignored flowchartId would hand topics to the wrong rows.
+    fixtures.sessions = [
+      { flowchartId: 'd', topicDescription: 'already done' },
+      { flowchartId: 'c', topicDescription: 'something new' },
+      { flowchartId: 'a', topicDescription: 'how to add fractions' },
+    ]
     fixtures.taxonomy = [
       { id: 1, label: 'Mathematics', embeddingModel: 'text-embedding-3-large' },
       { id: 2, label: 'Fractions', embeddingModel: 'text-embedding-3-large' },
@@ -243,16 +317,22 @@ describe('re-embed task (post-deploy step)', () => {
     await startFlowchartEmbedding({})
 
     const flowchartUpdates = fixtures.updates.filter((u) => u.table === schema.teacherFlowcharts)
-    expect(flowchartUpdates).toHaveLength(3)
+    expect(flowchartUpdates.map((u) => u.id)).toEqual(['a', 'b', 'c'])
     for (const u of flowchartUpdates) {
       expect(u.values.embeddingVersion).toBe(EMBEDDING_VERSION)
       expect((u.values.embedding as Buffer).byteLength).toBe(EMBEDDING_DIMENSIONS * 4)
     }
-    // The workshop prompt is kept: embedded into the content and on its own
-    expect(fixtures.embedCalls[0]).toHaveLength(2)
-    expect(fixtures.embedCalls[0][0]).toContain('Original Topic: how to add fractions')
-    expect(fixtures.embedCalls[0][1]).toBe('how to add fractions')
-    expect(flowchartUpdates[0].values.promptEmbedding).toBeInstanceOf(Buffer)
+    // Each row's own workshop prompt is kept: embedded into the content and on its own
+    expect(fixtures.embedCalls.slice(0, 3)).toEqual([
+      [expect.stringContaining('Original Topic: how to add fractions'), 'how to add fractions'],
+      [expect.not.stringContaining('Original Topic')],
+      [expect.stringContaining('Original Topic: something new'), 'something new'],
+    ])
+    expect(fixtures.embedCalls[0][0]).toContain('Title: Fractions')
+    expect(fixtures.embedCalls[2][0]).toContain('Title: New')
+    const byId = Object.fromEntries(flowchartUpdates.map((u) => [u.id, u.values]))
+    expect(byId.a.promptEmbedding).toBeInstanceOf(Buffer)
+    expect(byId.b.promptEmbedding).toBeNull()
 
     const taxonomyUpdates = fixtures.updates.filter((u) => u.table === schema.topicTaxonomy)
     expect(taxonomyUpdates).toHaveLength(2)
@@ -263,10 +343,63 @@ describe('re-embed task (post-deploy step)', () => {
     )
   })
 
+  it('embeds the row as it is now, not the copy the task listed', async () => {
+    const { reembedFlowchart } = await import('@/lib/tasks/flowchart-embed')
+    const t0 = new Date('2026-11-25T10:00:00Z')
+    fixtures.flowcharts = [
+      {
+        id: 'a',
+        title: 'Renamed title',
+        description: 'New words',
+        difficulty: null,
+        updatedAt: t0,
+      },
+    ]
+    expect(await reembedFlowchart('a')).toBe(true)
+    expect(fixtures.embedCalls[0][0]).toContain('Title: Renamed title')
+    expect(fixtures.embedCalls[0][0]).toContain('Description: New words')
+    expect(fixtures.updates).toHaveLength(1)
+  })
+
+  it('does not overwrite a save that lands while it embeds', async () => {
+    const { reembedFlowchart } = await import('@/lib/tasks/flowchart-embed')
+    const row: Record<string, unknown> = {
+      id: 'a',
+      title: 'Old',
+      description: null,
+      difficulty: null,
+      updatedAt: new Date('2026-11-25T10:00:00Z'),
+    }
+    fixtures.flowcharts = [row]
+    // A workshop save bumps updatedAt (and writes its own vector) mid-embed.
+    fixtures.onEmbed = () => {
+      row.title = 'Saved meanwhile'
+      row.updatedAt = new Date('2026-11-25T10:00:05Z')
+    }
+    expect(await reembedFlowchart('a')).toBe(false)
+    expect(fixtures.updates).toHaveLength(0)
+  })
+
+  it('returns false for a row that no longer exists', async () => {
+    const { reembedFlowchart } = await import('@/lib/tasks/flowchart-embed')
+    expect(await reembedFlowchart('gone')).toBe(false)
+    expect(fixtures.embedCalls).toHaveLength(0)
+  })
+
   it('leaves a current taxonomy alone', async () => {
     const { reembedTaxonomy } = await import('../generate-taxonomy')
     fixtures.taxonomy = [{ id: 1, label: 'Mathematics', embeddingModel: EMBEDDING_MODEL }]
     expect(await reembedTaxonomy()).toEqual({ reembeddedCount: 0, labelCount: 1 })
     expect(fixtures.updates).toHaveLength(0)
+  })
+})
+
+describe('seed profile search', () => {
+  it('retries after a failed embedding instead of caching the rejection', async () => {
+    const { searchProfiles } = await import('@/lib/seed/embedding-search')
+    const { embedTexts } = await import('@/lib/embeddings')
+    vi.mocked(embedTexts).mockRejectedValueOnce(new Error('model not fetched'))
+    await expect(searchProfiles('new student')).rejects.toThrow('model not fetched')
+    await expect(searchProfiles('new student', { minSimilarity: -1 })).resolves.not.toHaveLength(0)
   })
 })

@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { EMBEDDING_VERSION, generateFlowchartEmbeddings } from '@/lib/flowcharts/embedding'
 import { invalidateEmbeddingCache } from '@/lib/flowcharts/embedding-search'
@@ -41,13 +41,22 @@ async function loadTopicDescription(flowchartId: string): Promise<string | null>
 
 /**
  * Compute and store the current model's vectors for one flowchart.
+ *
+ * Reads the row itself rather than trusting a caller's copy: the task lists every
+ * row up front and then embeds them one by one, so a title saved in the meantime
+ * must not be overwritten by a vector of the old one. The write is conditional on
+ * updatedAt too, so a save or publish that lands while this one is embedding
+ * (and writes its own fresh vector) wins.
+ *
+ * Returns false when the row is gone or changed underneath; nothing is written.
  */
-export async function reembedFlowchart(fc: {
-  id: string
-  title: string
-  description: string | null
-  difficulty: string | null
-}): Promise<void> {
+export async function reembedFlowchart(id: string): Promise<boolean> {
+  const fc = await db.query.teacherFlowcharts.findFirst({
+    where: eq(schema.teacherFlowcharts.id, id),
+    columns: { id: true, title: true, description: true, difficulty: true, updatedAt: true },
+  })
+  if (!fc) return false
+
   const { embedding, promptEmbedding } = await generateFlowchartEmbeddings({
     title: fc.title,
     description: fc.description,
@@ -55,10 +64,16 @@ export async function reembedFlowchart(fc: {
     difficulty: fc.difficulty,
   })
 
-  await db
+  const result = await db
     .update(schema.teacherFlowcharts)
     .set({ embedding, promptEmbedding, embeddingVersion: EMBEDDING_VERSION })
-    .where(eq(schema.teacherFlowcharts.id, fc.id))
+    .where(
+      and(
+        eq(schema.teacherFlowcharts.id, fc.id),
+        eq(schema.teacherFlowcharts.updatedAt, fc.updatedAt)
+      )
+    )
+  return result.rowsAffected > 0
 }
 
 /**
@@ -135,9 +150,10 @@ export async function startFlowchartEmbedding(input: FlowchartEmbedInput): Promi
         })
 
         try {
-          await reembedFlowchart(fc)
-
-          results.push({ id: fc.id, title: fc.title })
+          // false: the row was deleted, or saved meanwhile with its own fresh vector
+          if (await reembedFlowchart(fc.id)) {
+            results.push({ id: fc.id, title: fc.title })
+          }
         } catch (err) {
           handle.emit({
             type: 'embed_error',

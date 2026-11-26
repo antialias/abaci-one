@@ -81,7 +81,11 @@ async function getProfileEmbeddings(): Promise<Map<string, Float32Array>> {
       cachedContentHash = computeContentHash()
       cachedAt = new Date()
       return cache
-    })()
+    })().catch((err) => {
+      // Don't cache a failure: the next search retries.
+      embeddingPromise = null
+      throw err
+    })
   }
 
   return embeddingPromise

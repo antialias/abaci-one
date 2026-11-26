@@ -29,7 +29,14 @@ export interface Taxonomy {
 
 const LABEL_PREFIX = 'label:'
 
-let cachedTaxonomy: Taxonomy | null = null
+/**
+ * How long a replica trusts its copy. clearTaxonomyCache() only reaches the
+ * replica that regenerated or re-embedded the taxonomy; the others pick the change
+ * up within this window.
+ */
+export const TAXONOMY_CACHE_TTL_MS = 60_000
+
+let cachedTaxonomy: { value: Taxonomy; loadedAt: number } | null = null
 
 /**
  * Clear the taxonomy cache. Call this after regenerating the taxonomy.
@@ -40,21 +47,18 @@ export function clearTaxonomyCache(): void {
 
 /**
  * Load the topic taxonomy from database (preferred) or disk (fallback).
- * Cached after first call.
+ * Cached for TAXONOMY_CACHE_TTL_MS.
  */
 export async function loadTaxonomy(): Promise<Taxonomy> {
-  if (cachedTaxonomy) return cachedTaxonomy
-
-  // Try loading from database first
-  const dbTaxonomy = await loadTaxonomyFromDb()
-  if (dbTaxonomy) {
-    cachedTaxonomy = dbTaxonomy
-    return cachedTaxonomy
+  if (cachedTaxonomy && Date.now() - cachedTaxonomy.loadedAt < TAXONOMY_CACHE_TTL_MS) {
+    return cachedTaxonomy.value
   }
 
-  // Fall back to files (for development or if DB is empty)
-  cachedTaxonomy = loadTaxonomyFromFiles()
-  return cachedTaxonomy
+  // Try loading from database first; fall back to files (for development, an
+  // empty DB, or rows still awaiting re-embedding)
+  const value = (await loadTaxonomyFromDb()) ?? loadTaxonomyFromFiles()
+  cachedTaxonomy = { value, loadedAt: Date.now() }
+  return value
 }
 
 /**

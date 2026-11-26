@@ -23,7 +23,7 @@ import type {
 	StreamEvent,
 	ValidationFeedback,
 } from "./types";
-import { LLMApiError, ProviderNotConfiguredError } from "./types";
+import { ProviderNotConfiguredError } from "./types";
 
 /**
  * Factory function type for creating providers
