@@ -72,37 +72,41 @@ export const GET = withAuth(async () => {
  *
  * Body: { voiceChain: VoiceSourceData[] }
  */
-export const PATCH = withAuth(async (request) => {
-  try {
-    const body = await request.json()
-    const { voiceChain } = body
+export const PATCH = withAuth(
+  async (request) => {
+    try {
+      const body = await request.json()
+      const { voiceChain } = body
 
-    if (!isValidVoiceChain(voiceChain)) {
-      return NextResponse.json(
-        { error: 'voiceChain must be an array of valid voice sources' },
-        { status: 400 }
+      if (!isValidVoiceChain(voiceChain)) {
+        return NextResponse.json(
+          { error: 'voiceChain must be an array of valid voice sources' },
+          { status: 400 }
+        )
+      }
+
+      await ensureDefaultSettings()
+
+      const serialized = JSON.stringify(voiceChain)
+
+      // Also update audioVoice to match the first pregenerated voice for backward compat
+      const firstPregenerated = voiceChain.find(
+        (v): v is { type: 'pregenerated'; name: string } => v.type === 'pregenerated'
       )
+
+      const updates: Record<string, string> = { voiceChain: serialized }
+      if (firstPregenerated) {
+        updates.audioVoice = firstPregenerated.name
+      }
+
+      await db.update(appSettings).set(updates).where(eq(appSettings.id, 'default'))
+
+      return NextResponse.json({ voiceChain })
+    } catch (error) {
+      console.error('Error updating voice chain setting:', error)
+      return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
     }
-
-    await ensureDefaultSettings()
-
-    const serialized = JSON.stringify(voiceChain)
-
-    // Also update audioVoice to match the first pregenerated voice for backward compat
-    const firstPregenerated = voiceChain.find(
-      (v): v is { type: 'pregenerated'; name: string } => v.type === 'pregenerated'
-    )
-
-    const updates: Record<string, string> = { voiceChain: serialized }
-    if (firstPregenerated) {
-      updates.audioVoice = firstPregenerated.name
-    }
-
-    await db.update(appSettings).set(updates).where(eq(appSettings.id, 'default'))
-
-    return NextResponse.json({ voiceChain })
-  } catch (error) {
-    console.error('Error updating voice chain setting:', error)
-    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
-  }
-})
+  },
+  // App-wide: one row every child's sessions read. Admin UI only.
+  { role: 'admin' }
+)

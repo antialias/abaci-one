@@ -2,13 +2,13 @@ import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { appSettings } from '@/db/schema'
+import { withAuth } from '@/lib/auth/withAuth'
 import {
   DEFAULT_TERM_COUNT_SCALING,
   parseTermCountScaling,
-  validateTermCountScaling,
   type TermCountScalingConfig,
+  validateTermCountScaling,
 } from '@/lib/curriculum/config/term-count-scaling'
-import { withAuth } from '@/lib/auth/withAuth'
 
 /**
  * Ensure the default settings row exists.
@@ -54,39 +54,43 @@ export const GET = withAuth(async () => {
  * Body:
  * - config: TermCountScalingConfig | null (null = reset to defaults)
  */
-export const PATCH = withAuth(async (request) => {
-  try {
-    const body = await request.json()
-    const { config } = body as { config: TermCountScalingConfig | null }
+export const PATCH = withAuth(
+  async (request) => {
+    try {
+      const body = await request.json()
+      const { config } = body as { config: TermCountScalingConfig | null }
 
-    // null means reset to defaults
-    if (config === null) {
+      // null means reset to defaults
+      if (config === null) {
+        await ensureDefaultSettings()
+        await db
+          .update(appSettings)
+          .set({ termCountScaling: null })
+          .where(eq(appSettings.id, 'default'))
+
+        return NextResponse.json({ config: DEFAULT_TERM_COUNT_SCALING, isCustom: false })
+      }
+
+      // Validate the config
+      const error = validateTermCountScaling(config)
+      if (error) {
+        return NextResponse.json({ error }, { status: 400 })
+      }
+
       await ensureDefaultSettings()
+
+      const jsonStr = JSON.stringify(config)
       await db
         .update(appSettings)
-        .set({ termCountScaling: null })
+        .set({ termCountScaling: jsonStr })
         .where(eq(appSettings.id, 'default'))
 
-      return NextResponse.json({ config: DEFAULT_TERM_COUNT_SCALING, isCustom: false })
+      return NextResponse.json({ config, isCustom: true })
+    } catch (error) {
+      console.error('Error updating practice config:', error)
+      return NextResponse.json({ error: 'Failed to update practice config' }, { status: 500 })
     }
-
-    // Validate the config
-    const error = validateTermCountScaling(config)
-    if (error) {
-      return NextResponse.json({ error }, { status: 400 })
-    }
-
-    await ensureDefaultSettings()
-
-    const jsonStr = JSON.stringify(config)
-    await db
-      .update(appSettings)
-      .set({ termCountScaling: jsonStr })
-      .where(eq(appSettings.id, 'default'))
-
-    return NextResponse.json({ config, isCustom: true })
-  } catch (error) {
-    console.error('Error updating practice config:', error)
-    return NextResponse.json({ error: 'Failed to update practice config' }, { status: 500 })
-  }
-})
+  },
+  // App-wide: one row every child's sessions read. Admin UI only.
+  { role: 'admin' }
+)
