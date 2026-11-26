@@ -7,10 +7,19 @@
  * fields the share's visibility toggles permit are returned, and the lyric
  * annotation engine runs *here*, after the gate, fed only permitted facts.
  * This is the privacy boundary for a child's data.
+ *
+ * The session's numbers (first-try accuracy, problems attempted of planned)
+ * come from the session's report as it is now, not from the song's stored
+ * input (Phase 4e, §10 P4e-3): a song is a snapshot taken during the last
+ * part, and an adult's review may change the numbers after it. The stored
+ * input answers only when the report cannot be built (the session is gone);
+ * the story (streak, skills, arcs, moments) is the song's own and stays stored.
  */
 
 import { eq, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import type { SessionReport } from '@/lib/curriculum/session-report'
+import { getSessionReport } from '@/lib/curriculum/session-report-server'
 import type {
   SongProblemMoment,
   SongSkillSpotlight,
@@ -46,6 +55,7 @@ interface PromptInputShape {
 
 export interface SharedSongStats {
   age?: number
+  /** First-try accuracy, as a whole percent (the report's; stored input on fallback) */
   accuracyPct?: number
   problemsDone?: number
   problemsTotal?: number
@@ -108,6 +118,7 @@ export async function getSharedSong(
       llmOutput: schema.sessionSongs.llmOutput,
       promptInput: schema.sessionSongs.promptInput,
       createdAt: schema.sessionSongs.createdAt,
+      sessionPlanId: schema.sessionSongs.sessionPlanId,
     })
     .from(schema.sessionSongs)
     .where(eq(schema.sessionSongs.id, share.songId))
@@ -140,10 +151,21 @@ export async function getSharedSong(
     ...(share.visibility as Partial<SongShareVisibility>),
   }
 
+  // Only `showAccuracy` shows the report's numbers; with it off, skip the reads
+  let report: SessionReport | null = null
+  if (visibility.showAccuracy) {
+    try {
+      report = await getSessionReport(song.sessionPlanId)
+    } catch (e) {
+      console.error('song-share: session report not built; stored facts used', e)
+    }
+  }
+
   return projectSharedSong({
     visibility,
     llmOutput: song.llmOutput,
     promptInput: song.promptInput,
+    report,
     playerName: player?.name ?? 'A learner',
     playerEmoji: player?.emoji ?? '🧮',
     songId: song.id,
@@ -161,6 +183,8 @@ export function projectSharedSong(input: {
   visibility: SongShareVisibility
   llmOutput: unknown
   promptInput: unknown
+  /** The session's report; null or absent → the stored input's numbers */
+  report?: Pick<SessionReport, 'totals'> | null
   playerName: string
   playerEmoji: string
   songId: string
@@ -176,7 +200,14 @@ export function projectSharedSong(input: {
   if (visibility.showAge && typeof pi.player?.age === 'number') {
     stats.age = pi.player.age
   }
-  if (visibility.showAccuracy && pi.currentSession) {
+  if (visibility.showAccuracy && input.report) {
+    const { totals } = input.report
+    if (totals.firstTryAccuracy != null) {
+      stats.accuracyPct = Math.round(totals.firstTryAccuracy * 100)
+    }
+    stats.problemsDone = totals.problems
+    stats.problemsTotal = totals.plannedProblems
+  } else if (visibility.showAccuracy && pi.currentSession) {
     if (typeof pi.currentSession.accuracy === 'number') {
       stats.accuracyPct = Math.round(pi.currentSession.accuracy * 100)
     }

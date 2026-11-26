@@ -10,14 +10,26 @@
  * handlers, and `next/og` images.
  */
 
-/** Subset of `SongPromptInput.currentSession` used across share surfaces. */
+/**
+ * Subset of a stored `SongPromptInput.currentSession` (the song's snapshot).
+ * Views state the session's numbers from the session report, not from here
+ * (Phase 4e); a reader of this shape gets the snapshot the song was written from.
+ */
 export interface SessionStats {
+  /** Since 4e first-try accuracy; before 4e accuracy over counted tries */
   accuracy: number
+  /** Since 4e problems attempted; before 4e counted tries */
   problemsDone: number
   problemsTotal: number
   bestCorrectStreak: number
   partTypes: string[]
+  /**
+   * Planned minutes, on inputs stored before 4e only: songs since carry
+   * `activeMinutes` instead, so this reads `undefined` for them.
+   */
   durationMinutes: number
+  /** Since 4e: minutes spent answering (report active time) */
+  activeMinutes?: number
   skillsPracticed: string[]
 }
 

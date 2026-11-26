@@ -264,6 +264,39 @@ describe('validateCompositionPlan', () => {
     expect(issueCodes(plan)).toContain('invented_numeric_claim')
   })
 
+  it('allows the report facts the prompt states: fixed in retries (Phase 4e)', () => {
+    const plan = makePlan({
+      sections: [
+        ...makePlan().sections,
+        {
+          section_name: 'Final Tag',
+          positive_local_styles: ['bright'],
+          negative_local_styles: [],
+          duration_ms: 5_000,
+          lines: ['Sonia fixed 7 tries'],
+        },
+      ],
+    })
+    const base = makeInput()
+    // 7 fixed differs from the 9 incorrect attempts and from every other number
+    const currentSession = { ...base.currentSession, totalIncorrectAttempts: 9 }
+
+    expect(issueCodes(plan, makeInput({ currentSession }))).toContain('invented_numeric_claim')
+    expect(
+      issueCodes(
+        plan,
+        makeInput({
+          currentSession: {
+            ...currentSession,
+            firstTryCorrect: 3,
+            fixedInRetries: 7,
+            activeMinutes: 8,
+          },
+        })
+      )
+    ).not.toContain('invented_numeric_claim')
+  })
+
   it('flags over-duration plans', () => {
     const plan = makePlan({
       sections: makePlan().sections.map((section) => ({ ...section, duration_ms: 16_000 })),

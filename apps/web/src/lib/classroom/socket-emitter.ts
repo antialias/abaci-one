@@ -302,6 +302,30 @@ export async function emitSessionReport(report: SessionReport): Promise<void> {
   }
 }
 
+/** `session-song-status`: the session's song became pending, ready or failed (Phase 4e). */
+export interface SessionSongStatusEvent {
+  sessionId: string
+  songId: string
+  /** As the report states it (`SessionReportSong['status']`) */
+  status: 'pending' | 'ready' | 'failed'
+}
+
+/**
+ * Tell a session's report subscribers its song's status changed (Phase 4e,
+ * §10 P4a-7). A song row is not a session row write, so no report is pushed
+ * for it; subscribers refetch the report on this event. Called by the song
+ * task wherever it writes `session_songs.status`.
+ */
+export async function emitSessionSongStatus(event: SessionSongStatusEvent): Promise<void> {
+  const io = await getSocketIO()
+  if (!io) return
+  try {
+    io.to(sessionReportRoom(event.sessionId)).emit('session-song-status', event)
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit session-song-status:', error)
+  }
+}
+
 /**
  * Tell parents, the teacher, observers and report subscribers a session ended
  * (Phase 4a; the session room since 4c): the player's and classroom's rooms,

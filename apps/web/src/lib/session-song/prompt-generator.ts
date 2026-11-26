@@ -238,20 +238,40 @@ export function buildSongUserPrompt(input: SongPromptInput): string {
     skillsNote = `\n- Skills practiced: ${currentSession.skillsPracticed.join(', ')}`
   }
 
+  // Inputs since Phase 4e carry the session report's facts (first try, fixed,
+  // active minutes, and a first-try trend); inputs stored before 4e render as
+  // they always did.
+  const fromReport = currentSession.activeMinutes != null
+
   let historyNote = ''
   if (history.recentSessionCount > 0) {
     const avgPct = Math.round(history.averageAccuracy * 100)
-    historyNote = `\nRecent history: ${history.recentSessionCount} sessions this week, ${avgPct}% average accuracy, trend: ${history.trend}.`
+    const avgLabel = fromReport ? 'average first-try accuracy' : 'average accuracy'
+    historyNote = `\nRecent history: ${history.recentSessionCount} sessions this week, ${avgPct}% ${avgLabel}, trend: ${history.trend}.`
   }
+
+  const accuracyLine =
+    fromReport && currentSession.firstTryCorrect != null
+      ? `- Right on the first try: ${currentSession.firstTryCorrect} of ${currentSession.problemsDone} (${accuracyPercent}%)${
+          currentSession.fixedInRetries != null
+            ? `\n- Fixed in a retry: ${currentSession.fixedInRetries}`
+            : ''
+        }`
+      : `- Accuracy: ${accuracyPercent}%`
+  const minutesLine = fromReport
+    ? `- Time spent answering (breaks not counted): ${currentSession.activeMinutes} minute${
+        currentSession.activeMinutes === 1 ? '' : 's'
+      }`
+    : `- Session length: ${currentSession.durationMinutes} minutes`
 
   return `Write a song for ${playerNote}, who just finished math practice.
 
 Session details:
 - Completed ${currentSession.problemsDone} out of ${currentSession.problemsTotal} problems
-- Accuracy: ${accuracyPercent}%
+${accuracyLine}
 - Best correct streak: ${currentSession.bestCorrectStreak} in a row
 - Practice types: ${parts}${skillsNote}
-- Session length: ${currentSession.durationMinutes} minutes
+${minutesLine}
 - Used help: ${currentSession.helpUsed ? 'yes' : 'no'}
 - Total incorrect attempts: ${currentSession.totalIncorrectAttempts}
 - Help moments: ${currentSession.helpMoments}

@@ -37,7 +37,7 @@ vi.mock('@/lib/socket', () => ({
 const { api } = vi.hoisted(() => ({ api: vi.fn() }))
 vi.mock('@/lib/queryClient', () => ({ api }))
 
-import { newerReport, useSessionReport } from '../useSessionReport'
+import { fetchedReport, newerReport, useSessionReport } from '../useSessionReport'
 
 const base = tenProblemSessionReport()
 const at = (rowVersion: number, patch: Partial<SessionReport> = {}): SessionReport => ({
@@ -169,6 +169,81 @@ describe('useSessionReport', () => {
     const { result } = renderHook(() => useSessionReport({ token: 'abcDEF1234' }), { wrapper })
     await waitFor(() => expect(result.current.isError).toBe(true))
     expect(api).toHaveBeenCalledTimes(1)
+  })
+
+  it('session-song-status refetches, and the same-rowVersion answer replaces the held report (Phase 4e)', async () => {
+    api.mockResolvedValue(respond(at(14, { song: { status: 'pending', songId: 'fx-song' } })))
+    const { wrapper } = setup()
+    const { result } = renderHook(
+      () =>
+        useSessionReport({ playerId: 'fx-player', planId: base.sessionId, viewerId: 'parent-1' }),
+      { wrapper }
+    )
+    await waitFor(() => expect(result.current.data?.song.status).toBe('pending'))
+
+    // The song row moved; the session row did not (same rowVersion)
+    api.mockResolvedValue(
+      respond(at(14, { song: { status: 'ready', songId: 'fx-song', shareCode: 'fxShare001' } }))
+    )
+    // Another session's song is not ours
+    act(() =>
+      sockets[0].fire('session-song-status', { sessionId: 'other', songId: 'x', status: 'ready' })
+    )
+    expect(api).toHaveBeenCalledTimes(1)
+    act(() =>
+      sockets[0].fire('session-song-status', {
+        sessionId: base.sessionId,
+        songId: 'fx-song',
+        status: 'ready',
+      })
+    )
+    await waitFor(() => expect(result.current.data?.song.status).toBe('ready'))
+    expect(result.current.data?.song.shareCode).toBe('fxShare001')
+    expect(result.current.data?.rowVersion).toBe(14)
+    expect(api).toHaveBeenCalledTimes(2)
+  })
+
+  it('session-song-status during a fetch in flight cancels it and takes the new fetch (Phase 4e)', async () => {
+    const pending = at(14, { song: { status: 'pending', songId: 'fx-song' } })
+    api.mockResolvedValue(respond(pending))
+    const { wrapper } = setup()
+    const { result } = renderHook(
+      () =>
+        useSessionReport({ playerId: 'fx-player', planId: base.sessionId, viewerId: 'parent-1' }),
+      { wrapper }
+    )
+    await waitFor(() => expect(result.current.data?.song.status).toBe('pending'))
+
+    // A refetch (socket connect) is in flight; it read the song before it moved
+    let release!: (r: Response) => void
+    api.mockReturnValueOnce(new Promise<Response>((r) => (release = r)))
+    act(() => sockets[0].fire('connect'))
+    await waitFor(() => expect(api).toHaveBeenCalledTimes(2))
+
+    api.mockResolvedValue(
+      respond(at(14, { song: { status: 'ready', songId: 'fx-song', shareCode: 'fxShare001' } }))
+    )
+    act(() =>
+      sockets[0].fire('session-song-status', {
+        sessionId: base.sessionId,
+        songId: 'fx-song',
+        status: 'ready',
+      })
+    )
+    await waitFor(() => expect(result.current.data?.song.status).toBe('ready'))
+    expect(api).toHaveBeenCalledTimes(3)
+
+    // The cancelled fetch answers late with the old status: not taken
+    await act(async () => release(respond(pending)))
+    await waitFor(() => expect(result.current.isFetching).toBe(false))
+    expect(result.current.data?.song.status).toBe('ready')
+  })
+
+  it('fetchedReport keeps the held report only when it is strictly newer', () => {
+    expect(fetchedReport(at(3), at(3, { song: { status: 'ready' } })).song.status).toBe('ready')
+    expect(fetchedReport(at(4), at(3)).rowVersion).toBe(4)
+    expect(fetchedReport(at(3), at(4)).rowVersion).toBe(4)
+    expect(fetchedReport(undefined, at(1)).rowVersion).toBe(1)
   })
 
   it('newerReport keeps the held report on a tie or an older version', () => {

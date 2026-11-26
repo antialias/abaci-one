@@ -12,6 +12,9 @@
  *   `rowVersion` is newer (pushes from several servers may arrive out of
  *   order; a fetch that started before a push never overwrites it either);
  * - `session-ended` invalidates the query, so the ended report is fetched;
+ * - `session-song-status` (Phase 4e) invalidates it too: a song row is not a
+ *   session row write, so its status moves without a pushed report; the
+ *   refetch answers at the same `rowVersion` and is taken (`fetchedReport`);
  * - every socket `connect` (first and re-) refetches, since pushes sent while
  *   disconnected are lost (React Query's `refetchOnReconnect` follows the
  *   network, not the socket).
@@ -58,6 +61,21 @@ export function newerReport(
     : incoming
 }
 
+/**
+ * A fetched report against the held one: the held one stays only when it is
+ * strictly newer (a push that raced the fetch). At the same `rowVersion` the
+ * fetch is taken: the session row is the same, and the song's status, which
+ * moves without a row write, is as the fetch read it.
+ */
+export function fetchedReport(
+  held: SessionReport | undefined,
+  fetched: SessionReport
+): SessionReport {
+  return held && held.sessionId === fetched.sessionId && held.rowVersion > fetched.rowVersion
+    ? held
+    : fetched
+}
+
 export class SessionReportError extends Error {
   constructor(
     message: string,
@@ -80,7 +98,7 @@ async function fetchReport(
   }
   const { report } = (await res.json()) as { report: SessionReport }
   // A push that landed while this request was in flight is newer: keep it
-  return newerReport(queryClient.getQueryData<SessionReport>(key), report)
+  return fetchedReport(queryClient.getQueryData<SessionReport>(key), report)
 }
 
 export function useSessionReport(
@@ -128,6 +146,11 @@ export function useSessionReport(
     socket.on('session-ended', (event: { sessionId?: string }) => {
       if (event?.sessionId !== sessionId) return
       void refetch()
+    })
+    socket.on('session-song-status', (event: { sessionId?: string }) => {
+      if (event?.sessionId !== sessionId) return
+      // A fetch already in flight may have read the old status: start a new one
+      void queryClient.invalidateQueries({ queryKey: key })
     })
 
     return () => {
