@@ -3,27 +3,33 @@
  * into a single config object consumed by the context provider.
  */
 
-import type { GeometryVoiceConfig } from '../GeometryTeacherConfig'
-import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
-import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
-import {
-  buildCompletionContext,
-  EUCLID_HECKLER_THINKING_METAPHORS,
-  EUCLID_HECKLER_STALL_LINES,
-} from '../euclidCharacter'
-import { createGreetingMode } from '../agent/modes/greetingMode'
+import { authorAttitude } from '../agent/attitudes/author'
+import { hecklerAttitude } from '../agent/attitudes/heckler'
+import { teacherAttitude } from '../agent/attitudes/teacher'
+import type { AttitudeId } from '../agent/attitudes/types'
 import { createConversingMode } from '../agent/modes/conversingMode'
+import { createGreetingMode } from '../agent/modes/greetingMode'
 import { createThinkingMode } from '../agent/modes/thinkingMode'
 import { buildChatSystemPrompt, type ChatSystemPromptContext } from '../chat/buildChatSystemPrompt'
-import { teacherAttitude } from '../agent/attitudes/teacher'
-import { hecklerAttitude } from '../agent/attitudes/heckler'
-import { authorAttitude } from '../agent/attitudes/author'
-import type { AttitudeId } from '../agent/attitudes/types'
+import {
+  buildCompletionContext,
+  EUCLID_HECKLER_STALL_LINES,
+  EUCLID_HECKLER_THINKING_METAPHORS,
+} from '../euclidCharacter'
+import { EUCLID_CHARACTER_DEF } from '../euclidCharacterDef'
+import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
+import type { GeometryVoiceConfig } from '../GeometryTeacherConfig'
 
 /** Shared voice config for Euclid (same endpoints, timing, entity markers). */
 function buildEuclidVoiceBlock() {
   return {
+    /** OpenAI realtime voice for live conversation (realtime stays on OpenAI). */
     id: 'ash' as const,
+    /**
+     * Narration: ElevenLabs "Daniel - Steady Broadcaster" (British, formal,
+     * middle-aged): the authority who wrote the Elements, terse and exact.
+     */
+    ttsVoice: 'el-onwK4e9ZLuTAKqWW03F9',
     sessionEndpoint: '/api/realtime/euclid/session',
     chatEndpoint: '/api/realtime/euclid/chat',
     thinkHardEndpoint: '/api/realtime/euclid/think-hard',

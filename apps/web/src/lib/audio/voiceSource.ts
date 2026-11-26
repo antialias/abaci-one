@@ -1,3 +1,5 @@
+import { isElevenLabsVoice } from './voices'
+
 /** Serializable plain-object form, used for DB storage, API wire format, and UI state. */
 export type VoiceSourceData =
   | { type: 'pregenerated'; name: string }
@@ -41,8 +43,32 @@ export class PregeneratedVoice extends VoiceSource {
     return { type: this.type, name: this.name } as const
   }
 
+  /**
+   * Only ElevenLabs folders (`el-…`) generate. Retired OpenAI folders (onyx,
+   * nova, …) keep playing their clips but never get new ones, so a folder
+   * never mixes two voices.
+   */
   canGenerate() {
-    return true
+    return isElevenLabsVoice(this.name)
+  }
+
+  /**
+   * A text-keyed clip (lib/audio/textKeyedClips) from the server's cache, or
+   * null if it isn't cached yet. Its file is named by a key the server
+   * computes from the text, so it's looked up by POSTing the text with
+   * `cacheOnly` (never generates) rather than fetched by clip id.
+   */
+  async fetchCached(clipId: string, text: string, tone: string): Promise<Blob | null> {
+    try {
+      const res = await fetch('/api/audio/generate-clip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voice: this.name, clipId, text, tone, cacheOnly: true }),
+      })
+      return res.ok ? await res.blob() : null
+    } catch {
+      return null
+    }
   }
 
   async generate(clipId: string, text: string, tone: string): Promise<Blob | null> {

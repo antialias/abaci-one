@@ -1,22 +1,16 @@
-import { openAiMediaBaseUrl } from '@/lib/openai-base'
 import { type NextRequest, NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/withAuth'
-import { recordTtsUsage } from '@/lib/ai-usage/helpers'
 import { AiFeature } from '@/lib/ai-usage/features'
+import { withAuth } from '@/lib/auth/withAuth'
+import { SPEECH_TIMEOUT_MS, SpeechError, synthesizeSpeech } from '@/lib/speech/synthesize'
 
 /**
  * POST /api/admin/audio/preview
  *
- * Ephemeral streaming proxy — calls OpenAI TTS and pipes the audio back.
- * Nothing is saved to disk or DB.
+ * Ephemeral preview — speaks the text in an ElevenLabs voice and returns the
+ * mp3. Nothing is saved to disk. Retired OpenAI voices are refused (400).
  */
 export const POST = withAuth(
   async (request: NextRequest, { userId }) => {
-    const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: 'LLM_OPENAI_API_KEY is not configured' }, { status: 500 })
-    }
-
     let body: { voice?: string; text?: string; tone?: string }
     try {
       body = await request.json()
@@ -30,45 +24,25 @@ export const POST = withAuth(
     }
 
     try {
-      const response = await fetch(`${openAiMediaBaseUrl()}/audio/speech`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini-tts',
-          voice,
-          input: text,
-          instructions: tone || undefined,
-          response_format: 'mp3',
-        }),
+      const { audio } = await synthesizeSpeech({
+        timeoutMs: SPEECH_TIMEOUT_MS.preview,
+        voice,
+        text,
+        tone,
+        usage: { userId, feature: AiFeature.TTS_PREVIEW },
       })
-
-      if (!response.ok) {
-        const errText = await response.text()
-        return NextResponse.json(
-          { error: `OpenAI API error: HTTP ${response.status}: ${errText}` },
-          { status: response.status }
-        )
-      }
-
-      if (!response.body) {
-        return NextResponse.json({ error: 'No response body from OpenAI' }, { status: 502 })
-      }
-
-      recordTtsUsage(text, 'gpt-4o-mini-tts', { userId, feature: AiFeature.TTS_PREVIEW })
-
-      // Stream the mp3 back directly
-      return new NextResponse(response.body as ReadableStream, {
+      return new NextResponse(new Uint8Array(audio), {
         status: 200,
         headers: {
           'Content-Type': 'audio/mpeg',
-          'Transfer-Encoding': 'chunked',
+          'Content-Length': audio.byteLength.toString(),
           'Cache-Control': 'no-store',
         },
       })
     } catch (err) {
+      if (err instanceof SpeechError) {
+        return NextResponse.json({ error: err.message }, { status: err.httpStatus })
+      }
       return NextResponse.json(
         { error: err instanceof Error ? err.message : 'Unknown error' },
         { status: 500 }

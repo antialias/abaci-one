@@ -140,6 +140,11 @@ export const collectedClipKeys = {
   list: (voice?: string) => [...collectedClipKeys.all, 'list', voice ?? ''] as const,
 }
 
+// ElevenLabs voices the admin can add (admin audio)
+export const elevenLabsVoiceKeys = {
+  all: ['elevenlabs-voices'] as const,
+}
+
 // Practice config query keys (admin term count scaling)
 export const practiceConfigKeys = {
   all: ['practice-config'] as const,

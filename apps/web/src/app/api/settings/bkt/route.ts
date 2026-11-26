@@ -55,37 +55,41 @@ export const GET = withAuth(async () => {
  * Body:
  * - bktConfidenceThreshold: number (0.1 to 0.9)
  */
-export const PATCH = withAuth(async (request) => {
-  try {
-    const body = await request.json()
-    const { bktConfidenceThreshold } = body
+export const PATCH = withAuth(
+  async (request) => {
+    try {
+      const body = await request.json()
+      const { bktConfidenceThreshold } = body
 
-    // Validate the threshold
-    if (typeof bktConfidenceThreshold !== 'number') {
-      return NextResponse.json(
-        { error: 'bktConfidenceThreshold must be a number' },
-        { status: 400 }
-      )
+      // Validate the threshold
+      if (typeof bktConfidenceThreshold !== 'number') {
+        return NextResponse.json(
+          { error: 'bktConfidenceThreshold must be a number' },
+          { status: 400 }
+        )
+      }
+
+      if (bktConfidenceThreshold < 0.1 || bktConfidenceThreshold > 0.9) {
+        return NextResponse.json(
+          { error: 'bktConfidenceThreshold must be between 0.1 and 0.9' },
+          { status: 400 }
+        )
+      }
+
+      await ensureDefaultSettings()
+
+      // Update the setting
+      await db
+        .update(appSettings)
+        .set({ bktConfidenceThreshold })
+        .where(eq(appSettings.id, 'default'))
+
+      return NextResponse.json({ bktConfidenceThreshold })
+    } catch (error) {
+      console.error('Error updating BKT settings:', error)
+      return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
     }
-
-    if (bktConfidenceThreshold < 0.1 || bktConfidenceThreshold > 0.9) {
-      return NextResponse.json(
-        { error: 'bktConfidenceThreshold must be between 0.1 and 0.9' },
-        { status: 400 }
-      )
-    }
-
-    await ensureDefaultSettings()
-
-    // Update the setting
-    await db
-      .update(appSettings)
-      .set({ bktConfidenceThreshold })
-      .where(eq(appSettings.id, 'default'))
-
-    return NextResponse.json({ bktConfidenceThreshold })
-  } catch (error) {
-    console.error('Error updating BKT settings:', error)
-    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
-  }
-})
+  },
+  // App-wide: one row every child's sessions read. Admin UI only.
+  { role: 'admin' }
+)

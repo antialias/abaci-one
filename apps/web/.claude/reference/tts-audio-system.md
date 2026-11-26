@@ -8,7 +8,11 @@ The app speaks to kids — reading math problems, giving feedback, guiding tutor
 pregenerated mp3 → on-demand generate → browser speech → subtitles
 ```
 
-Every utterance is declared with a **clip ID**, optional **say** text (what to speak), and optional **tone** (how to speak it). The system collects clips at runtime, persists them to a database, and generates high-quality OpenAI TTS mp3s either ahead of time from the admin panel or on-the-fly during playback.
+Every utterance is declared with a **clip ID**, optional **say** text (what to speak), and optional **tone** (how to speak it). The system collects clips at runtime, persists them to a database, and generates ElevenLabs mp3s either ahead of time from the admin panel or on-the-fly during playback.
+
+**Providers.** Spoken clips come from ElevenLabs (model `eleven_v3`, set once in `src/lib/speech/model.ts`), called through the switch proxy's ElevenLabs door (`ELEVENLABS_API_BASE_URL`, Bearer `ELEVENLABS_MUSIC_API_KEY`). All synthesis goes through `src/lib/speech/synthesize.ts`. OpenAI is used only for realtime voice conversation (`api/realtime/session`, `lib/voice/*`), never for clips.
+
+**Voice folders.** An ElevenLabs voice lives in `data/audio/el-{voiceId}/`. The old OpenAI folders (`alloy`, `ash`, `ballad`, `coral`, `echo`, `fable`, `nova`, `onyx`, `sage`, `shimmer`) are **retired**: their existing clips still play, but nothing generates into them. Custom (recorded) voices can't take a retired name or an `el-` name.
 
 ---
 
@@ -16,13 +20,13 @@ Every utterance is declared with a **clip ID**, optional **say** text (what to s
 
 The voice chain is the central concept. It's an ordered list of audio sources the system tries in sequence for every clip. Each source either plays successfully or the system moves on to the next.
 
-**Example chain**: `nova → generate → browser-tts → subtitle`
+**Example chain**: `el-onwK4e9ZLuTAKqWW03F9 → onyx → generate → subtitle` (a retired voice can stay in the chain for the clips it already has; only the ElevenLabs voice generates)
 
 | Source | What it does | When it works |
 |--------|-------------|--------------|
 | **Pregenerated** | Plays `data/audio/{voice}/{clipId}.mp3` from disk | When the mp3 has been generated ahead of time |
 | **Custom** | Plays a microphone-recorded mp3 from disk | When someone recorded a custom clip |
-| **Generate** | Calls OpenAI on-the-fly, plays the result, caches it to disk | When an API key is configured and OpenAI is reachable |
+| **Generate** | Calls ElevenLabs on-the-fly for a voice above it that missed, plays the result, caches it to disk | When an ElevenLabs voice above it missed and the door answers within 5 s |
 | **Browser TTS** | Uses the browser's built-in `speechSynthesis` | When the browser has voices loaded and user has interacted |
 | **Subtitle** | Shows the text on screen for a calculated reading time | Always works (last resort) |
 
@@ -33,19 +37,23 @@ The chain is configured per-deployment in `/admin/audio` and stored in the datab
 When the `generate` entry runs, it looks back at the chain log to find which voices *above it* had a missing clip and can generate on-demand. It picks the first one, calls `source.generate(clipId, text, tone)` → gets a blob → plays it. If there are other missed voices, it fires off background generation for them too so future plays are instant.
 
 The voice classes decide for themselves whether they can generate:
-- `PregeneratedVoice.canGenerate()` → `true` (calls OpenAI)
+- `PregeneratedVoice.canGenerate()` → `true` only for `el-` voices (calls ElevenLabs via `/api/audio/generate-clip`); retired OpenAI folders → `false`
 - `CustomVoice.canGenerate()` → `false` (not yet — future hook for Asterisk etc.)
 
 ### VoiceSource Class Hierarchy
 
 ```
 VoiceSource (abstract)
-├── PregeneratedVoice  — name, canGenerate=true,  generate() calls OpenAI
+├── PregeneratedVoice  — name, canGenerate = is an el- voice, generate() → /api/audio/generate-clip
 ├── CustomVoice        — name, canGenerate=false   (future: Asterisk, etc.)
 ├── BrowserTtsVoice    — no name, uses Web Speech API
 ├── SubtitleVoice      — no name, shows text on screen
 └── GenerateVoice      — meta-entry that reads the chain log
 ```
+
+### Character voices
+
+A character (Euclid, Pappus) narrates in its own ElevenLabs voice, set as `voice.ttsVoice` in its config (`voice.id` stays the OpenAI realtime voice). `GeometryTeacherContext` passes it as a `prependChain`, and the manager builds `characterChain()`: the character's voice, then `generate`, then only the global chain's voiceless fallbacks (subtitles, browser TTS). A character never borrows another voice's cached clip; a missing line is generated in its voice or shown as a subtitle.
 
 The serializable form (`VoiceSourceData`) is a plain discriminated union used for DB storage, API responses, and UI state. `hydrateVoiceChain()` converts it to class instances inside TtsAudioManager.
 
@@ -66,7 +74,7 @@ useTTS('tutorial-welcome', {
 })
 ```
 
-The clip ID is a human-readable string. The mp3 is `data/audio/nova/tutorial-welcome.mp3`.
+The clip ID is a human-readable string. The mp3 is `data/audio/{voice}/tutorial-welcome.mp3`, e.g. `data/audio/el-onwK4e9ZLuTAKqWW03F9/tutorial-welcome.mp3`.
 
 ### Hash-based IDs
 
@@ -181,9 +189,9 @@ This is how clips go from "first spoken in a browser" to "cached mp3 on disk":
     │                            │                           │                         │
     │  speak()                   │                           │                         │
     │──playOneSegment()─────────►│                           │                         │
-    │                            │  (chain: nova → generate) │                         │
+    │                            │  (chain: el-… → generate) │                         │
     │                            │  no mp3 on disk?          │                         │
-    │                            │──POST /generate-clip─────►│──OpenAI TTS API────────►│
+    │                            │──POST /generate-clip─────►│──ElevenLabs (door)─────►│
     │                            │◄─────────audio blob───────│◄─────mp3 bytes──────────│
     │                            │  play blob + cache clipId │  save to data/audio/    │
     │                            │                           │                         │
@@ -200,7 +208,7 @@ This is how clips go from "first spoken in a browser" to "cached mp3 on disk":
 
 3. **Collect** — On page visibility change or unload, `flush()` sends all played clips to `POST /api/audio/collected-clips`, which upserts them into the `tts_collected_clips` and `tts_collected_clip_say` tables.
 
-4. **Batch generate** — From `/admin/audio`, an admin can trigger batch generation for any voice. This runs a background task that iterates collected clips, calls OpenAI TTS for each, and saves mp3s to disk.
+4. **Batch generate** — From `/admin/audio`, an admin can trigger batch generation for any voice. This runs a background task that iterates collected clips, calls ElevenLabs for each (30 s timeout per clip), and saves mp3s to disk. Retired OpenAI voices are refused.
 
 5. **Manifest** — On app boot, `AudioManagerContext` fetches the voice chain config and then loads a manifest of which clip IDs have mp3s on disk for each voice. This populates the in-memory cache so `playOneSegment` knows instantly whether to try a disk source or skip to the next chain entry.
 
@@ -209,10 +217,34 @@ This is how clips go from "first spoken in a browser" to "cached mp3 on disk":
 | | On-demand (`generate` in chain) | Batch (admin panel) |
 |---|---|---|
 | **When** | During playback, when a clip is missing | Admin triggers manually |
-| **Latency** | User waits ~1–2s for OpenAI response | Runs in background |
+| **Latency** | User waits ~1 s; answered 504 after 5 s (falls to subtitles) while generation finishes in the background | Runs in background |
 | **Scope** | One clip at a time | All missing clips for a voice |
-| **Where called** | `PregeneratedVoice.generate()` → `POST /api/audio/generate-clip` | Background task → direct OpenAI API |
-| **Both save to** | `data/audio/{voice}/{clipId}.mp3` | Same |
+| **Where called** | `PregeneratedVoice.generate()` → `POST /api/audio/generate-clip` | Background task → `synthesizeSpeech()` |
+| **Guards** | Text must match the clip id; hourly caps (below) | Admin only |
+| **Both save to** | `data/audio/{voice}/t-{key}.mp3` (manifest clips: `{clipId}.mp3`) | Same |
+
+---
+
+### Where generated clips are stored (text keys)
+
+For an ElevenLabs voice, every clip that isn't a manifest clip (hash ids, collected named ids) is stored as `data/audio/el-{id}/t-{key}.mp3`, where `key` is the first 32 hex digits of SHA-256 over exactly the text sent to ElevenLabs (clip text plus its tone's audio tag). The server computes it (`src/lib/speech/clipStorage.ts`); a client's clip id never names the file. A request with forged text (FNV-1a hash ids are trivially forgeable) can therefore only create audio under its own text's key, which no other request reaches. Manifest clips keep `{clipId}.mp3` (constant text, checked). Retired and custom voices keep their files by clip id.
+
+The client can't compute the key, so for text-keyed clips (`isTextKeyedClip`, `src/lib/audio/textKeyedClips.ts`) the chain step POSTs `{voice, clipId, text, tone, cacheOnly: true}` to `/api/audio/generate-clip` (200 = cached audio, 404 = miss) instead of GETting by clip id; the `generate` step POSTs without `cacheOnly`. The bulk task and the admin page's `?voice=` status (`fileFor`) use the same keys.
+
+### On-demand guards (`/api/audio/generate-clip`)
+
+Guests can call this route, so before anything is spent:
+- **Clip fit** (`src/lib/speech/clipAuthority.ts`): a manifest id must carry the manifest's text (which, with its tone, is what's spoken). A hash id must FNV-hash to its id; that's a sanity check only, since storage is keyed by text.
+- **Hourly caps** (`src/lib/speech/generationBudget.ts`, in memory per pod, sliding hour, charged once per upstream request; cache hits and joined generations are free): 500 clips / 20k characters per identity, 1,000 clips / 60k characters per pod. Over a cap → 429. Identity (`src/lib/speech/requestIdentity.ts`): user id, else the signed guest cookie's `sid`, else the rightmost `X-Forwarded-For` hop (the one k3s Traefik appended). Never a client-set header.
+- **Timing and dedupe** (`src/lib/speech/onDemandGeneration.ts`): the caller gets 504 after 5 s and falls to subtitles, but the upstream request keeps running (up to 30 s; the door bills aborted requests in full) and writes the cache file when it lands. Plays of the same clip while it's generating join that generation.
+- **Say text is first-write-wins**: `POST /api/audio/collected-clips` never rewrites an existing (clip, locale) text or a clip's tone, and what a collected clip says when generated (bulk task, admin status) is its *first-written* text whatever the locale (`src/lib/speech/collectedClipText.ts`), so adding a new locale later can't steer it. One flush is bounded (`FLUSH_LIMITS`: first 1,000 clips; entries over the length limits are skipped).
+- **Bulk cost up front**: the admin's "Generate N Missing" shows the characters and estimated cost (`charsFor` from `GET ?voice=`, `src/lib/speech/cost.ts`).
+- **App-wide settings** (`/api/settings/voice-chain`, `audio-voice`, `bkt`, `practice-config`) are admin-only to change; reads stay open.
+- **`songs`** (children's session songs) is not a voice: no voice route lists, writes, serves from or removes it.
+
+### Tones
+
+A tone string maps to at most one ElevenLabs v3 audio tag (`[excited]`, `[curious]`, `[whispers]`, `[mischievously]`) in `src/lib/audio/toneDirections.ts`; most tones send no tag. Brackets in a clip's own text are sent as parentheses so they aren't read as tags. ElevenLabs refuses text over 1,000 characters.
 
 ---
 
@@ -247,7 +279,7 @@ On success, the function returns immediately (no log entry). The `generate` entr
 The admin page at `/admin/audio` is the control center for the TTS system. It has these sections:
 
 ### Voice Chain Editor
-Configure the fallback order. Drag entries up/down, add/remove sources. Options include all OpenAI voices (with per-voice generation progress bars), browser TTS, subtitles, auto-generate, and custom voices. Save persists to DB.
+Configure the fallback order. Drag entries up/down, add/remove sources. Options include the account's ElevenLabs voices (listed live from the door, with per-voice generation progress bars), retired OpenAI voices that still have clips on disk (play only), browser TTS, subtitles, auto-generate, and custom voices. Save persists to DB.
 
 ### TTS Test Panel
 Type text, pick a tone, hit Speak. Shows the resolved clip ID, fallback text, which voice chain entry will serve it, and per-voice availability (checkmarks/Xs). You can generate clips for specific voices and preview different voice renderings.
@@ -271,8 +303,16 @@ Record custom voice clips via microphone. Select audio input device, see live mi
 | `src/lib/audio/clipHash.ts` | `computeClipHash()`, `resolveCanonicalText()`, `isHashClipId()` |
 | `src/lib/audio/audioClipRegistry.ts` | `audioClip()` registration, `getClipMeta()` lookup |
 | `src/lib/audio/audioManifest.ts` | Builds manifest from registry: `AUDIO_MANIFEST`, `AUDIO_MANIFEST_MAP` |
-| `src/lib/audio/voices.ts` | Voice provider/model config (OpenAI tts-1: alloy, ash, nova, onyx, etc.) |
-| `src/lib/audio/toneDirections.ts` | Detailed voice-actor directions per `AudioTone` type |
+| `src/lib/audio/voices.ts` | Voice folders: `el-{id}` (ElevenLabs), retired OpenAI names, reserved names, path safety |
+| `src/lib/audio/toneDirections.ts` | Tone → ElevenLabs audio tag |
+| `src/lib/speech/model.ts` | The speech model (`eleven_v3`), output format, 1,000-character limit |
+| `src/lib/speech/synthesize.ts` | `synthesizeSpeech()`, `listElevenLabsVoices()`, timeouts (`SPEECH_TIMEOUT_MS`) |
+| `src/lib/speech/clipAuthority.ts` | What on-demand generation may say for a clip id |
+| `src/lib/speech/generationBudget.ts` | Hourly on-demand caps |
+| `src/lib/speech/clipStorage.ts` | Text keys (`t-…`) and atomic clip writes |
+| `src/lib/speech/onDemandGeneration.ts` | In-flight dedupe, wait-then-504 |
+| `src/lib/speech/requestIdentity.ts` | Who a request is charged to |
+| `src/lib/audio/textKeyedClips.ts` | Which clips are text-keyed (client-safe) |
 
 ### React integration
 
@@ -311,15 +351,16 @@ Record custom voice clips via microphone. Select audio input device, see live mi
 | Route | Method | What it does |
 |-------|--------|-------------|
 | `/api/audio/clips/[voice]/[clipId]` | GET | Serve mp3 from disk (static or collected, mp3 or webm) |
-| `/api/audio/generate-clip` | POST | On-demand OpenAI TTS: generate, cache to disk, return audio |
+| `/api/audio/generate-clip` | POST | On-demand ElevenLabs: verify text, check caps, generate, cache to disk, return audio |
 | `/api/audio/collected-clips` | POST | Upsert collected clips to DB (play counts, say text) |
 | `/api/audio/collected-clips` | GET | Fetch all collected clips (optional `?voice=` for generation status) |
-| `/api/audio/collected-clips/manifest` | GET | Lightweight: which clip IDs have mp3s for `?voices=nova,onyx` |
+| `/api/audio/collected-clips/manifest` | GET | Lightweight: which clip IDs have mp3s for `?voices=el-…,onyx` |
 | `/api/settings/voice-chain` | GET/PATCH | Read/write the voice chain config |
 | `/api/admin/audio` | GET | Audio status: per-voice clip counts, total collected |
 | `/api/admin/audio/generate` | POST | Trigger batch generation for static clips |
 | `/api/admin/audio/generate-collected` | POST | Trigger batch generation for collected clips |
 | `/api/admin/audio/preview` | POST | One-off voice preview (doesn't save to disk) |
+| `/api/admin/audio/elevenlabs-voices` | GET | The account's ElevenLabs voices, via the door |
 
 ### Database tables
 
@@ -333,7 +374,9 @@ Record custom voice clips via microphone. Select audio input device, see live mi
 
 | Location | What's there |
 |----------|-------------|
-| `data/audio/{voice}/{clipId}.mp3` | Generated or pregenerated clips |
+| `data/audio/el-{id}/t-{key}.mp3` | ElevenLabs clips keyed by spoken text |
+| `data/audio/{voice}/{clipId}.mp3` | Manifest clips, and retired/custom voices' clips |
+| `data/audio/songs/` | Children's session songs (not a voice) |
 | `data/audio/{voice}/cc-{clipId}.mp3` | Collected clips (legacy prefix) |
 | `data/audio/{voice}/.deactivated/` | Deactivated clips (hidden, not deleted) |
 

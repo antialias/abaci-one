@@ -1,21 +1,22 @@
 /**
  * API routes for managing custom voice recordings.
  *
- * POST   — Upload a recorded clip (webm blob via FormData)
- * PATCH  — Deactivate or reactivate a clip
- * DELETE — Permanently remove a clip
+ * POST   — Upload a recorded clip (webm blob via FormData). Refused for
+ *          reserved names (retired OpenAI folders, `el-*`): a recording must
+ *          not land in a generated voice's folder.
+ * PATCH  — Deactivate or reactivate a clip (any voice, incl. generated ones)
+ * DELETE — Permanently remove a clip (any voice)
  */
 
-import { mkdir, rename, unlink, stat } from 'fs/promises'
+import { mkdir, rename, stat, unlink } from 'fs/promises'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
+import { isNonVoiceFolder, isReservedVoiceName, isSafePathSegment } from '@/lib/audio/voices'
 import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
 
-function validateSegment(segment: string): boolean {
-  return !!segment && !segment.includes('/') && !segment.includes('..') && !segment.includes('\0')
-}
+const validateSegment = isSafePathSegment
 
 /**
  * POST /api/admin/audio/custom-clips/[voice]/[clipId]
@@ -27,8 +28,16 @@ export const POST = withAuth(
     try {
       const { voice, clipId } = (await params) as { voice: string; clipId: string }
 
-      if (!validateSegment(voice) || !validateSegment(clipId)) {
+      if (!validateSegment(voice) || !validateSegment(clipId) || isNonVoiceFolder(voice)) {
         return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
+      }
+      if (isReservedVoiceName(voice)) {
+        return NextResponse.json(
+          {
+            error: `"${voice}" is reserved for generated voices; pick another name for recordings.`,
+          },
+          { status: 400 }
+        )
       }
 
       const formData = await request.formData()
@@ -67,7 +76,7 @@ export const PATCH = withAuth(
     try {
       const { voice, clipId } = (await params) as { voice: string; clipId: string }
 
-      if (!validateSegment(voice) || !validateSegment(clipId)) {
+      if (!validateSegment(voice) || !validateSegment(clipId) || isNonVoiceFolder(voice)) {
         return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
       }
 
@@ -128,7 +137,7 @@ export const DELETE = withAuth(
     try {
       const { voice, clipId } = (await params) as { voice: string; clipId: string }
 
-      if (!validateSegment(voice) || !validateSegment(clipId)) {
+      if (!validateSegment(voice) || !validateSegment(clipId) || isNonVoiceFolder(voice)) {
         return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
       }
 

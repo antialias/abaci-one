@@ -2,9 +2,9 @@ import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
-import { withAuth } from '@/lib/auth/withAuth'
-
 import type { VoiceSourceData } from '@/lib/audio/voiceSource'
+import { isNonVoiceFolder, isSafeVoiceFolder } from '@/lib/audio/voices'
+import { withAuth } from '@/lib/auth/withAuth'
 
 async function ensureDefaultSettings() {
   const existing = await db.select().from(appSettings).where(eq(appSettings.id, 'default')).limit(1)
@@ -18,6 +18,11 @@ async function ensureDefaultSettings() {
   }
 }
 
+/** A voice folder name: one path segment, never a non-voice folder such as `songs`. */
+function isVoiceName(name: unknown): boolean {
+  return typeof name === 'string' && isSafeVoiceFolder(name) && !isNonVoiceFolder(name)
+}
+
 function isValidVoiceChain(chain: unknown): chain is VoiceSourceData[] {
   if (!Array.isArray(chain)) return false
   return chain.every(
@@ -25,11 +30,8 @@ function isValidVoiceChain(chain: unknown): chain is VoiceSourceData[] {
       (entry &&
         typeof entry === 'object' &&
         entry.type === 'pregenerated' &&
-        typeof entry.name === 'string') ||
-      (entry &&
-        typeof entry === 'object' &&
-        entry.type === 'custom' &&
-        typeof entry.name === 'string') ||
+        isVoiceName(entry.name)) ||
+      (entry && typeof entry === 'object' && entry.type === 'custom' && isVoiceName(entry.name)) ||
       (entry && typeof entry === 'object' && entry.type === 'browser-tts') ||
       (entry && typeof entry === 'object' && entry.type === 'subtitle') ||
       (entry && typeof entry === 'object' && entry.type === 'generate')
@@ -70,37 +72,41 @@ export const GET = withAuth(async () => {
  *
  * Body: { voiceChain: VoiceSourceData[] }
  */
-export const PATCH = withAuth(async (request) => {
-  try {
-    const body = await request.json()
-    const { voiceChain } = body
+export const PATCH = withAuth(
+  async (request) => {
+    try {
+      const body = await request.json()
+      const { voiceChain } = body
 
-    if (!isValidVoiceChain(voiceChain)) {
-      return NextResponse.json(
-        { error: 'voiceChain must be an array of valid voice sources' },
-        { status: 400 }
+      if (!isValidVoiceChain(voiceChain)) {
+        return NextResponse.json(
+          { error: 'voiceChain must be an array of valid voice sources' },
+          { status: 400 }
+        )
+      }
+
+      await ensureDefaultSettings()
+
+      const serialized = JSON.stringify(voiceChain)
+
+      // Also update audioVoice to match the first pregenerated voice for backward compat
+      const firstPregenerated = voiceChain.find(
+        (v): v is { type: 'pregenerated'; name: string } => v.type === 'pregenerated'
       )
+
+      const updates: Record<string, string> = { voiceChain: serialized }
+      if (firstPregenerated) {
+        updates.audioVoice = firstPregenerated.name
+      }
+
+      await db.update(appSettings).set(updates).where(eq(appSettings.id, 'default'))
+
+      return NextResponse.json({ voiceChain })
+    } catch (error) {
+      console.error('Error updating voice chain setting:', error)
+      return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
     }
-
-    await ensureDefaultSettings()
-
-    const serialized = JSON.stringify(voiceChain)
-
-    // Also update audioVoice to match the first pregenerated voice for backward compat
-    const firstPregenerated = voiceChain.find(
-      (v): v is { type: 'pregenerated'; name: string } => v.type === 'pregenerated'
-    )
-
-    const updates: Record<string, string> = { voiceChain: serialized }
-    if (firstPregenerated) {
-      updates.audioVoice = firstPregenerated.name
-    }
-
-    await db.update(appSettings).set(updates).where(eq(appSettings.id, 'default'))
-
-    return NextResponse.json({ voiceChain })
-  } catch (error) {
-    console.error('Error updating voice chain setting:', error)
-    return NextResponse.json({ error: 'Failed to update settings' }, { status: 500 })
-  }
-})
+  },
+  // App-wide: one row every child's sessions read. Admin UI only.
+  { role: 'admin' }
+)

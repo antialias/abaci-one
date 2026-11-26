@@ -1,12 +1,15 @@
-import { existsSync, rmSync } from 'fs'
-import { join } from 'path'
 import { eq } from 'drizzle-orm'
+import { existsSync, rmSync } from 'fs'
 import { NextResponse } from 'next/server'
+import { join } from 'path'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
+import { isNonVoiceFolder, isSafeVoiceFolder } from '@/lib/audio/voices'
 import { withAuth } from '@/lib/auth/withAuth'
 
-const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
+function audioDir(): string {
+  return join(process.cwd(), 'data', 'audio')
+}
 
 /**
  * DELETE /api/admin/audio/voice/[voice]
@@ -21,6 +24,16 @@ export const DELETE = withAuth(
 
       if (!voice || voice.trim().length === 0) {
         return NextResponse.json({ error: 'voice parameter is required' }, { status: 400 })
+      }
+      // The folder is removed recursively: it must be one folder inside data/audio/.
+      if (!isSafeVoiceFolder(voice.trim())) {
+        return NextResponse.json({ error: 'Invalid voice' }, { status: 400 })
+      }
+      if (isNonVoiceFolder(voice)) {
+        return NextResponse.json(
+          { error: `"${voice.trim()}" is not a voice folder and can't be removed here.` },
+          { status: 400 }
+        )
       }
 
       // Check if this is the active voice
@@ -39,7 +52,7 @@ export const DELETE = withAuth(
         )
       }
 
-      const voiceDir = join(AUDIO_DIR, voice.trim())
+      const voiceDir = join(audioDir(), voice.trim())
 
       if (!existsSync(voiceDir)) {
         return NextResponse.json({ error: 'Voice directory does not exist' }, { status: 404 })

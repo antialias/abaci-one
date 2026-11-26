@@ -135,7 +135,25 @@ describe('estimateCost', () => {
   })
 
   describe('character-based models', () => {
-    it('calculates cost for TTS', () => {
+    it('prices ElevenLabs speech at list price, flash/turbo at half', () => {
+      const v3 = estimateCost({
+        provider: 'elevenlabs',
+        model: 'eleven_v3',
+        apiType: 'tts',
+        inputCharacters: 1000,
+      })
+      const flash = estimateCost({
+        provider: 'elevenlabs',
+        model: 'eleven_flash_v2_5',
+        apiType: 'tts',
+        inputCharacters: 1000,
+      })
+      // $0.08 / $0.04 per 1K characters
+      expect(v3).toBeCloseTo(0.08)
+      expect(flash).toBeCloseTo(0.04)
+    })
+
+    it('still prices historical OpenAI TTS rows', () => {
       const cost = estimateCost({
         provider: 'openai',
         model: 'gpt-4o-mini-tts',
@@ -170,6 +188,7 @@ describe('estimateCost', () => {
         'openai/text-embedding-3-large',
         'gemini/gemini-2.5-flash-image',
         'elevenlabs/music_v1',
+        'elevenlabs/eleven_v3',
       ]
       for (const key of expectedKeys) {
         expect(PRICING).toHaveProperty(key)

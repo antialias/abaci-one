@@ -27,8 +27,10 @@ export const appSettings = sqliteTable('app_settings', {
   /**
    * Active TTS voice for audio help.
    *
-   * Matches an OpenAI TTS voice name (e.g. 'nova', 'shimmer', 'alloy').
-   * Clips are stored at data/audio/{voice}/{filename}.
+   * A voice folder name: `el-{elevenLabsVoiceId}` for ElevenLabs voices, or a
+   * retired OpenAI voice ('nova', 'onyx', ...) whose clips still play but are
+   * never generated again (see lib/audio/voices). Clips are stored at
+   * data/audio/{voice}/{filename}.
    */
   audioVoice: text('audio_voice').notNull().default('nova'),
 

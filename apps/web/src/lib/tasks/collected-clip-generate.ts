@@ -1,16 +1,20 @@
-import { openAiMediaBaseUrl } from '@/lib/openai-base'
-import { existsSync, mkdirSync, writeFileSync } from 'fs'
+import { inArray } from 'drizzle-orm'
+import { existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { db } from '@/db'
-import { ttsCollectedClips, ttsCollectedClipSay } from '@/db/schema'
-import { inArray } from 'drizzle-orm'
+import { ttsCollectedClips } from '@/db/schema'
+import { AiFeature } from '../ai-usage/features'
+import { AUDIO_MANIFEST_MAP } from '../audio/audioManifest'
+import { generationRefusal } from '../audio/voices'
+import { clipFileStem, writeClipFile } from '../speech/clipStorage'
+import { firstWrittenSayText } from '../speech/collectedClipText'
+import { describeSpeechFailure, SPEECH_TIMEOUT_MS, synthesizeSpeech } from '../speech/synthesize'
 import { createTask } from '../task-manager'
 import type { CollectedClipGenerateEvent } from './events'
-import { resolveCanonicalText } from '../audio/clipHash'
-import { recordTtsUsage } from '../ai-usage/helpers'
-import { AiFeature } from '../ai-usage/features'
 
-const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
+function audioDir(): string {
+  return join(process.cwd(), 'data', 'audio')
+}
 
 export interface CollectedClipGenerateInput {
   voice: string
@@ -26,24 +30,19 @@ export interface CollectedClipGenerateOutput {
 }
 
 /**
- * Resolve the best input text for TTS generation from the say table.
- * Uses shared resolveCanonicalText for consistent priority logic.
- */
-function resolveSayText(
-  sayEntries: Map<string, Record<string, string>>,
-  clipId: string
-): string | null {
-  const sayMap = sayEntries.get(clipId)
-  if (!sayMap) return null
-  const text = resolveCanonicalText(sayMap)
-  return text || null
-}
-
-/**
- * Start a background task to generate OpenAI TTS mp3s for collected clips.
+ * Start a background task to generate mp3s for collected clips in an
+ * ElevenLabs voice (lib/speech). Retired OpenAI voices are refused before
+ * anything is generated.
  *
- * Collected clips store their tone as freeform text which is passed directly
- * to the OpenAI `instructions` param. Files are saved as `{clipId}.mp3`.
+ * Collected clips store their tone as freeform text (or a registered tone
+ * name); lib/audio/toneDirections turns it into an audio tag.
+ *
+ * Files are stored exactly where the on-demand route looks for them
+ * (lib/speech/clipStorage): manifest clips as `{clipId}.mp3` with the
+ * manifest's text and tone; every other clip under the `t-` key of the text
+ * it speaks. Say text in the DB is first-write-wins but still came from a
+ * client, so keying by text means a bad row can only ever produce audio for
+ * its own words, which no other clip's request reaches.
  */
 export async function startCollectedClipGeneration(
   input: CollectedClipGenerateInput
@@ -53,13 +52,13 @@ export async function startCollectedClipGeneration(
     CollectedClipGenerateOutput,
     CollectedClipGenerateEvent
   >('collected-clip-generate', input, async (handle, config) => {
-    const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      handle.fail('LLM_OPENAI_API_KEY is not configured')
+    const refusal = generationRefusal(config.voice)
+    if (refusal) {
+      handle.fail(refusal)
       return
     }
 
-    const voiceDir = join(AUDIO_DIR, config.voice)
+    const voiceDir = join(audioDir(), config.voice)
     mkdirSync(voiceDir, { recursive: true })
 
     console.log('[collected-clip-generate] config:', {
@@ -96,29 +95,32 @@ export async function startCollectedClipGeneration(
       return
     }
 
-    // Fetch say entries for these clips
-    const sayRows = await db
-      .select()
-      .from(ttsCollectedClipSay)
-      .where(inArray(ttsCollectedClipSay.clipId, config.clipIds))
+    // What each clip says: its first-written text (lib/speech/collectedClipText).
+    const sayText = await firstWrittenSayText(config.clipIds)
 
-    const sayByClipId = new Map<string, Record<string, string>>()
-    for (const row of sayRows) {
-      let map = sayByClipId.get(row.clipId)
-      if (!map) {
-        map = {}
-        sayByClipId.set(row.clipId, map)
+    // What each clip speaks and where it's stored. Manifest clips speak the
+    // manifest's constant text; others their DB text, falling back to the
+    // clip id (older collected clips may lack say entries if they were
+    // registered as plain strings before the default-say fix).
+    const planned = clips.flatMap((clip) => {
+      const manifest = AUDIO_MANIFEST_MAP[clip.id]
+      const text = manifest?.text ?? sayText.get(clip.id) ?? clip.id
+      const tone = manifest?.tone ?? clip.tone
+      try {
+        return [{ clip, text, tone, stem: clipFileStem(config.voice, clip.id, text, tone) }]
+      } catch (err) {
+        // Empty or too long to speak: report it rather than abort the run.
+        handle.emit({
+          type: 'cc_clip_error',
+          clipId: clip.id,
+          error: err instanceof Error ? err.message : String(err),
+        })
+        return []
       }
-      map[row.locale] = row.text
-    }
+    })
 
     // Filter to clips that don't already have files on disk
-    const missing = clips.filter((clip) => {
-      const filePath = join(voiceDir, `${clip.id}.mp3`)
-      const exists = existsSync(filePath)
-      console.log('[collected-clip-generate] file check:', { clipId: clip.id, filePath, exists })
-      return !exists
-    })
+    const missing = planned.filter(({ stem }) => !existsSync(join(voiceDir, `${stem}.mp3`)))
 
     console.log('[collected-clip-generate] missing clips:', {
       total: clips.length,
@@ -159,54 +161,26 @@ export async function startCollectedClipGeneration(
     for (let i = 0; i < missing.length; i++) {
       if (handle.isCancelled()) break
 
-      const clip = missing[i]
-
-      // Resolve input text from say table, falling back to clipId itself
-      // (older collected clips may lack say entries if they were registered
-      // as plain strings before the default-say fix).
-      const inputText = resolveSayText(sayByClipId, clip.id) ?? clip.id
+      const { clip, text: inputText, tone, stem } = missing[i]
 
       try {
-        const response = await fetch(`${openAiMediaBaseUrl()}/audio/speech`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini-tts',
-            voice: config.voice,
-            input: inputText,
-            instructions: clip.tone,
-            response_format: 'mp3',
-          }),
+        const { audio } = await synthesizeSpeech({
+          timeoutMs: SPEECH_TIMEOUT_MS.bulk,
+          voice: config.voice,
+          text: inputText,
+          tone,
+          usage: config._userId
+            ? {
+                userId: config._userId,
+                feature: AiFeature.TTS_COLLECTED,
+                backgroundTaskId: handle.id,
+              }
+            : undefined,
         })
-
-        if (!response.ok) {
-          const errText = await response.text()
-          errors++
-          const errorMsg = `HTTP ${response.status}: ${errText}`
-          consecutiveErrors++
-          lastErrorMessage = errorMsg
-          handle.emit({
-            type: 'cc_clip_error',
-            clipId: clip.id,
-            error: errorMsg,
-          })
-        } else {
-          const arrayBuffer = await response.arrayBuffer()
-          writeFileSync(join(voiceDir, `${clip.id}.mp3`), Buffer.from(arrayBuffer))
-          generated++
-          consecutiveErrors = 0
-          if (config._userId) {
-            recordTtsUsage(inputText, 'gpt-4o-mini-tts', {
-              userId: config._userId,
-              feature: AiFeature.TTS_COLLECTED,
-              backgroundTaskId: handle.id,
-            })
-          }
-          handle.emit({ type: 'cc_clip_done', clipId: clip.id })
-        }
+        writeClipFile(voiceDir, stem, audio)
+        generated++
+        consecutiveErrors = 0
+        handle.emit({ type: 'cc_clip_done', clipId: clip.id })
       } catch (err) {
         errors++
         const errorMsg = err instanceof Error ? err.message : String(err)
@@ -221,7 +195,7 @@ export async function startCollectedClipGeneration(
 
       // Abort early on systemic failures
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-        const friendlyMsg = describeSystemicError(lastErrorMessage, config.voice)
+        const friendlyMsg = describeSpeechFailure(lastErrorMessage, config.voice)
         handle.fail(friendlyMsg)
         return
       }
@@ -244,24 +218,4 @@ export async function startCollectedClipGeneration(
       total: clips.length,
     })
   })
-}
-
-/** Map raw error messages to user-friendly descriptions for systemic failures. */
-function describeSystemicError(rawError: string, voice: string): string {
-  if (rawError.includes('EACCES') || rawError.includes('permission denied')) {
-    return `Permission denied writing audio files for voice "${voice}". The server cannot write to the audio storage directory. An admin needs to fix the directory permissions.`
-  }
-  if (rawError.includes('ENOSPC') || rawError.includes('no space')) {
-    return `Disk full — not enough space to write audio files for voice "${voice}".`
-  }
-  if (rawError.includes('ENOENT')) {
-    return `Audio storage directory not found for voice "${voice}". The volume may not be mounted.`
-  }
-  if (rawError.includes('HTTP 401') || rawError.includes('HTTP 403')) {
-    return `OpenAI API authentication failed. Check that LLM_OPENAI_API_KEY is valid.`
-  }
-  if (rawError.includes('HTTP 429')) {
-    return `OpenAI API rate limit exceeded. Try again later or reduce batch size.`
-  }
-  return `Generation failed after repeated errors: ${rawError}`
 }

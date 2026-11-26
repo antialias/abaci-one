@@ -1,11 +1,10 @@
-import { openAiMediaBaseUrl } from '@/lib/openai-base'
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import { AUDIO_MANIFEST } from '@/lib/audio/audioManifest'
-import { buildTtsParams } from '@/lib/audio/toneDirections'
-import { createTask } from '../task-manager'
-import { recordTtsUsage } from '@/lib/ai-usage/helpers'
 import { AiFeature } from '@/lib/ai-usage/features'
+import { AUDIO_MANIFEST } from '@/lib/audio/audioManifest'
+import { generationRefusal } from '@/lib/audio/voices'
+import { describeSpeechFailure, SPEECH_TIMEOUT_MS, synthesizeSpeech } from '@/lib/speech/synthesize'
+import { createTask } from '../task-manager'
 import type { AudioGenerateEvent } from './events'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
@@ -26,7 +25,8 @@ export interface AudioGenerateOutput {
 /**
  * Start an audio generation background task.
  *
- * Generates all missing TTS clips for a given voice using OpenAI TTS API.
+ * Generates all missing manifest clips for an ElevenLabs voice (lib/speech).
+ * Retired OpenAI voices are refused before anything is generated.
  * Reports per-clip progress via task events.
  */
 export async function startAudioGeneration(input: AudioGenerateInput): Promise<string> {
@@ -34,9 +34,9 @@ export async function startAudioGeneration(input: AudioGenerateInput): Promise<s
     'audio-generate',
     input,
     async (handle, config) => {
-      const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
-      if (!apiKey) {
-        handle.fail('LLM_OPENAI_API_KEY is not configured')
+      const refusal = generationRefusal(config.voice)
+      if (refusal) {
+        handle.fail(refusal)
         return
       }
 
@@ -101,45 +101,23 @@ export async function startAudioGeneration(input: AudioGenerateInput): Promise<s
         const clip = missing[i]
 
         try {
-          const response = await fetch(`${openAiMediaBaseUrl()}/audio/speech`, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini-tts',
-              voice: config.voice,
-              ...buildTtsParams(clip.text, clip.tone),
-              response_format: 'mp3',
-            }),
+          const { audio } = await synthesizeSpeech({
+            timeoutMs: SPEECH_TIMEOUT_MS.bulk,
+            voice: config.voice,
+            text: clip.text,
+            tone: clip.tone,
+            usage: config._userId
+              ? {
+                  userId: config._userId,
+                  feature: AiFeature.TTS_BATCH,
+                  backgroundTaskId: handle.id,
+                }
+              : undefined,
           })
-
-          if (!response.ok) {
-            const errText = await response.text()
-            errors++
-            const errorMsg = `HTTP ${response.status}: ${errText}`
-            consecutiveErrors++
-            lastErrorMessage = errorMsg
-            handle.emit({
-              type: 'clip_error',
-              clipId: clip.id,
-              error: errorMsg,
-            })
-          } else {
-            const arrayBuffer = await response.arrayBuffer()
-            writeFileSync(join(voiceDir, clip.filename), Buffer.from(arrayBuffer))
-            generated++
-            consecutiveErrors = 0
-            handle.emit({ type: 'clip_done', clipId: clip.id })
-            if (config._userId) {
-              recordTtsUsage(clip.text, 'gpt-4o-mini-tts', {
-                userId: config._userId,
-                feature: AiFeature.TTS_BATCH,
-                backgroundTaskId: handle.id,
-              })
-            }
-          }
+          writeFileSync(join(voiceDir, clip.filename), audio)
+          generated++
+          consecutiveErrors = 0
+          handle.emit({ type: 'clip_done', clipId: clip.id })
         } catch (err) {
           errors++
           const errorMsg = err instanceof Error ? err.message : String(err)
@@ -154,7 +132,7 @@ export async function startAudioGeneration(input: AudioGenerateInput): Promise<s
 
         // Abort early on systemic failures
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-          const friendlyMsg = describeSystemicError(lastErrorMessage, config.voice)
+          const friendlyMsg = describeSpeechFailure(lastErrorMessage, config.voice)
           handle.fail(friendlyMsg)
           return
         }
@@ -178,24 +156,4 @@ export async function startAudioGeneration(input: AudioGenerateInput): Promise<s
       })
     }
   )
-}
-
-/** Map raw error messages to user-friendly descriptions for systemic failures. */
-function describeSystemicError(rawError: string, voice: string): string {
-  if (rawError.includes('EACCES') || rawError.includes('permission denied')) {
-    return `Permission denied writing audio files for voice "${voice}". The server cannot write to the audio storage directory. An admin needs to fix the directory permissions.`
-  }
-  if (rawError.includes('ENOSPC') || rawError.includes('no space')) {
-    return `Disk full — not enough space to write audio files for voice "${voice}".`
-  }
-  if (rawError.includes('ENOENT')) {
-    return `Audio storage directory not found for voice "${voice}". The volume may not be mounted.`
-  }
-  if (rawError.includes('HTTP 401') || rawError.includes('HTTP 403')) {
-    return `OpenAI API authentication failed. Check that LLM_OPENAI_API_KEY is valid.`
-  }
-  if (rawError.includes('HTTP 429')) {
-    return `OpenAI API rate limit exceeded. Try again later or reduce batch size.`
-  }
-  return `Generation failed after repeated errors: ${rawError}`
 }

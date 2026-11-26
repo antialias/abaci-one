@@ -86,7 +86,9 @@ export const PRICING: Record<string, PricingEntry> = {
     pricing: { perMinute: 0.066 }, // audio input; output is ~$0.132/min
   },
 
-  // --- OpenAI TTS ---
+  // --- OpenAI TTS (historical rows only; speech now goes to ElevenLabs) ---
+  // Kept because prices apply at query time: past gpt-4o-mini-tts rows in
+  // ai_usage would otherwise lose their cost.
   'openai/gpt-4o-mini-tts': {
     type: 'characters',
     pricing: { perMillionCharacters: 12 },
@@ -122,6 +124,21 @@ export const PRICING: Record<string, PricingEntry> = {
     type: 'audio',
     pricing: { perMinute: 0.3 }, // estimate
   },
+  // Speech, via the switch proxy's door. The door picks no model of its own
+  // (abaci names it, lib/speech/model.ts), so unlike switch image rows the
+  // price is known: ElevenLabs' API list price, the same on every plan
+  // ($0.08 per 1K characters; flash/turbo are half). The door bills 1 credit
+  // per character (half for flash/turbo).
+  'elevenlabs/eleven_v4': { type: 'characters', pricing: { perMillionCharacters: 80 } },
+  'elevenlabs/eleven_v3': { type: 'characters', pricing: { perMillionCharacters: 80 } },
+  'elevenlabs/eleven_multilingual_v2': {
+    type: 'characters',
+    pricing: { perMillionCharacters: 80 },
+  },
+  'elevenlabs/eleven_flash_v2_5': { type: 'characters', pricing: { perMillionCharacters: 40 } },
+  'elevenlabs/eleven_flash_v2': { type: 'characters', pricing: { perMillionCharacters: 40 } },
+  'elevenlabs/eleven_turbo_v2_5': { type: 'characters', pricing: { perMillionCharacters: 40 } },
+  'elevenlabs/eleven_turbo_v2': { type: 'characters', pricing: { perMillionCharacters: 40 } },
 }
 
 /**

@@ -87,13 +87,18 @@ export function recordImageGenUsage(
 }
 
 // ---------------------------------------------------------------------------
-// TTS (OpenAI gpt-4o-mini-tts)
+// Speech clips (ElevenLabs text-to-speech, via the switch proxy's door)
 // ---------------------------------------------------------------------------
 
+/**
+ * Record one spoken clip. `text` is exactly what was sent (audio tag
+ * included), since ElevenLabs bills every character of it. Rows from before
+ * the move off OpenAI keep provider `openai`, model `gpt-4o-mini-tts`.
+ */
 export function recordTtsUsage(text: string, model: string, context: UsageContext): void {
   recordAiUsage({
     ...context,
-    provider: 'openai',
+    provider: 'elevenlabs',
     model,
     apiType: 'tts',
     inputCharacters: text.length,
