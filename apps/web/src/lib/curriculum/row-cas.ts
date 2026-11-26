@@ -16,6 +16,12 @@
  * only when `committed` is true. The session report push is the helper's own
  * (`afterCommit`), so every writer pushes and none can forget to.
  *
+ * This module imports nothing socket-related: it is the floor every writer
+ * and script stands on (the seed script bundles it through the planner), and
+ * the socket server's import graph reaches the arcade games and page
+ * components. The socket server registers the push at start
+ * (`setRowCommitListener`); a process that registers nothing pushes nothing.
+ *
  * Old images (a rolling deploy, a rollback) neither check nor bump
  * `row_version`; see §7 Phase 3a "Rollout window".
  */
@@ -23,8 +29,21 @@
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { NewSessionPlan, SessionPlan } from '@/db/schema/session-plans'
-import { hasSocketIO } from '@/lib/socket-io'
-import { pushSessionReportAfterCommit } from './session-report-server'
+
+/** Runs after a committed write; must not throw or block (see `afterCommit`). */
+export type RowCommitListener = (before: SessionPlan, after: SessionPlan) => void
+
+declare global {
+  // On globalThis, like `__socketIO`: the custom server and Next's route
+  // bundles load separate copies of this module, and both must see it.
+  // eslint-disable-next-line no-var
+  var __rowCommitListener: RowCommitListener | undefined
+}
+
+/** Register (or clear, with null) the one listener told about every committed write. */
+export function setRowCommitListener(listener: RowCommitListener | null): void {
+  globalThis.__rowCommitListener = listener ?? undefined
+}
 
 export const ROW_CAS_ATTEMPTS = 3
 
@@ -72,13 +91,18 @@ async function loadPlan(planId: string): Promise<SessionPlan | null> {
  * After a committed write, and only then: push the session's report (and
  * `session-ended` when this write ended it) to its rooms (§4 "Push", Phase
  * 4a). `before` is the row this attempt read, so the pair is exactly the
- * transition that committed. Skipped when no socket server runs in this
- * process; queued synchronously, so in commit order, and never awaited by
- * the writer.
+ * transition that committed. Skipped when no listener is registered (no
+ * socket server in this process); the listener queues synchronously, so in
+ * commit order, and is never awaited by the writer.
  */
 function afterCommit(before: SessionPlan, after: SessionPlan) {
-  if (!hasSocketIO()) return
-  pushSessionReportAfterCommit(before, after)
+  const listener = globalThis.__rowCommitListener
+  if (!listener) return
+  try {
+    listener(before, after)
+  } catch (error) {
+    console.error('[row-cas] commit listener threw', { planId: after.id, error })
+  }
 }
 
 /** No write; the decision's value with the row as read. */

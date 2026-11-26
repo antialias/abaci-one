@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
 import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SessionPlan, SlotResultSubmission } from '@/db/schema/session-plans'
+import { setRowCommitListener } from '@/lib/curriculum/row-cas'
 import {
   abandonSessionPlan,
   completeSessionPlanEarly,
@@ -24,6 +25,7 @@ import type { SessionReport } from '@/lib/curriculum/session-report'
 import { registerSessionReportJoin } from '@/lib/curriculum/session-report-access'
 import {
   flushSessionReportPushes,
+  registerSessionReportPush,
   resetSessionReportPushState,
 } from '@/lib/curriculum/session-report-server'
 import { applySlotResultReview } from '@/lib/curriculum/session-review'
@@ -75,7 +77,6 @@ const { emitted, calls, members, fakeIo } = vi.hoisted(() => {
 })
 vi.mock('@/lib/socket-io', () => ({
   getSocketIO: async () => fakeIo,
-  hasSocketIO: () => true,
 }))
 vi.mock('@/lib/classroom/presence-manager', () => ({
   getStudentPresence: async () => ({ classroomId: 'cls-1' }),
@@ -241,11 +242,14 @@ describe('Phase 4a: session report push and routes', () => {
     members.clear()
     readTriesFails.on = false
     resetSessionReportPushState()
+    // What the socket server does at start
+    registerSessionReportPush()
     canPerformAction.mockClear()
     canPerformAction.mockResolvedValue(true)
   })
   afterEach(async () => {
     await flushSessionReportPushes()
+    setRowCommitListener(null)
     setCurrentEphemeralDb(null)
     eph.cleanup()
   })

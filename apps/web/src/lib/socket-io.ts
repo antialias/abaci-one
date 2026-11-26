@@ -38,13 +38,3 @@ export async function getSocketIO(): Promise<SocketIOServerType | null> {
   console.warn('[Socket IO] getSocketIO function not found in socket-server module')
   return null
 }
-
-/**
- * Whether a socket.io server runs in this process, without loading it. The
- * row-write commit path checks this before building a report to push, so a
- * process with no socket server (scripts, tests) does no extra work.
- */
-export function hasSocketIO(): boolean {
-  if (typeof window !== 'undefined') return false
-  return (globalThis as { __socketIO?: unknown }).__socketIO != null
-}
