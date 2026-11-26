@@ -103,6 +103,25 @@ RUN --mount=type=secret,id=gitea_npm_token \
     && echo "//git.dev.abaci.one/api/packages/antialias/npm/:_authToken=$(cat /run/secrets/gitea_npm_token)" >> /tmp/.npmrc \
     && NPM_CONFIG_USERCONFIG=/tmp/.npmrc pnpm install --frozen-lockfile --prod
 
+# Trim the embedding runtime to what this platform loads. onnxruntime-node ships
+# binaries for every OS/arch (~290 MB); keep only linux/<this arch>.
+# onnxruntime-web is a dependency of @huggingface/transformers, but its Node build
+# already bundles the bits it uses and never requires the package (~140 MB).
+RUN set -e; \
+    ARCH=$(node -p "process.arch"); \
+    for bin in node_modules/.pnpm/onnxruntime-node@*/node_modules/onnxruntime-node/bin/napi-v*; do \
+        rm -rf "$bin/darwin" "$bin/win32"; \
+        find "$bin/linux" -mindepth 1 -maxdepth 1 ! -name "$ARCH" -exec rm -rf {} +; \
+        test -f "$bin/linux/$ARCH/onnxruntime_binding.node"; \
+    done; \
+    rm -rf node_modules/.pnpm/onnxruntime-web@*/node_modules/onnxruntime-web/dist
+
+# Embedding model stage - the text-embedding model (src/lib/embeddings) is baked
+# into the image; the app never downloads it at runtime. Pinned revision + SHA-256.
+FROM node:20-slim AS embedding-model
+COPY apps/web/scripts/fetch-embedding-model.mjs /fetch/
+RUN node /fetch/fetch-embedding-model.mjs --dest /models
+
 # Typst builder stage - download and prepare typst binary
 FROM node:20-slim AS typst-builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -189,6 +208,13 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/drizzle ./apps/web/drizz
 # Copy bundled fonts for server-side canvas rendering
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/src/lib/fonts ./apps/web/src/lib/fonts
 
+# Text-embedding model (read-only, local files only; see src/lib/embeddings)
+COPY --from=embedding-model --chown=nextjs:nodejs /models ./apps/web/models
+
+# Static topic taxonomy (labels + vectors): the fallback while the DB taxonomy
+# is empty or still holds vectors from an older embedding model
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/src/lib/flowcharts/topic-taxonomy.json /app/apps/web/src/lib/flowcharts/topic-taxonomy.bin ./apps/web/src/lib/flowcharts/
+
 # Copy PRODUCTION node_modules only (no dev dependencies)
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=deps --chown=nextjs:nodejs /app/apps/web/node_modules ./apps/web/node_modules
@@ -223,6 +249,7 @@ USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV NODE_ENV=production
+ENV EMBEDDING_MODEL_DIR=/app/apps/web/models
 
 # Start the server directly (no LiteFS wrapper)
 # Use --require to load OpenTelemetry instrumentation before any other modules

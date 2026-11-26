@@ -53,6 +53,19 @@ jobs:
           node scripts/generate-build-info.js
           npx @pandacss/dev
 
+      - name: Cache embedding model
+        # embeddings.test.ts loads the real model; without a cache every run
+        # downloads it from Hugging Face, and a CDN blip would block deploy.
+        # The fetch script pins revision + SHA-256, so its hash is the key.
+        uses: actions/cache@v4
+        with:
+          path: apps/web/models
+          key: embedding-model-${{ hashFiles('apps/web/scripts/fetch-embedding-model.mjs') }}
+
+      - name: Fetch embedding model
+        working-directory: apps/web
+        run: node scripts/fetch-embedding-model.mjs
+
       - name: Lint (Biome)
         working-directory: apps/web
         run: npx @biomejs/biome@2.4.5 lint .

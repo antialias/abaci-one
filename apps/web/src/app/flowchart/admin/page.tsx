@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
-import type { Socket } from 'socket.io-client'
-import { createSocket } from '@/lib/socket'
 import Link from 'next/link'
-import { AppNavBar } from '@/components/AppNavBar'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { Socket } from 'socket.io-client'
 import { AdminNav } from '@/components/AdminNav'
+import { AppNavBar } from '@/components/AppNavBar'
 import { SeedManagerPanel } from '@/components/flowchart/SeedManagerPanel'
 import { TaxonomyBrowserPanel } from '@/components/flowchart/TaxonomyBrowserPanel'
+import { EMBEDDING_MODEL, EMBEDDING_VERSION } from '@/lib/embeddings/model'
+import { createSocket } from '@/lib/socket'
 import { css } from '../../../../styled-system/css'
 import { hstack, vstack } from '../../../../styled-system/patterns'
-import { EMBEDDING_VERSION } from '@/lib/flowcharts/embedding'
 
 /**
  * Admin page for flowchart management.
@@ -245,7 +245,11 @@ function TaxonomyBrowserInline({ onRegenerateComplete }: { onRegenerateComplete?
 function EmbeddingsManagerInline({ onComplete }: { onComplete?: () => void }) {
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [progressMessage, setProgressMessage] = useState<string | null>(null)
-  const [result, setResult] = useState<{ seeded: number; skipped: number } | null>(null)
+  const [result, setResult] = useState<{
+    seeded: number
+    skipped: number
+    taxonomy: number
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const socketRef = useRef<Socket | null>(null)
 
@@ -290,11 +294,12 @@ function EmbeddingsManagerInline({ onComplete }: { onComplete?: () => void }) {
         if (state.id !== taskId) return
         if (state.status === 'completed') {
           const output = state.output as
-            | { embeddedCount?: number; skippedCount?: number }
+            | { embeddedCount?: number; skippedCount?: number; taxonomyReembedded?: number }
             | undefined
           setResult({
             seeded: output?.embeddedCount ?? 0,
             skipped: output?.skippedCount ?? 0,
+            taxonomy: output?.taxonomyReembedded ?? 0,
           })
           setIsRegenerating(false)
           setProgressMessage(null)
@@ -326,7 +331,8 @@ function EmbeddingsManagerInline({ onComplete }: { onComplete?: () => void }) {
             case 'embed_complete': {
               const embeddedCount = payload.embeddedCount as number
               const skippedCount = payload.skippedCount as number
-              setResult({ seeded: embeddedCount, skipped: skippedCount })
+              const taxonomy = (payload.taxonomyReembedded as number | undefined) ?? 0
+              setResult({ seeded: embeddedCount, skipped: skippedCount, taxonomy })
               setIsRegenerating(false)
               setProgressMessage(null)
               socket.emit('task:unsubscribe', taskId)
@@ -369,7 +375,8 @@ function EmbeddingsManagerInline({ onComplete }: { onComplete?: () => void }) {
           color: { base: 'blue.700', _dark: 'blue.300' },
         })}
       >
-        Regenerate embeddings for all published flowcharts using the current model.
+        Regenerate embeddings for all flowcharts, and the topic taxonomy labels, using the current
+        model.
       </p>
 
       <div
@@ -382,7 +389,7 @@ function EmbeddingsManagerInline({ onComplete }: { onComplete?: () => void }) {
         })}
       >
         <div>
-          Model: <code>text-embedding-3-large</code>
+          Model: <code>{EMBEDDING_MODEL}</code> (in-process)
         </div>
         <div>
           Version: <code>{EMBEDDING_VERSION}</code>
@@ -414,6 +421,7 @@ function EmbeddingsManagerInline({ onComplete }: { onComplete?: () => void }) {
           })}
         >
           Regenerated {result.seeded} embeddings, skipped {result.skipped} (already up-to-date)
+          {result.taxonomy > 0 && `; re-embedded ${result.taxonomy} taxonomy labels`}
         </div>
       )}
 
@@ -448,8 +456,9 @@ function EmbeddingsManagerInline({ onComplete }: { onComplete?: () => void }) {
           color: { base: 'blue.600', _dark: 'blue.400' },
         })}
       >
-        This will regenerate embeddings for flowcharts with outdated or missing embeddings.
-        Flowcharts already using version {EMBEDDING_VERSION} will be skipped.
+        This will regenerate embeddings for flowcharts with outdated or missing embeddings, then
+        re-embed taxonomy labels that came from an older model. Flowcharts already using version{' '}
+        {EMBEDDING_VERSION} will be skipped.
       </p>
     </div>
   )

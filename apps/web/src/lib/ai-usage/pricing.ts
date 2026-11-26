@@ -57,11 +57,10 @@ export const PRICING: Record<string, PricingEntry> = {
     pricing: { inputPerMillion: 0.15, outputPerMillion: 0.6 },
   },
 
-  // --- claude-switch-proxy (OpenAI-compatible wire, workload class "abaci") ---
-  // Estimated from the class's primary member (kimi-k3, ~$0.60/M in,
-  // ~$2.50/M out). The proxy forwards the upstream provider's usage block,
-  // so these token counts are real upstream tokens; refine the numbers when
-  // actual spend data exists. Missing row would silently price as $0.
+  // --- claude-switch-proxy OpenAI wire, class "abaci" (historical rows) ---
+  // The `switch` provider is retired (text runs on claude_code now); the row
+  // stays so earlier usage keeps its price. Estimated from the class's
+  // primary member at the time (kimi-k3, ~$0.60/M in, ~$2.50/M out).
   'switch/abaci': {
     type: 'tokens',
     pricing: { inputPerMillion: 0.6, outputPerMillion: 2.5 },

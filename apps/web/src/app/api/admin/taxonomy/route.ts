@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
-import { regenerateTaxonomy } from '@/lib/flowcharts/generate-taxonomy'
 import { withAuth } from '@/lib/auth/withAuth'
+import { regenerateTaxonomy } from '@/lib/flowcharts/generate-taxonomy'
 
 /**
  * POST /api/admin/taxonomy
@@ -10,7 +10,7 @@ import { withAuth } from '@/lib/auth/withAuth'
  * This endpoint:
  * 1. Analyzes word frequencies from existing published flowcharts
  * 2. Uses an LLM to generate ~200 topic labels at multiple specificity levels
- * 3. Embeds all labels via OpenAI text-embedding-3-large with educational context
+ * 3. Embeds all labels in-process (@/lib/embeddings)
  * 4. Stores the labels and embeddings in the topic_taxonomy database table
  * 5. Clears the in-memory taxonomy cache
  *

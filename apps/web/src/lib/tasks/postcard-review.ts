@@ -7,12 +7,13 @@
  */
 
 import { z } from 'zod'
-import { createTask, createChildTask, type TaskHandle } from '../task-manager'
-import { createTaskLLM } from '../llm'
-import { readPersistentImage } from '../image-storage'
-import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
-import type { PostcardReviewEvent } from './events'
 import type { PostcardManifest } from '@/db/schema/number-line-postcards'
+import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
+import { readPersistentImage } from '../image-storage'
+import { createTaskLLM } from '../llm'
+import { prepareImageForLlm } from '../llm-image'
+import { createChildTask, createTask, type TaskHandle } from '../task-manager'
+import type { PostcardReviewEvent } from './events'
 
 // ── Criteria definition ──
 
@@ -128,7 +129,7 @@ const handler: ReviewHandler = async (handle, config) => {
     return
   }
 
-  const imageDataUrl = `data:image/png;base64,${imageData.buffer.toString('base64')}`
+  const imageDataUrl = await prepareImageForLlm(imageData.buffer)
 
   // Build review prompt
   const callerNum = manifest.callerNumber
@@ -188,9 +189,7 @@ const handler: ReviewHandler = async (handle, config) => {
     prompt,
     images: [imageDataUrl],
     schema,
-    provider: 'openai',
-    model: 'gpt-5.4',
-    reasoning: { effort: 'medium', summary: 'auto' },
+    reasoning: { effort: 'medium' },
   })) {
     if (event.type === 'complete') {
       reviewData = event.data

@@ -5,9 +5,9 @@
  * switch_speaker for character switching and standard conference tools.
  */
 
-import type { AgentMode } from './types'
 import { generateConferencePrompt } from '../generateNumberPersonality'
 import { getConferenceTools } from './tools'
+import type { AgentMode } from './types'
 
 export const conferenceMode: AgentMode = {
   id: 'conference',
@@ -19,5 +19,5 @@ export const conferenceMode: AgentMode = {
       ctx.childProfile
     ),
 
-  getTools: () => getConferenceTools(),
+  getTools: (ctx) => getConferenceTools(ctx),
 }

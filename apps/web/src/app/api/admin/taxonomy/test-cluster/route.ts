@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { loadTaxonomy, labelId } from '@/lib/flowcharts/taxonomy'
-import { generateEmbeddings, EMBEDDING_DIMENSIONS } from '@/lib/flowcharts/embedding'
 import { withAuth } from '@/lib/auth/withAuth'
+import { cosineSimilarity } from '@/lib/embeddings/similarity'
+import { generateEmbeddings } from '@/lib/flowcharts/embedding'
+import { labelId, loadTaxonomy } from '@/lib/flowcharts/taxonomy'
 
 /**
  * POST /api/admin/taxonomy/test-cluster
@@ -98,27 +99,3 @@ export const POST = withAuth(
   },
   { role: 'admin' }
 )
-
-/**
- * Compute cosine similarity between two embedding vectors.
- */
-function cosineSimilarity(a: Float32Array, b: Float32Array): number {
-  if (a.length !== b.length || a.length !== EMBEDDING_DIMENSIONS) {
-    throw new Error(`Embedding dimension mismatch: ${a.length} vs ${b.length}`)
-  }
-
-  let dotProduct = 0
-  let normA = 0
-  let normB = 0
-
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i]
-    normA += a[i] * a[i]
-    normB += b[i] * b[i]
-  }
-
-  const magnitude = Math.sqrt(normA) * Math.sqrt(normB)
-  if (magnitude === 0) return 0
-
-  return dotProduct / magnitude
-}

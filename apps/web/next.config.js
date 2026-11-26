@@ -108,6 +108,10 @@ const nextConfig = {
       'sharp',
       'puppeteer',
       '@napi-rs/canvas',
+      // In-process text embeddings (src/lib/embeddings): native ONNX Runtime
+      // binding, loaded from node_modules at runtime rather than bundled.
+      '@huggingface/transformers',
+      'onnxruntime-node',
     ],
   },
   transpilePackages: [

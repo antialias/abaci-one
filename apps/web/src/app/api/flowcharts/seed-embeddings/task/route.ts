@@ -12,65 +12,69 @@
  *   - Cancel the active embedding task
  */
 
-import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
+import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { backgroundTasks } from '@/db/schema/background-tasks'
 import { withAuth } from '@/lib/auth/withAuth'
-import { startFlowchartEmbedding } from '@/lib/tasks/flowchart-embed'
 import { cancelTask } from '@/lib/task-manager'
+import { startFlowchartEmbedding } from '@/lib/tasks/flowchart-embed'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * POST - Start flowchart embedding as a background task
+ * POST - Start flowchart embedding as a background task (admin only: it
+ * re-embeds every flowchart and the taxonomy).
  */
-export const POST = withAuth(async (request) => {
-  try {
-    // Check for already-running embedding task
-    const existingTask = await db
-      .select()
-      .from(backgroundTasks)
-      .where(eq(backgroundTasks.type, 'flowchart-embed'))
-      .all()
-      .then((tasks) => tasks.find((t) => t.status === 'running' || t.status === 'pending'))
-
-    if (existingTask) {
-      return NextResponse.json({
-        taskId: existingTask.id,
-        status: 'already_running',
-        message: 'Embedding generation already in progress',
-      })
-    }
-
-    // Parse request body
-    let config: { flowchartId?: string } = {}
+export const POST = withAuth(
+  async (request) => {
     try {
-      const body = await request.text()
-      if (body) {
-        config = JSON.parse(body)
+      // Check for already-running embedding task
+      const existingTask = await db
+        .select()
+        .from(backgroundTasks)
+        .where(eq(backgroundTasks.type, 'flowchart-embed'))
+        .all()
+        .then((tasks) => tasks.find((t) => t.status === 'running' || t.status === 'pending'))
+
+      if (existingTask) {
+        return NextResponse.json({
+          taskId: existingTask.id,
+          status: 'already_running',
+          message: 'Embedding generation already in progress',
+        })
       }
-    } catch {
-      // Use defaults if body parsing fails
+
+      // Parse request body
+      let config: { flowchartId?: string } = {}
+      try {
+        const body = await request.text()
+        if (body) {
+          config = JSON.parse(body)
+        }
+      } catch {
+        // Use defaults if body parsing fails
+      }
+
+      const taskId = await startFlowchartEmbedding({
+        flowchartId: config.flowchartId,
+      })
+
+      return NextResponse.json({
+        taskId,
+        status: 'started',
+        message: 'Embedding task started',
+      })
+    } catch (error) {
+      console.error('[FlowchartEmbedTaskAPI] Error starting embedding task:', error)
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Failed to start embedding' },
+        { status: 500 }
+      )
     }
-
-    const taskId = await startFlowchartEmbedding({
-      flowchartId: config.flowchartId,
-    })
-
-    return NextResponse.json({
-      taskId,
-      status: 'started',
-      message: 'Embedding task started',
-    })
-  } catch (error) {
-    console.error('[FlowchartEmbedTaskAPI] Error starting embedding task:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to start embedding' },
-      { status: 500 }
-    )
-  }
-})
+  },
+  { role: 'admin' }
+)
 
 /**
  * GET - Check for active embedding task
@@ -111,29 +115,32 @@ export const GET = withAuth(async () => {
 })
 
 /**
- * DELETE - Cancel the active embedding task
+ * DELETE - Cancel the active embedding task (admin only)
  */
-export const DELETE = withAuth(async () => {
-  try {
-    const tasks = await db
-      .select()
-      .from(backgroundTasks)
-      .where(eq(backgroundTasks.type, 'flowchart-embed'))
-      .all()
+export const DELETE = withAuth(
+  async () => {
+    try {
+      const tasks = await db
+        .select()
+        .from(backgroundTasks)
+        .where(eq(backgroundTasks.type, 'flowchart-embed'))
+        .all()
 
-    const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
+      const activeTask = tasks.find((t) => t.status === 'running' || t.status === 'pending')
 
-    if (!activeTask) {
-      return NextResponse.json({ message: 'No embedding in progress' })
+      if (!activeTask) {
+        return NextResponse.json({ message: 'No embedding in progress' })
+      }
+
+      const cancelled = await cancelTask(activeTask.id)
+      return NextResponse.json({
+        cancelled,
+        message: cancelled ? 'Embedding cancellation requested' : 'Could not cancel embedding',
+      })
+    } catch (error) {
+      console.error('[FlowchartEmbedTaskAPI] Error cancelling:', error)
+      return NextResponse.json({ error: 'Failed to cancel embedding' }, { status: 500 })
     }
-
-    const cancelled = await cancelTask(activeTask.id)
-    return NextResponse.json({
-      cancelled,
-      message: cancelled ? 'Embedding cancellation requested' : 'Could not cancel embedding',
-    })
-  } catch (error) {
-    console.error('[FlowchartEmbedTaskAPI] Error cancelling:', error)
-    return NextResponse.json({ error: 'Failed to cancel embedding' }, { status: 500 })
-  }
-})
+  },
+  { role: 'admin' }
+)

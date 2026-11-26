@@ -16,7 +16,7 @@ export const GET = withAuth(async (_request, { params }) => {
 
     const related = await findRelatedFlowcharts(id, {
       limit: 5,
-      minSimilarity: 0.4, // Lower threshold for related items
+      minSimilarity: 0.4, // see findRelatedFlowcharts
     })
 
     return NextResponse.json({ related })

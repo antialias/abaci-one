@@ -137,6 +137,7 @@ export const POST = withAuth(async (request, { params }) => {
     problemIndices,
     boundingBoxes,
     additionalContext,
+    _userId: userId,
   })
   console.log('[ReparseTaskAPI] Task created with ID:', taskId)
 

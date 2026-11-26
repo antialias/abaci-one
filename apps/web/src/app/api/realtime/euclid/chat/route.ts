@@ -1,20 +1,26 @@
 /**
- * API route for streaming text chat with a geometry teacher — GPT-5.2 Responses API.
+ * API route for streaming text chat with a geometry teacher.
  *
  * POST /api/realtime/euclid/chat
  * Body: { messages, propositionId, currentStep, isComplete, playgroundMode,
  *         constructionGraph, toolState, proofFacts, stepList, screenshot?,
  *         characterId?, attitudeId?, tools? }
  * Returns: SSE stream of { text } deltas and { toolCall } events, ending with [DONE]
+ *
+ * Goes through the app's LLM client (default provider: claude_code). A plain
+ * chat streams its reply as the model writes it. With tools (author mode) the
+ * model answers once, as { reply, toolCalls }, since claude -p takes no custom
+ * tools; the reply is sent as one delta, then each tool call.
  */
 
-import { openAiTextBaseUrl } from '@/lib/openai-base'
-import { withAuth } from '@/lib/auth/withAuth'
-import { recordOpenAiResponsesStreamUsage } from '@/lib/ai-usage/helpers'
-import { AiFeature } from '@/lib/ai-usage/features'
-import { getTeacherConfig } from '@/components/toys/euclid/characters/registry'
-import type { AttitudeId } from '@/components/toys/euclid/agent/attitudes/types'
+import { z } from 'zod'
 import { getAttitude } from '@/components/toys/euclid/agent/attitudes'
+import type { AttitudeId } from '@/components/toys/euclid/agent/attitudes/types'
+import { getTeacherConfig } from '@/components/toys/euclid/characters/registry'
+import { AiFeature } from '@/lib/ai-usage/features'
+import { withAuth } from '@/lib/auth/withAuth'
+import { llm, type StreamEvent } from '@/lib/llm'
+import { prepareImageForLlm } from '@/lib/llm-image'
 import type { RealtimeTool } from '@/lib/voice/types'
 
 interface ChatMessage {
@@ -25,14 +31,65 @@ interface ChatMessage {
   toolCallArgs?: string
 }
 
-/** Convert our RealtimeTool format to OpenAI Responses API function tool format. */
-function toOpenAITool(tool: RealtimeTool) {
-  return {
-    type: 'function' as const,
-    name: tool.name,
-    description: tool.description,
-    parameters: tool.parameters,
+/** The conversation as one transcript: claude -p takes a single prompt. */
+function buildTranscript(messages: ChatMessage[], teacherName: string, priming: string): string {
+  const lines = [`${teacherName}: ${priming}`]
+  for (const msg of messages) {
+    if (msg.role === 'user') {
+      lines.push(`Student: ${msg.content}`)
+    } else if (msg.role === 'assistant_tool_call') {
+      lines.push(
+        `[${teacherName} called the tool ${msg.toolCallName ?? '?'} with ${msg.toolCallArgs ?? '{}'}]`
+      )
+    } else if (msg.role === 'tool') {
+      lines.push(`[Tool result: ${msg.content}]`)
+    } else {
+      lines.push(`${teacherName}: ${msg.content}`)
+    }
   }
+  return lines.join('\n\n')
+}
+
+function describeTools(tools: RealtimeTool[]): string {
+  return tools
+    .map(
+      (t) =>
+        `- ${t.name}: ${t.description}\n  parameters (JSON Schema): ${JSON.stringify(t.parameters)}`
+    )
+    .join('\n')
+}
+
+/** A tool call's arguments, or null when they are not a JSON object. */
+function parseToolArguments(json: string): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(json || '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null
+  } catch {
+    return null
+  }
+}
+
+function toolTurnSchema(tools: RealtimeTool[]) {
+  const names = tools.map((t) => t.name) as [string, ...string[]]
+  return z.object({
+    reply: z.string().describe('What you say now (may be empty while you are only calling tools)'),
+    toolCalls: z
+      .array(
+        z.object({
+          name: z.enum(names).describe('The tool to call'),
+          // A JSON string, not an object: an open-ended object breaks OpenAI
+          // strict mode, which the kill switch would use.
+          arguments: z
+            .string()
+            .describe(
+              'The arguments as a JSON object, written as a string, matching the tool\'s parameters, e.g. {"from":"A","to":"B"}'
+            ),
+        })
+      )
+      .describe('Tools to call now, in order; empty when you are not calling any'),
+  })
 }
 
 export const POST = withAuth(async (request, { userId }) => {
@@ -76,14 +133,6 @@ export const POST = withAuth(async (request, { userId }) => {
     })
   }
 
-  const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
-  if (!apiKey) {
-    return new Response(JSON.stringify({ error: 'OpenAI API key not configured' }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
   const config = getTeacherConfig(characterId, attitudeId)
 
   // Build system context — append chatDirective for author mode
@@ -104,246 +153,130 @@ export const POST = withAuth(async (request, { userId }) => {
     systemText += `\n\n=== AUTHOR COLLABORATION DIRECTIVE ===\n${attitude.chatDirective}`
   }
 
-  // Build input for the Responses API
-  // System context goes as the first user message, then conversation history
-  const input: Array<Record<string, unknown>> = [
-    {
-      role: 'user',
-      content: [
-        {
-          type: 'input_text',
-          text: `[SYSTEM CONTEXT — not from the student]\n\n${systemText}`,
-        },
-      ],
-    },
-    {
-      role: 'assistant',
-      content: [
-        {
-          type: 'output_text',
-          text: config.chatAssistantPriming,
-        },
-      ],
-    },
-  ]
-
-  // Add conversation history — handle tool call/result messages
-  for (const msg of messages) {
-    if (msg.role === 'user') {
-      const contentParts: Array<Record<string, unknown>> = [
-        { type: 'input_text', text: msg.content },
-      ]
-      input.push({ role: 'user', content: contentParts })
-    } else if (msg.role === 'assistant_tool_call' && msg.toolCallId) {
-      // Tool call the model made — must precede the function_call_output
-      input.push({
-        type: 'function_call',
-        call_id: msg.toolCallId,
-        name: msg.toolCallName,
-        arguments: msg.toolCallArgs ?? '{}',
-      })
-    } else if (msg.role === 'tool' && msg.toolCallId) {
-      // Tool result — follows the function_call_output format for Responses API
-      input.push({
-        type: 'function_call_output',
-        call_id: msg.toolCallId,
-        output: msg.content,
-      })
-    } else {
-      input.push({
-        role: 'assistant',
-        content: [{ type: 'output_text', text: msg.content }],
-      })
-    }
-  }
-
-  // Attach screenshot to the last user message if provided
+  const teacherName = config.definition.displayName
+  const transcript = buildTranscript(messages, teacherName, config.chatAssistantPriming)
+  const images: string[] = []
   if (screenshot && typeof screenshot === 'string') {
-    let lastUserMsg: Record<string, unknown> | undefined
-    for (let i = input.length - 1; i >= 0; i--) {
-      if (input[i].role === 'user') {
-        lastUserMsg = input[i]
-        break
-      }
-    }
-    if (lastUserMsg && Array.isArray(lastUserMsg.content)) {
-      const base64 = screenshot.includes(',') ? screenshot.split(',')[1] : screenshot
-      ;(lastUserMsg.content as Array<Record<string, unknown>>).push({
-        type: 'input_image',
-        image_url: `data:image/png;base64,${base64}`,
-      })
+    const base64 = screenshot.includes(',') ? screenshot.split(',')[1] : screenshot
+    try {
+      images.push(await prepareImageForLlm(`data:image/png;base64,${base64}`))
+    } catch (err) {
+      // An unreadable screenshot: answer without it rather than not at all.
+      console.warn('[euclid-chat-api] screenshot dropped:', err)
     }
   }
+  const tools = clientTools && clientTools.length > 0 ? clientTools : undefined
+  const screenshotNote = images.length
+    ? "\n\nThe attached image is a screenshot of the student's construction right now."
+    : ''
 
-  // Build OpenAI request body
-  const openaiBody: Record<string, unknown> = {
-    model: 'gpt-5.2',
-    input,
-    stream: true,
-    reasoning: {
-      effort: 'none',
-    },
-  }
-
-  // Include tools if provided (author mode)
-  if (clientTools && clientTools.length > 0) {
-    openaiBody.tools = clientTools.map(toOpenAITool)
-  }
-
-  // Call the Responses API with streaming
   console.log(
-    '[euclid-chat-api] calling OpenAI Responses API, messageCount=%d, hasScreenshot=%s, character=%s, attitude=%s, tools=%d',
+    '[euclid-chat-api] calling the LLM client, messageCount=%d, hasScreenshot=%s, character=%s, attitude=%s, tools=%d',
     messages.length,
     !!screenshot,
     config.definition.id,
     attitudeId ?? 'default',
-    clientTools?.length ?? 0
+    tools?.length ?? 0
   )
-  const response = await fetch(`${openAiTextBaseUrl()}/responses`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(openaiBody),
-  })
 
-  console.log('[euclid-chat-api] OpenAI response status: %d', response.status)
-  if (!response.ok) {
-    const errText = await response.text()
-    console.error('[euclid-chat-api] API error:', response.status, errText)
-    return new Response(
-      JSON.stringify({ error: `Could not reach ${config.definition.displayName} right now.` }),
-      {
-        status: 502,
-        headers: { 'Content-Type': 'application/json' },
-      }
+  const encoder = new TextEncoder()
+  const send = (controller: ReadableStreamDefaultController, payload: unknown) =>
+    controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`))
+
+  const recordUsage = async (event: StreamEvent<unknown>) => {
+    if (event.type !== 'complete') return
+    const { recordLlmClientStreamUsage } = await import('@/lib/ai-usage/helpers')
+    recordLlmClientStreamUsage(
+      event.usage,
+      event.provider ?? llm.getDefaultProvider(),
+      event.model ?? llm.getDefaultModel(),
+      { userId, feature: AiFeature.EUCLID_CHAT }
     )
   }
 
-  // Stream the response as SSE
-  const encoder = new TextEncoder()
-  const reader = response.body?.getReader()
-  if (!reader) {
-    return new Response(JSON.stringify({ error: 'No response stream' }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
+  let cancelled = false
+  // Ends the LLM request: while it waits for a run slot, or while it runs.
+  const abort = new AbortController()
 
   const stream = new ReadableStream({
     async start(controller) {
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      // Track function calls being accumulated
-      const pendingCalls = new Map<string, { callId: string; name: string; arguments: string }>()
-
       try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buffer += decoder.decode(value, { stream: true })
-
-          // Process SSE lines from the OpenAI stream
-          const lines = buffer.split('\n')
-          buffer = lines.pop() ?? ''
-
-          for (const line of lines) {
-            if (!line.startsWith('data: ')) continue
-            const data = line.slice(6).trim()
-            if (data === '[DONE]') continue
-
-            try {
-              const event = JSON.parse(data)
-
-              // Text deltas
-              if (event.type === 'response.output_text.delta' && event.delta) {
-                controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ text: event.delta })}\n\n`)
+        if (!tools) {
+          const events = llm.streamText({
+            system: systemText,
+            prompt: `[Conversation so far]\n\n${transcript}${screenshotNote}\n\nReply to the student as ${teacherName}, in character. Write only your reply.`,
+            images: images.length ? images : undefined,
+            reasoningEffort: 'low',
+            maxRetries: 1,
+            timeoutMs: 120_000,
+            priority: 'interactive',
+            signal: abort.signal,
+          })
+          for await (const event of events) {
+            if (cancelled) break
+            if (event.type === 'output_delta' && event.text) {
+              send(controller, { text: event.text })
+            } else if (event.type === 'complete') {
+              await recordUsage(event)
+            }
+          }
+        } else {
+          const events = llm.stream({
+            system: `${systemText}\n\n=== TOOLS ===\nYou can call these tools by listing them in toolCalls. Their results come back in the next turn.\n${describeTools(tools)}`,
+            prompt: `[Conversation so far]\n\n${transcript}${screenshotNote}\n\nRespond as ${teacherName}: what you say, and any tools to call now.`,
+            images: images.length ? images : undefined,
+            schema: toolTurnSchema(tools),
+            reasoning: { effort: 'low' },
+            maxRetries: 1,
+            timeoutMs: 180_000,
+            priority: 'interactive',
+            signal: abort.signal,
+          })
+          for await (const event of events) {
+            if (cancelled) break
+            if (event.type !== 'complete') continue
+            await recordUsage(event)
+            if (event.data.reply) send(controller, { text: event.data.reply })
+            for (const call of event.data.toolCalls) {
+              const args = parseToolArguments(call.arguments)
+              if (!args) {
+                console.warn(
+                  '[euclid-chat-api] dropped %s: arguments are not a JSON object',
+                  call.name
                 )
+                continue
               }
-              // Function call: output item added
-              else if (
-                event.type === 'response.output_item.added' &&
-                event.item?.type === 'function_call'
-              ) {
-                pendingCalls.set(event.item.id || event.output_index?.toString(), {
-                  callId: event.item.call_id || event.item.id || '',
-                  name: event.item.name || '',
-                  arguments: '',
-                })
-              }
-              // Function call: arguments delta
-              else if (event.type === 'response.function_call_arguments.delta') {
-                const key = event.item_id || event.output_index?.toString()
-                const pending = pendingCalls.get(key)
-                if (pending) {
-                  pending.arguments += event.delta || ''
-                }
-              }
-              // Function call: arguments complete
-              else if (event.type === 'response.function_call_arguments.done') {
-                const key = event.item_id || event.output_index?.toString()
-                const pending = pendingCalls.get(key)
-                if (pending) {
-                  // Use the final arguments from the done event if available
-                  const finalArgs = event.arguments || pending.arguments
-                  try {
-                    const parsedArgs = JSON.parse(finalArgs)
-                    controller.enqueue(
-                      encoder.encode(
-                        `data: ${JSON.stringify({
-                          toolCall: {
-                            callId: pending.callId,
-                            name: pending.name,
-                            arguments: parsedArgs,
-                          },
-                        })}\n\n`
-                      )
-                    )
-                  } catch {
-                    console.error('[euclid-chat-api] failed to parse function args:', finalArgs)
-                  }
-                  pendingCalls.delete(key)
-                }
-              }
-              // Response completed — record usage
-              else if (event.type === 'response.completed' && event.response?.usage) {
-                recordOpenAiResponsesStreamUsage(
-                  {
-                    input_tokens: event.response.usage.input_tokens,
-                    output_tokens: event.response.usage.output_tokens,
-                  },
-                  event.response.model ?? 'gpt-5.2',
-                  { userId, feature: AiFeature.EUCLID_CHAT }
-                )
-              }
-              // Error events
-              else if (event.type === 'error') {
-                const errMsg = event.error?.message || 'An error occurred'
-                const errCode = event.error?.code || 'unknown'
-                console.error('[euclid-chat-api] stream error: %s — %s', errCode, errMsg)
-                const isQuota = /quota/i.test(errCode)
-                const userMessage = isQuota
-                  ? `${config.definition.displayName} is unavailable right now. Try again later.`
-                  : `Something went wrong. Try again later.`
-                controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ error: userMessage })}\n\n`)
-                )
-              }
-            } catch {
-              // Skip malformed JSON lines
+              send(controller, {
+                toolCall: {
+                  callId: `call_${crypto.randomUUID()}`,
+                  name: call.name,
+                  arguments: args,
+                },
+              })
             }
           }
         }
       } catch (err) {
-        console.error('[euclid-chat] Stream error:', err)
+        console.error('[euclid-chat-api] LLM error:', err)
+        const limited = /\b429\b|rate.?limit|usage limit/i.test(String(err))
+        if (!cancelled) {
+          send(controller, {
+            error: limited
+              ? `${teacherName} is unavailable right now. Try again later.`
+              : 'Something went wrong. Try again later.',
+          })
+        }
       } finally {
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-        controller.close()
+        if (!cancelled) {
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+          controller.close()
+        }
       }
+    },
+    cancel() {
+      // The student closed the chat or sent another message: end the run.
+      cancelled = true
+      abort.abort()
     },
   })
 

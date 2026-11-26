@@ -7,12 +7,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Mock the helpers module
 const mockRecordLlmClientStreamUsage = vi.fn()
 const mockRecordLlmClientUsage = vi.fn()
-const mockRecordEmbeddingUsage = vi.fn()
 
 vi.mock('../helpers', () => ({
   recordLlmClientStreamUsage: (...args: any[]) => mockRecordLlmClientStreamUsage(...args),
   recordLlmClientUsage: (...args: any[]) => mockRecordLlmClientUsage(...args),
-  recordEmbeddingUsage: (...args: any[]) => mockRecordEmbeddingUsage(...args),
 }))
 
 const { AiFeature } = await import('../features')
@@ -57,6 +55,32 @@ describe('LLM middleware', () => {
         { promptTokens: 100, completionTokens: 50 },
         'openai',
         'gpt-5',
+        context
+      )
+    })
+
+    it('records the provider and model the complete event names', async () => {
+      const mw = middleware.createUsageRecordingMiddleware(context)
+
+      async function* fakeStream(): AsyncGenerator<any, void, unknown> {
+        yield {
+          type: 'complete',
+          data: { ok: true },
+          usage: { promptTokens: 7, completionTokens: 3 },
+          rawResponse: '{"ok":true}',
+          provider: 'claude_code',
+          model: 'claude-abaci',
+        }
+      }
+
+      for await (const _event of mw.wrap(fakeStream())) {
+        // drain
+      }
+
+      expect(mockRecordLlmClientStreamUsage).toHaveBeenCalledWith(
+        { promptTokens: 7, completionTokens: 3 },
+        'claude_code',
+        'claude-abaci',
         context
       )
     })
@@ -111,27 +135,6 @@ describe('LLM middleware', () => {
       )
 
       expect(mockRecordLlmClientUsage).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('trackedEmbed', () => {
-    it('calls llm.embed() and records usage', async () => {
-      const mockResponse = {
-        usage: { promptTokens: 50, totalTokens: 50 },
-        model: 'text-embedding-3-large',
-        embeddings: [[0.1, 0.2]],
-      }
-
-      const mockLlm = {
-        embed: vi.fn().mockResolvedValue(mockResponse),
-      }
-
-      const request = { input: ['test'] } as any
-      const result = await middleware.trackedEmbed(mockLlm as any, request, context)
-
-      expect(result).toBe(mockResponse)
-      expect(mockLlm.embed).toHaveBeenCalledWith(request)
-      expect(mockRecordEmbeddingUsage).toHaveBeenCalledWith(mockResponse, context)
     })
   })
 })

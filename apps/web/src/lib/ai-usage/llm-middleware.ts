@@ -3,7 +3,6 @@
  *
  * - createUsageRecordingMiddleware: StreamMiddleware that auto-records on stream completion
  * - trackedCall: wraps llm.call() with automatic usage recording
- * - trackedEmbed: wraps llm.embed() with automatic usage recording
  *
  * IMPORTANT: This module is transitively imported by client components via
  * llm.ts → worksheet-parsing → PhotoViewerEditor → SummaryClient.
@@ -12,13 +11,11 @@
  */
 
 import type {
-  StreamMiddleware,
-  StreamEvent,
   LLMClient,
   LLMRequest,
   LLMResponse,
-  EmbeddingRequest,
-  EmbeddingResponse,
+  StreamEvent,
+  StreamMiddleware,
 } from '@soroban/llm-client'
 import type { z } from 'zod'
 import type { AiFeatureValue } from './features'
@@ -38,9 +35,9 @@ export interface UsageRecordingContext {
  */
 export function createUsageRecordingMiddleware(
   context: UsageRecordingContext,
-  /** Provider name — passed at construction since stream events don't carry it */
+  /** Provider name, when the complete event doesn't carry one */
   provider?: string,
-  /** Model name — passed at construction since stream events don't carry it */
+  /** Model name, when the complete event doesn't carry one */
   model?: string
 ): StreamMiddleware {
   return {
@@ -50,7 +47,12 @@ export function createUsageRecordingMiddleware(
       for await (const event of stream) {
         if (event.type === 'complete') {
           const { recordLlmClientStreamUsage } = await import('./helpers')
-          recordLlmClientStreamUsage(event.usage, provider ?? 'openai', model ?? 'unknown', context)
+          recordLlmClientStreamUsage(
+            event.usage,
+            event.provider ?? provider ?? 'unknown',
+            event.model ?? model ?? 'unknown',
+            context
+          )
         }
         yield event
       }
@@ -69,19 +71,5 @@ export async function trackedCall<T extends z.ZodType>(
   const response = await llm.call(request)
   const { recordLlmClientUsage } = await import('./helpers')
   recordLlmClientUsage(response, context)
-  return response
-}
-
-/**
- * Call llm.embed() and record usage automatically.
- */
-export async function trackedEmbed(
-  llm: LLMClient,
-  request: EmbeddingRequest,
-  context: UsageRecordingContext
-): Promise<EmbeddingResponse> {
-  const response = await llm.embed(request)
-  const { recordEmbeddingUsage } = await import('./helpers')
-  recordEmbeddingUsage(response, context)
   return response
 }

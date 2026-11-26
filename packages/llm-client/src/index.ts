@@ -45,6 +45,8 @@ export {
 	type PersistenceOptions,
 } from "./middleware/persistence";
 export { AnthropicProvider } from "./providers/anthropic";
+// Providers (for advanced usage / custom providers)
+export { BaseProvider } from "./providers/base";
 export {
 	type ClaudeCliResult,
 	type ClaudeCliRun,
@@ -52,10 +54,7 @@ export {
 	ClaudeCodeProvider,
 	spawnClaudeCli,
 } from "./providers/claude-code";
-// Providers (for advanced usage / custom providers)
-export { BaseProvider } from "./providers/base";
 export { OpenAIProvider } from "./providers/openai";
-export { OpenAIResponsesProvider } from "./providers/openai-responses";
 export type { RetryOptions } from "./retry";
 // Retry utilities (for advanced usage)
 export {
@@ -66,9 +65,6 @@ export {
 } from "./retry";
 // Types
 export type {
-	// Embedding types
-	EmbeddingRequest,
-	EmbeddingResponse,
 	LLMClientConfig,
 	LLMProgress,
 	LLMProvider,
@@ -76,6 +72,7 @@ export type {
 	LLMResponse,
 	// Streaming types
 	LLMStreamRequest,
+	LLMTextStreamRequest,
 	LoggerFn,
 	LoggingConfig,
 	// Logging types
@@ -83,12 +80,15 @@ export type {
 	ProviderConfig,
 	ProviderRequest,
 	ProviderResponse,
+	ProviderStreamEvent,
 	ReasoningConfig,
 	ReasoningEffort,
+	RequestPriority,
 	StreamEvent,
 	StreamEventComplete,
 	StreamEventError,
 	StreamEventOutputDelta,
+	StreamEventOutputReset,
 	StreamEventReasoning,
 	StreamEventStarted,
 	ValidationFeedback,
@@ -97,6 +97,7 @@ export type {
 // Errors
 export {
 	defaultLogger,
+	LLMAbortedError,
 	LLMApiError,
 	LLMContentFilterError,
 	LLMJsonParseError,

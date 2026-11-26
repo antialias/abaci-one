@@ -685,6 +685,7 @@ function getEventColor(eventType: string): string {
     case 'reasoning':
       return '#9c27b0'
     case 'output_delta':
+    case 'output_reset':
       return '#ff9800'
     case 'problem_start':
       return '#00bcd4'

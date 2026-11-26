@@ -78,3 +78,6 @@ __pycache__/
 *.pyc
 e2e/.auth/
 data/generated-images/
+
+# embedding model weights (scripts/fetch-embedding-model.mjs; baked into the image)
+/models/

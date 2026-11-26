@@ -5,29 +5,29 @@
  * admin panel shows exactly the same prompts as runtime.
  */
 
-import {
-  EUCLID_CHARACTER,
-  EUCLID_TEACHING_STYLE,
-  EUCLID_WHAT_NOT_TO_DO,
-  EUCLID_POINT_LABELING,
-  EUCLID_DIAGRAM_QUESTION,
-} from '@/components/toys/euclid/euclidCharacter'
-import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
 import { PROPOSITION_SUMMARIES } from '@/components/toys/euclid/agent/euclidReferenceContext'
 import { TOOL_HANG_UP, TOOL_HIGHLIGHT, TOOL_THINK_HARD } from '@/components/toys/euclid/agent/tools'
-import { euclidConfig } from '@/components/toys/euclid/characters/euclidConfig'
 import type { GeometryModeContext } from '@/components/toys/euclid/agent/types'
-import { splitPromptByKnownBlocks, type KnownBlock, type PromptBreakdown } from '../promptBreakdown'
+import { euclidConfig } from '@/components/toys/euclid/characters/euclidConfig'
+import {
+  EUCLID_CHARACTER,
+  EUCLID_DIAGRAM_QUESTION,
+  EUCLID_POINT_LABELING,
+  EUCLID_TEACHING_STYLE,
+  EUCLID_WHAT_NOT_TO_DO,
+} from '@/components/toys/euclid/euclidCharacter'
+import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
 import {
   getVariantSuffix,
   type ProfileSize,
-  type ProfileTheme,
   type ProfileState,
+  type ProfileTheme,
 } from '../../profile-variants'
+import { type KnownBlock, type PromptBreakdown, splitPromptByKnownBlocks } from '../promptBreakdown'
 import type {
-  CharacterSummary,
   CharacterData,
   CharacterDataProvider,
+  CharacterSummary,
   ProfileVariantPath,
 } from './index'
 
@@ -285,7 +285,7 @@ export const euclidProvider: CharacterDataProvider = {
           prompt: chatPrompt,
           promptBreakdown: buildChatBreakdown(chatPrompt),
           sourceFile: 'src/app/api/realtime/euclid/chat/route.ts',
-          api: 'gpt-5.2 Responses API',
+          api: 'claude_code (claude -p) via the switch proxy',
         },
       },
 
