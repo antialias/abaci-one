@@ -1,4 +1,4 @@
-# Session architecture: plan of record (2026-11-26, rev. 3)
+# Session architecture: plan of record (2026-11-26, rev. 4: owner decisions)
 
 Companion to [findings.md](./findings.md), which holds the owner's decisions and the fact base. This document settles the target model, the contracts and the phases. Paths are under `apps/web/src/`; `L/` means the ledger checkout (`~/projects/soroban-abacus-flashcards-practice/apps/web/src/`). Every code claim was re-read in the worktree at `6423f579b`. Section 10 records the adversarial review and what changed.
 
@@ -38,7 +38,7 @@ Position = `flowState` (the segment's phase) + `currentPartIndex` (the part bein
 | `BREAK_FINISHED { reason, results }` | `break_active \| break_pending` | `break_results` or `practicing`; fills `breaks[n]` | client |
 | `BREAK_RESULTS_ACKED` | `break_results` | `practicing`; **keeps** `breaks[n]` | client |
 | `WORKSHEET_APPROVED { tries }` / `WORKSHEET_UNAPPROVED { tryIds }` | any | appends / voids tries; `completed` ↔ `in_progress` with `completedAt` set / cleared together | adult (§3.3) |
-| `SESSION_PAUSED` / `SESSION_RESUMED` | live | appends to `pauses[]` (only if §8 Q5 is approved) | adult |
+| `SESSION_PAUSED` / `SESSION_RESUMED` | live | appends to `pauses[]` (§8 Q5, decided) | adult |
 | `SESSION_ENDED_EARLY { reason }` | any live | `completed`; adjustment appended | adult |
 | `SESSION_ABANDONED` | any live | `abandoned` | client / adult / auto-abandon |
 
@@ -115,7 +115,7 @@ type SessionPart = { kind: 'arithmetic'; partNumber: number; type; format; useAb
 ### 3.3 Every writer of `session_plans`
 Every row below marked CAS goes through `withRowCas`: `recordTry`, `applySessionFlowEvent` (the `expectedFlowVersion` check runs inside `fn`), `applySlotResultReview`/`updateSessionPlanResults`, worksheet approve/unapprove, remote camera, pauses. One helper, one retry policy, one error.
 
-**Client on 503 `write_contention`** (after an optimistic advance): retry the **same `tryId`** (idempotent) with bounded backoff mirroring the helper's policy (3 attempts); then refetch `sessionPlanKeys.active` and re-render from the server plan; never an error toast; the serialized answer queue in `ActiveSession` holds the next try until the retried one resolves; no polling or sleeps beyond that bounded backoff.
+**Client on 503 `write_contention`** (after an optimistic advance): resend the **same `tryId`** (idempotent) once, immediately, with no timer (§8 Q11; the server already retried its CAS 3 times); then refetch `sessionPlanKeys.active` and re-render from the server plan; never an error toast; the serialized answer queue in `ActiveSession` holds the next try until the retried one resolves; no polling, timers or sleeps.
 | Writer | Treatment |
 |---|---|
 | `recordSlotResult` / `recordRedoResult` → `recordTry` | machine (`TRY_RECORDED`), CAS |
@@ -124,7 +124,7 @@ Every row below marked CAS goes through `withRowCas`: `recordTry`, `applySession
 | `attachments/[id]/approve/route.ts:129-139` | machine `WORKSHEET_APPROVED` (today writes `results`, `status`, `completedAt` directly) |
 | `attachments/[id]/unapprove/route.ts:76-84` | machine `WORKSHEET_UNAPPROVED { tryIds }`: marks those tries `voided: true` instead of slicing the array (today slices the tail, `:76`, and leaves `completedAt` set with `status: in_progress`, which §3.2 would read as abandoned; the event clears it). From 3a on, `results` is append-only |
 | `updateSessionPlanResults` (adult review, `:1928-1965`), `applySlotResultReview` | not a flow change; CAS on `rowVersion`; bumps `rowVersion` so the pushed report updates |
-| `updateSessionPlanRemoteCamera` (`:1971`), pause writes if Q5 | CAS on `rowVersion` |
+| `updateSessionPlanRemoteCamera` (`:1971`), pause writes (Q5) | CAS on `rowVersion` |
 | `offline-sessions/route.ts:181-196`, `lib/seed/create-student.ts:257-279`, `progress-manager.ts:339` sentinel insert | inserts, exempt; must produce rows `normalizePlan` accepts (fixture-tested) |
 | `app/api/debug/practice-session/route.ts:200` (rewrites `parts`) | dev-only; CAS |
 
@@ -175,7 +175,7 @@ Migration targets (today's formulas verified; file lists are the owning packages
 
 | Phase | Migration (via `/db-migrate`) | Columns |
 |---|---|---|
-| 3a | `add_session_plans_row_version_breaks_part_states` | `row_version integer not null default 0`; `breaks` JSON not null default `'[]'`; `part_states` JSON not null default `'{}'`; `pauses` JSON default `'[]'` only if Q5 |
+| 3a | `add_session_plans_row_version_breaks_part_states` | `row_version integer not null default 0`; `breaks` JSON not null default `'[]'`; `part_states` JSON not null default `'{}'`; `pauses` JSON not null default `'[]'` (Q5) |
 | 6 | `drop_session_plans_legacy_position_and_break_columns` | drop `break_started_at`, `break_reason`, `break_selected_game`, `break_results`, `current_slot_index`, `retry_state` |
 
 JSON: `SlotResult` + `tryId? kind? round? practiceOnly? partIndex?` (Phase 1); `SessionPart` discriminated on `kind` (Phase 2, absent = `arithmetic`); `breaks`, `partStates` (3a).
@@ -209,9 +209,15 @@ Each phase is one squashable PR; old clients keep working; a rollback of one rel
 
 ### Phase 1 — Try record, weights, practiceOnly (no schema)
 - **Scope.** `Try` fields on `SlotResult`; `normalizeTry` with the legacy item resolution (§2); `weightOfTry`; idempotent record by `tryId` (the fix PR's exact-match resubmit rule becomes the fallback when `tryId` is absent); `resolveCurrentItem` is the expectation check and `SlotResultMismatchError`/`SLOT_MISMATCH` the 409 (the plan's `unexpected_item` is that code); `settlePosition` is the advance step `recordTry` keeps calling until Phase 3a moves it into the machine; every do-over recorded, `practiceOnly` stamped and skipped by every reader in §1.2; review by `tryId`.
-- **Packages.** (a) server: `db/schema/session-plans.ts`, new `db/schema/session-plan-normalize.ts`, new `lib/curriculum/try-weight.ts`, `lib/curriculum/session-planner.ts` (`recordSlotResult`, `recordRedoResult`), `lib/curriculum/bkt/{compute-bkt,evidence-query}.ts`, `lib/curriculum/skill-readiness.ts`, `lib/curriculum/linear-gate.ts`, `lib/session-song/extract-session-stats.ts` (streak skip). (b) client: `components/practice/ActiveSession.tsx` (send `tryId`, record every do-over), `hooks/useSessionPlan.ts`. (c) review: `lib/curriculum/session-review.ts`, new `app/api/…/plans/[planId]/tries/[tryId]/route.ts`, `…/results/[resultIndex]/route.ts`, `app/api/…/plans/[planId]/route.ts` (actions).
+- **Packages.** (a) server: `db/schema/session-plans.ts`, new `db/schema/session-plan-normalize.ts`, new `lib/curriculum/try-weight.ts`, `lib/curriculum/session-planner.ts` (`recordSlotResult`, `recordRedoResult`), `lib/curriculum/bkt/{compute-bkt,evidence-query}.ts`, `lib/curriculum/skill-readiness.ts`, `lib/curriculum/linear-gate.ts`, `lib/session-song/extract-session-stats.ts` (streak skip). (b) client: `components/practice/ActiveSession.tsx` (send `tryId`, record every do-over; on a network error or 5xx, resend the same `tryId` once, immediately, no timer, then resync as the fix PR does — §8 Q11), `hooks/useSessionPlan.ts`. (c) review: `lib/curriculum/session-review.ts`, new `app/api/…/plans/[planId]/tries/[tryId]/route.ts`, `…/results/[resultIndex]/route.ts`, `app/api/…/plans/[planId]/route.ts` (actions).
 - **Acceptance.** Extend `retry-redo-attribution.test.ts`: duplicate `tryId` no-op; do-over of a correct item stored with `practiceOnly`, weight 0, and BKT/readiness/linear-gate/`recordSkillAttemptsWithHelp` unchanged by it; do-over of a wrong item 0.5 and redeems; `weightOfTry` equals today's `calculateMasteryWeight` on every (kind, round, correct) combination; BKT parity: identical pKnown before/after over a fixture including rows without `masteryWeight`; `normalizeTry` fixtures (§5) including a prod-shaped row whose `slotId` names the previous slot, resolved to the slot `slotIndex` names, and two such rows that share a lagged `slotId` yet resolve to different items; review by `tryId` and by legacy index reach the same row.
 - **Risks.** BKT parity (tested). **Owner hand test.** Wrong → dot → correct do-over → retry round skips it; correct problem redone → score unchanged; double submit.
+
+### Phase 1w — Wrong tries carry evidence (owner-approved change, §8 Q10)
+- **Scope.** `weightOfTry` gives a wrong try a non-zero weight (starting point: 1/2^round, so BKT's slip update applies) instead of 0. Lands after Phase 1, as its own PR, never folded into a parity PR. The PR also settles forward-only (stamp new rows only) vs retroactive (BKT and the ledger fold re-derive the weight of wrong rows at read time), and shows both in the re-baseline.
+- **Packages.** `lib/curriculum/try-weight.ts`, the Phase 1 parity test's expected values, and, if retroactive, `bkt/compute-bkt.ts` + `bkt/evidence-query.ts` + the ledger fold note in §6.
+- **Acceptance.** A re-baseline over every seeded profile (`lib/seed/profiles.ts`): per profile and skill, pKnown, classification, readiness and linear-gate verdict before and after, as a table in the PR. **The owner reviews that table before merge.**
+- **Risks.** Every kid's mastery numbers move; the comparison is the gate.
 
 ### Phase 2 — Part-kind contract, arithmetic extracted (behaviour-identical)
 - **Scope.** `PartKind`, registry, `arithmeticKind` absorbing `getCurrentProblemInfo`, `isInRetryEpoch`, `initRetryState`, `needsRetryTransition`, `calculateTotalProblemsWithRetries` and `recordSlotResult`'s advance block (`:1469-1526`); `SessionPart.kind`; `bktMode` replaces `evidence-query.ts:98`'s default; `isPlayable` replaces the auto-abandon test (`:1102-1110`). Position still written the legacy way.
@@ -243,7 +249,7 @@ Each phase is one squashable PR; old clients keep working; a rollback of one rel
 - **Acceptance.** The findings' 10/3-wrong/5-min-break fixture → problems 10, tries 13, first-try 70 %, fixed 3, final 100 %, active = Σ effective, wall = end − start, one 5-min break; abandoned fixture → `abandoned`, wall from last activity; excluded first try drops the item from denominators; `mark_correct` flips `firstTryCorrect`; sentinel/offline fixtures build; two writes → strictly increasing `rowVersion` pushes; revoked token serves an ended report and refuses a live one.
 
 ### Phases 4b–4e — One PR per view group (parallel, disjoint files per §4 table)
-4b summary + paused modal; 4c share link + OG + live observer + teacher observe; 4d dashboard list, active cards, classroom/parent active sessions (poll removed if Q8 approved), MCP; 4e song + share. Each: snapshot test rendering from the shared report fixture so every screen shows the same numbers; `useSessionHistory` invalidated on `session-ended` (4d). **Owner hand test (after all):** share link, observer, dashboard, summary and `get_practice_sessions` for one session show identical numbers.
+4b summary + paused modal; 4c share link + OG + live observer + teacher observe; 4d dashboard list, active cards, classroom/parent active sessions (the 15 s poll `useClassroom.ts:668` removed, Q8; the 30 s presence poll stays), MCP; 4e song + share. Each: snapshot test rendering from the shared report fixture so every screen shows the same numbers; `useSessionHistory` invalidated on `session-ended` (4d). **Owner hand test (after all):** share link, observer, dashboard, summary and `get_practice_sessions` for one session show identical numbers.
 
 ### Phase 5 — Flip reads to the new columns; remove position copies
 - **Scope.** Readers switch to `partStates`/`breaks` (legacy fallback for in-flight rows); still dual-writing. Client copies in §3.4 removed; do-over sends `itemId`; `PartTransitionEvent` carries `{ kind, label }`; `PartTransitionScreen` asks the kind; `useSessionSongTrigger` reads `report.position`; structural slot readers moved onto the report or the kind's UI.
@@ -255,18 +261,21 @@ Each phase is one squashable PR; old clients keep working; a rollback of one rel
 - **Scope.** (a) Readers of `isRetry/epochNumber/isManualRedo/originalSlotIndex` move to `normalizeTry().kind/round`: `skill-readiness.ts:78`, `linear-gate.ts:89-90`, `components/practice/AttemptHistoryPanel.tsx:42-123`, `BrowseModeView.tsx:121-171`, `bkt/evidence-query.ts`, and the ledger's backfill/review/parity (`L/ledger/parity.ts:323-324`) in the rebase. (b) Stop legacy writes, migration dropping six columns, delete `results/[resultIndex]`, `record_redo`, re-export shims.
 - **Acceptance.** New rows (no legacy fields) read identically through every reader in (a); normalizer fixtures; BKT parity; ledger backfill keys legacy rows identically. **Risk.** Irreversible.
 
-## 8. Open questions for the owner
+## 8. Owner decisions (2026-11-26)
 
-1. **Denominators for unfinished sessions:** accuracy over attempted, progress "of planned". *Recommend yes.*
-2. **"Active time" headline**, breaks and pauses excluded and shown separately. *Recommend confirm.*
-3. **Push payload:** full report vs version ping + refetch. *Recommend full report*; token observers then need no extra auth path.
-4. **Song share / OG numbers:** live from the report (lyrics stay frozen, built mid-session) or frozen with the song. *Recommend live.*
-5. **Pauses:** the columns exist (`session-plans.ts:638-648`) but nothing writes them; pause is socket-only (`PracticeClient.tsx:104`). Logging means two machine events and a `pauses` column in 3a. *Recommend yes, in 3a*; otherwise `pausedMs` stays 0.
-6. **Do-over of a queued retry redeems it** (today). *Recommend keep.*
-7. **Ended-early = `completed` + `endedEarly`.** *Recommend keep.*
-8. **Existing polls:** `useActiveSessionsInClassroom` 15 s (`hooks/useClassroom.ts:668`) and `useClassroomPresence` 30 s (`:584`). Remove the first in 4d once `session-ended` fires on natural completion; the second is presence, not sessions. *Recommend remove the first; leave the second unless the rule covers it.*
-9. **Phase 6 timing:** after the ledger rebase, since its backfill reads legacy fields. *Recommend after.*
-10. **Wrong answers carry no evidence today**: every wrong try is stamped weight 0 (`calculateMasteryWeight`), and BKT blends by that weight (`compute-bkt.ts:200`), so a wrong answer never lowers pKnown; only the absence of correct ones does. `weightOfTry` reproduces this exactly. Change it (e.g. wrong tries weighted 1/2^round so BKT's slip update applies)? *Recommend yes, as a separate decision with a BKT re-baseline over seeded profiles*; if approved it is one line in `weightOfTry` in Phase 1 plus the parity test's expected values. Not scheduled otherwise.
+The owner answered every question "as recommended" on 2026-11-26. Each line keeps the question and records the decision.
+
+1. **Denominators for unfinished sessions:** accuracy over attempted, progress "of planned". **Decided (as recommended): yes.**
+2. **"Active time" headline**, breaks and pauses excluded and shown separately. **Decided (as recommended): confirm.**
+3. **Push payload:** full report vs version ping + refetch. **Decided (as recommended): full report**; token observers then need no extra auth path.
+4. **Song share / OG numbers:** live from the report (lyrics stay frozen, built mid-session) or frozen with the song. **Decided (as recommended): live.**
+5. **Pauses:** the columns exist (`session-plans.ts:638-648`) but nothing writes them; pause is socket-only (`PracticeClient.tsx:104`). Logging means two machine events and a `pauses` column in 3a. **Decided (as recommended): yes, in 3a**; otherwise `pausedMs` stays 0.
+6. **Do-over of a queued retry redeems it** (today). **Decided (as recommended): keep.**
+7. **Ended-early = `completed` + `endedEarly`.** **Decided (as recommended): keep.**
+8. **Existing polls:** `useActiveSessionsInClassroom` 15 s (`hooks/useClassroom.ts:668`) and `useClassroomPresence` 30 s (`:584`). Remove the first in 4d once `session-ended` fires on natural completion; the second is presence, not sessions. **Decided (as recommended): remove the first; leave the second unless the rule covers it.**
+9. **Phase 6 timing:** after the ledger rebase, since its backfill reads legacy fields. **Decided (as recommended): after.**
+10. **Wrong answers carry no evidence today**: every wrong try is stamped weight 0 (`calculateMasteryWeight`), and BKT blends by that weight (`compute-bkt.ts:200`), so a wrong answer never lowers pKnown; only the absence of correct ones does. `weightOfTry` reproduces this exactly. Change it (e.g. wrong tries weighted 1/2^round so BKT's slip update applies)? **Decided (as recommended): yes, as a separate decision with a BKT re-baseline over seeded profiles**. Scheduled as **Phase 1w**, its own PR after Phase 1; the owner reviews the re-baseline table before merge.
+11. **Resend a failed answer once:** on a network error or 5xx, resend the same try once, immediately, no timer (safe: a repeated submit is a no-op), then resync. **Decided (as recommended): yes, in Phase 1(b);** also the client's 503 handling in §3.3.
 
 ## 9. Findings corrected or sharpened while verifying
 
