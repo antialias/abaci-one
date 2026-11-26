@@ -13,6 +13,17 @@
  * 6. Calculates final metrics comparing BKT to ground truth
  */
 
+// These imports will use the mocked database
+import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
+import { computeBktFromHistory } from '@/lib/curriculum/bkt'
+import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
+import {
+  approveSessionPlan,
+  generateSessionPlan,
+  getRecentSessionResults,
+  recordSlotResult,
+  startSessionPlan,
+} from '@/lib/curriculum/session-planner'
 import type { TestDatabase } from './EphemeralDatabase'
 import type { SeededRandom } from './SeededRandom'
 import type { SimulatedStudent } from './SimulatedStudent'
@@ -25,22 +36,10 @@ import type {
   SkillTrajectory,
 } from './types'
 
-// These imports will use the mocked database
-import { computeBktFromHistory } from '@/lib/curriculum/bkt'
-import {
-  approveSessionPlan,
-  generateSessionPlan,
-  getRecentSessionResults,
-  recordSlotResult,
-  startSessionPlan,
-} from '@/lib/curriculum/session-planner'
-import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
-
 /**
  * Runs a simulated learning journey through multiple sessions.
  */
 export class JourneyRunner {
-  private db: TestDatabase
   private student: SimulatedStudent
   private config: JourneyConfig
   private rng: SeededRandom
@@ -48,13 +47,13 @@ export class JourneyRunner {
   private originalMathRandom: () => number
 
   constructor(
-    db: TestDatabase,
+    // The mocked @/db module serves the ephemeral database; kept for callers
+    _db: TestDatabase,
     student: SimulatedStudent,
     config: JourneyConfig,
     rng: SeededRandom,
     playerId: string
   ) {
-    this.db = db
     this.student = student
     this.config = config
     this.rng = rng
@@ -121,7 +120,7 @@ export class JourneyRunner {
 
     // Approve and start the session
     await approveSessionPlan(plan.id)
-    const startedPlan = await startSessionPlan(plan.id)
+    let currentPlan = await startSessionPlan(plan.id)
 
     // Track skill exposures THIS session (separate from cumulative)
     const sessionExposures = new Map<string, number>()
@@ -129,40 +128,44 @@ export class JourneyRunner {
     let totalProblems = 0
     let sessionFatigue = 0
 
-    // Process all parts and slots
-    for (const part of startedPlan.parts) {
-      for (const slot of part.slots) {
-        if (!slot.problem) continue
+    // Answer whatever the session shows next (original slots, then retry rounds),
+    // the way the practice client does, until the session completes
+    for (
+      let shown = getCurrentProblemInfo(currentPlan);
+      shown;
+      shown = getCurrentProblemInfo(currentPlan)
+    ) {
+      const problem = shown.problem
+      totalProblems++
 
-        totalProblems++
+      // Simulate the student answering this problem
+      // Note: This also increments exposure counts in the student model
+      // and calculates fatigue based on true probabilities BEFORE learning
+      const answer = this.student.answerProblem(problem)
 
-        // Simulate the student answering this problem
-        // Note: This also increments exposure counts in the student model
-        // and calculates fatigue based on true probabilities BEFORE learning
-        const answer = this.student.answerProblem(slot.problem)
+      if (answer.isCorrect) correctCount++
+      sessionFatigue += answer.fatigue
 
-        if (answer.isCorrect) correctCount++
-        sessionFatigue += answer.fatigue
-
-        // Track session-specific skill exposures
-        for (const skillId of answer.skillsChallenged) {
-          sessionExposures.set(skillId, (sessionExposures.get(skillId) ?? 0) + 1)
-        }
-
-        // Record result using real API
-        await recordSlotResult(plan.id, {
-          slotIndex: slot.index,
-          problem: slot.problem,
-          studentAnswer: answer.isCorrect ? slot.problem.answer : slot.problem.answer + 1,
-          isCorrect: answer.isCorrect,
-          responseTimeMs: answer.responseTimeMs,
-          skillsExercised: answer.skillsChallenged,
-          usedOnScreenAbacus: false,
-          hadHelp: answer.hadHelp,
-          incorrectAttempts: answer.isCorrect ? 0 : 1,
-          helpTrigger: answer.hadHelp ? 'manual' : 'none',
-        })
+      // Track session-specific skill exposures
+      for (const skillId of answer.skillsChallenged) {
+        sessionExposures.set(skillId, (sessionExposures.get(skillId) ?? 0) + 1)
       }
+
+      // Record result using real API
+      currentPlan = await recordSlotResult(plan.id, {
+        slotId: shown.slotId,
+        slotIndex: shown.originalSlotIndex,
+        epochNumber: shown.epochNumber,
+        problem,
+        studentAnswer: answer.isCorrect ? problem.answer : problem.answer + 1,
+        isCorrect: answer.isCorrect,
+        responseTimeMs: answer.responseTimeMs,
+        skillsExercised: answer.skillsChallenged,
+        usedOnScreenAbacus: false,
+        hadHelp: answer.hadHelp,
+        incorrectAttempts: answer.isCorrect ? 0 : 1,
+        helpTrigger: answer.hadHelp ? 'manual' : 'none',
+      })
     }
 
     // DEBUG: Check session status after processing all slots

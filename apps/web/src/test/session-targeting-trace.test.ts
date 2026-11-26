@@ -9,23 +9,48 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
+import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
+import type { SessionPlan } from '@/db/schema/session-plans'
+import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
+import {
+  approveSessionPlan,
+  generateSessionPlan,
+  getRecentSessionResults,
+  recordSlotResult,
+  startSessionPlan,
+} from '@/lib/curriculum/session-planner'
 import {
   createEphemeralDatabase,
   createTestStudent,
+  type EphemeralDbResult,
   getCurrentEphemeralDb,
   setCurrentEphemeralDb,
-  type EphemeralDbResult,
 } from './journey-simulator/EphemeralDatabase'
-import { starkContrastProfile, STARK_WEAK_SKILLS } from './journey-simulator/profiles'
+import { starkContrastProfile } from './journey-simulator/profiles'
 import { SeededRandom } from './journey-simulator/SeededRandom'
 import { SimulatedStudent } from './journey-simulator/SimulatedStudent'
-import {
-  generateSessionPlan,
-  approveSessionPlan,
-  recordSlotResult,
-  getRecentSessionResults,
-} from '@/lib/curriculum/session-planner'
-import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
+
+/** Start a plan and answer whatever it shows (originals, then retry rounds) until it completes. */
+async function completeSession(planId: string, student: SimulatedStudent) {
+  await approveSessionPlan(planId)
+  let plan: SessionPlan = await startSessionPlan(planId)
+  for (let shown = getCurrentProblemInfo(plan); shown; shown = getCurrentProblemInfo(plan)) {
+    const answer = student.answerProblem(shown.problem)
+    plan = await recordSlotResult(planId, {
+      slotId: shown.slotId,
+      slotIndex: shown.originalSlotIndex,
+      epochNumber: shown.epochNumber,
+      problem: shown.problem,
+      studentAnswer: answer.isCorrect ? shown.problem.answer : shown.problem.answer + 1,
+      isCorrect: answer.isCorrect,
+      responseTimeMs: answer.responseTimeMs,
+      skillsExercised: answer.skillsChallenged,
+      usedOnScreenAbacus: false,
+      hadHelp: answer.hadHelp,
+      incorrectAttempts: 0,
+    })
+  }
+}
 
 // Mock the @/db module to use our ephemeral database
 vi.mock('@/db', () => ({
@@ -68,7 +93,7 @@ describe('Session Targeting Trace', () => {
     Math.random = rng.createMathRandomMock()
 
     try {
-      console.log('\n' + '='.repeat(80))
+      console.log(`\n${'='.repeat(80)}`)
       console.log('     SESSION TARGETING TRACE')
       console.log('='.repeat(80))
 
@@ -97,24 +122,7 @@ describe('Session Targeting Trace', () => {
       )
 
       // Complete session 1 to build BKT history
-      await approveSessionPlan(plan1.id)
-      for (const part of plan1.parts) {
-        for (const slot of part.slots) {
-          if (!slot.problem) continue
-          const answer = student.answerProblem(slot.problem)
-          await recordSlotResult(plan1.id, {
-            slotIndex: slot.index,
-            problem: slot.problem,
-            studentAnswer: answer.isCorrect ? slot.problem.answer : slot.problem.answer + 1,
-            isCorrect: answer.isCorrect,
-            responseTimeMs: answer.responseTimeMs,
-            skillsExercised: answer.skillsChallenged,
-            usedOnScreenAbacus: false,
-            hadHelp: answer.hadHelp,
-            incorrectAttempts: 0,
-          })
-        }
-      }
+      await completeSession(plan1.id, student)
 
       // Check BKT after session 1
       const history1 = await getRecentSessionResults(playerId, 50)
@@ -188,24 +196,7 @@ describe('Session Targeting Trace', () => {
       })
 
       // Complete session 1
-      await approveSessionPlan(classicPlan1.id)
-      for (const part of classicPlan1.parts) {
-        for (const slot of part.slots) {
-          if (!slot.problem) continue
-          const answer = classicStudent.answerProblem(slot.problem)
-          await recordSlotResult(classicPlan1.id, {
-            slotIndex: slot.index,
-            problem: slot.problem,
-            studentAnswer: answer.isCorrect ? slot.problem.answer : slot.problem.answer + 1,
-            isCorrect: answer.isCorrect,
-            responseTimeMs: answer.responseTimeMs,
-            skillsExercised: answer.skillsChallenged,
-            usedOnScreenAbacus: false,
-            hadHelp: answer.hadHelp,
-            incorrectAttempts: 0,
-          })
-        }
-      }
+      await completeSession(classicPlan1.id, classicStudent)
 
       // Session 2 classic
       const classicPlan2 = await generateSessionPlan({
@@ -250,7 +241,7 @@ describe('Session Targeting Trace', () => {
       )
 
       // Summary
-      console.log('\n' + '='.repeat(80))
+      console.log(`\n${'='.repeat(80)}`)
       console.log('SUMMARY')
       console.log('='.repeat(80))
       console.log(

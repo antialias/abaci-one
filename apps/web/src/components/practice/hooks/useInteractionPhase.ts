@@ -32,6 +32,8 @@ export interface AttemptInput {
   slotIndex: number
   /** Part index in the session */
   partIndex: number
+  /** Retry round of the problem on screen (0 = original slot; absent = 0) */
+  epochNumber?: number
   /** When the attempt started */
   startTime: number
   /** Accumulated time spent paused (ms) - subtract from elapsed time for actual response time */
@@ -175,12 +177,14 @@ export function transformActivePhase(
 export function createAttemptInput(
   problem: GeneratedProblem,
   slotIndex: number,
-  partIndex: number
+  partIndex: number,
+  epochNumber = 0
 ): AttemptInput {
   return {
     problem,
     slotIndex,
     partIndex,
+    epochNumber,
     startTime: Date.now(),
     accumulatedPauseMs: 0,
     accumulatedHiddenMs: 0,
@@ -230,7 +234,9 @@ export function addPauseToActivePhase(
   const bump = (attempt: AttemptInput): AttemptInput => ({
     ...attempt,
     accumulatedPauseMs: attempt.accumulatedPauseMs + ms,
-    accumulatedHiddenMs: opts.hidden ? attempt.accumulatedHiddenMs + ms : attempt.accumulatedHiddenMs,
+    accumulatedHiddenMs: opts.hidden
+      ? attempt.accumulatedHiddenMs + ms
+      : attempt.accumulatedHiddenMs,
   })
   switch (active.phase) {
     case 'inputting':
@@ -422,6 +428,8 @@ export interface InitialProblemData {
   problem: GeneratedProblem
   slotIndex: number
   partIndex: number
+  /** Retry round (0 = original slot; absent = 0) */
+  epochNumber?: number
 }
 
 /**
@@ -433,6 +441,8 @@ export interface ActiveProblem {
   problem: GeneratedProblem
   slotIndex: number
   partIndex: number
+  /** Retry round (0 = original slot; absent = 0) */
+  epochNumber?: number
   /** Stable identifier for this problem instance - changes when the problem changes */
   key: string
 }
@@ -527,7 +537,8 @@ export interface UseInteractionPhaseReturn {
   startTransition: (
     nextProblem: GeneratedProblem,
     nextSlotIndex: number,
-    nextPartIndex?: number
+    nextPartIndex?: number,
+    nextEpochNumber?: number
   ) => void
   /** Complete transition (transitioning → inputting) */
   completeTransition: () => void
@@ -555,7 +566,8 @@ export function useInteractionPhase(
       const attempt = createAttemptInput(
         initialProblem.problem,
         initialProblem.slotIndex,
-        initialProblem.partIndex
+        initialProblem.partIndex,
+        initialProblem.epochNumber
       )
       return { phase: 'inputting', attempt }
     }
@@ -698,7 +710,7 @@ export function useInteractionPhase(
   }, [phase])
 
   const canSubmit = useMemo(() => {
-    if (!attempt || !attempt.userAnswer) return false
+    if (!attempt?.userAnswer) return false
     const answerNum = parseInt(attempt.userAnswer, 10)
     return !Number.isNaN(answerNum)
   }, [attempt])
@@ -706,7 +718,7 @@ export function useInteractionPhase(
   const shouldAutoSubmit = useMemo(() => {
     // Don't auto-submit in awaitingDisambiguation - the input might be a prefix sum
     if (phase.phase !== 'inputting' && phase.phase !== 'helpMode') return false
-    if (!attempt || !attempt.userAnswer) return false
+    if (!attempt?.userAnswer) return false
     if (attempt.correctionCount > MANUAL_SUBMIT_THRESHOLD) return false
 
     const answerNum = parseInt(attempt.userAnswer, 10)
@@ -810,7 +822,8 @@ export function useInteractionPhase(
       const newAttempt = createAttemptInput(
         activeProblem.problem,
         activeProblem.slotIndex,
-        activeProblem.partIndex
+        activeProblem.partIndex,
+        activeProblem.epochNumber
       )
       setPhase({ phase: 'inputting', attempt: newAttempt })
       prevActiveProblemKeyRef.current = currentKey
@@ -837,7 +850,8 @@ export function useInteractionPhase(
       const newAttempt = createAttemptInput(
         activeProblem.problem,
         activeProblem.slotIndex,
-        activeProblem.partIndex
+        activeProblem.partIndex,
+        activeProblem.epochNumber
       )
       setPhase({ phase: 'inputting', attempt: newAttempt })
       prevActiveProblemKeyRef.current = currentKey
@@ -1087,7 +1101,12 @@ export function useInteractionPhase(
   }, [])
 
   const startTransition = useCallback(
-    (nextProblem: GeneratedProblem, nextSlotIndex: number, nextPartIndex?: number) => {
+    (
+      nextProblem: GeneratedProblem,
+      nextSlotIndex: number,
+      nextPartIndex?: number,
+      nextEpochNumber?: number
+    ) => {
       setPhase((prev) => {
         if (prev.phase !== 'showingFeedback') return prev
 
@@ -1100,7 +1119,12 @@ export function useInteractionPhase(
         }
 
         const incomingPartIndex = nextPartIndex ?? prev.attempt.partIndex
-        const incoming = createAttemptInput(nextProblem, nextSlotIndex, incomingPartIndex)
+        const incoming = createAttemptInput(
+          nextProblem,
+          nextSlotIndex,
+          incomingPartIndex,
+          nextEpochNumber
+        )
 
         return { phase: 'transitioning', outgoing, incoming }
       })

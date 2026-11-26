@@ -5,6 +5,7 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GeneratedProblem } from '@/db/schema/session-plans'
 import {
+  type ActivePhase,
   addPauseToActivePhase,
   computeHelpContext,
   computePrefixSums,
@@ -15,7 +16,6 @@ import {
   isDigitConsistent,
   MANUAL_SUBMIT_THRESHOLD,
   useInteractionPhase,
-  type ActivePhase,
 } from '../useInteractionPhase'
 
 // =============================================================================
@@ -593,9 +593,7 @@ describe('useInteractionPhase', () => {
     // answer is never wiped. The student just types the final answer.
 
     it('accepts a digit that vertical mode would reject', () => {
-      const { result } = renderHook(() =>
-        useInteractionPhase({ disableAbacusScaffolding: true })
-      )
+      const { result } = renderHook(() => useInteractionPhase({ disableAbacusScaffolding: true }))
 
       act(() => {
         result.current.loadProblem(twoDigitProblem, 0, 0) // [15, 27], sums [15, 42]
@@ -616,9 +614,7 @@ describe('useInteractionPhase', () => {
     })
 
     it('never enters awaitingDisambiguation/helpMode on an intermediate prefix sum', () => {
-      const { result } = renderHook(() =>
-        useInteractionPhase({ disableAbacusScaffolding: true })
-      )
+      const { result } = renderHook(() => useInteractionPhase({ disableAbacusScaffolding: true }))
 
       act(() => {
         result.current.loadProblem(twoDigitProblem, 0, 0) // sums [15, 42]
@@ -639,9 +635,7 @@ describe('useInteractionPhase', () => {
     })
 
     it('makes enterHelpMode a no-op that preserves the typed answer', () => {
-      const { result } = renderHook(() =>
-        useInteractionPhase({ disableAbacusScaffolding: true })
-      )
+      const { result } = renderHook(() => useInteractionPhase({ disableAbacusScaffolding: true }))
 
       act(() => {
         result.current.loadProblem(twoDigitProblem, 0, 0)
@@ -665,9 +659,7 @@ describe('useInteractionPhase', () => {
     })
 
     it('still auto-submits when the typed answer is correct', () => {
-      const { result } = renderHook(() =>
-        useInteractionPhase({ disableAbacusScaffolding: true })
-      )
+      const { result } = renderHook(() => useInteractionPhase({ disableAbacusScaffolding: true }))
 
       act(() => {
         result.current.loadProblem(twoDigitProblem, 0, 0) // answer 42
@@ -682,9 +674,7 @@ describe('useInteractionPhase', () => {
     })
 
     it('leaves rejection/help behavior intact when the flag is off (control)', () => {
-      const { result } = renderHook(() =>
-        useInteractionPhase({ disableAbacusScaffolding: false })
-      )
+      const { result } = renderHook(() => useInteractionPhase({ disableAbacusScaffolding: false }))
 
       act(() => {
         result.current.loadProblem(simpleProblem, 0, 0) // sums [3, 7, 12]
@@ -1017,6 +1007,7 @@ describe('useInteractionPhase', () => {
 
       expect(result.current.phase.phase).toBe('transitioning')
       if (result.current.phase.phase === 'transitioning') {
+        expect(result.current.phase.incoming.epochNumber).toBe(0)
         expect(result.current.phase.outgoing.userAnswer).toBe('12')
         expect(result.current.phase.outgoing.result).toBe('correct')
         expect(result.current.phase.incoming.problem).toBe(nextProblem)
@@ -1084,6 +1075,32 @@ describe('useInteractionPhase', () => {
       })
 
       expect(result.current.phase.phase).toBe('loading')
+    })
+
+    it('re-shows the active problem when its key is unchanged (resync after a failed write)', () => {
+      const activeProblem = {
+        problem: simpleProblem,
+        slotIndex: 2,
+        partIndex: 0,
+        epochNumber: 1,
+        key: 'normal-0-2-1',
+      }
+      const { result } = renderHook(() =>
+        useInteractionPhase({ initialProblem: activeProblem, activeProblem })
+      )
+      act(() => {
+        result.current.handleDigit('1')
+      })
+      expect(result.current.attempt?.userAnswer).toBe('1')
+
+      act(() => {
+        result.current.clearToLoading()
+      })
+
+      expect(result.current.phase.phase).toBe('inputting')
+      expect(result.current.attempt?.problem).toBe(simpleProblem)
+      expect(result.current.attempt?.userAnswer).toBe('')
+      expect(result.current.attempt?.epochNumber).toBe(1)
     })
   })
 

@@ -46,59 +46,57 @@ export {
   recordSkillAttempts,
   upsertPlayerCurriculum,
 } from './progress-manager'
-
-// Session planning
-export {
-  ActiveSessionExistsError,
-  NoEligiblePartsError,
-  NoSkillsEnabledError,
-  applySessionFlowEvent,
-  abandonSessionPlan,
-  acknowledgeGameBreakResults,
-  approveSessionPlan,
-  completePartTransition,
-  completeSessionPlanEarly,
-  type EnabledParts,
-  type GenerateSessionPlanOptions,
-  generateSessionPlan,
-  getActiveSessionPlan,
-  getSessionPlan,
-  type RedoContext,
-  recordRedoResult,
-  recordSlotResult,
-  finishGameBreak,
-  StaleFlowVersionError,
-  startSessionPlan,
-  updateSessionPlanRemoteCamera,
-  updateSessionPlanResults,
-} from './session-planner'
-
-// Session review & repair (#158)
-export {
-  applySlotResultReview,
-  computeReviewedResult,
-  restoreSessionPlan,
-  SessionReviewError,
-  SET_TIME_MAX_MS,
-  SET_TIME_MIN_MS,
-  type ApplySlotResultReviewParams,
-  type SlotResultReviewAction,
-  type SlotResultReviewActionName,
-  type SlotReviewScope,
-  softDeleteSessionPlan,
-} from './session-review'
-
 // Session mode - unified session state computation
 export {
+  type BlockedPromotion,
   getSessionMode,
   getWeakSkillIds,
   isMaintenanceMode,
   isProgressionMode,
   isRemediationMode,
-  type BlockedPromotion,
   type MaintenanceMode,
   type ProgressionMode,
   type RemediationMode,
   type SessionMode,
   type SkillInfo,
 } from './session-mode'
+// Session planning
+export {
+  ActiveSessionExistsError,
+  abandonSessionPlan,
+  acknowledgeGameBreakResults,
+  applySessionFlowEvent,
+  approveSessionPlan,
+  completePartTransition,
+  completeSessionPlanEarly,
+  type EnabledParts,
+  finishGameBreak,
+  type GenerateSessionPlanOptions,
+  generateSessionPlan,
+  getActiveSessionPlan,
+  getSessionPlan,
+  NoEligiblePartsError,
+  NoSkillsEnabledError,
+  type RedoContext,
+  recordRedoResult,
+  recordSlotResult,
+  SlotResultMismatchError,
+  StaleFlowVersionError,
+  startSessionPlan,
+  updateSessionPlanRemoteCamera,
+  updateSessionPlanResults,
+} from './session-planner'
+// Session review & repair (#158)
+export {
+  type ApplySlotResultReviewParams,
+  applySlotResultReview,
+  computeReviewedResult,
+  restoreSessionPlan,
+  SET_TIME_MAX_MS,
+  SET_TIME_MIN_MS,
+  SessionReviewError,
+  type SlotResultReviewAction,
+  type SlotResultReviewActionName,
+  type SlotReviewScope,
+  softDeleteSessionPlan,
+} from './session-review'

@@ -22,9 +22,9 @@ import type {
   GameBreakSettings,
   GeneratedProblem,
   PartRetryState,
+  ProblemSlot,
   SessionHealth,
   SessionPlan,
-  SessionRetryState,
 } from './session-plans'
 
 // ============================================================================
@@ -186,10 +186,71 @@ export function calculateMasteryWeight(isCorrect: boolean, epochNumber: number):
 /**
  * Check if we're currently in a retry epoch for the given part
  */
-export function isInRetryEpoch(plan: SessionPlan, partIndex: number): boolean {
+export function isInRetryEpoch(plan: Pick<SessionPlan, 'retryState'>, partIndex: number): boolean {
   const retryState = plan.retryState?.[partIndex]
   if (!retryState) return false
   return retryState.currentEpochItems.length > 0 && retryState.currentEpoch > 0
+}
+
+/** The item the student is on: an original slot, or an item of the running retry round. */
+export interface CurrentPlanItem {
+  partIndex: number
+  slotId: string
+  originalSlotIndex: number
+  /** 0 for the original slot, 1+ for a retry round */
+  epochNumber: number
+  /** Index into the round's currentEpochItems; null for an original slot */
+  retryIndex: number | null
+  problem: GeneratedProblem | undefined
+  purpose: ProblemSlot['purpose']
+}
+
+/**
+ * The one place that decides which item the student is on. Retry-round items
+ * redeemed by a do-over are skipped. Null when the position has nothing to
+ * show: the session is past its last part, or the current retry round has no
+ * unredeemed item left.
+ *
+ * The client shows this (getCurrentProblemInfo) and the server attributes each
+ * try to it (recordSlotResult). Never fork it.
+ */
+export function resolveCurrentItem(
+  plan: Pick<SessionPlan, 'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState'>
+): CurrentPlanItem | null {
+  const partIndex = plan.currentPartIndex
+  const part = plan.parts[partIndex]
+  if (!part) return null
+
+  const retryState = plan.retryState?.[partIndex]
+  if (retryState && isInRetryEpoch(plan, partIndex)) {
+    const items = retryState.currentEpochItems
+    for (let retryIndex = retryState.currentRetryIndex; retryIndex < items.length; retryIndex++) {
+      const item = items[retryIndex]
+      if (retryState.redeemedSlots?.includes(item.originalSlotIndex)) continue
+      return {
+        partIndex,
+        slotId: item.slotId,
+        originalSlotIndex: item.originalSlotIndex,
+        epochNumber: item.epochNumber,
+        retryIndex,
+        problem: item.problem,
+        purpose: item.originalPurpose,
+      }
+    }
+    return null
+  }
+
+  const slot = part.slots[plan.currentSlotIndex]
+  if (!slot) return null
+  return {
+    partIndex,
+    slotId: slot.slotId,
+    originalSlotIndex: plan.currentSlotIndex,
+    epochNumber: 0,
+    retryIndex: null,
+    problem: slot.problem,
+    purpose: slot.purpose,
+  }
 }
 
 /**
@@ -204,46 +265,16 @@ export function getCurrentProblemInfo(plan: SessionPlan): {
   purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
   partNumber: 1 | 2 | 3
 } | null {
-  const partIndex = plan.currentPartIndex
-  if (partIndex >= plan.parts.length) return null
-
-  const part = plan.parts[partIndex]
-  const retryState = plan.retryState?.[partIndex]
-
-  if (retryState && retryState.currentEpochItems.length > 0 && retryState.currentEpoch > 0) {
-    let itemIndex = retryState.currentRetryIndex
-    while (itemIndex < retryState.currentEpochItems.length) {
-      const item = retryState.currentEpochItems[itemIndex]
-      if (retryState.redeemedSlots?.includes(item.originalSlotIndex)) {
-        itemIndex++
-        continue
-      }
-      return {
-        problem: item.problem,
-        isRetry: true,
-        epochNumber: item.epochNumber,
-        originalSlotIndex: item.originalSlotIndex,
-        slotId: item.slotId,
-        purpose: item.originalPurpose,
-        partNumber: part.partNumber,
-      }
-    }
-    return null
-  }
-
-  if (plan.currentSlotIndex >= part.slots.length) return null
-
-  const slot = part.slots[plan.currentSlotIndex]
-  if (!slot.problem) return null
-
+  const current = resolveCurrentItem(plan)
+  if (!current?.problem) return null
   return {
-    problem: slot.problem,
-    isRetry: false,
-    epochNumber: 0,
-    originalSlotIndex: plan.currentSlotIndex,
-    slotId: slot.slotId,
-    purpose: slot.purpose,
-    partNumber: part.partNumber,
+    problem: current.problem,
+    isRetry: current.retryIndex !== null,
+    epochNumber: current.epochNumber,
+    originalSlotIndex: current.originalSlotIndex,
+    slotId: current.slotId,
+    purpose: current.purpose,
+    partNumber: plan.parts[current.partIndex].partNumber,
   }
 }
 
