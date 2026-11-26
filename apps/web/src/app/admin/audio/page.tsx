@@ -884,20 +884,36 @@ export default function AdminAudioPage() {
                                 }))
                                 .filter((g) => g.modelGroups.length > 0)
 
+                              const voicesError = elevenLabsVoicesError ? (
+                                <DropdownMenu.Label
+                                  data-element="elevenlabs-voices-error"
+                                  className={css({
+                                    padding: '8px 12px',
+                                    color: '#f85149',
+                                    fontSize: '12px',
+                                  })}
+                                >
+                                  ElevenLabs voices unavailable: {elevenLabsVoicesError}
+                                </DropdownMenu.Label>
+                              ) : null
+
                               const hasAnyAvailable =
                                 providerGroups.length > 0 || !hasBrowser || !hasGenerate
                               if (!hasAnyAvailable) {
                                 return (
-                                  <DropdownMenu.Label
-                                    className={css({
-                                      padding: '8px 12px',
-                                      color: '#8b949e',
-                                      fontSize: '13px',
-                                      fontStyle: 'italic',
-                                    })}
-                                  >
-                                    All voices added
-                                  </DropdownMenu.Label>
+                                  <>
+                                    {voicesError}
+                                    <DropdownMenu.Label
+                                      className={css({
+                                        padding: '8px 12px',
+                                        color: '#8b949e',
+                                        fontSize: '13px',
+                                        fontStyle: 'italic',
+                                      })}
+                                    >
+                                      All voices added
+                                    </DropdownMenu.Label>
+                                  </>
                                 )
                               }
 
@@ -1241,7 +1257,12 @@ export default function AdminAudioPage() {
                                 }
                               }
 
-                              return <>{sections}</>
+                              return (
+                                <>
+                                  {voicesError}
+                                  {sections}
+                                </>
+                              )
                             })()}
                           </DropdownMenu.Content>
                         </DropdownMenu.Portal>
@@ -1507,15 +1528,30 @@ export default function AdminAudioPage() {
                           fontSize: '13px',
                         })}
                       >
-                        {elevenLabsVoices.length > 0 && (
-                          <optgroup label="ElevenLabs">
-                            {elevenLabsVoices.map((v) => (
-                              <option key={v.folder} value={v.folder}>
-                                {v.name}
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
+                        {(() => {
+                          // Keep a selected ElevenLabs folder that's missing from the list
+                          // (list failed or voice gone) selected and labelled, so "Generate
+                          // N Missing" never targets a voice other than the one shown.
+                          const options = elevenLabsVoices.map((v) => ({
+                            folder: v.folder,
+                            label: v.name,
+                          }))
+                          if (
+                            isElevenLabsVoice(ccGenVoice) &&
+                            !options.some((o) => o.folder === ccGenVoice)
+                          ) {
+                            options.push({ folder: ccGenVoice, label: voiceLabel(ccGenVoice) })
+                          }
+                          return options.length > 0 ? (
+                            <optgroup label="ElevenLabs">
+                              {options.map((o) => (
+                                <option key={o.folder} value={o.folder}>
+                                  {o.label}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ) : null
+                        })()}
                         {(() => {
                           const retired = Object.keys(status?.voiceClipCounts ?? {}).filter(
                             isRetiredVoice
