@@ -22,11 +22,14 @@ All documentation must be reachable from root README via linked path. Unlinked d
 
 **Never auto-commit.** User must manually test before committing.
 
-**Dev server:** User manages it, NOT Claude Code. Never run `pnpm dev` or `npm start`. **Dev server runs on port 3000** — do not assume 3002 or any other port.
+**Dev server:** User manages it on port 3000, NOT Claude Code. Never run `pnpm dev` (not even as a test server) or `npm start`.
+
+**Test server (agents in their own worktree):** `PORT=30xx pnpm test:server:start` / `pnpm test:server:stop` (`scripts/test-server.sh`) — a production build plus `node server.js`, no watcher, rebuilt only when the app's content changed — editing or running tests doesn't count (it skips Next's type-check; run `tsc` yourself). Any port but 3000. Measured: dev server ~9.6 GB with 25–36 s first compiles; this server ~125–170 MB with 0.02–0.3 s pages; a build ~6.7 GB peak and ~5–8 min, skipped (~1 s) when nothing changed.
 
 ### E2E Tests (Playwright)
 - **Use `npx @playwright/test test`**, NOT `npx playwright test` — the monorepo has both packages and the wrong binary causes version conflicts
-- **Always pass `BASE_URL=http://localhost:3000`** to skip playwright's webServer auto-start
+- **Default:** in your own worktree, `PORT=30xx npx @playwright/test test …` — the webServer runs the test server above (1 worker; `PW_WORKERS` overrides)
+- **Owner's dev server:** when it is running on :3000, `BASE_URL=http://localhost:3000` uses it and skips the webServer
 - **Check existing DB state before writing tests** — use `mcp__sqlite__read_query` to understand what data already exists (e.g., seed students, existing sessions). Don't assume a clean database.
 - **Prefer archiving over deleting** for test cleanup — FK constraints make hard deletes fail silently. The `isArchived` flag excludes records from enforcement checks without breaking referential integrity.
 - **Tests sharing mutable state (same user account) must run serially** — use `test.describe.configure({ mode: 'serial' })`

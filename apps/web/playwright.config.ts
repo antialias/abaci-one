@@ -7,7 +7,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : 4,
+  // One worker locally keeps the Mac light; PW_WORKERS overrides it.
+  workers: process.env.CI ? 1 : Number(process.env.PW_WORKERS || 1),
   timeout: 15_000,
   reporter: 'html',
   use: {
@@ -36,9 +37,12 @@ export default defineConfig({
   webServer: process.env.BASE_URL
     ? undefined
     : {
-        command: `npm run build && PORT=${port} npm start`,
+        // Light production server (never a dev server); builds only when the code changed.
+        command: `PORT=${port} bash scripts/test-server.sh run`,
         url: `http://localhost:${port}`,
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        // A cold production build takes 2-15 minutes.
+        timeout: 20 * 60_000,
+        gracefulShutdown: { signal: 'SIGTERM', timeout: 10_000 },
       },
 })
