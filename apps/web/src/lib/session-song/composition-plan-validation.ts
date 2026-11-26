@@ -1,5 +1,10 @@
 import type { CompositionPlan } from '@/lib/elevenlabs/music-client'
-import type { SongPromptInput } from './extract-session-stats'
+import {
+  gameBreaksOf,
+  joinGameNames,
+  type SongGameBreak,
+  type SongPromptInput,
+} from './extract-session-stats'
 
 export const SESSION_SONG_PLAN_VALIDATION_FLAG = 'session-song.plan-validation'
 export const MAX_SONG_DURATION_MS = 60_000
@@ -176,7 +181,8 @@ export function validateCompositionPlan(
     })
   }
 
-  if (!input.gameBreak) {
+  const gameBreaks = gameBreaksOf(input)
+  if (gameBreaks.length === 0) {
     const badSection = candidate.sections.find((section) =>
       GAME_BREAK_SECTION_RE.test(section.section_name)
     )
@@ -189,12 +195,12 @@ export function validateCompositionPlan(
     }
   }
 
-  if (input.gameBreak) {
+  if (gameBreaks.length > 0) {
     const gameCandidates = collectGameEvidenceCandidates(input)
     if (gameCandidates.length > 0 && !containsAnyEvidence(planText, gameCandidates)) {
       issues.push({
         code: 'missing_game_detail',
-        message: `The song mentions the game break without using a concrete detail from ${input.gameBreak.gameName}.`,
+        message: `The song mentions the game break without using a concrete detail from ${joinGameNames(gameBreaks)}.`,
         evidenceType: 'game',
       })
     }
@@ -248,7 +254,10 @@ export function validateCompositionPlan(
     })
   }
 
-  const inventedGame = findInventedGameName(planText, input.gameBreak?.gameName)
+  const inventedGame = findInventedGameName(
+    planText,
+    gameBreaks.map((gb) => gb.gameName)
+  )
   if (inventedGame) {
     issues.push({
       code: 'invented_game',
@@ -342,15 +351,16 @@ export function buildFallbackSongPlan(
     },
   ]
 
-  if (input.gameBreak) {
+  const gameBreaks = gameBreaksOf(input)
+  if (gameBreaks.length > 0) {
     sections.push({
       section_name: 'Game Break',
       positive_local_styles: ['playful', 'rhythmic'],
       negative_local_styles: [],
       duration_ms: 8_000,
       lines: [
-        fitLine(`${input.gameBreak.gameName} made a side quest`),
-        fitLine(gameDetail ?? input.gameBreak.headline),
+        fitLine(`${joinGameNames(gameBreaks)} made a side quest`),
+        fitLine(gameDetail ?? gameBreaks[0].headline),
       ],
     })
   }
@@ -376,13 +386,17 @@ export function buildFallbackSongPlan(
 }
 
 export function buildValidationEvidenceSummary(input: SongPromptInput): string {
+  const gameBreaks = gameBreaksOf(input)
   const lines = [
     `Player name: ${input.player.name}`,
     `Problems: ${input.practiceDrama.problemMoments.map((moment) => moment.problem).join(' | ') || 'none'}`,
     `Skills/strategies: ${collectSkillEvidenceCandidates(input).slice(0, 12).join(' | ') || 'none'}`,
-    input.gameBreak
-      ? `Game break: ${input.gameBreak.gameName} | ${collectGameEvidenceCandidates(input).slice(0, 12).join(' | ') || 'no concrete details'}`
-      : 'Game break: none',
+    ...(gameBreaks.length > 0
+      ? gameBreaks.map(
+          (gb) =>
+            `Game break: ${gb.gameName} | ${gameEvidenceCandidatesOf(gb).slice(0, 12).join(' | ') || 'no concrete details'}`
+        )
+      : ['Game break: none']),
   ]
   return lines.join('\n')
 }
@@ -480,10 +494,12 @@ function collectSkillEvidenceCandidates(input: SongPromptInput): string[] {
   ]).flatMap((item) => skillEvidenceVariants(item))
 }
 
+/** Concrete details of every break, in the order played. */
 function collectGameEvidenceCandidates(input: SongPromptInput): string[] {
-  const gameBreak = input.gameBreak
-  if (!gameBreak) return []
+  return uniqueStrings(gameBreaksOf(input).flatMap(gameEvidenceCandidatesOf))
+}
 
+function gameEvidenceCandidatesOf(gameBreak: SongGameBreak): string[] {
   const rawDetails = [
     gameBreak.headline,
     gameBreak.outcome,
@@ -559,15 +575,10 @@ function collectAllowedNumbers(input: SongPromptInput): Set<number> {
       skill.problems,
       ...skill.exampleProblems.flatMap(extractNumbers),
     ]),
-    input.gameBreak?.accuracy,
-    ...(input.gameBreak
-      ? [
-          ...input.gameBreak.highlights,
-          ...input.gameBreak.details,
-          ...input.gameBreak.moments,
-          input.gameBreak.outcome ?? '',
-        ].flatMap(extractNumbers)
-      : []),
+    ...gameBreaksOf(input).flatMap((gb) => [
+      gb.accuracy,
+      ...[...gb.highlights, ...gb.details, ...gb.moments, gb.outcome ?? ''].flatMap(extractNumbers),
+    ]),
   ]
 
   return new Set(
@@ -592,11 +603,11 @@ function findUnsupportedNumericClaim(text: string, allowedNumbers: Set<number>):
   return null
 }
 
-function findInventedGameName(text: string, actualGameName?: string): string | null {
-  const actual = actualGameName ? normalizeCompact(actualGameName) : null
+function findInventedGameName(text: string, actualGameNames: readonly string[]): string | null {
+  const actual = new Set(actualGameNames.map(normalizeCompact))
   return (
     KNOWN_GAME_NAMES.find((gameName) => {
-      if (actual && normalizeCompact(gameName) === actual) return false
+      if (actual.has(normalizeCompact(gameName))) return false
       return containsPhrase(text, gameName)
     }) ?? null
   )

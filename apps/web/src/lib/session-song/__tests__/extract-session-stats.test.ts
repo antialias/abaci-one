@@ -30,14 +30,14 @@ const minimalPlayer = {
 // ============================================================================
 
 describe('extractSessionStats — game break', () => {
-  it('returns no gameBreak when no result and no fallback', () => {
+  it('returns no gameBreaks when no result and no fallback', () => {
     const stats = extractSessionStats(minimalPlan, minimalPlayer, [])
-    expect(stats.gameBreak).toBeUndefined()
+    expect(stats.gameBreaks).toBeUndefined()
   })
 
-  it('returns no gameBreak when gameBreakResult is null and no fallback', () => {
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], null)
-    expect(stats.gameBreak).toBeUndefined()
+  it('returns no gameBreakss when there are no game results and no fallback', () => {
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [])
+    expect(stats.gameBreaks).toBeUndefined()
   })
 
   it('extracts game break from full GameResult with report', () => {
@@ -54,13 +54,13 @@ describe('extractSessionStats — game break', () => {
       },
     } as unknown as GameResult
 
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], gameResult)
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [gameResult])
 
-    expect(stats.gameBreak).toBeDefined()
-    expect(stats.gameBreak!.gameName).toBe('Memory Match')
-    expect(stats.gameBreak!.headline).toBe('Great memory!')
-    expect(stats.gameBreak!.accuracy).toBe(85)
-    expect(stats.gameBreak!.highlights).toEqual(['Pairs Found: 8/10', 'Time: 1:23'])
+    expect(stats.gameBreaks).toHaveLength(1)
+    expect(stats.gameBreaks![0].gameName).toBe('Memory Match')
+    expect(stats.gameBreaks![0].headline).toBe('Great memory!')
+    expect(stats.gameBreaks![0].accuracy).toBe(85)
+    expect(stats.gameBreaks![0].highlights).toEqual(['Pairs Found: 8/10', 'Time: 1:23'])
   })
 
   it('prefers full GameResult over plan fallback when both exist', () => {
@@ -78,38 +78,38 @@ describe('extractSessionStats — game break', () => {
       breakReason: 'gameFinished' as const,
     }
 
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], gameResult, fallback)
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [gameResult], fallback)
 
-    expect(stats.gameBreak!.gameName).toBe('Memory Match')
-    expect(stats.gameBreak!.headline).toBe('Perfect!')
+    expect(stats.gameBreaks![0].gameName).toBe('Memory Match')
+    expect(stats.gameBreaks![0].headline).toBe('Perfect!')
   })
 
-  it('uses plan fallback when gameBreakResult is null (skipped break)', () => {
+  it('uses plan fallback when there is no game result (skipped break)', () => {
     const fallback = {
       breakSelectedGame: 'matching-pairs',
       breakReason: 'skipped' as const,
     }
 
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], null, fallback)
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [], fallback)
 
-    expect(stats.gameBreak).toBeDefined()
-    expect(stats.gameBreak!.gameName).toBe('matching-pairs')
-    expect(stats.gameBreak!.headline).toBe('Played matching-pairs (ended early)')
-    expect(stats.gameBreak!.highlights).toEqual([])
-    expect(stats.gameBreak!.accuracy).toBeUndefined()
+    expect(stats.gameBreaks).toHaveLength(1)
+    expect(stats.gameBreaks![0].gameName).toBe('matching-pairs')
+    expect(stats.gameBreaks![0].headline).toBe('Played matching-pairs (ended early)')
+    expect(stats.gameBreaks![0].highlights).toEqual([])
+    expect(stats.gameBreaks![0].accuracy).toBeUndefined()
   })
 
-  it('uses plan fallback when gameBreakResult is null (timeout break)', () => {
+  it('uses plan fallback when there is no game result (timeout break)', () => {
     const fallback = {
       breakSelectedGame: 'number-bonds',
       breakReason: 'timeout' as const,
     }
 
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], null, fallback)
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [], fallback)
 
-    expect(stats.gameBreak).toBeDefined()
-    expect(stats.gameBreak!.gameName).toBe('number-bonds')
-    expect(stats.gameBreak!.headline).toBe('Played number-bonds (timed out)')
+    expect(stats.gameBreaks).toHaveLength(1)
+    expect(stats.gameBreaks![0].gameName).toBe('number-bonds')
+    expect(stats.gameBreaks![0].headline).toBe('Played number-bonds (timed out)')
   })
 
   it('uses plan fallback when GameResult has no fullReport', () => {
@@ -123,22 +123,22 @@ describe('extractSessionStats — game break', () => {
       breakReason: 'skipped' as const,
     }
 
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], gameResult, fallback)
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [gameResult], fallback)
 
-    expect(stats.gameBreak).toBeDefined()
-    expect(stats.gameBreak!.gameName).toBe('memory-match')
-    expect(stats.gameBreak!.headline).toBe('Played memory-match (ended early)')
+    expect(stats.gameBreaks).toHaveLength(1)
+    expect(stats.gameBreaks![0].gameName).toBe('memory-match')
+    expect(stats.gameBreaks![0].headline).toBe('Played memory-match (ended early)')
   })
 
-  it('returns no gameBreak when fallback has null breakSelectedGame', () => {
+  it('returns no gameBreaks when fallback has null breakSelectedGame', () => {
     const fallback = {
       breakSelectedGame: null,
       breakReason: 'skipped' as const,
     }
 
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], null, fallback)
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [], fallback)
 
-    expect(stats.gameBreak).toBeUndefined()
+    expect(stats.gameBreaks).toBeUndefined()
   })
 
   it('handles fallback with null breakReason gracefully', () => {
@@ -147,10 +147,10 @@ describe('extractSessionStats — game break', () => {
       breakReason: null,
     }
 
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], null, fallback)
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [], fallback)
 
-    expect(stats.gameBreak).toBeDefined()
-    expect(stats.gameBreak!.headline).toBe('Played some-game (played)')
+    expect(stats.gameBreaks).toHaveLength(1)
+    expect(stats.gameBreaks![0].headline).toBe('Played some-game (played)')
   })
 
   it('includes song-specific game break details when a game reports them', () => {
@@ -171,13 +171,69 @@ describe('extractSessionStats — game break', () => {
       },
     } as unknown as GameResult
 
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], gameResult)
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [gameResult])
 
-    expect(stats.gameBreak!.details).toContain('Typed five animal words before the timer.')
-    expect(stats.gameBreak!.details).toContain('Words typed: cat, moon, rocket')
-    expect(stats.gameBreak!.moments).toContain('No mistakes on rocket')
-    expect(stats.gameBreak!.moments).toContain('Slowed down for the double-o in moon')
-    expect(stats.gameBreak!.outcome).toBe('finished with a clean final word')
+    expect(stats.gameBreaks![0].details).toContain('Typed five animal words before the timer.')
+    expect(stats.gameBreaks![0].details).toContain('Words typed: cat, moon, rocket')
+    expect(stats.gameBreaks![0].moments).toContain('No mistakes on rocket')
+    expect(stats.gameBreaks![0].moments).toContain('Slowed down for the double-o in moon')
+    expect(stats.gameBreaks![0].outcome).toBe('finished with a clean final word')
+  })
+
+  it('names every break, in the order given (played_at), with an arc each (Phase 3b)', () => {
+    const memory = {
+      accuracy: 80,
+      fullReport: { gameDisplayName: 'Memory Match', headline: 'Great memory!', customStats: [] },
+    } as unknown as GameResult
+    const racer = {
+      accuracy: 95,
+      fullReport: { gameDisplayName: 'Type Racer Jr.', headline: 'Fast fingers!', customStats: [] },
+    } as unknown as GameResult
+    const fallback = { breakSelectedGame: 'type-racer', breakReason: 'gameFinished' as const }
+
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [memory, racer], fallback)
+
+    expect(stats.gameBreaks?.map((gb) => [gb.gameName, gb.headline, gb.accuracy])).toEqual([
+      ['Memory Match', 'Great memory!', 80],
+      ['Type Racer Jr.', 'Fast fingers!', 95],
+    ])
+    expect(stats.practiceDrama.arcs).toEqual(
+      expect.arrayContaining([
+        'Side quest: Memory Match - Great memory!.',
+        'Side quest: Type Racer Jr. - Fast fingers!.',
+      ])
+    )
+    expect(stats.practiceDrama.storyAngle).toBe(
+      'practice quest with Memory Match and Type Racer Jr. side quests'
+    )
+  })
+
+  it('names a break stored twice (same game, same end) once', () => {
+    const row = {
+      gameName: 'memory-match',
+      accuracy: 80,
+      playedAt: new Date(1_700_000_000_000),
+      fullReport: {
+        gameName: 'memory-match',
+        gameDisplayName: 'Memory Match',
+        headline: 'Great memory!',
+        endedAt: 1_700_000_000_000,
+        customStats: [],
+      },
+    } as unknown as GameResult
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [row, { ...row }])
+    expect(stats.gameBreaks?.map((gb) => gb.gameName)).toEqual(['Memory Match'])
+    expect(stats.practiceDrama.storyAngle).toBe('practice quest with a Memory Match side quest')
+  })
+
+  it('keeps the one-break story angle and arc unchanged', () => {
+    const memory = {
+      accuracy: 80,
+      fullReport: { gameDisplayName: 'Memory Match', headline: 'Great memory!', customStats: [] },
+    } as unknown as GameResult
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [memory])
+    expect(stats.practiceDrama.storyAngle).toBe('practice quest with a Memory Match side quest')
+    expect(stats.practiceDrama.arcs).toEqual(['Side quest: Memory Match - Great memory!.'])
   })
 })
 
@@ -200,12 +256,13 @@ describe('extractSessionStats — core fields', () => {
 
   it('detects improving trend', () => {
     const sessions = [
-      { accuracy: 0.5 },
-      { accuracy: 0.5 },
-      { accuracy: 0.5 },
+      // newest first
       { accuracy: 0.9 },
       { accuracy: 0.9 },
       { accuracy: 0.9 },
+      { accuracy: 0.5 },
+      { accuracy: 0.5 },
+      { accuracy: 0.5 },
     ]
     const stats = extractSessionStats(minimalPlan, minimalPlayer, sessions)
     expect(stats.history.trend).toBe('improving')
@@ -213,12 +270,13 @@ describe('extractSessionStats — core fields', () => {
 
   it('detects declining trend', () => {
     const sessions = [
-      { accuracy: 0.9 },
-      { accuracy: 0.9 },
-      { accuracy: 0.9 },
+      // newest first
       { accuracy: 0.5 },
       { accuracy: 0.5 },
       { accuracy: 0.5 },
+      { accuracy: 0.9 },
+      { accuracy: 0.9 },
+      { accuracy: 0.9 },
     ]
     const stats = extractSessionStats(minimalPlan, minimalPlayer, sessions)
     expect(stats.history.trend).toBe('declining')

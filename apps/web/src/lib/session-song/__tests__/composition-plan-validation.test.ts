@@ -156,6 +156,45 @@ describe('validateCompositionPlan', () => {
     expect(issueCodes(valid, input)).not.toContain('missing_game_detail')
   })
 
+  it('accepts every break of a two-break session as real (Phase 3b)', () => {
+    const memory = {
+      gameName: 'Memory Lightning',
+      headline: 'Fast recall round',
+      highlights: ['Numbers recalled: 12, 56'],
+      details: [],
+      moments: [],
+    }
+    const matching = {
+      gameName: 'Matching Pairs',
+      headline: 'Pairs found',
+      highlights: ['Pairs found: 8'],
+      details: ['Cleared the board'],
+      moments: [],
+    }
+    const plan = makePlan({
+      sections: [
+        ...makePlan().sections,
+        {
+          section_name: 'Game Break',
+          positive_local_styles: ['playful'],
+          negative_local_styles: [],
+          duration_ms: 8_000,
+          lines: ['Matching Pairs cleared the board'],
+        },
+      ],
+    })
+
+    const both = makeInput({ gameBreaks: [memory, matching] })
+    expect(issueCodes(plan, both)).not.toContain('invented_game')
+    expect(issueCodes(plan, both)).not.toContain('missing_game_detail')
+    // The same lyric is an invention when only the first break is known
+    expect(issueCodes(plan, makeInput({ gameBreaks: [memory] }))).toContain('invented_game')
+
+    const fallback = buildFallbackSongPlan(both)
+    const gameLines = fallback.sections.find((s) => s.section_name === 'Game Break')?.lines ?? []
+    expect(gameLines[0]).toBe('Memory Lightning and Matching Pairs made a side quest')
+  })
+
   it('requires the actual player name', () => {
     const plan = makePlan({
       sections: makePlan().sections.map((section) => ({

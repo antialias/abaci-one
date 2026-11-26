@@ -10,7 +10,7 @@
  * 6. Save MP3 locally, mark completed, emit Socket.IO event
  */
 
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, lte, sql } from 'drizzle-orm'
 import { mkdir, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { db, schema } from '@/db'
@@ -68,7 +68,21 @@ export interface SessionSongOutput {
 
 export type SessionSongRegenerationMode = 'auto' | 'reuse_prompt' | 'regenerate_prompt'
 
-interface SongPromptBuildResult {
+/**
+ * The input and genre a first generation writes from. A stored empty genre
+ * passes through (the writer reads it as no choice), as it always has here.
+ */
+export function readyPromptInput(built: SongPromptBuildResult): {
+  promptInput: SongPromptInput
+  genrePreference: string
+} {
+  if (!built.promptInput || built.genrePreference == null) {
+    throw new Error('Failed to build song prompt input')
+  }
+  return { promptInput: built.promptInput, genrePreference: built.genrePreference }
+}
+
+export interface SongPromptBuildResult {
   playerName: string
   disabled: boolean
   promptInput?: SongPromptInput
@@ -147,7 +161,14 @@ async function getPlayerName(playerId: string): Promise<string> {
   return player?.name ?? 'Unknown player'
 }
 
-async function buildSongPromptInput(input: SessionSongInput): Promise<SongPromptBuildResult> {
+/**
+ * The song's facts for one session: the plan, the kid's 10 latest completed
+ * sessions (newest first) and every break of the session in played order.
+ * Shared by first generation and regeneration. Exported for tests.
+ */
+export async function buildSongPromptInput(
+  input: SessionSongInput
+): Promise<SongPromptBuildResult> {
   const [plan] = await db
     .select()
     .from(schema.sessionPlans)
@@ -178,16 +199,20 @@ async function buildSongPromptInput(input: SessionSongInput): Promise<SongPrompt
 
   const rawGenre = prefs?.sessionSongGenre ?? 'shuffle'
 
+  // The kid's 10 latest completed sessions up to this one, newest first (the
+  // trend reads them so). Anchored on this session so a regenerated song for an
+  // old session never reads the sessions that came after it.
   const recentPlans = await db
     .select()
     .from(schema.sessionPlans)
     .where(
       and(
         eq(schema.sessionPlans.playerId, input.playerId),
-        eq(schema.sessionPlans.status, 'completed')
+        eq(schema.sessionPlans.status, 'completed'),
+        lte(schema.sessionPlans.createdAt, plan.createdAt)
       )
     )
-    .orderBy(schema.sessionPlans.createdAt)
+    .orderBy(desc(schema.sessionPlans.createdAt))
     .limit(10)
 
   const recentSessions = recentPlans.map((p) => ({
@@ -196,7 +221,10 @@ async function buildSongPromptInput(input: SessionSongInput): Promise<SongPrompt
 
   const recentSongs = await getRecentSongSummaries(input.playerId)
 
-  const [gameBreakResult] = await db
+  // Every break of this session, in the order played (§3.1 legacy path; reads
+  // stay off `plan.breaks` until Phase 5). The smart trigger fires in the last
+  // practice part, so every break's result is persisted by then.
+  const gameBreakResults = await db
     .select()
     .from(schema.gameResults)
     .where(
@@ -205,9 +233,9 @@ async function buildSongPromptInput(input: SessionSongInput): Promise<SongPrompt
         eq(schema.gameResults.sessionType, 'practice-break')
       )
     )
-    .limit(1)
+    .orderBy(asc(schema.gameResults.playedAt), asc(schema.gameResults.id))
 
-  const stats = extractSessionStats(plan as never, player, recentSessions, gameBreakResult, {
+  const stats = extractSessionStats(plan as never, player, recentSessions, gameBreakResults, {
     breakSelectedGame: plan.breakSelectedGame ?? null,
     breakReason: plan.breakReason ?? null,
     breakResults: plan.breakResults ?? null,
@@ -460,35 +488,10 @@ export async function startSessionSongGeneration(
         handle.emit({ type: 'song_extracting_stats' })
         handle.setProgress(10, 'Analyzing session data...')
 
-        const [plan] = await db
-          .select()
-          .from(schema.sessionPlans)
-          .where(eq(schema.sessionPlans.id, input.sessionPlanId))
-          .limit(1)
+        const built = await buildSongPromptInput(input)
+        playerNameForFailure = built.playerName
 
-        const [player] = await db
-          .select()
-          .from(schema.players)
-          .where(eq(schema.players.id, input.playerId))
-          .limit(1)
-
-        if (!plan || !player) {
-          throw new Error('Session plan or player not found')
-        }
-        playerNameForFailure = player.name
-
-        // Check per-student preference
-        const [prefRow] = await db
-          .select()
-          .from(schema.playerSessionPreferences)
-          .where(eq(schema.playerSessionPreferences.playerId, input.playerId))
-          .limit(1)
-
-        const prefs = prefRow
-          ? (JSON.parse(prefRow.config) as PlayerSessionPreferencesConfig)
-          : null
-        const studentSongEnabled = prefs?.sessionSongEnabled ?? true
-        if (!studentSongEnabled) {
+        if (built.disabled) {
           // Student has songs disabled — complete silently
           handle.complete({ songId, status: 'disabled' })
           await setSongStatus(songId, input.sessionPlanId, 'failed', {
@@ -497,48 +500,7 @@ export async function startSessionSongGeneration(
           return
         }
 
-        const rawGenre = prefs?.sessionSongGenre ?? 'shuffle'
-
-        // Get recent completed sessions for history
-        const recentPlans = await db
-          .select()
-          .from(schema.sessionPlans)
-          .where(
-            and(
-              eq(schema.sessionPlans.playerId, input.playerId),
-              eq(schema.sessionPlans.status, 'completed')
-            )
-          )
-          .orderBy(schema.sessionPlans.createdAt)
-          .limit(10)
-
-        const recentSessions = recentPlans.map((p) => ({
-          accuracy: summarizeTries((p as { results: SlotResult[] | null }).results).accuracy,
-        }))
-
-        const recentSongs = await getRecentSongSummaries(input.playerId)
-
-        // Look up game break result for this session (if any).
-        // The smart trigger only fires in the last practice part, so game break
-        // results (which happen between parts) are already persisted by now.
-        const [gameBreakResult] = await db
-          .select()
-          .from(schema.gameResults)
-          .where(
-            and(
-              eq(schema.gameResults.sessionId, input.sessionPlanId),
-              eq(schema.gameResults.sessionType, 'practice-break')
-            )
-          )
-          .limit(1)
-
-        const stats = extractSessionStats(plan as never, player, recentSessions, gameBreakResult, {
-          breakSelectedGame: plan.breakSelectedGame ?? null,
-          breakReason: plan.breakReason ?? null,
-          breakResults: plan.breakResults ?? null,
-        })
-        const genrePreference = rawGenre
-        const promptInput = { ...stats, recentSongs }
+        const { promptInput, genrePreference } = readyPromptInput(built)
 
         // Update song record with prompt input
         await setSongStatus(songId, input.sessionPlanId, 'prompt_generating', {

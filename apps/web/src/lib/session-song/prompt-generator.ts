@@ -24,7 +24,7 @@ import {
   type SongPlanValidationResult,
   validateCompositionPlan,
 } from './composition-plan-validation'
-import type { RecentSongSummary, SongPromptInput } from './extract-session-stats'
+import { gameBreaksOf, type RecentSongSummary, type SongPromptInput } from './extract-session-stats'
 
 // ============================================================================
 // Output Schema
@@ -150,19 +150,26 @@ function formatSkillSpotlights(input: SongPromptInput): string[] {
 }
 
 function formatGameBreak(input: SongPromptInput): string {
-  const gb = input.gameBreak
-  if (!gb) return ''
+  const gameBreaks = gameBreaksOf(input)
+  if (gameBreaks.length === 0) return ''
 
-  const details = [
-    gb.headline,
-    gb.outcome ? `outcome: ${gb.outcome}` : null,
-    gb.accuracy != null ? `${Math.round(gb.accuracy)}% accuracy` : null,
-    ...gb.highlights,
-    ...gb.details,
-    ...gb.moments.map((moment) => `moment: ${moment}`),
-  ].filter(Boolean)
+  const lines = gameBreaks.map((gb) => {
+    const details = [
+      gb.headline,
+      gb.outcome ? `outcome: ${gb.outcome}` : null,
+      gb.accuracy != null ? `${Math.round(gb.accuracy)}% accuracy` : null,
+      ...gb.highlights,
+      ...gb.details,
+      ...gb.moments.map((moment) => `moment: ${moment}`),
+    ].filter(Boolean)
+    return `- Played ${gb.gameName}: ${details.join(' | ')}`
+  })
 
-  return `\n\nGame break evidence:\n- Played ${gb.gameName}: ${details.join(' | ')}`
+  const heading =
+    gameBreaks.length === 1
+      ? 'Game break evidence:'
+      : `Game break evidence (${gameBreaks.length} breaks, in the order played):`
+  return `\n\n${heading}\n${lines.join('\n')}`
 }
 
 const HOOK_SECTION_RE = /chorus|hook|refrain/i
