@@ -92,3 +92,10 @@ Existing helpers that could be the single source: `getTotalProblemCount`, `getSe
   - Each change lands as one squashable PR the owner merges.
 - **Lint hazard:** `npm run pre-commit` fails on a clean tree and its `--write` steps rewrite about 40 unrelated files. Lint only the files you changed, with `npx @biomejs/biome check <files>` (bare `npx biome` is a bogus no-op package), and revert any collateral changes.
 - **Tests:** vitest with the in-memory DB harness `src/test/journey-simulator/EphemeralDatabase.ts` (see `src/test/session-targeting-trace.test.ts` for the `vi.mock('@/db')` pattern). Workspace packages must be built once per worktree: `pnpm --filter @soroban/abacus-react --filter @soroban/llm-client --filter @soroban/karaoke-player build`.
+
+## Seen in the fix PR's browser run (2026-11-26)
+
+- **First key can be dropped** when a new problem appears: the keyboard listener attaches just after the problem renders, so a digit typed at that instant is lost (the e2e spec presses again until the digit shows). Pre-existing; matters most for fast responders. Not scheduled; candidate for Phase 3c (client rendering).
+- **Failed-save message is technical:** "Failed to record answer" + "Failed to fetch" / server error text. Scheduled in Phase 1(b) with the one-time resend.
+- **One unexplained stall** at the start of part 2 in an early spec version (server `practicing`, part 1, slot 0, no tries); never recurred in 9 repeats or two full runs. Most likely the dropped first key above, which that early spec version did not retry; not proven.
+
