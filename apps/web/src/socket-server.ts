@@ -21,6 +21,7 @@ import type { GameMove } from './lib/arcade/validation/types'
 import { getGameConfig } from './lib/arcade/game-config-helpers'
 import { canPerformAction, isParentOf } from './lib/classroom'
 import { registerSessionReportJoin } from './lib/curriculum/session-report-access'
+import { registerSessionReportPush } from './lib/curriculum/session-report-server'
 import { incrementShareViewCount, validateSessionShare } from './lib/session-share'
 import {
   getRemoteCameraSession,
@@ -1939,6 +1940,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
   // Store in globalThis to make accessible across module boundaries
   globalThis.__socketIO = io
+
+  // Committed session-row writes now push their session report (§4 "Push")
+  registerSessionReportPush()
 
   // Initialize task manager for distributed operation
   import('./lib/task-manager')

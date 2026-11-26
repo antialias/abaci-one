@@ -27,6 +27,7 @@ import { db, schema } from '@/db'
 import { isEndedOutcome, sessionOutcome } from '@/db/schema/session-plan-normalize'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { readTries } from './read-tries'
+import { setRowCommitListener } from './row-cas'
 import {
   buildSessionReport,
   type ReportGameResult,
@@ -188,6 +189,16 @@ export function pushSessionReportAfterCommit(before: SessionPlan, after: Session
   void next.then(() => {
     if (chains.get(sessionId) === next) chains.delete(sessionId)
   })
+}
+
+/**
+ * Tell the row-write commit path to push reports (§4 "Push"). The socket
+ * server calls this once at start, so only a process with a socket server
+ * pushes; scripts and the seed bundle never load this module through
+ * `row-cas` (see its header).
+ */
+export function registerSessionReportPush(): void {
+  setRowCommitListener(pushSessionReportAfterCommit)
 }
 
 /** Resolves once every queued push has run (tests, graceful shutdown). */
