@@ -137,7 +137,9 @@ export async function searchSimilarFlowcharts(
   query: string,
   options: SearchOptions = {}
 ): Promise<FlowchartSearchResult[]> {
-  const { limit = 5, minSimilarity = 0.5, excludeId } = options
+  // 0.3 separates true matches from no-match queries best for all-MiniLM-L6-v2
+  // (scripts/eval-embedding-models.ts: 84% decided right at 0.30–0.32).
+  const { limit = 5, minSimilarity = 0.3, excludeId } = options
 
   // Generate embedding for the query
   const queryEmbedding = await generateEmbedding(query.slice(0, MAX_SEARCH_QUERY_CHARS))
@@ -201,7 +203,9 @@ export async function findRelatedFlowcharts(
     return []
   }
 
-  const { limit = 5, minSimilarity = 0.4 } = options
+  // Related flowchart pairs score 0.29–0.55 and unrelated ones ≤ 0.23 under
+  // all-MiniLM-L6-v2 (scripts/eval-embedding-models.ts).
+  const { limit = 5, minSimilarity = 0.3 } = options
 
   const results: FlowchartSearchResult[] = []
 

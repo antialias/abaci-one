@@ -138,7 +138,9 @@ export async function searchProfiles(
   query: string,
   options: { limit?: number; minSimilarity?: number } = {}
 ): Promise<ProfileSearchResult[]> {
-  const { limit = 21, minSimilarity = 0.3 } = options
+  // On-topic queries score 0.31–0.49 against profiles, off-topic ones ≤ 0.12
+  // (all-MiniLM-L6-v2), so 0.2 keeps the useful tail and drops noise.
+  const { limit = 21, minSimilarity = 0.2 } = options
 
   const [queryEmbedding, cache] = await Promise.all([
     generateEmbedding(query.slice(0, MAX_SEARCH_QUERY_CHARS)),

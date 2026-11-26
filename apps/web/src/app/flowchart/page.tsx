@@ -333,7 +333,10 @@ export default function FlowchartPickerPage() {
       // For diverse clusters, give a bonus to broad labels.
       type LabelScore = { label: string; clusterIdx: number; maxDist: number; adjustedDist: number }
       const scores: LabelScore[] = []
-      const DIVERSITY_THRESHOLD = 0.35 // Clusters more diverse than this get breadth bonus
+      // Clusters more diverse than this get breadth bonus. Under all-MiniLM-L6-v2,
+      // same-topic clusters average 0.45–0.71 pairwise distance and mixed ones
+      // 0.76–0.87 (scripts/eval-embedding-models.ts).
+      const DIVERSITY_THRESHOLD = 0.65
 
       for (const lid of labelDistIds) {
         const labelIdx = fullIdxMap.get(lid)!
@@ -367,7 +370,9 @@ export default function FlowchartPickerPage() {
       // Collect top 3 labels per cluster (before greedy assignment removes options)
       const clusterTopLabels: Map<number, { label: string; score: number }[]> = new Map()
       for (const score of scores) {
-        if (score.maxDist > 0.75) continue // Skip poor matches
+        // Skip poor matches. Under all-MiniLM-L6-v2 a single flowchart's nearest
+        // label sits at 0.36–0.70 (scripts/eval-embedding-models.ts).
+        if (score.maxDist > 0.75) continue
         const existing = clusterTopLabels.get(score.clusterIdx) || []
         if (existing.length < 4) {
           existing.push({ label: score.label, score: Math.round((1 - score.adjustedDist) * 100) })
@@ -488,7 +493,7 @@ export default function FlowchartPickerPage() {
       }
 
       const maxBreadth = labelBreadths ? Math.max(1, ...Object.values(labelBreadths)) : 1
-      const DIVERSITY_THRESHOLD = 0.35
+      const DIVERSITY_THRESHOLD = 0.65 // see the note above
 
       type LabelScore = { label: string; clusterIdx: number; maxDist: number; adjustedDist: number }
       const scores: LabelScore[] = []

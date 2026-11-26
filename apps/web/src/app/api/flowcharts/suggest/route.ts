@@ -50,7 +50,7 @@ export const POST = withAuth(async (request) => {
 
     const suggestions = await searchSimilarFlowcharts(query.slice(0, MAX_SEARCH_QUERY_CHARS), {
       limit: resultLimit,
-      minSimilarity: 0.3,
+      minSimilarity: 0.3, // scripts/eval-embedding-models.ts
     })
 
     return NextResponse.json({ suggestions })
