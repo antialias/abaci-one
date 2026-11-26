@@ -1,5 +1,5 @@
-import { AUDIO_MANIFEST_MAP } from './audioManifest'
 import { getClipMeta } from './audioClipRegistry'
+import { AUDIO_MANIFEST_MAP } from './audioManifest'
 import { computeClipHash, resolveCanonicalText } from './clipHash'
 
 export type SubtitleAnchor = 'top' | 'bottom'
@@ -68,14 +68,30 @@ export interface CollectedClip {
 }
 
 export type { VoiceSourceData } from './voiceSource'
+
 import type { VoiceSourceData } from './voiceSource'
 import {
-  type VoiceSource,
-  PregeneratedVoice,
   CustomVoice,
   GenerateVoice,
   hydrateVoiceChain,
+  PregeneratedVoice,
+  SubtitleVoice,
+  type VoiceSource,
 } from './voiceSource'
+
+/**
+ * The chain a character speaks through: its own sources, on-demand
+ * generation, then the global chain's voiceless fallbacks (subtitles if the
+ * global chain has none), so one character never borrows another voice.
+ */
+export function characterChain(own: VoiceSource[], global: VoiceSource[]): VoiceSource[] {
+  const voiceless = global.filter((s) => s.type === 'subtitle' || s.type === 'browser-tts')
+  return [
+    ...own,
+    new GenerateVoice(),
+    ...(voiceless.length > 0 ? voiceless : [new SubtitleVoice()]),
+  ]
+}
 
 type Listener = () => void
 
@@ -593,11 +609,13 @@ export class TtsAudioManager {
   private async playOneSegment(resolved: ResolvedSegment, speakId: number): Promise<boolean> {
     if (this._isStale(speakId)) return false
 
-    // When a per-call prependChain is present, insert a GenerateVoice
-    // after the prepended sources so that on-demand generation fires
-    // for the character voice before the global chain's cached voices.
+    // A per-call prependChain is a character's own voice (Euclid, Pappus).
+    // A character speaks only in that voice: after it comes a GenerateVoice
+    // (so a missing line is made on demand), then only the global chain's
+    // voiceless fallbacks (subtitles, browser TTS), never another voice's
+    // cached clip.
     const effectiveChain = resolved.prependChain?.length
-      ? [...resolved.prependChain, new GenerateVoice(), ...this._voiceChain]
+      ? characterChain(resolved.prependChain, this._voiceChain)
       : this._voiceChain
 
     const log: ChainAttempt[] = []

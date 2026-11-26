@@ -3,15 +3,15 @@
  * into a single config object consumed by the context provider.
  */
 
-import type { GeometryVoiceConfig } from '../GeometryTeacherConfig'
-import { PAPPUS_CHARACTER_DEF } from '../pappusCharacterDef'
-import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
-import { buildPappusCompletionContext } from '../pappusCharacter'
-import { createGreetingMode } from '../agent/modes/greetingMode'
+import { teacherAttitude } from '../agent/attitudes/teacher'
 import { createConversingMode } from '../agent/modes/conversingMode'
+import { createGreetingMode } from '../agent/modes/greetingMode'
 import { createThinkingMode } from '../agent/modes/thinkingMode'
 import { buildChatSystemPrompt, type ChatSystemPromptContext } from '../chat/buildChatSystemPrompt'
-import { teacherAttitude } from '../agent/attitudes/teacher'
+import { EUCLID_ENTITY_MARKERS } from '../euclidEntityMarkers'
+import type { GeometryVoiceConfig } from '../GeometryTeacherConfig'
+import { buildPappusCompletionContext } from '../pappusCharacter'
+import { PAPPUS_CHARACTER_DEF } from '../pappusCharacterDef'
 
 export const pappusConfig: GeometryVoiceConfig = {
   definition: PAPPUS_CHARACTER_DEF,
@@ -19,7 +19,13 @@ export const pappusConfig: GeometryVoiceConfig = {
   entityMarkers: EUCLID_ENTITY_MARKERS,
 
   voice: {
+    /** OpenAI realtime voice for live conversation (realtime stays on OpenAI). */
     id: 'echo',
+    /**
+     * Narration: ElevenLabs "George - Warm, Captivating Storyteller" (British,
+     * mature): the warm commentator who illuminates rather than commands.
+     */
+    ttsVoice: 'el-JBFqnCBsd6RMkjVDRZzb',
     sessionEndpoint: '/api/realtime/euclid/session',
     chatEndpoint: '/api/realtime/euclid/chat',
     thinkHardEndpoint: '/api/realtime/euclid/think-hard',
