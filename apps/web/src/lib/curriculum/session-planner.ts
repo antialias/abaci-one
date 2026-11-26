@@ -42,6 +42,7 @@ import {
   type SessionSummary,
   type SkippedPart,
   type SlotResult,
+  type SlotResultSubmission,
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { resolveLinearEntryPolicy } from '@/lib/curriculum/linear-entry-policy'
@@ -1480,11 +1481,11 @@ async function revokeSharesIfComplete(planId: string, isComplete: boolean, calle
  */
 export async function recordSlotResult(
   planId: string,
-  result: Omit<
-    SlotResult,
-    'timestamp' | 'partNumber' | 'masteryWeight' | 'isRetry' | 'originalSlotIndex'
-  >
+  submission: Omit<SlotResultSubmission, 'masteryWeight' | 'isRetry' | 'originalSlotIndex'>
 ): Promise<SessionPlan> {
+  // partIndex only identifies the answered problem; it is not stored
+  const { partIndex: submittedPartIndex, ...submitted } = submission
+  let result = submitted
   const traceStart = Date.now()
   let plan: SessionPlan | null
   try {
@@ -1518,22 +1519,31 @@ export async function recordSlotResult(
   // before the position checks so a resubmit of a session's final answer is
   // still a no-op.
   const expected = resolveCurrentItem(plan)
+  //
+  // Transitional gap: clients from before this check send no epochNumber (or
+  // partIndex). For them a resubmit of a wrong answer to a part's last slot,
+  // arriving once that slot's first retry is current, has the same content as
+  // the retry and is recorded as it. Clients that send epochNumber are exact.
   const isSubmittedTry = (t: {
+    partIndex: number
     slotIndex: number
     epochNumber?: number
     problem: GeneratedProblem | undefined
   }) =>
+    (submittedPartIndex === undefined || t.partIndex === submittedPartIndex) &&
     t.slotIndex === result.slotIndex &&
     (result.epochNumber === undefined || (t.epochNumber ?? 0) === result.epochNumber) &&
     sameProblem(t.problem, result.problem)
   if (!expected || !isSubmittedTry({ ...expected, slotIndex: expected.originalSlotIndex })) {
-    let lastTry: SlotResult | undefined
-    for (let i = plan.results.length - 1; i >= 0 && !lastTry; i--) {
-      if (!plan.results[i].isManualRedo) lastTry = plan.results[i]
-    }
+    const lastTry = [...plan.results].reverse().find((r) => !r.isManualRedo)
+    const lastTryPartNumber = lastTry?.partNumber
     if (
       lastTry &&
-      isSubmittedTry({ ...lastTry, slotIndex: lastTry.originalSlotIndex ?? lastTry.slotIndex }) &&
+      isSubmittedTry({
+        ...lastTry,
+        partIndex: plan.parts.findIndex((p) => p.partNumber === lastTryPartNumber),
+        slotIndex: lastTry.originalSlotIndex ?? lastTry.slotIndex,
+      }) &&
       lastTry.studentAnswer === result.studentAnswer
     ) {
       console.log('[recordSlotResult] duplicate submit ignored', { planId, slotId: result.slotId })
@@ -1804,7 +1814,11 @@ export async function recordRedoResult(
 
       // Redeeming the current part's remaining retry items must not strand the
       // session: settle the cursor the same way recordSlotResult does.
-      if (redoContext.originalPartIndex === plan.currentPartIndex) {
+      // Only while practicing: a break or transition already owns the next step.
+      if (
+        redoContext.originalPartIndex === plan.currentPartIndex &&
+        (plan.flowState ?? 'practicing') === 'practicing'
+      ) {
         const next = settlePosition(
           plan.parts,
           { partIndex: plan.currentPartIndex, slotIndex: plan.currentSlotIndex },

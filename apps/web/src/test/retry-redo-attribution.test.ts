@@ -9,13 +9,20 @@
  * with its own position (retryState.currentEpochItems[currentRetryIndex]).
  * These tests drive both sides the way ActiveSession does and compare.
  */
+
+import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  chooseRedoReturnTarget,
+  type TransitionTarget,
+} from '@/components/practice/redoReturnTarget'
 import * as schema from '@/db/schema'
-import type { SessionPlan } from '@/db/schema/session-plans'
 import {
   DEFAULT_GAME_BREAK_SETTINGS,
   getCurrentProblemInfo,
 } from '@/db/schema/session-plan-helpers'
+import type { SessionPlan } from '@/db/schema/session-plans'
+import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
 import {
   approveSessionPlan,
   generateSessionPlan,
@@ -24,13 +31,13 @@ import {
   SlotResultMismatchError,
   startSessionPlan,
 } from '@/lib/curriculum/session-planner'
-import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
+import { revokeSharesForSession } from '@/lib/session-share'
 import {
   createEphemeralDatabase,
   createTestStudent,
+  type EphemeralDbResult,
   getCurrentEphemeralDb,
   setCurrentEphemeralDb,
-  type EphemeralDbResult,
 } from './journey-simulator/EphemeralDatabase'
 
 vi.mock('@/db', () => ({
@@ -40,15 +47,24 @@ vi.mock('@/db', () => ({
   schema,
 }))
 
+vi.mock('@/lib/session-share', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/session-share')>()),
+  revokeSharesForSession: vi.fn(async () => {}),
+}))
+
 const SKILLS = ['basic.directAddition', 'basic.heavenBead']
 
-async function newPlan(playerId: string, problemsPerPart: number): Promise<SessionPlan> {
+async function newPlan(
+  playerId: string,
+  problemsPerPart: number,
+  { twoParts = false, breaks = false } = {}
+): Promise<SessionPlan> {
   const plan = await generateSessionPlan({
     playerId,
     durationMinutes: 5,
-    enabledParts: { abacus: true, visualization: false, linear: false },
+    enabledParts: { abacus: true, visualization: twoParts, linear: false },
     overrideProblemsPerPart: problemsPerPart,
-    gameBreakSettings: { ...DEFAULT_GAME_BREAK_SETTINGS, enabled: false },
+    gameBreakSettings: { ...DEFAULT_GAME_BREAK_SETTINGS, enabled: breaks },
   })
   await approveSessionPlan(plan.id)
   return startSessionPlan(plan.id)
@@ -275,5 +291,145 @@ describe('retry and do-over attribution', () => {
       expect(plan.results[1].slotId).toBe(plan.parts[0].slots[1].slotId)
       expect(plan.currentSlotIndex).toBe(2)
     })
+  })
+
+  describe('do-overs that move the session on', () => {
+    /** slot 0 and 1 wrong, slot 2 right: retry round 1 = [slot 0, slot 1] */
+    async function inRetryRound(options?: { twoParts?: boolean; breaks?: boolean }) {
+      let plan = await newPlan(playerId, 3, options)
+      plan = await answerShown(plan, false)
+      plan = await answerShown(plan, false)
+      plan = await answerShown(plan, true)
+      expect(plan.retryState?.[0]?.currentEpoch).toBe(1)
+      return plan
+    }
+
+    it("returns the client to the server's next problem when a do-over redeems the current one", async () => {
+      const before = await inRetryRound()
+      const shownAtSubmit = getCurrentProblemInfo(before)!
+      const targetAtSubmit: TransitionTarget = {
+        problem: shownAtSubmit.problem,
+        slotIndex: shownAtSubmit.originalSlotIndex,
+        partIndex: before.currentPartIndex,
+        epochNumber: shownAtSubmit.epochNumber,
+      }
+      expect(targetAtSubmit.slotIndex).toBe(0) // on screen: slot 0's retry
+
+      const after = await redoCorrect(before, 0) // the kid redoes slot 0 itself
+      const target = chooseRedoReturnTarget(before, { recorded: true, plan: after }, targetAtSubmit)
+      expect(target).toMatchObject({ slotIndex: 1, partIndex: 0, epochNumber: 1 })
+
+      // The answer the client sends from that target is accepted and attributed to slot 1
+      const slot = after.parts[target!.partIndex].slots[target!.slotIndex]
+      const plan = await recordSlotResult(after.id, {
+        slotId: slot.slotId,
+        slotIndex: target!.slotIndex,
+        partIndex: target!.partIndex,
+        epochNumber: target!.epochNumber,
+        problem: target!.problem,
+        studentAnswer: target!.problem.answer,
+        isCorrect: true,
+        responseTimeMs: 3000,
+        skillsExercised: target!.problem.skillsRequired,
+        usedOnScreenAbacus: false,
+        hadHelp: false,
+        incorrectAttempts: 0,
+      })
+      expect(plan.results.at(-1)!.slotId).toBe(slot.slotId)
+      expect(plan.status).toBe('completed')
+    })
+
+    it('hands off to the session state when the do-over ends the session, fails, or is not recorded', async () => {
+      let before = await inRetryRound()
+      before = await redoCorrect(before, 0)
+      const after = await redoCorrect(before, 1)
+      expect(chooseRedoReturnTarget(before, { recorded: true, plan: after }, null)).toBeNull()
+      expect(chooseRedoReturnTarget(before, { recorded: true, plan: null }, null)).toBeNull()
+      const keep: TransitionTarget = {
+        problem: after.parts[0].slots[1].problem!,
+        slotIndex: 1,
+        partIndex: 0,
+        epochNumber: 1,
+      }
+      expect(chooseRedoReturnTarget(before, { recorded: false }, keep)).toBe(keep)
+    })
+
+    it('moves to the next part with a break when a do-over empties the round (breaks on)', async () => {
+      const before = await inRetryRound({ twoParts: true, breaks: true })
+      let plan = await redoCorrect(before, 0)
+      expect(plan.currentPartIndex).toBe(0)
+      plan = await redoCorrect(plan, 1)
+      expect(plan.currentPartIndex).toBe(1)
+      expect(plan.currentSlotIndex).toBe(0)
+      expect(plan.flowState).toBe('part_transition')
+      expect(plan.flowVersion).toBe((before.flowVersion ?? 0) + 1)
+      expect(plan.status).toBe('in_progress')
+    })
+
+    it('completes the session when a do-over empties the last part', async () => {
+      const before = await inRetryRound()
+      vi.mocked(revokeSharesForSession).mockClear()
+      let plan = await redoCorrect(before, 0)
+      plan = await redoCorrect(plan, 1)
+      expect(plan.status).toBe('completed')
+      expect(plan.flowState).toBe('completed')
+      expect(plan.completedAt).toBeTruthy()
+      expect(revokeSharesForSession).toHaveBeenCalledWith(plan.id)
+    })
+
+    it('starts retry round 2 when a do-over redeems the rest of round 1 and a retry is pending', async () => {
+      let plan = await inRetryRound()
+      plan = await answerShown(plan, false) // slot 0 wrong again -> pending round 2 = [slot 0]
+      plan = await redoCorrect(plan, 1) // redeem slot 1, the rest of round 1
+      expect(plan.retryState?.[0]?.currentEpoch).toBe(2)
+      expect(plan.status).toBe('in_progress')
+      const shown = getCurrentProblemInfo(plan)!
+      expect(shown).toMatchObject({ originalSlotIndex: 0, epochNumber: 2, isRetry: true })
+    })
+
+    it('does not move the session while a break or transition owns the next step', async () => {
+      let plan = await inRetryRound()
+      plan = await redoCorrect(plan, 0)
+      await eph.db
+        .update(schema.sessionPlans)
+        .set({ flowState: 'break_active' })
+        .where(eq(schema.sessionPlans.id, plan.id))
+      plan = await redoCorrect(plan, 1)
+      expect(plan.currentPartIndex).toBe(0)
+      expect(plan.status).toBe('in_progress')
+    })
+  })
+
+  it('stops re-queuing after MAX_RETRY_EPOCHS and ends the part', async () => {
+    let plan = await newPlan(playerId, 3)
+    plan = await answerShown(plan, false) // slot 0
+    plan = await answerShown(plan, true)
+    plan = await answerShown(plan, true) // round 1 = [slot 0]
+    plan = await answerShown(plan, false) // round 1 wrong -> round 2 = [slot 0]
+    expect(plan.retryState?.[0]?.currentEpoch).toBe(2)
+    plan = await answerShown(plan, false) // round 2 wrong: answer revealed, not re-queued
+    expect(plan.results.map((r) => r.epochNumber)).toEqual([0, 0, 0, 1, 2])
+    expect(plan.retryState?.[0]?.pendingRetries).toEqual([])
+    expect(plan.status).toBe('completed')
+  })
+
+  it('rejects an answer whose partIndex names a different part', async () => {
+    const plan = await newPlan(playerId, 3)
+    const info = getCurrentProblemInfo(plan)!
+    await expect(
+      recordSlotResult(plan.id, {
+        slotId: info.slotId,
+        slotIndex: info.originalSlotIndex,
+        partIndex: 1,
+        problem: info.problem,
+        studentAnswer: info.problem.answer,
+        isCorrect: true,
+        responseTimeMs: 3000,
+        skillsExercised: info.problem.skillsRequired,
+        usedOnScreenAbacus: false,
+        hadHelp: false,
+        incorrectAttempts: 0,
+      })
+    ).rejects.toBeInstanceOf(SlotResultMismatchError)
   })
 })

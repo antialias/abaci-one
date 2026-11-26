@@ -25,7 +25,6 @@ import type {
   ProblemSlot,
   SessionHealth,
   SessionPlan,
-  SessionRetryState,
 } from './session-plans'
 
 // ============================================================================

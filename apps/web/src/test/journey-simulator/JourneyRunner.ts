@@ -13,6 +13,17 @@
  * 6. Calculates final metrics comparing BKT to ground truth
  */
 
+// These imports will use the mocked database
+import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
+import { computeBktFromHistory } from '@/lib/curriculum/bkt'
+import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
+import {
+  approveSessionPlan,
+  generateSessionPlan,
+  getRecentSessionResults,
+  recordSlotResult,
+  startSessionPlan,
+} from '@/lib/curriculum/session-planner'
 import type { TestDatabase } from './EphemeralDatabase'
 import type { SeededRandom } from './SeededRandom'
 import type { SimulatedStudent } from './SimulatedStudent'
@@ -25,23 +36,10 @@ import type {
   SkillTrajectory,
 } from './types'
 
-// These imports will use the mocked database
-import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
-import { computeBktFromHistory } from '@/lib/curriculum/bkt'
-import {
-  approveSessionPlan,
-  generateSessionPlan,
-  getRecentSessionResults,
-  recordSlotResult,
-  startSessionPlan,
-} from '@/lib/curriculum/session-planner'
-import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
-
 /**
  * Runs a simulated learning journey through multiple sessions.
  */
 export class JourneyRunner {
-  private db: TestDatabase
   private student: SimulatedStudent
   private config: JourneyConfig
   private rng: SeededRandom
@@ -49,13 +47,13 @@ export class JourneyRunner {
   private originalMathRandom: () => number
 
   constructor(
-    db: TestDatabase,
+    // The mocked @/db module serves the ephemeral database; kept for callers
+    _db: TestDatabase,
     student: SimulatedStudent,
     config: JourneyConfig,
     rng: SeededRandom,
     playerId: string
   ) {
-    this.db = db
     this.student = student
     this.config = config
     this.rng = rng

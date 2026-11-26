@@ -1,12 +1,19 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type {
   GameBreakSettings,
   SessionPlan,
   SkippedPart,
   SlotResult,
+  SlotResultSubmission,
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
@@ -187,7 +194,7 @@ async function updateSessionPlan({
     | 'part_transition_complete'
     | 'break_finished'
     | 'break_results_acked'
-  result?: Omit<SlotResult, 'timestamp' | 'partNumber'>
+  result?: SlotResultSubmission
   reason?: string
   breakFinishReason?: 'timeout' | 'gameFinished' | 'skipped'
 }): Promise<SessionPlan> {
@@ -415,6 +422,14 @@ export function useStartSessionPlan() {
   })
 }
 
+/** Refetch a session plan after a failed write (active + detail queries). */
+function refetchPlan(queryClient: QueryClient, playerId: string, planId: string) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: sessionPlanKeys.active(playerId) }),
+    queryClient.invalidateQueries({ queryKey: sessionPlanKeys.detail(planId) }),
+  ])
+}
+
 /**
  * Hook: Record a slot result (answer submitted)
  */
@@ -429,19 +444,19 @@ export function useRecordSlotResult() {
     }: {
       playerId: string
       planId: string
-      result: Omit<SlotResult, 'timestamp' | 'partNumber'>
+      result: SlotResultSubmission
     }) => updateSessionPlan({ playerId, planId, action: 'record', result }),
     onSuccess: (plan, { playerId }) => {
       queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
       queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
     },
+    // Any failed write leaves the screen ahead of the server: refetch. Returned so
+    // the mutation settles (and mutateAsync rejects) only once the refetch is in.
     onError: (err, { playerId, planId }) => {
-      console.error('Failed to record slot result:', err.message)
-      if (err instanceof SlotMismatchClientError) {
-        // Our plan is stale: refetch it so the student sees the server's current problem
-        queryClient.invalidateQueries({ queryKey: sessionPlanKeys.active(playerId) })
-        queryClient.invalidateQueries({ queryKey: sessionPlanKeys.detail(planId) })
+      if (!(err instanceof SlotMismatchClientError)) {
+        console.error('Failed to record slot result:', err.message)
       }
+      return refetchPlan(queryClient, playerId, planId)
     },
   })
 }
@@ -661,8 +676,9 @@ export function useRecordRedoResult() {
       queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
       queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
     },
-    onError: (err) => {
+    onError: (err, { playerId, planId }) => {
       console.error('Failed to record redo result:', err.message)
+      return refetchPlan(queryClient, playerId, planId)
     },
   })
 }

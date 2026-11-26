@@ -3,6 +3,7 @@
 import { animated, useSpring } from '@react-spring/web'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import { getProgressiveAssistanceTiming, shouldUseDebugTiming } from '@/constants/helpTiming'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import { getCurrentProblemInfo, MAX_RETRY_EPOCHS } from '@/db/schema/session-plan-helpers'
@@ -13,13 +14,12 @@ import type {
   SessionPartType,
   SessionPlan,
   SlotResult,
+  SlotResultSubmission,
 } from '@/db/schema/session-plans'
-
+import { applyResponseTimeGuard } from '@/lib/curriculum/timing/response-time-guard'
 import { css } from '../../../styled-system/css'
 import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'
 import { calculateComplexityScaledThresholds, getComplexityCost } from './autoPauseCalculator'
-import { applyResponseTimeGuard } from '@/lib/curriculum/timing/response-time-guard'
-import { getProgressiveAssistanceTiming, shouldUseDebugTiming } from '@/constants/helpTiming'
 import { BrowseModeView, getLinearIndex } from './BrowseModeView'
 import { PartTransitionScreen, TRANSITION_COUNTDOWN_MS } from './PartTransitionScreen'
 import { extractTargetSkillName, PurposeBadge } from './PurposeBadge'
@@ -40,24 +40,33 @@ export interface StudentInfo {
 }
 
 import { useAbacusDisplay } from '@soroban/abacus-react'
+import type { ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
+import { useSetRemoteCameraSession } from '@/hooks/useSessionPlan'
 import { AbacusDock } from '../AbacusDock'
 import { DecompositionProvider, DecompositionSection } from '../decomposition'
+import { AssistanceDebugPanel } from './AssistanceDebugPanel'
 import { generateCoachHint } from './coachHintGenerator'
+import { DebugOverlay } from './DebugOverlay'
 import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
-import { findMatchedPrefixIndex, useInteractionPhase } from './hooks/useInteractionPhase'
+import {
+  type AttemptInput,
+  findMatchedPrefixIndex,
+  useInteractionPhase,
+} from './hooks/useInteractionPhase'
+import { useProgressiveAssistance } from './hooks/useProgressiveAssistance'
+import { LinearProblem } from './LinearProblem'
 // Audio disabled for practice sessions (use abacus / visualize)
 import { NumericKeypad } from './NumericKeypad'
 import { PracticeFeedback } from './PracticeFeedback'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
-import { DebugOverlay } from './DebugOverlay'
 import { ProblemDebugPanel } from './ProblemDebugPanel'
-import { AssistanceDebugPanel } from './AssistanceDebugPanel'
 import { ProgressiveAssistanceUI } from './ProgressiveAssistanceUI'
-import { useProgressiveAssistance } from './hooks/useProgressiveAssistance'
+import {
+  chooseRedoReturnTarget,
+  type RedoWriteOutcome,
+  type TransitionTarget,
+} from './redoReturnTarget'
 import { VerticalProblem } from './VerticalProblem'
-import { LinearProblem } from './LinearProblem'
-import type { ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
-import { useSetRemoteCameraSession } from '@/hooks/useSessionPlan'
 
 /**
  * Timing data for the current problem attempt
@@ -124,10 +133,17 @@ export interface BroadcastState {
 type SubmitAdvanceDestination = 'next-problem-same-lane' | 'state-handoff'
 type SubmitAdvanceIntent = 'slide-to-next-problem' | 'clear-to-loading'
 type SubmitMode = 'practice' | 'redo'
-type TransitionTarget = {
-  problem: SlotResult['problem']
-  slotIndex: number
-  partIndex: number
+/**
+ * Identity of the problem an attempt answers, as the server matches it: the
+ * attempt's own slot and round, never the plan's current one (which lags one
+ * problem behind an optimistic advance).
+ */
+function answeredProblemIdentity(plan: SessionPlan, attempt: AttemptInput) {
+  return {
+    slotId: plan.parts[attempt.partIndex]?.slots[attempt.slotIndex]?.slotId ?? '',
+    slotIndex: attempt.slotIndex,
+    epochNumber: attempt.epochNumber ?? 0,
+  }
 }
 
 type SubmitAdvanceResolution = {
@@ -147,7 +163,7 @@ interface ActiveSessionProps {
   /** Student info for display in pause modal */
   student: StudentInfo
   /** Called when a problem is answered */
-  onAnswer: (result: Omit<SlotResult, 'timestamp' | 'partNumber'>) => Promise<void>
+  onAnswer: (result: SlotResultSubmission) => Promise<void>
   /** Called when session is ended early */
   onEndEarly: (reason?: string) => void
   /** Called when session is paused (with info about why) - for external HUD updates */
@@ -209,7 +225,7 @@ interface ActiveSessionProps {
       originalSlotIndex: number
       originalWasCorrect: boolean
     }
-  }) => Promise<SessionPlan>
+  }) => Promise<SessionPlan | null>
   /** Called when the redo is complete or cancelled */
   onRedoComplete?: () => void
   /** Called to cancel the redo without recording */
@@ -218,6 +234,12 @@ interface ActiveSessionProps {
   onResultEdited?: () => void
   /** When true, show the debug overlay with submit buttons */
   debug?: boolean
+  /**
+   * Bumped by the parent after a server write failed and the plan was
+   * refetched: re-show the server's current problem even if its key is the
+   * one already on screen.
+   */
+  resyncRequest?: number
 }
 
 /**
@@ -295,6 +317,7 @@ export function ActiveSession({
   onCancelRedo,
   onResultEdited,
   debug = false,
+  resyncRequest = 0,
 }: ActiveSessionProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
@@ -416,6 +439,7 @@ export function ActiveSession({
         problem: currentProblemInfo.problem,
         slotIndex: currentProblemInfo.originalSlotIndex,
         partIndex: plan.currentPartIndex,
+        epochNumber: currentProblemInfo.epochNumber,
       }
     }
     return undefined
@@ -448,6 +472,7 @@ export function ActiveSession({
         problem: currentProblemInfo.problem,
         slotIndex: currentProblemInfo.originalSlotIndex,
         partIndex: plan.currentPartIndex,
+        epochNumber: currentProblemInfo.epochNumber,
         key: `normal-${plan.currentPartIndex}-${currentProblemInfo.originalSlotIndex}-${currentProblemInfo.epochNumber ?? 0}`,
       }
     }
@@ -511,6 +536,16 @@ export function ActiveSession({
     activeProblem,
     disableAbacusScaffolding: isLinearActive,
   })
+
+  // A server write failed and the plan was refetched (resyncRequest bumped):
+  // drop whatever is on screen and load the server's current problem. Loading
+  // re-reads activeProblem even when its key has not changed.
+  const handledResyncRef = useRef(resyncRequest)
+  useEffect(() => {
+    if (resyncRequest === handledResyncRef.current) return
+    handledResyncRef.current = resyncRequest
+    clearToLoading()
+  }, [resyncRequest, clearToLoading])
 
   // Format of the OUTGOING problem's part (may differ from the current part at a
   // part boundary), so the sliding-away problem keeps its own vertical/linear shape.
@@ -1304,6 +1339,7 @@ export function ActiveSession({
             problem: nextSlot.problem,
             slotIndex: submittedSlotIndex + 1,
             partIndex: submittedPartIndex,
+            epochNumber: 0,
           }
         }
       }
@@ -1324,6 +1360,7 @@ export function ActiveSession({
           problem: latestActiveProblem.problem,
           slotIndex: latestActiveProblem.slotIndex,
           partIndex: latestActiveProblem.partIndex,
+          epochNumber: latestActiveProblem.epochNumber ?? 0,
         }
       }
 
@@ -1339,7 +1376,8 @@ export function ActiveSession({
         startTransition(
           transitionTarget.problem,
           transitionTarget.slotIndex,
-          transitionTarget.partIndex
+          transitionTarget.partIndex,
+          transitionTarget.epochNumber
         )
         return
       }
@@ -1471,13 +1509,16 @@ export function ActiveSession({
       'client'
     )
     const isCorrect = answerNum === attemptData.problem.answer
-    const epochNumberAtSubmit = currentProblemInfo?.epochNumber ?? 0
+    // The round of the problem on screen, not the plan's (which can lag)
+    const answered = answeredProblemIdentity(plan, attemptData)
+    const epochNumberAtSubmit = answered.epochNumber
     const activeProblemKeyAtSubmit = activeProblem?.key ?? null
-    const redoReturnTarget = currentProblemInfo
+    const redoReturnTargetAtSubmit: TransitionTarget | null = currentProblemInfo
       ? {
           problem: currentProblemInfo.problem,
           slotIndex: currentProblemInfo.originalSlotIndex,
           partIndex: plan.currentPartIndex,
+          epochNumber: currentProblemInfo.epochNumber,
         }
       : null
     const hasRetriesRemaining = epochNumberAtSubmit < MAX_RETRY_EPOCHS
@@ -1497,18 +1538,10 @@ export function ActiveSession({
       collectVisionTrainingData(attemptData.problem.answer, attemptData.slotIndex)
     }
 
-    // The slot of the problem actually answered. After an optimistic advance the
-    // plan can still point at the previous problem, so currentProblemInfo can lag.
-    // (The server attributes by problem and slotIndex either way.)
-    const answeredSlotId =
-      plan.parts[attemptData.partIndex]?.slots[attemptData.slotIndex]?.slotId ??
-      currentProblemInfo!.slotId
     // Record the result
     const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
-      slotId: answeredSlotId,
-      slotIndex: attemptData.slotIndex,
-      // Tells the server a resubmit from the next try of the same slot (a retry)
-      epochNumber: epochNumberAtSubmit,
+      // The round tells the server a resubmit from the next try of the same slot
+      ...answered,
       problem: attemptData.problem,
       studentAnswer: answerNum,
       isCorrect,
@@ -1524,6 +1557,7 @@ export function ActiveSession({
     const submitMode: SubmitMode = isInRedoMode && redoState ? 'redo' : 'practice'
 
     // Handle redo recording separately - return path is still unified through submit advance resolver.
+    let redoOutcome: RedoWriteOutcome = { recorded: false }
     if (submitMode === 'redo' && redoState) {
       // Only record if the original problem was incorrect
       // (Original correct = pure practice, no recording to avoid unintentional penalty)
@@ -1540,8 +1574,9 @@ export function ActiveSession({
           epochNumber: (redoState.originalResult.epochNumber ?? 0) + 1,
           originalSlotIndex: redoState.originalSlotIndex,
         }
-        // Use the special redo mutation that doesn't advance session position
-        await onRecordRedo({
+        // Use the special redo mutation. It can move the session on (a redeemed
+        // retry round), so the return target comes from its answer below.
+        const redoPlan = await onRecordRedo({
           playerId: student.id,
           planId: plan.id,
           result: redoResult,
@@ -1551,6 +1586,7 @@ export function ActiveSession({
             originalWasCorrect: redoOriginalWasCorrect,
           },
         })
+        redoOutcome = { recorded: true, plan: redoPlan }
       }
 
       // Continue into unified completion path below.
@@ -1562,10 +1598,11 @@ export function ActiveSession({
         !!plan.parts[attemptData.partIndex]?.slots[attemptData.slotIndex + 1]?.problem
       const canAdvanceOptimistically = epochNumberAtSubmit === 0 && nextSlotExists
 
+      const submission: SlotResultSubmission = { ...result, partIndex: attemptData.partIndex }
       if (canAdvanceOptimistically) {
-        void onAnswer(result)
+        void onAnswer(submission)
       } else {
-        await onAnswer(result)
+        await onAnswer(submission)
       }
     }
 
@@ -1581,7 +1618,7 @@ export function ActiveSession({
           submittedSlotIndex: attemptData.slotIndex,
           submittedEpochNumber: epochNumberAtSubmit,
           activeProblemKeyAtSubmit,
-          redoReturnTarget,
+          redoReturnTarget: chooseRedoReturnTarget(plan, redoOutcome, redoReturnTargetAtSubmit),
         }).then((resolution) => {
           enactSubmitAdvance(resolution)
           if (submitMode === 'redo') {
@@ -1732,9 +1769,9 @@ export function ActiveSession({
       assistance.machineState.context.thresholds.autoPauseMs,
       'client'
     )
-    const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
-      slotId: currentProblemInfo!.slotId,
-      slotIndex: attempt.slotIndex,
+    const result: SlotResultSubmission = {
+      ...answeredProblemIdentity(plan, attempt),
+      partIndex: attempt.partIndex,
       problem: attempt.problem,
       studentAnswer: attempt.problem.answer, // Record the correct answer
       isCorrect: false, // Marked incorrect because student didn't solve it

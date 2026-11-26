@@ -341,6 +341,14 @@ export interface SlotResult {
 }
 
 /**
+ * One try as a client submits it; the server fills in the rest. `partIndex`,
+ * when sent, names the part of the problem answered (checked, never stored).
+ */
+export type SlotResultSubmission = Omit<SlotResult, 'timestamp' | 'partNumber'> & {
+  partIndex?: number
+}
+
+/**
  * Adult review/repair metadata for a single attempt's timing sample (#158).
  *
  * Scopes are independent from mastery exclusion (`source: 'teacher-excluded'`):

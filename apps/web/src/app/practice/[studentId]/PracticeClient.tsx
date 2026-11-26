@@ -3,7 +3,6 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '@/components/common/ToastContext'
-import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
   ActiveSession,
@@ -14,10 +13,12 @@ import {
   PracticeSubNav,
   type SessionHudData,
 } from '@/components/practice'
-import { GameBreakScreen } from '@/components/practice/GameBreakScreen'
 import { GameBreakResultsScreen } from '@/components/practice/GameBreakResultsScreen'
-import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
+import { GameBreakScreen } from '@/components/practice/GameBreakScreen'
+import { createWriteQueue } from '@/components/practice/writeQueue'
+import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import type { Player } from '@/db/schema/players'
+import { getSlotRetryStatus } from '@/db/schema/session-plan-helpers'
 import type {
   GameBreakSettings,
   SessionHealth,
@@ -25,8 +26,9 @@ import type {
   SessionPlan,
   SessionRetryState,
   SlotResult,
+  SlotResultSubmission,
 } from '@/db/schema/session-plans'
-import { getSlotRetryStatus } from '@/db/schema/session-plan-helpers'
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 
 /**
  * State for redoing a previously completed problem
@@ -48,28 +50,30 @@ export interface RedoState {
   /** Slot index to return to after redo */
   returnToSlotIndex: number
 }
+
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { BroadcastDebugPanel } from '@/components/debug/BroadcastDebugPanel'
+import { useSaveGameResult } from '@/hooks/useGameResults'
 import {
   type BreakContext,
   type ReceivedAbacusControl,
   type TeacherPauseRequest,
   useSessionBroadcast,
 } from '@/hooks/useSessionBroadcast'
+import { useSessionMode } from '@/hooks/useSessionMode'
 import {
-  useAcknowledgeGameBreakResults,
-  useCompletePartTransition,
-  useFinishGameBreak,
-  useStartGameBreak,
+  SlotMismatchClientError,
   sessionPlanKeys,
+  useAcknowledgeGameBreakResults,
   useActiveSessionPlan,
+  useCompletePartTransition,
   useEndSessionEarly,
+  useFinishGameBreak,
   useRecordRedoResult,
   useRecordSlotResult,
+  useStartGameBreak,
 } from '@/hooks/useSessionPlan'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useSaveGameResult } from '@/hooks/useGameResults'
-import { useSessionMode } from '@/hooks/useSessionMode'
 import { useSessionSongTrigger } from '@/hooks/useSessionSongTrigger'
-import { BroadcastDebugPanel } from '@/components/debug/BroadcastDebugPanel'
 import { css } from '../../../../styled-system/css'
 
 interface PracticeClientProps {
@@ -319,13 +323,16 @@ export function PracticeClient({
     setIsPaused(false)
   }, [])
 
-  // Mutation queue: each server mutation chains off the previous one so they
-  // execute in order. The UI can advance optimistically while mutations queue.
-  const pendingMutationRef = useRef<Promise<void>>(Promise.resolve())
+  // Write queue: answers and do-overs reach the server in submit order while the
+  // UI advances optimistically. When one fails, the writes queued behind it are
+  // dropped and ActiveSession re-shows the server's current problem (the hook
+  // has already refetched the plan by the time the failure reaches here).
+  const [resyncRequest, setResyncRequest] = useState(0)
+  const [writeQueue] = useState(() => createWriteQueue(() => setResyncRequest((n) => n + 1)))
 
   // Handle recording an answer
   const handleAnswer = useCallback(
-    (result: Omit<SlotResult, 'timestamp' | 'partNumber'>): Promise<void> => {
+    (result: SlotResultSubmission): Promise<void> => {
       // Synchronous work: problem markers + trace logging happen immediately
       const currentProblemNumber = currentPlan.currentSlotIndex + 1
       const retryContext = getRetryContext(
@@ -350,13 +357,17 @@ export function PracticeClient({
       const capturedPreviousPartIndex = previousPartIndexRef.current
 
       // Chain this mutation onto the queue so mutations execute in order
-      const mutationPromise = pendingMutationRef.current.then(async () => {
+      const mutationPromise = (async () => {
         try {
-          const updatedPlan = await recordResult.mutateAsync({
-            playerId: studentId,
-            planId: currentPlan.id,
-            result,
-          })
+          const updatedPlan = await writeQueue.enqueue(() =>
+            recordResult.mutateAsync({
+              playerId: studentId,
+              planId: currentPlan.id,
+              result,
+            })
+          )
+          // Dropped: an answer queued before this one failed; the screen resyncs
+          if (!updatedPlan) return
           logGameBreakTrace('answer-submit-resolved', {
             previousPartIndex: capturedPreviousPartIndex,
             updatedPartIndex: updatedPlan.currentPartIndex,
@@ -398,6 +409,12 @@ export function PracticeClient({
             })
           }
         } catch (err) {
+          // The answer was for a problem the server is no longer on: the screen
+          // resyncs to the server's current problem; nothing for the kid to read.
+          if (err instanceof SlotMismatchClientError) {
+            console.warn('[PracticeClient] answer rejected as stale; resyncing:', err.message)
+            return
+          }
           const message = err instanceof Error ? err.message : 'Unknown error'
           if (message.includes('Not authorized')) {
             showError(
@@ -408,9 +425,8 @@ export function PracticeClient({
             showError('Failed to record answer', message)
           }
         }
-      })
+      })()
 
-      pendingMutationRef.current = mutationPromise
       return mutationPromise
     },
     [
@@ -419,6 +435,7 @@ export function PracticeClient({
       currentPlan.currentPartIndex,
       currentPlan.currentSlotIndex,
       recordResult,
+      writeQueue,
       router,
       showError,
       logGameBreakTrace,
@@ -519,7 +536,7 @@ export function PracticeClient({
         originalSlotIndex: number
         originalWasCorrect: boolean
       }
-    }): Promise<SessionPlan> => {
+    }): Promise<SessionPlan | null> => {
       // Send the answer-submitted marker for the redo
       const { redoContext, result } = params
       const retryContext = getRetryContext(
@@ -535,10 +552,15 @@ export function PracticeClient({
         retryContext
       )
 
-      // Now call the actual mutation
-      return recordRedo.mutateAsync(params)
+      // Queued behind any pending answers: a do-over can move the session on
+      try {
+        return (await writeQueue.enqueue(() => recordRedo.mutateAsync(params))) ?? null
+      } catch (err) {
+        showError('Failed to record answer', err instanceof Error ? err.message : 'Unknown error')
+        return null
+      }
     },
-    [getRetryContext, recordRedo]
+    [getRetryContext, recordRedo, writeQueue, showError]
   )
 
   // Handle game break end - show results screen if game finished normally
@@ -1033,6 +1055,7 @@ export function PracticeClient({
               onPartTransition={handlePartTransition}
               onPartTransitionComplete={handlePartTransitionComplete}
               redoState={redoState}
+              resyncRequest={resyncRequest}
               onRecordRedo={handleRecordRedo}
               onRedoComplete={() => setRedoState(null)}
               onCancelRedo={handleCancelRedo}
