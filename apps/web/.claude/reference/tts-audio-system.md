@@ -217,19 +217,28 @@ This is how clips go from "first spoken in a browser" to "cached mp3 on disk":
 | | On-demand (`generate` in chain) | Batch (admin panel) |
 |---|---|---|
 | **When** | During playback, when a clip is missing | Admin triggers manually |
-| **Latency** | User waits ~1 s; gives up after 5 s (falls to subtitles) | Runs in background |
+| **Latency** | User waits ~1 s; answered 504 after 5 s (falls to subtitles) while generation finishes in the background | Runs in background |
 | **Scope** | One clip at a time | All missing clips for a voice |
 | **Where called** | `PregeneratedVoice.generate()` → `POST /api/audio/generate-clip` | Background task → `synthesizeSpeech()` |
 | **Guards** | Text must match the clip id; hourly caps (below) | Admin only |
-| **Both save to** | `data/audio/{voice}/{clipId}.mp3` | Same |
+| **Both save to** | `data/audio/{voice}/t-{key}.mp3` (manifest clips: `{clipId}.mp3`) | Same |
 
 ---
+
+### Where generated clips are stored (text keys)
+
+For an ElevenLabs voice, every clip that isn't a manifest clip (hash ids, collected named ids) is stored as `data/audio/el-{id}/t-{key}.mp3`, where `key` is the first 32 hex digits of SHA-256 over exactly the text sent to ElevenLabs (clip text plus its tone's audio tag). The server computes it (`src/lib/speech/clipStorage.ts`); a client's clip id never names the file. A request with forged text (FNV-1a hash ids are trivially forgeable) can therefore only create audio under its own text's key, which no other request reaches. Manifest clips keep `{clipId}.mp3` (constant text, checked). Retired and custom voices keep their files by clip id.
+
+The client can't compute the key, so for text-keyed clips (`isTextKeyedClip`, `src/lib/audio/textKeyedClips.ts`) the chain step POSTs `{voice, clipId, text, tone, cacheOnly: true}` to `/api/audio/generate-clip` (200 = cached audio, 404 = miss) instead of GETting by clip id; the `generate` step POSTs without `cacheOnly`. The bulk task and the admin page's `?voice=` status (`fileFor`) use the same keys.
 
 ### On-demand guards (`/api/audio/generate-clip`)
 
 Guests can call this route, so before anything is spent:
-- **Clip authority** (`src/lib/speech/clipAuthority.ts`): a hash id must equal `computeClipHash({en: text}, tone)`; a named id (manifest or collected clip) must carry the server's own text, and the server's text and tone are spoken. An unknown named id is a 404. Non-English text under an English id is refused and falls to subtitles.
-- **Hourly caps** (`src/lib/speech/generationBudget.ts`, in memory per pod, sliding hour, cache hits free): 500 clips / 20k characters per identity (user id, else the guest id), 1,000 clips / 60k characters per pod. Over a cap → 429.
+- **Clip fit** (`src/lib/speech/clipAuthority.ts`): a manifest id must carry the manifest's text (which, with its tone, is what's spoken). A hash id must FNV-hash to its id; that's a sanity check only, since storage is keyed by text.
+- **Hourly caps** (`src/lib/speech/generationBudget.ts`, in memory per pod, sliding hour, charged once per upstream request; cache hits and joined generations are free): 500 clips / 20k characters per identity, 1,000 clips / 60k characters per pod. Over a cap → 429. Identity (`src/lib/speech/requestIdentity.ts`): user id, else the signed guest cookie's `sid`, else the rightmost `X-Forwarded-For` hop (the one k3s Traefik appended). Never a client-set header.
+- **Timing and dedupe** (`src/lib/speech/onDemandGeneration.ts`): the caller gets 504 after 5 s and falls to subtitles, but the upstream request keeps running (up to 30 s; the door bills aborted requests in full) and writes the cache file when it lands. Plays of the same clip while it's generating join that generation.
+- **Say text is first-write-wins**: `POST /api/audio/collected-clips` never rewrites an existing (clip, locale) text or a clip's tone.
+- **`songs`** (children's session songs) is not a voice: no voice route lists, writes, serves from or removes it.
 
 ### Tones
 
@@ -298,6 +307,10 @@ Record custom voice clips via microphone. Select audio input device, see live mi
 | `src/lib/speech/synthesize.ts` | `synthesizeSpeech()`, `listElevenLabsVoices()`, timeouts (`SPEECH_TIMEOUT_MS`) |
 | `src/lib/speech/clipAuthority.ts` | What on-demand generation may say for a clip id |
 | `src/lib/speech/generationBudget.ts` | Hourly on-demand caps |
+| `src/lib/speech/clipStorage.ts` | Text keys (`t-…`) and atomic clip writes |
+| `src/lib/speech/onDemandGeneration.ts` | In-flight dedupe, wait-then-504 |
+| `src/lib/speech/requestIdentity.ts` | Who a request is charged to |
+| `src/lib/audio/textKeyedClips.ts` | Which clips are text-keyed (client-safe) |
 
 ### React integration
 
@@ -359,7 +372,9 @@ Record custom voice clips via microphone. Select audio input device, see live mi
 
 | Location | What's there |
 |----------|-------------|
-| `data/audio/{voice}/{clipId}.mp3` | Generated or pregenerated clips |
+| `data/audio/el-{id}/t-{key}.mp3` | ElevenLabs clips keyed by spoken text |
+| `data/audio/{voice}/{clipId}.mp3` | Manifest clips, and retired/custom voices' clips |
+| `data/audio/songs/` | Children's session songs (not a voice) |
 | `data/audio/{voice}/cc-{clipId}.mp3` | Collected clips (legacy prefix) |
 | `data/audio/{voice}/.deactivated/` | Deactivated clips (hidden, not deleted) |
 
