@@ -51,9 +51,10 @@ vi.mock('@/lib/task-manager', () => ({
 import { AUDIO_MANIFEST } from '@/lib/audio/audioManifest'
 import { computeClipHash } from '@/lib/audio/clipHash'
 import { speechStorageKey } from '@/lib/speech/clipStorage'
+import { FLUSH_LIMITS } from '@/lib/speech/collectedClipLimits'
 import { speechRequestText } from '@/lib/speech/synthesize'
 import { startCollectedClipGeneration } from '@/lib/tasks/collected-clip-generate'
-import { FLUSH_LIMITS, GET, POST } from '../route'
+import { GET, POST } from '../route'
 
 const VOICE = 'el-onwK4e9ZLuTAKqWW03F9'
 const ctx = { userId: '' } as never
