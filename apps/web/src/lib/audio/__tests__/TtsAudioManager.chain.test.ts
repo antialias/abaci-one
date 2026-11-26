@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from 'vitest'
 import { characterChain, TtsAudioManager } from '../TtsAudioManager'
 import type { VoiceSourceData } from '../voiceSource'
 import { BrowserTtsVoice, PregeneratedVoice, SubtitleVoice } from '../voiceSource'
@@ -19,11 +19,11 @@ const PROD_CHAIN: VoiceSourceData[] = [
 
 const EUCLID = 'el-onwK4e9ZLuTAKqWW03F9'
 
-let fetchMock: ReturnType<typeof vi.fn>
+let fetchMock: Mock<[RequestInfo | URL, RequestInit?], Promise<Response>>
 let audioUrls: string[]
 
 function stubFetch(clipIdsByVoice: Record<string, string[]>, generate: () => Response) {
-  fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+  fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
     const url = String(input)
     if (url.startsWith('/api/audio/collected-clips/manifest')) {
       return new Response(JSON.stringify({ clipIdsByVoice }), { status: 200 })

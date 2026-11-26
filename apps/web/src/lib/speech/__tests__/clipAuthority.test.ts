@@ -50,7 +50,7 @@ describe('authorizeClipText — named ids', () => {
   })
 
   it("speaks a collected clip's server text, in the server's tone", async () => {
-    const lookup = vi.fn<CollectedClipLookup>(async () => ({
+    const lookup = vi.fn(async (_clipId: string) => ({
       text: 'Well done!',
       tone: 'celebration',
     }))
