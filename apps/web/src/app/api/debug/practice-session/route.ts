@@ -1,13 +1,15 @@
 import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { withAuth } from '@/lib/auth/withAuth'
 import { generateFamilyCode, parentChild } from '@/db/schema'
 import {
   DEFAULT_SESSION_PREFERENCES,
   playerSessionPreferences,
 } from '@/db/schema/player-session-preferences'
 import type { GameBreakSettings, GeneratedProblem } from '@/db/schema/session-plans'
+import { subscriptions } from '@/db/schema/subscriptions'
+import { PRACTICE_APPROVED_GAMES } from '@/lib/arcade/practice-approved-game-list'
+import { withAuth } from '@/lib/auth/withAuth'
 import {
   approveSessionPlan,
   generateSessionPlan,
@@ -15,9 +17,8 @@ import {
   startSessionPlan,
 } from '@/lib/curriculum'
 import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
-import { PRACTICE_APPROVED_GAMES } from '@/lib/arcade/practice-approved-game-list'
+import { setPlanFields } from '@/lib/curriculum/row-cas'
 import { getUserId } from '@/lib/viewer'
-import { subscriptions } from '@/db/schema/subscriptions'
 
 /**
  * Debug presets for quick session creation
@@ -185,20 +186,18 @@ export const POST = withAuth(
           answer: overrideProblemTerms.reduce((a, b) => a + b, 0),
           skillsRequired: [],
         }
-        const updatedParts = plan.parts.map((part, i) =>
-          i === 0
-            ? {
-                ...part,
-                slots: part.slots.map((slot, j) =>
-                  j === 0 ? { ...slot, problem: customProblem } : slot
-                ),
-              }
-            : part
-        )
-        await db
-          .update(schema.sessionPlans)
-          .set({ parts: updatedParts })
-          .where(eq(schema.sessionPlans.id, plan.id))
+        await setPlanFields(plan.id, (current) => ({
+          parts: current.parts.map((part, i) =>
+            i === 0
+              ? {
+                  ...part,
+                  slots: part.slots.map((slot, j) =>
+                    j === 0 ? { ...slot, problem: customProblem } : slot
+                  ),
+                }
+              : part
+          ),
+        }))
       }
 
       // 6. Approve and start

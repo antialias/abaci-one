@@ -213,6 +213,10 @@ function createSessionHud(config: {
         pausedBy: null,
         pauseReason: null,
         retryState: null,
+        rowVersion: 0,
+        breaks: [],
+        partStates: {},
+        pauses: [],
         remoteCameraSessionId: null,
         gameBreakSettings: {
           enabled: true,

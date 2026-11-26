@@ -25,6 +25,7 @@ import {
   isClientTryId,
   mintTryId,
   normalizeTries,
+  partStateOf,
 } from '@/db/schema/session-plan-normalize'
 import {
   calculateSessionHealth,
@@ -37,12 +38,10 @@ import {
   type PartSummary,
   type PlanGenerationConfig,
   type ProblemSlot,
-  type SessionFlowState,
   type SessionHealth,
   type SessionPart,
   type SessionPartType,
   type SessionPlan,
-  type SessionRetryState,
   type SessionSummary,
   type SkippedPart,
   type SlotResult,
@@ -89,10 +88,7 @@ import {
 } from './linear-gate'
 import { explainLinearReadiness } from './linear-readiness'
 import { resolveEnabledPartTypes } from './part-gating'
-import { arithmeticKind, redeemByDoOver } from './parts/arithmetic/server'
-import { type ArithmeticState, arithmeticStateOf } from './parts/arithmetic/state'
-import type { KindTry } from './parts/kind'
-import { isPartPlayable } from './parts/registry'
+import { isPartPlayable, partKindOf } from './parts/registry'
 import { generateProblemFromConstraints } from './problem-generator'
 import {
   getAllSkillMastery,
@@ -101,7 +97,15 @@ import {
   getPlayerCurriculum,
   recordSkillAttemptsWithHelp,
 } from './progress-manager'
-import { applyFlowEvent, type SessionFlowEvent } from './session-flow'
+import { noWrite, type SessionPlanPatch, setPlanFields, withRowCas } from './row-cas'
+import {
+  applyFlowEvent,
+  CLIENT_FLOW_EVENT_TYPES,
+  type ClientFlowEvent,
+  InvalidFlowTransitionError,
+  type RecordedTry,
+  type SessionFlowEvent,
+} from './session-flow'
 import { getWeakSkillIds, type SessionMode } from './session-mode'
 import { describeSkippedPart } from './skipped-parts'
 import { sanitizeResultTiming } from './timing/response-time-guard'
@@ -1298,16 +1302,7 @@ export async function batchGetRecentSessionResults(
  * Approve a plan (teacher says "Let's Go!")
  */
 export async function approveSessionPlan(planId: string): Promise<SessionPlan> {
-  const now = new Date()
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({
-      status: 'approved',
-      approvedAt: now,
-    })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
-  return updated
+  return setPlanFields(planId, { status: 'approved', approvedAt: new Date() })
 }
 
 /**
@@ -1323,19 +1318,14 @@ export async function startSessionPlan(planId: string): Promise<SessionPlan> {
     avgResponseTimeMs: 0,
   }
 
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({
-      status: 'in_progress',
-      flowState: 'practicing',
-      flowUpdatedAt: now,
-      flowVersion: sql`${schema.sessionPlans.flowVersion} + 1`,
-      startedAt: now,
-      sessionHealth: initialHealth,
-    })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
-  return updated
+  return setPlanFields(planId, (plan) => ({
+    status: 'in_progress',
+    flowState: 'practicing',
+    flowUpdatedAt: now,
+    flowVersion: (plan.flowVersion ?? 0) + 1,
+    startedAt: now,
+    sessionHealth: initialHealth,
+  }))
 }
 
 /**
@@ -1355,71 +1345,6 @@ export class SlotResultMismatchError extends Error {
   }
 }
 
-/** Where a part's cursor lands after a step, and whether the session is done. */
-interface SettledPosition {
-  partIndex: number
-  slotIndex: number
-  isComplete: boolean
-}
-
-/**
- * The session position after a part's kind has applied a try: the same part
- * with the kind's new cursor, or, when the part is done, the next part's start
- * (completing the session after the last one). Phase 2 still writes the
- * arithmetic legacy encoding (`currentSlotIndex`); Phase 3a moves this into
- * the flow machine.
- */
-function positionAfter(
-  plan: SessionPlan,
-  partIndex: number,
-  state: ArithmeticState
-): SettledPosition {
-  if (!arithmeticKind.isDone(plan.parts[partIndex].slots, state)) {
-    return { partIndex, slotIndex: state.slotIndex, isComplete: false }
-  }
-  const nextPartIndex = partIndex + 1
-  return { partIndex: nextPartIndex, slotIndex: 0, isComplete: nextPartIndex >= plan.parts.length }
-}
-
-/**
- * The row fields for a settled cursor: position, status, flow state and
- * completion. One source for recordSlotResult and recordRedoResult so both
- * produce the same transitions.
- */
-function settledPositionFields(plan: SessionPlan, next: SettledPosition) {
-  const partTransitioned = next.partIndex > plan.currentPartIndex
-  const hasMoreParts = next.partIndex < plan.parts.length
-  const gameBreakEnabled = (plan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
-  const nextFlowState: SessionFlowState = next.isComplete
-    ? 'completed'
-    : partTransitioned && hasMoreParts && gameBreakEnabled
-      ? 'part_transition'
-      : 'practicing'
-  const flowUpdatedAt = new Date()
-  const flowStateChanged =
-    (plan.flowState ?? 'practicing') !== nextFlowState ||
-    plan.breakStartedAt !== null ||
-    plan.breakResults !== null
-  return {
-    partTransitioned,
-    hasMoreParts,
-    gameBreakEnabled,
-    fields: {
-      currentPartIndex: next.partIndex,
-      currentSlotIndex: next.slotIndex,
-      status: next.isComplete ? ('completed' as const) : ('in_progress' as const),
-      flowState: nextFlowState,
-      flowUpdatedAt: flowStateChanged ? flowUpdatedAt : (plan.flowUpdatedAt ?? flowUpdatedAt),
-      flowVersion: (plan.flowVersion ?? 0) + (flowStateChanged ? 1 : 0),
-      // Clear operational break fields but preserve metadata (breakSelectedGame,
-      // breakReason) — the song generator needs them later in the session.
-      breakStartedAt: null,
-      breakResults: null,
-      completedAt: next.isComplete ? new Date() : null,
-    },
-  }
-}
-
 /**
  * A submitted try without the fields only the server stamps. Clients from
  * before Phase 1 send `isRetry`/`epochNumber` guesses and `masteryWeight`;
@@ -1429,7 +1354,14 @@ function settledPositionFields(plan: SessionPlan, next: SettledPosition) {
  */
 type Unstamped<T> = Omit<
   T,
-  'kind' | 'round' | 'practiceOnly' | 'masteryWeight' | 'isRetry' | 'originalSlotIndex'
+  | 'kind'
+  | 'round'
+  | 'practiceOnly'
+  | 'masteryWeight'
+  | 'isRetry'
+  | 'originalSlotIndex'
+  | 'voided'
+  | 'attachmentId'
 >
 
 function withoutServerStamps<T extends Partial<SlotResult>>(submission: T): Unstamped<T> {
@@ -1440,6 +1372,8 @@ function withoutServerStamps<T extends Partial<SlotResult>>(submission: T): Unst
     masteryWeight: _masteryWeight,
     isRetry: _isRetry,
     originalSlotIndex: _originalSlotIndex,
+    voided: _voided,
+    attachmentId: _attachmentId,
     tryId,
     ...rest
   } = submission
@@ -1468,8 +1402,37 @@ async function revokeSharesIfComplete(planId: string, isComplete: boolean, calle
   }
 }
 
+/** Elapsed practice time for session health: since the start, 0 before it. */
+function elapsedSinceStart(plan: SessionPlan): number {
+  return plan.startedAt ? Date.now() - plan.startedAt.getTime() : 0
+}
+
+/** The row write for a recorded try: the machine's patch plus session health. */
+function tryWrite(plan: SessionPlan, row: SlotResult, t: RecordedTry): SessionPlanPatch {
+  const { patch } = applyFlowEvent(plan, { type: 'TRY_RECORDED', row, try: t })
+  return {
+    ...patch,
+    sessionHealth: calculateSessionHealth(
+      { ...plan, results: patch.results ?? plan.results },
+      elapsedSinceStart(plan)
+    ),
+  }
+}
+
+/** What a committed try write reports back to its recorder, for side effects and traces. */
+interface RecordedTryOutcome {
+  previousPartIndex: number
+  previousSlotIndex: number
+  inRetryEpoch: boolean
+}
+
 /**
  * Record a result for the current item and advance to the next.
+ *
+ * `recordTry` = `withRowCas(planId, plan => idempotency check → kind → machine)`
+ * (plan of record §7 Phase 3a). Every attempt re-reads the row, so a request
+ * that lost a race against the same `tryId` sees it recorded and returns
+ * without a second write or a second skill-attempt bump (§10 P1-10).
  *
  * The try is attributed to the item the student is shown (resolveCurrentItem),
  * identified by content: the submitted `problem` and `slotIndex` must be that
@@ -1484,219 +1447,177 @@ async function revokeSharesIfComplete(planId: string, isComplete: boolean, calle
  * throws SlotResultMismatchError.
  *
  * The server stamps `kind`, `round`, `practiceOnly`, `partIndex` and
- * `masteryWeight` (weightOfTry); client-sent values for them are ignored.
+ * `masteryWeight` (weightOfTry); client-sent values for them are ignored. The
+ * flow machine (`TRY_RECORDED`) moves the part's cursor through its kind and
+ * decides the rhythm.
  */
 export async function recordSlotResult(
   planId: string,
   submission: SlotResultSubmission
 ): Promise<SessionPlan> {
   const { partIndex: submittedPartIndex, ...submitted } = withoutServerStamps(submission)
-  let result = submitted
-  const traceStart = Date.now()
-  let plan: SessionPlan | null
-  try {
-    plan = await getSessionPlan(planId)
-  } catch (error) {
-    console.error(`[recordSlotResult] Failed to get plan ${planId}:`, error)
-    throw new Error(
-      `Failed to retrieve plan ${planId}: ${error instanceof Error ? error.message : String(error)}`
-    )
-  }
-
-  if (!plan) throw new Error(`Plan not found: ${planId}`)
-
-  // Defensive check: ensure parts array exists and is valid
-  if (!plan.parts || !Array.isArray(plan.parts)) {
-    throw new Error(
-      `Plan ${planId} has invalid parts: ${typeof plan.parts} (status: ${plan.status}, partIndex: ${plan.currentPartIndex})`
-    )
-  }
-
-  if (plan.parts.length === 0) {
-    throw new Error(`Plan ${planId} has empty parts array`)
-  }
-
-  // Defensive check: ensure results array exists
-  if (!plan.results || !Array.isArray(plan.results)) {
-    throw new Error(`Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`)
-  }
-
-  // A try already recorded (a resend after a lost reply, a double submit)
-  if (isRecordedTry(plan, result.tryId)) {
-    console.log('[recordSlotResult] duplicate tryId ignored', { planId, tryId: result.tryId })
-    return plan
-  }
-
-  // Attribute the try to the item the student is shown, by content. Checked
-  // before the position checks so a resubmit of a session's final answer is
-  // still a no-op.
-  const expected = resolveCurrentItem(plan)
-  //
-  // Transitional gap: clients from before this check send no epochNumber (or
-  // partIndex). For them a resubmit of a wrong answer to a part's last slot,
-  // arriving once that slot's first retry is current, has the same content as
-  // the retry and is recorded as it. Clients that send epochNumber are exact.
-  const isSubmittedTry = (t: {
-    partIndex: number
-    slotIndex: number
-    epochNumber?: number
-    problem: GeneratedProblem | undefined
-  }) =>
-    (submittedPartIndex === undefined || t.partIndex === submittedPartIndex) &&
-    t.slotIndex === result.slotIndex &&
-    (result.epochNumber === undefined || (t.epochNumber ?? 0) === result.epochNumber) &&
-    sameProblem(t.problem, result.problem)
-  if (!expected || !isSubmittedTry({ ...expected, slotIndex: expected.originalSlotIndex })) {
-    const lastTry = [...plan.results].reverse().find((r) => !r.isManualRedo)
-    const lastTryPartNumber = lastTry?.partNumber
-    if (
-      result.tryId === undefined &&
-      lastTry &&
-      isSubmittedTry({
-        ...lastTry,
-        partIndex: plan.parts.findIndex((p) => p.partNumber === lastTryPartNumber),
-        slotIndex: lastTry.originalSlotIndex ?? lastTry.slotIndex,
-      }) &&
-      lastTry.studentAnswer === result.studentAnswer
-    ) {
-      console.log('[recordSlotResult] duplicate submit ignored', { planId, slotId: result.slotId })
-      return plan
-    }
-    throw new SlotResultMismatchError(result.slotId, expected?.slotId ?? null)
-  }
-  if (result.slotId !== expected.slotId) {
-    console.log('[recordSlotResult] submitted slotId lags the answered problem; storing its own', {
-      planId,
-      submittedSlotId: result.slotId,
-      slotId: expected.slotId,
-    })
-  }
-
-  if (plan.currentPartIndex < 0 || plan.currentPartIndex >= plan.parts.length) {
-    throw new Error(
-      `Plan ${planId} has invalid currentPartIndex: ${plan.currentPartIndex} (parts.length: ${plan.parts.length})`
-    )
-  }
-
-  const currentPart = plan.parts[plan.currentPartIndex]
-  if (!currentPart) throw new Error(`Invalid part index: ${plan.currentPartIndex}`)
-
-  console.log('[GBTRACE][server]', 'record-slot-result-start', {
-    ts: new Date().toISOString(),
-    planId,
-    playerId: plan.playerId,
-    currentPartIndex: plan.currentPartIndex,
-    currentSlotIndex: plan.currentSlotIndex,
-    currentPartNumber: currentPart.partNumber,
-    currentPartType: currentPart.type,
-    submittedSlotIndex: result.slotIndex,
-    isCorrect: result.isCorrect,
-  })
-
-  // Defensive check: ensure slots array exists
-  if (!currentPart.slots || !Array.isArray(currentPart.slots)) {
-    throw new Error(
-      `Plan ${planId} part ${plan.currentPartIndex} has invalid slots: ${typeof currentPart.slots}`
-    )
-  }
-
-  const partIndex = plan.currentPartIndex
-
-  const inRetryEpoch = expected.retryIndex !== null
-  const epochNumber = expected.epochNumber
-  const originalSlotIndex = expected.originalSlotIndex
-
-  const kind = inRetryEpoch ? ('retry' as const) : ('first' as const)
-  const masteryWeight = weightOfTry({
-    kind,
-    round: epochNumber,
-    isCorrect: result.isCorrect,
-    practiceOnly: false,
-  })
-
   // Server-side timing backstop (#156): cap any value that outran the absolute
   // ceiling (stale/hostile clients, clock anomalies) before it is ever stored
   // or fed to BKT via recordSkillAttemptsWithHelp below. Independently
   // deployable — this alone ends unbounded writes even if the client guard
   // never ran. Client-capped values pass through untouched.
-  result = { ...result, ...sanitizeResultTiming(result) }
+  const result = { ...submitted, ...sanitizeResultTiming(submitted) }
+  const traceStart = Date.now()
 
-  const newResult: SlotResult = {
-    ...result,
-    tryId: result.tryId ?? mintTryId(),
-    kind,
-    round: epochNumber,
-    practiceOnly: false,
-    partIndex,
-    slotId: expected.slotId,
-    slotIndex: originalSlotIndex,
-    partNumber: currentPart.partNumber,
-    timestamp: new Date(),
-    epochNumber,
-    masteryWeight,
-    isRetry: epochNumber > 0,
-    originalSlotIndex,
-  }
+  const {
+    plan: updated,
+    value: outcome,
+    committed,
+  } = await withRowCas<RecordedTryOutcome | null>(planId, (plan) => {
+    // Defensive check: ensure parts array exists and is valid
+    if (!plan.parts || !Array.isArray(plan.parts)) {
+      throw new Error(
+        `Plan ${planId} has invalid parts: ${typeof plan.parts} (status: ${plan.status}, partIndex: ${plan.currentPartIndex})`
+      )
+    }
+    if (plan.parts.length === 0) {
+      throw new Error(`Plan ${planId} has empty parts array`)
+    }
+    // Defensive check: ensure results array exists
+    if (!plan.results || !Array.isArray(plan.results)) {
+      throw new Error(`Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`)
+    }
 
-  const updatedResults = [...plan.results, newResult]
+    // A try already recorded (a resend after a lost reply, a double submit,
+    // or the request this one raced)
+    if (isRecordedTry(plan, result.tryId)) {
+      console.log('[recordSlotResult] duplicate tryId ignored', { planId, tryId: result.tryId })
+      return noWrite(null)
+    }
 
-  // The part's kind moves its cursor: past the item answered (a wrong answer is
-  // queued for the next retry round), then settled (next round, or done).
-  const partTries = normalizeTries(plan.id, plan.parts, plan.results).filter(
-    (t) => t.partIndex === partIndex
-  )
-  const nextState = arithmeticKind.applyTry(
-    currentPart.slots,
-    arithmeticStateOf(plan, partIndex),
-    partTries,
-    {
-      itemId: expected.slotId,
+    // Attribute the try to the item the student is shown, by content. Checked
+    // before the position checks so a resubmit of a session's final answer is
+    // still a no-op.
+    const expected = resolveCurrentItem(plan)
+    //
+    // Transitional gap: clients from before this check send no epochNumber (or
+    // partIndex). For them a resubmit of a wrong answer to a part's last slot,
+    // arriving once that slot's first retry is current, has the same content as
+    // the retry and is recorded as it. Clients that send epochNumber are exact.
+    const isSubmittedTry = (t: {
+      partIndex: number
+      slotIndex: number
+      epochNumber?: number
+      problem: GeneratedProblem | undefined
+    }) =>
+      (submittedPartIndex === undefined || t.partIndex === submittedPartIndex) &&
+      t.slotIndex === result.slotIndex &&
+      (result.epochNumber === undefined || (t.epochNumber ?? 0) === result.epochNumber) &&
+      sameProblem(t.problem, result.problem)
+    if (!expected || !isSubmittedTry({ ...expected, slotIndex: expected.originalSlotIndex })) {
+      const lastTry = [...plan.results].reverse().find((r) => !r.isManualRedo)
+      const lastTryPartNumber = lastTry?.partNumber
+      if (
+        result.tryId === undefined &&
+        lastTry &&
+        isSubmittedTry({
+          ...lastTry,
+          partIndex: plan.parts.findIndex((p) => p.partNumber === lastTryPartNumber),
+          slotIndex: lastTry.originalSlotIndex ?? lastTry.slotIndex,
+        }) &&
+        lastTry.studentAnswer === result.studentAnswer
+      ) {
+        console.log('[recordSlotResult] duplicate submit ignored', {
+          planId,
+          slotId: result.slotId,
+        })
+        return noWrite(null)
+      }
+      throw new SlotResultMismatchError(result.slotId, expected?.slotId ?? null)
+    }
+    if (result.slotId !== expected.slotId) {
+      console.log(
+        '[recordSlotResult] submitted slotId lags the answered problem; storing its own',
+        {
+          planId,
+          submittedSlotId: result.slotId,
+          slotId: expected.slotId,
+        }
+      )
+    }
+
+    if (plan.currentPartIndex < 0 || plan.currentPartIndex >= plan.parts.length) {
+      throw new Error(
+        `Plan ${planId} has invalid currentPartIndex: ${plan.currentPartIndex} (parts.length: ${plan.parts.length})`
+      )
+    }
+
+    const currentPart = plan.parts[plan.currentPartIndex]
+    if (!currentPart) throw new Error(`Invalid part index: ${plan.currentPartIndex}`)
+
+    console.log('[GBTRACE][server]', 'record-slot-result-start', {
+      ts: new Date().toISOString(),
+      planId,
+      playerId: plan.playerId,
+      currentPartIndex: plan.currentPartIndex,
+      currentSlotIndex: plan.currentSlotIndex,
+      currentPartNumber: currentPart.partNumber,
+      currentPartType: currentPart.type,
+      submittedSlotIndex: result.slotIndex,
+      isCorrect: result.isCorrect,
+    })
+
+    // Defensive check: ensure slots array exists
+    if (!currentPart.slots || !Array.isArray(currentPart.slots)) {
+      throw new Error(
+        `Plan ${planId} part ${plan.currentPartIndex} has invalid slots: ${typeof currentPart.slots}`
+      )
+    }
+
+    const partIndex = plan.currentPartIndex
+    const inRetryEpoch = expected.retryIndex !== null
+    const epochNumber = expected.epochNumber
+    const originalSlotIndex = expected.originalSlotIndex
+    const kind = inRetryEpoch ? ('retry' as const) : ('first' as const)
+
+    const newResult: SlotResult = {
+      ...result,
+      tryId: result.tryId ?? mintTryId(),
       kind,
       round: epochNumber,
       practiceOnly: false,
-      isCorrect: result.isCorrect,
+      partIndex,
+      slotId: expected.slotId,
+      slotIndex: originalSlotIndex,
+      partNumber: currentPart.partNumber,
+      timestamp: new Date(),
+      epochNumber,
+      masteryWeight: weightOfTry({
+        kind,
+        round: epochNumber,
+        isCorrect: result.isCorrect,
+        practiceOnly: false,
+      }),
+      isRetry: epochNumber > 0,
+      originalSlotIndex,
     }
-  )
-  const updatedRetryState: SessionRetryState = plan.retryState ? { ...plan.retryState } : {}
-  if (nextState.retry) updatedRetryState[partIndex] = nextState.retry
-  const next = positionAfter(plan, partIndex, nextState)
-  const { partIndex: nextPartIndex, slotIndex: nextSlotIndex, isComplete } = next
 
-  // Calculate elapsed time since start
-  const elapsedMs = plan.startedAt ? Date.now() - plan.startedAt.getTime() : 0
-  const updatedHealth = calculateSessionHealth({ ...plan, results: updatedResults }, elapsedMs)
-  const { partTransitioned, hasMoreParts, gameBreakEnabled, fields } = settledPositionFields(
-    plan,
-    next
-  )
+    return {
+      write: tryWrite(plan, newResult, {
+        partIndex,
+        itemId: expected.slotId,
+        kind,
+        round: epochNumber,
+        practiceOnly: false,
+        isCorrect: result.isCorrect,
+      }),
+      value: {
+        previousPartIndex: plan.currentPartIndex,
+        previousSlotIndex: plan.currentSlotIndex,
+        inRetryEpoch,
+      },
+    }
+  })
 
-  let dbResult
-  try {
-    dbResult = await db
-      .update(schema.sessionPlans)
-      .set({
-        results: updatedResults,
-        sessionHealth: updatedHealth,
-        retryState: updatedRetryState,
-        ...fields,
-      })
-      .where(eq(schema.sessionPlans.id, planId))
-      .returning()
-  } catch (dbError) {
-    console.error(`[recordSlotResult] Drizzle update FAILED:`, dbError)
-    throw dbError
-  }
+  if (!committed || !outcome) return updated
 
-  const [updated] = dbResult
-
-  // Defensive check: ensure update succeeded
-  if (!updated) {
-    throw new Error(
-      `Failed to update plan ${planId}: no rows returned (may have been deleted during update)`
-    )
-  }
-
-  // Update global skill mastery timestamps with help tracking
+  // Update global skill mastery timestamps with help tracking. Once per
+  // recorded try: only the request whose write committed gets here.
   // Note: masteryWeight is applied by BKT when it reads SlotResults (not here)
   if (result.skillsExercised && result.skillsExercised.length > 0) {
     const skillResults = result.skillsExercised.map((skillId) => ({
@@ -1705,7 +1626,7 @@ export async function recordSlotResult(
     }))
     try {
       await recordSkillAttemptsWithHelp(
-        plan.playerId,
+        updated.playerId,
         skillResults,
         result.hadHelp,
         result.responseTimeMs
@@ -1716,21 +1637,21 @@ export async function recordSlotResult(
     }
   }
 
+  const isComplete = updated.status === 'completed'
   await revokeSharesIfComplete(planId, isComplete, 'recordSlotResult')
 
   console.log('[GBTRACE][server]', 'record-slot-result-finish', {
     ts: new Date().toISOString(),
     planId,
-    playerId: plan.playerId,
+    playerId: updated.playerId,
     durationMs: Date.now() - traceStart,
-    previousPartIndex: plan.currentPartIndex,
-    previousSlotIndex: plan.currentSlotIndex,
-    nextPartIndex,
-    nextSlotIndex,
-    partTransitioned,
-    hasMoreParts,
-    gameBreakEnabled,
-    inRetryEpoch,
+    previousPartIndex: outcome.previousPartIndex,
+    previousSlotIndex: outcome.previousSlotIndex,
+    nextPartIndex: updated.currentPartIndex,
+    nextSlotIndex: updated.currentSlotIndex,
+    partTransitioned: updated.currentPartIndex > outcome.previousPartIndex,
+    flowState: updated.flowState,
+    inRetryEpoch: outcome.inRetryEpoch,
     isComplete,
     status: updated.status,
   })
@@ -1755,7 +1676,8 @@ export interface RedoContext {
 
 /**
  * Record a do-over (the student tapped a finished problem to do it again).
- * Every do-over is recorded (Phase 1), as a try of kind `do_over`.
+ * Every do-over is recorded (Phase 1), as a try of kind `do_over`, through the
+ * same CAS write and flow machine as `recordSlotResult`.
  *
  * - Idempotent by `tryId`, like recordSlotResult.
  * - `round` = the item's earlier tries that are not practice-only.
@@ -1765,7 +1687,8 @@ export interface RedoContext {
  * - Otherwise it weighs weightOfTry: 1/2^round, right or wrong (Phase 1w), and a
  *   correct one redeems the item from the retry queue. If that leaves the current retry
  *   round with nothing to show, the cursor settles exactly as after a try: next
- *   round, next part, or completion.
+ *   round, next part, or completion. Only in the part being practiced while
+ *   practicing; anywhere else the kind records it aside.
  * - Never steps the session position past an item.
  *
  * The item is the slot `redoContext` names; a do-over of a slot with no try
@@ -1776,140 +1699,95 @@ export async function recordRedoResult(
   submission: Omit<SlotResult, 'timestamp' | 'partNumber'>,
   redoContext: RedoContext
 ): Promise<SessionPlan> {
-  const plan = await getSessionPlan(planId)
-  if (!plan) throw new Error(`Plan not found: ${planId}`)
-
-  let result = withoutServerStamps(submission)
-  if (isRecordedTry(plan, result.tryId)) {
-    console.log('[recordRedoResult] duplicate tryId ignored', { planId, tryId: result.tryId })
-    return plan
-  }
-
-  // Validate part index
-  if (redoContext.originalPartIndex < 0 || redoContext.originalPartIndex >= plan.parts.length) {
-    throw new Error(`Invalid part index: ${redoContext.originalPartIndex}`)
-  }
-
-  const part = plan.parts[redoContext.originalPartIndex]
-  const slot = part.slots?.[redoContext.originalSlotIndex]
-  const tries = normalizeTries(plan.id, plan.parts, plan.results || [])
-  if (
-    !slot ||
-    !arithmeticKind.acceptsDoOver(
-      part.slots,
-      arithmeticStateOf(plan, redoContext.originalPartIndex),
-      tries,
-      slot.slotId
-    ) ||
-    !sameProblem(slot.problem, result.problem)
-  ) {
-    throw new SlotResultMismatchError(result.slotId, null)
-  }
-  const priorTries = tries.filter((t) => t.itemId === slot.slotId)
-
-  // Reject redo if the answer was already divulged (student exhausted all retries wrong)
-  const answerWasDivulged = (plan.results || []).some(
-    (r) =>
-      r.partNumber === part.partNumber &&
-      (r.originalSlotIndex ?? r.slotIndex) === redoContext.originalSlotIndex &&
-      !r.isCorrect &&
-      !r.isManualRedo &&
-      (r.epochNumber ?? 0) >= MAX_RETRY_EPOCHS
-  )
-  if (answerWasDivulged) {
-    throw new Error(
-      `Cannot redo slot ${redoContext.originalSlotIndex} in part ${redoContext.originalPartIndex}: answer was already revealed after exhausting retries`
-    )
-  }
-
+  const unstamped = withoutServerStamps(submission)
   // Server-side timing backstop (#156): symmetric with recordSlotResult — cap
   // any value above the absolute ceiling before storing or feeding BKT.
-  result = { ...result, ...sanitizeResultTiming(result) }
+  const result = { ...unstamped, ...sanitizeResultTiming(unstamped) }
 
-  const { round, practiceOnly } = doOverStamp(priorTries)
-  const newResult: SlotResult = {
-    ...result,
-    tryId: result.tryId ?? mintTryId(),
-    kind: 'do_over',
-    round,
-    practiceOnly,
-    partIndex: redoContext.originalPartIndex,
-    slotId: slot.slotId,
-    slotIndex: redoContext.originalSlotIndex,
-    partNumber: part.partNumber,
-    timestamp: new Date(),
-    isManualRedo: true,
-    masteryWeight: weightOfTry({
+  const {
+    plan: updated,
+    value: practiceOnly,
+    committed,
+  } = await withRowCas<boolean | null>(planId, (plan) => {
+    if (isRecordedTry(plan, result.tryId)) {
+      console.log('[recordRedoResult] duplicate tryId ignored', { planId, tryId: result.tryId })
+      return noWrite(null)
+    }
+
+    // Validate part index
+    if (redoContext.originalPartIndex < 0 || redoContext.originalPartIndex >= plan.parts.length) {
+      throw new Error(`Invalid part index: ${redoContext.originalPartIndex}`)
+    }
+
+    const partIndex = redoContext.originalPartIndex
+    const part = plan.parts[partIndex]
+    const kind = partKindOf(part)
+    const slot = part.slots?.[redoContext.originalSlotIndex]
+    const tries = normalizeTries(plan.id, plan.parts, plan.results || [])
+    if (
+      !slot ||
+      !kind.acceptsDoOver(kind.contentOf(part), partStateOf(plan, partIndex), tries, slot.slotId) ||
+      !sameProblem(slot.problem, result.problem)
+    ) {
+      throw new SlotResultMismatchError(result.slotId, null)
+    }
+    const priorTries = tries.filter((t) => t.itemId === slot.slotId)
+
+    // Reject redo if the answer was already divulged (student exhausted all retries wrong)
+    const answerWasDivulged = (plan.results || []).some(
+      (r) =>
+        r.partNumber === part.partNumber &&
+        (r.originalSlotIndex ?? r.slotIndex) === redoContext.originalSlotIndex &&
+        !r.isCorrect &&
+        !r.isManualRedo &&
+        (r.epochNumber ?? 0) >= MAX_RETRY_EPOCHS
+    )
+    if (answerWasDivulged) {
+      throw new Error(
+        `Cannot redo slot ${redoContext.originalSlotIndex} in part ${redoContext.originalPartIndex}: answer was already revealed after exhausting retries`
+      )
+    }
+
+    const { round, practiceOnly } = doOverStamp(priorTries)
+    const newResult: SlotResult = {
+      ...result,
+      tryId: result.tryId ?? mintTryId(),
       kind: 'do_over',
       round,
-      isCorrect: result.isCorrect,
       practiceOnly,
-    }),
-    // Legacy fields keep their legacy meaning until Phase 6: a do-over is not a
-    // retry-round try. Its round is `round`.
-    epochNumber: 0,
-    isRetry: false,
-    originalSlotIndex: redoContext.originalSlotIndex,
-  }
-
-  const updatedResults = [...(plan.results || []), newResult]
-
-  // A correct do-over of an item whose latest counted try was wrong redeems it.
-  // Redeeming the practiced part's remaining retry items must not strand the
-  // session, so there the kind settles the cursor exactly as after a try. Only
-  // while practicing that part: elsewhere (another part, a break or a
-  // transition, which already owns the next step) it redeems without settling.
-  const partIndex = redoContext.originalPartIndex
-  const doOverTry: KindTry = {
-    itemId: slot.slotId,
-    kind: 'do_over',
-    round,
-    practiceOnly,
-    isCorrect: result.isCorrect,
-  }
-  const state = arithmeticStateOf(plan, partIndex)
-  const practicingThisPart =
-    partIndex === plan.currentPartIndex && (plan.flowState ?? 'practicing') === 'practicing'
-  const nextState = practicingThisPart
-    ? arithmeticKind.applyTry(
-        part.slots,
-        state,
-        tries.filter((t) => t.partIndex === partIndex),
-        doOverTry
-      )
-    : redeemByDoOver(part.slots, state, doOverTry)
-  const updatedRetryState = plan.retryState ? { ...plan.retryState } : {}
-  let settled: ReturnType<typeof settledPositionFields> | null = null
-  // Same object = nothing redeemed: no retry-state write, no settle
-  if (nextState !== state) {
-    updatedRetryState[partIndex] = nextState.retry!
-    if (practicingThisPart) {
-      const next = positionAfter(plan, partIndex, nextState)
-      if (next.partIndex !== plan.currentPartIndex) {
-        settled = settledPositionFields(plan, next)
-      }
+      partIndex,
+      slotId: slot.slotId,
+      slotIndex: redoContext.originalSlotIndex,
+      partNumber: part.partNumber,
+      timestamp: new Date(),
+      isManualRedo: true,
+      masteryWeight: weightOfTry({
+        kind: 'do_over',
+        round,
+        isCorrect: result.isCorrect,
+        practiceOnly,
+      }),
+      // Legacy fields keep their legacy meaning until Phase 6: a do-over is not a
+      // retry-round try. Its round is `round`.
+      epochNumber: 0,
+      isRetry: false,
+      originalSlotIndex: redoContext.originalSlotIndex,
     }
-  }
 
-  // Calculate updated health (redo results affect accuracy)
-  const elapsedMs = plan.startedAt ? Date.now() - plan.startedAt.getTime() : 0
-  const updatedHealth = calculateSessionHealth({ ...plan, results: updatedResults }, elapsedMs)
+    return {
+      write: tryWrite(plan, newResult, {
+        partIndex,
+        itemId: slot.slotId,
+        kind: 'do_over',
+        round,
+        practiceOnly,
+        isCorrect: result.isCorrect,
+      }),
+      value: practiceOnly,
+    }
+  })
 
-  // Position and flow fields change only when the redemption settled the cursor
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({
-      results: updatedResults,
-      sessionHealth: updatedHealth,
-      retryState: updatedRetryState,
-      ...settled?.fields,
-    })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
-
-  if (!updated) {
-    throw new Error(`Failed to update plan ${planId}: no rows returned`)
-  }
+  if (!committed || practiceOnly === null) return updated
 
   // Update global skill mastery timestamps (not for practice-only: no pedagogical effect)
   if (!practiceOnly && result.skillsExercised && result.skillsExercised.length > 0) {
@@ -1919,7 +1797,7 @@ export async function recordRedoResult(
     }))
     try {
       await recordSkillAttemptsWithHelp(
-        plan.playerId,
+        updated.playerId,
         skillResults,
         result.hadHelp ?? false,
         result.responseTimeMs
@@ -1930,7 +1808,7 @@ export async function recordRedoResult(
     }
   }
 
-  await revokeSharesIfComplete(planId, settled?.fields.status === 'completed', 'recordRedoResult')
+  await revokeSharesIfComplete(planId, updated.status === 'completed', 'recordRedoResult')
 
   return updated
 }
@@ -1947,86 +1825,74 @@ export class StaleFlowVersionError extends Error {
   }
 }
 
-export async function applySessionFlowEvent(
+/** Apply a machine event chosen from the row as read, in one CAS write. */
+async function applyMachineEvent(
   planId: string,
-  event: SessionFlowEvent,
-  expectedFlowVersion?: number
+  eventOf: (plan: SessionPlan) => SessionFlowEvent
 ): Promise<SessionPlan> {
-  const plan = await getSessionPlan(planId)
-  if (!plan) throw new Error(`Plan not found: ${planId}`)
-
-  if (
-    expectedFlowVersion !== undefined &&
-    expectedFlowVersion !== null &&
-    expectedFlowVersion !== (plan.flowVersion ?? 0)
-  ) {
-    const postCheck = applyFlowEvent(plan, event)
-    if (!postCheck.changed) return plan
-    throw new StaleFlowVersionError(expectedFlowVersion, plan.flowVersion ?? 0)
-  }
-
-  const applied = applyFlowEvent(plan, event)
-  if (!applied.changed) return plan
-
-  const currentFlowVersion = plan.flowVersion ?? 0
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set(applied.patch)
-    .where(
-      and(
-        eq(schema.sessionPlans.id, planId),
-        eq(schema.sessionPlans.flowVersion, currentFlowVersion)
-      )
-    )
-    .returning()
-
-  if (updated) return updated
-
-  const latestPlan = await getSessionPlan(planId)
-  if (!latestPlan) throw new Error(`Plan not found after flow update: ${planId}`)
-  const replay = applyFlowEvent(latestPlan, event)
-  if (!replay.changed) return latestPlan
-
-  throw new StaleFlowVersionError(currentFlowVersion, latestPlan.flowVersion ?? 0)
+  const { plan } = await withRowCas(planId, (current) => {
+    const applied = applyFlowEvent(current, eventOf(current))
+    return applied.changed ? { write: applied.patch, value: undefined } : noWrite(undefined)
+  })
+  return plan
 }
 
 /**
- * Complete a session early (teacher ends it)
+ * Apply a client flow event (transition, break). `expectedFlowVersion` is the
+ * client's optimistic token: a stale one is a no-op when the event changes
+ * nothing from the fresh state, else StaleFlowVersionError. Server-only events
+ * (a recorded try, ending, worksheets) are refused here.
+ */
+export async function applySessionFlowEvent(
+  planId: string,
+  event: ClientFlowEvent,
+  expectedFlowVersion?: number
+): Promise<SessionPlan> {
+  const { plan } = await withRowCas(planId, (current) => {
+    if (!CLIENT_FLOW_EVENT_TYPES.has(event?.type)) {
+      throw new InvalidFlowTransitionError(
+        `${String(event?.type).slice(0, 40)} is not a client flow event`,
+        current.flowState ?? 'practicing',
+        event?.type
+      )
+    }
+    if (
+      expectedFlowVersion !== undefined &&
+      expectedFlowVersion !== null &&
+      expectedFlowVersion !== (current.flowVersion ?? 0)
+    ) {
+      if (!applyFlowEvent(current, event).changed) return noWrite(undefined)
+      throw new StaleFlowVersionError(expectedFlowVersion, current.flowVersion ?? 0)
+    }
+    const applied = applyFlowEvent(current, event)
+    return applied.changed ? { write: applied.patch, value: undefined } : noWrite(undefined)
+  })
+  return plan
+}
+
+/**
+ * Complete a session early (teacher ends it): one machine event, so `status`,
+ * `flowState`, `completedAt` and the adjustment land in one write.
  */
 export async function completeSessionPlanEarly(
   planId: string,
   reason?: string
 ): Promise<SessionPlan> {
-  const plan = await getSessionPlan(planId)
-  if (!plan) throw new Error(`Plan not found: ${planId}`)
-
-  const adjustment = {
-    timestamp: new Date(),
-    type: 'ended_early' as const,
-    reason,
-    previousHealth: plan.sessionHealth || {
-      overall: 'good' as const,
-      accuracy: 1,
-      pacePercent: 100,
-      currentStreak: 0,
-      avgResponseTimeMs: 0,
+  const updated = await applyMachineEvent(planId, (plan) => ({
+    type: 'SESSION_ENDED_EARLY',
+    adjustment: {
+      timestamp: new Date(),
+      type: 'ended_early',
+      reason,
+      previousHealth: plan.sessionHealth || {
+        overall: 'good',
+        accuracy: 1,
+        pacePercent: 100,
+        currentStreak: 0,
+        avgResponseTimeMs: 0,
+      },
     },
-  }
-
-  const flowPlan = await applySessionFlowEvent(planId, { type: 'SESSION_COMPLETED' })
-
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({
-      status: 'completed',
-      flowState: flowPlan.flowState,
-      flowUpdatedAt: flowPlan.flowUpdatedAt,
-      flowVersion: flowPlan.flowVersion,
-      completedAt: new Date(),
-      adjustments: [...plan.adjustments, adjustment],
-    })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
+  }))
 
   // Revoke any active share links
   try {
@@ -2039,21 +1905,11 @@ export async function completeSessionPlanEarly(
 }
 
 /**
- * Abandon a session (user navigates away, closes browser, etc.)
+ * Abandon a session (user navigates away, closes browser, etc.): one machine
+ * event, one write.
  */
 export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
-  const flowPlan = await applySessionFlowEvent(planId, { type: 'SESSION_ABANDONED' })
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({
-      status: 'abandoned',
-      flowState: flowPlan.flowState,
-      flowUpdatedAt: flowPlan.flowUpdatedAt,
-      flowVersion: flowPlan.flowVersion,
-      completedAt: new Date(),
-    })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
+  const updated = await applyMachineEvent(planId, () => ({ type: 'SESSION_ABANDONED' }))
 
   // Revoke any active share links
   try {
@@ -2065,17 +1921,31 @@ export async function abandonSessionPlan(planId: string): Promise<SessionPlan> {
   return updated
 }
 
-export async function completePartTransition(planId: string): Promise<SessionPlan> {
-  const plan = await getSessionPlan(planId)
-  if (!plan) throw new Error(`Plan not found: ${planId}`)
+/** Worksheet approval: append its tries, complete the session (one write). */
+export async function approveWorksheetTries(
+  planId: string,
+  triesOf: (plan: SessionPlan) => SlotResult[]
+): Promise<SessionPlan> {
+  return applyMachineEvent(planId, (plan) => ({
+    type: 'WORKSHEET_APPROVED',
+    tries: triesOf(plan),
+  }))
+}
 
-  const gameBreakEnabled = (plan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
-  const hasMoreParts = plan.currentPartIndex < plan.parts.length
-  const shouldOpenBreak = gameBreakEnabled && hasMoreParts
-  return applySessionFlowEvent(planId, {
-    type: 'PART_TRANSITION_COMPLETED',
-    shouldRunBreak: shouldOpenBreak,
-  })
+/** Worksheet unapproval: void its tries (never remove them), status follows (one write). */
+export async function unapproveWorksheetTries(
+  planId: string,
+  tryIdsOf: (plan: SessionPlan) => string[]
+): Promise<SessionPlan> {
+  return applyMachineEvent(planId, (plan) => ({
+    type: 'WORKSHEET_UNAPPROVED',
+    tryIds: tryIdsOf(plan),
+  }))
+}
+
+export async function completePartTransition(planId: string): Promise<SessionPlan> {
+  // The server decides whether a break runs (gameBreakSettings); see session-flow.ts
+  return applySessionFlowEvent(planId, { type: 'PART_TRANSITION_COMPLETED' })
 }
 
 export async function finishGameBreak(
@@ -2096,45 +1966,35 @@ export async function acknowledgeGameBreakResults(planId: string): Promise<Sessi
 
 /**
  * Update session plan results directly.
- * Used for teacher/parent edits (mark correct, exclude, etc.)
+ * Used for teacher/parent edits (mark correct, exclude, etc.). Pass a function
+ * of the row to have the edit re-applied to a newer row if another write
+ * lands first (CAS on `rowVersion`; not a flow change).
  */
 export async function updateSessionPlanResults(
   planId: string,
-  results: SlotResult[]
+  results: SlotResult[] | ((plan: SessionPlan) => SlotResult[])
 ): Promise<SessionPlan> {
-  // Get the current plan to recalculate health
-  const plan = await getSessionPlan(planId)
-  if (!plan) {
-    throw new Error(`Plan ${planId} not found`)
-  }
+  return setPlanFields(planId, (plan) => {
+    const nextResults = typeof results === 'function' ? results(plan) : results
 
-  // Create a temporary plan with updated results to calculate health
-  const tempPlan = { ...plan, results }
+    // Calculate elapsed time since session started. For a finished session being
+    // edited (the review/repair path), measure against completedAt — using
+    // Date.now() would report a nonsense (days-long) elapsed for an old session.
+    const startedAt =
+      plan.startedAt instanceof Date ? plan.startedAt : new Date(plan.startedAt ?? 0)
+    const endAt =
+      plan.completedAt instanceof Date
+        ? plan.completedAt
+        : plan.completedAt != null
+          ? new Date(plan.completedAt)
+          : new Date()
+    const elapsedTimeMs = endAt.getTime() - startedAt.getTime()
 
-  // Calculate elapsed time since session started. For a finished session being
-  // edited (the review/repair path), measure against completedAt — using
-  // Date.now() would report a nonsense (days-long) elapsed for an old session.
-  const startedAt = plan.startedAt instanceof Date ? plan.startedAt : new Date(plan.startedAt ?? 0)
-  const endAt =
-    plan.completedAt instanceof Date
-      ? plan.completedAt
-      : plan.completedAt != null
-        ? new Date(plan.completedAt)
-        : new Date()
-  const elapsedTimeMs = endAt.getTime() - startedAt.getTime()
-
-  const newHealth = calculateSessionHealth(tempPlan, elapsedTimeMs)
-
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({
-      results,
-      sessionHealth: newHealth,
-    })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
-
-  return updated
+    return {
+      results: nextResults,
+      sessionHealth: calculateSessionHealth({ ...plan, results: nextResults }, elapsedTimeMs),
+    }
+  })
 }
 
 /**
@@ -2145,17 +2005,7 @@ export async function updateSessionPlanRemoteCamera(
   planId: string,
   remoteCameraSessionId: string | null
 ): Promise<SessionPlan> {
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({ remoteCameraSessionId })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
-
-  if (!updated) {
-    throw new Error(`Plan ${planId} not found`)
-  }
-
-  return updated
+  return setPlanFields(planId, { remoteCameraSessionId })
 }
 
 // ============================================================================

@@ -12,9 +12,12 @@ import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { practiceAttachments } from '@/db/schema/practice-attachments'
 import { summarizeTries } from '@/db/schema/session-plan-helpers'
+import { mintTryId } from '@/db/schema/session-plan-normalize'
 import { type SlotResult, sessionPlans } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
+import { WriteContentionError } from '@/lib/curriculum/row-cas'
+import { approveWorksheetTries } from '@/lib/curriculum/session-planner'
 import { getUserId } from '@/lib/viewer'
 import { computeParsingStats, convertToSlotResults } from '@/lib/worksheet-parsing'
 
@@ -104,37 +107,30 @@ export const POST = withAuth(async (_request, { params }) => {
       )
     }
 
+    // Append the worksheet's tries and complete the session in one machine
+    // event (WORKSHEET_APPROVED), CAS-written: status, flowState and
+    // completedAt move together. Each try gets its own id and names this
+    // attachment, so unapproval can void exactly these tries.
     const now = new Date()
-
-    // Add timestamps to slot results and adjust slot indices
-    const existingResults = (existingSession.results ?? []) as SlotResult[]
-    const startSlotIndex = existingResults.length
-
-    const slotResultsWithTimestamps: SlotResult[] = conversionResult.slotResults.map(
-      (result, idx) => ({
+    const updatedSession = await approveWorksheetTries(existingSession.id, (plan) => {
+      const existingResults = (plan.results ?? []) as SlotResult[]
+      // Already approved (a double submit raced past the attachment check)
+      if (existingResults.some((r) => r.attachmentId === attachmentId && !r.voided)) return []
+      const startSlotIndex = existingResults.length
+      return conversionResult.slotResults.map((result, idx) => ({
         ...result,
+        tryId: mintTryId(),
+        attachmentId,
         slotIndex: startSlotIndex + idx,
         timestamp: now,
-      })
-    )
-
-    // Merge new results with existing results
-    const mergedResults = [...existingResults, ...slotResultsWithTimestamps]
+      }))
+    })
+    const addedCount = updatedSession.results.filter(
+      (r) => r.attachmentId === attachmentId && !r.voided
+    ).length
 
     // Calculate updated stats
-    const { completed: totalCount, correct: correctCount } = summarizeTries(mergedResults)
-
-    // Update the existing session with the new problems
-    await db
-      .update(sessionPlans)
-      .set({
-        results: mergedResults,
-        // Update the completed timestamp since we added new work
-        completedAt: now,
-        // Mark as completed if it wasn't already
-        status: 'completed',
-      })
-      .where(eq(sessionPlans.id, existingSession.id))
+    const { completed: totalCount, correct: correctCount } = summarizeTries(updatedSession.results)
 
     // Update attachment to mark as processed
     await db
@@ -152,7 +148,7 @@ export const POST = withAuth(async (_request, { params }) => {
     return NextResponse.json({
       success: true,
       sessionId: existingSession.id,
-      problemCount: slotResultsWithTimestamps.length,
+      problemCount: addedCount,
       totalSessionProblems: totalCount,
       correctCount,
       accuracy: totalCount > 0 ? correctCount / totalCount : null,
@@ -160,6 +156,9 @@ export const POST = withAuth(async (_request, { params }) => {
       stats,
     })
   } catch (error) {
+    if (error instanceof WriteContentionError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 503 })
+    }
     console.error('Error approving and adding to session:', error)
     return NextResponse.json({ error: 'Failed to approve and add to session' }, { status: 500 })
   }

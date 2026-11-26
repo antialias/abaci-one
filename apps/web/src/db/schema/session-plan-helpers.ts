@@ -90,16 +90,17 @@ export type PlanGenerationConfig = typeof DEFAULT_PLAN_CONFIG
 /**
  * Whether a try counts: everything except a practice-only do-over (a do-over
  * of a problem whose latest counted try was correct, session architecture
- * §1.2). Every reader that turns tries into a verdict, a count, an accuracy, a
- * streak, a timing statistic or mastery evidence reads through this predicate;
- * only lists of individual tries (attempt history) show practice-only rows.
+ * §1.2) and a voided try (worksheet unapproval, Phase 3a). Every reader that
+ * turns tries into a verdict, a count, an accuracy, a streak, a timing
+ * statistic or mastery evidence reads through this predicate; only lists of
+ * individual tries (attempt history) show practice-only rows.
  */
-export function isCountedTry(result: Pick<SlotResult, 'practiceOnly'>): boolean {
-  return result.practiceOnly !== true
+export function isCountedTry(result: Pick<SlotResult, 'practiceOnly' | 'voided'>): boolean {
+  return result.practiceOnly !== true && result.voided !== true
 }
 
 /** The tries that count (see `isCountedTry`), in recorded order. */
-export function countedTries<T extends Pick<SlotResult, 'practiceOnly'>>(
+export function countedTries<T extends Pick<SlotResult, 'practiceOnly' | 'voided'>>(
   results: readonly T[] | null | undefined
 ): T[] {
   return (results ?? []).filter(isCountedTry)

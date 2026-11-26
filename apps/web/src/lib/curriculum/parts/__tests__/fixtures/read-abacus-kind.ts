@@ -34,6 +34,7 @@ export const readAbacusKind: PartKind<Content, State, ReadAbacusItem, ReadAbacus
     tries.some((t: KindTry) => t.itemId === itemId),
   applyTry: (_content, state, _tries, t) =>
     t.kind === 'do_over' ? state : { index: state.index + 1 },
+  applyTryAside: (_content, state) => state,
   isDone: (content, state) => state.index >= content.items.length,
   progress: (content, state) => ({ done: state.index, total: content.items.length }),
   judge: (content, itemId, answer) =>

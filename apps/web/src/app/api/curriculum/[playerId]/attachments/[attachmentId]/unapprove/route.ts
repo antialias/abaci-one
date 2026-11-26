@@ -2,18 +2,21 @@
  * API route for unapproving/reverting a processed worksheet
  *
  * POST /api/curriculum/[playerId]/attachments/[attachmentId]/unapprove
- *   - Removes the problems from the session
+ *   - Voids the worksheet's tries in the session (they stay, counted nowhere)
  *   - Reverts the attachment to 'needs_review' state
  *   - Useful for testing and correcting mistakes
  */
 
-import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
+import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { practiceAttachments } from '@/db/schema/practice-attachments'
-import { sessionPlans, type SlotResult } from '@/db/schema/session-plans'
+import { tryIdOf } from '@/db/schema/session-plan-normalize'
+import { type SlotResult, sessionPlans } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
+import { WriteContentionError } from '@/lib/curriculum/row-cas'
+import { unapproveWorksheetTries } from '@/lib/curriculum/session-planner'
 import { getUserId } from '@/lib/viewer'
 
 /**
@@ -62,28 +65,37 @@ export const POST = withAuth(async (_request, { params }) => {
       return NextResponse.json({ error: 'Associated session not found' }, { status: 404 })
     }
 
-    // Count how many problems came from this attachment
-    // We need to figure out which results to remove
-    // Since we don't track which results came from which attachment,
-    // we'll remove the last N results where N = number of problems in parsing result
+    // Void this attachment's tries (never remove them: `results` is
+    // append-only from Phase 3a, §3.3) in one machine event
+    // (WORKSHEET_UNAPPROVED), CAS-written, so status, flowState and
+    // completedAt stay consistent. Tries approved from Phase 3a on name their
+    // attachment: once any row ever carried this attachmentId, voided or not,
+    // only its unvoided tagged rows are voided, which may be none, so a
+    // double-click, a retry, or a CAS re-read after another unapprove won is a
+    // no-op. Only an approval from before Phase 3a (no row carries the id)
+    // falls back to the old rule: the last N untagged, unvoided tries
+    // (N = its problem count).
     const parsingResult = attachment.approvedResult ?? attachment.rawParsingResult
     const problemCount = parsingResult?.problems?.length ?? 0
+    let voidedCount = 0
 
-    if (problemCount > 0) {
-      const existingResults = (session.results ?? []) as SlotResult[]
+    const tryIdsOf = (plan: typeof session): string[] => {
+      const results = (plan.results ?? []) as SlotResult[]
+      const indexed = results.map((r, i) => ({ r, i }))
+      const everTagged = results.some((r) => r.attachmentId === attachmentId)
+      const picked = everTagged
+        ? indexed.filter(({ r }) => r.attachmentId === attachmentId && !r.voided)
+        : problemCount > 0
+          ? indexed
+              .filter(({ r }) => !r.voided && r.attachmentId === undefined)
+              .slice(-problemCount)
+          : []
+      voidedCount = picked.length
+      return picked.map(({ r, i }) => tryIdOf(r, i, plan.id))
+    }
 
-      // Remove the last N results (assumes they were added by this attachment)
-      const newResults = existingResults.slice(0, -problemCount)
-
-      // Update session
-      await db
-        .update(sessionPlans)
-        .set({
-          results: newResults,
-          // If no results left, mark as in_progress
-          status: newResults.length === 0 ? 'in_progress' : 'completed',
-        })
-        .where(eq(sessionPlans.id, sessionId))
+    if (tryIdsOf(session).length > 0) {
+      await unapproveWorksheetTries(sessionId, tryIdsOf)
     }
 
     // Revert attachment to needs_review state
@@ -99,10 +111,13 @@ export const POST = withAuth(async (_request, { params }) => {
 
     return NextResponse.json({
       success: true,
-      message: `Reverted worksheet. Removed ${problemCount} problems from session.`,
-      problemsRemoved: problemCount,
+      message: `Reverted worksheet. Removed ${voidedCount} problems from session.`,
+      problemsRemoved: voidedCount,
     })
   } catch (error) {
+    if (error instanceof WriteContentionError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 503 })
+    }
     console.error('Error unapproving worksheet:', error)
     return NextResponse.json({ error: 'Failed to unapprove worksheet' }, { status: 500 })
   }

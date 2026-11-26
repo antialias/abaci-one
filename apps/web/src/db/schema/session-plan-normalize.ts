@@ -9,8 +9,17 @@
  * Drizzle-free (only `import type` from schema files): client-safe.
  */
 
+import { type ArithmeticState, arithmeticStateOf } from '@/lib/curriculum/parts/arithmetic/state'
+import { kindIdOf, partKindOf } from '@/lib/curriculum/parts/registry'
 import { sameProblem } from './session-plan-helpers'
-import type { SessionPart, SlotResult, TryKind } from './session-plans'
+import type {
+  BreakRecord,
+  SessionPart,
+  SessionPlan,
+  SessionRetryState,
+  SlotResult,
+  TryKind,
+} from './session-plans'
 
 export interface Try {
   /** Stored `tryId`, else `legacy:<planId>:<arrayIndex>` (the array is append-only) */
@@ -30,6 +39,8 @@ export interface Try {
   practiceOnly: boolean
   /** Report-only annotation: the stamp, or for legacy rows the derived flag */
   practiceOnlyDerived: boolean
+  /** Voided by worksheet unapproval (Phase 3a): counts nowhere */
+  voided: boolean
   isCorrect: boolean
   answer: number
   /** As stored; readers weigh the row through `evidenceWeightOf` (try-weight.ts) */
@@ -161,6 +172,7 @@ export function normalizeTry(
     round,
     practiceOnly: result.practiceOnly === true,
     practiceOnlyDerived,
+    voided: result.voided === true,
     isCorrect: result.isCorrect,
     answer: result.studentAnswer,
     masteryWeight: result.masteryWeight,
@@ -185,4 +197,149 @@ export function normalizeTries(
     tries.push(normalizeTry(result, arrayIndex, planId, parts, tries))
   })
   return tries
+}
+
+// ============================================================================
+// Part states (Phase 3a: written to `part_states` and the legacy columns, read
+// from the legacy columns until Phase 5; plan of record §5, D5)
+// ============================================================================
+
+/** The plan fields a part's state is read from. */
+export type PartStateSource = Pick<
+  SessionPlan,
+  'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState' | 'partStates'
+>
+
+/**
+ * A part's state (its kind's cursor). Arithmetic parts decode the legacy
+ * columns, which every image writes: the current part's cursor is
+ * `currentSlotIndex` + `retryState[i]`; a part before it is finished (cursor
+ * parked at its end), a part after it not started. Other kinds read
+ * `partStates[i]`, else their initial state. Phase 5 flips arithmetic onto
+ * `partStates` with this as the fallback for in-flight rows.
+ */
+export function partStateOf(plan: PartStateSource, partIndex: number): unknown {
+  const part = plan.parts[partIndex]
+  if (kindIdOf(part) === 'arithmetic') {
+    if (partIndex === plan.currentPartIndex) return arithmeticStateOf(plan, partIndex)
+    const state: ArithmeticState = {
+      slotIndex: partIndex < plan.currentPartIndex ? (part.slots?.length ?? 0) : 0,
+      retry: plan.retryState?.[partIndex],
+    }
+    return state
+  }
+  const kind = partKindOf(part)
+  return plan.partStates?.[String(partIndex)] ?? kind.initialState(kind.contentOf(part))
+}
+
+/** The row fields that store a part's state: `part_states` and its legacy encoding. */
+export interface PartStatePatch {
+  partStates: Record<string, unknown>
+  retryState?: SessionRetryState
+  currentSlotIndex?: number
+}
+
+/**
+ * The fields to write for part `partIndex` after a try: its new state (or
+ * `undefined` when the try left it unchanged) and where the session cursor
+ * lands (`nextPartIndex`). Arithmetic also writes its legacy encoding exactly
+ * as the code before Phase 3a did: `retryState` is always rewritten (a copy,
+ * `{}` for a row without one), `currentSlotIndex` is the current part's slot
+ * cursor, 0 once the session moves to the next part, untouched for a try in
+ * another part.
+ */
+export function partStatePatch(
+  plan: PartStateSource,
+  partIndex: number,
+  nextState: unknown,
+  nextPartIndex: number
+): PartStatePatch {
+  const changed = nextState !== undefined
+  const partStates = changed
+    ? { ...(plan.partStates ?? {}), [String(partIndex)]: nextState }
+    : { ...(plan.partStates ?? {}) }
+  const movedOn = nextPartIndex !== plan.currentPartIndex
+  if (kindIdOf(plan.parts[partIndex]) !== 'arithmetic') {
+    return movedOn ? { partStates, currentSlotIndex: 0 } : { partStates }
+  }
+  const state = nextState as ArithmeticState | undefined
+  const retryState: SessionRetryState = plan.retryState ? { ...plan.retryState } : {}
+  if (state?.retry) retryState[partIndex] = state.retry
+  if (movedOn) return { partStates, retryState, currentSlotIndex: 0 }
+  if (changed && partIndex === plan.currentPartIndex) {
+    return { partStates, retryState, currentSlotIndex: state!.slotIndex }
+  }
+  return { partStates, retryState }
+}
+
+// ============================================================================
+// Breaks (§3.1)
+// ============================================================================
+
+/** A `game_results` row of a practice break, as the legacy break path reads it. */
+export interface BreakGameResult {
+  id: string
+  gameName?: string | null
+  playedAt: Date | string | number
+  durationMs?: number | null
+}
+
+function isoOf(value: Date | string | number | null | undefined): string | null {
+  if (value == null) return null
+  const date = value instanceof Date ? value : new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
+/**
+ * A session's breaks by the legacy path (§3.1; every reader until Phase 5):
+ * one estimated record per `practice-break` game result (in played order),
+ * else the four legacy break columns as at most one break. `plan.breaks`
+ * (written from Phase 3a) is read from Phase 5 on, with this as its fallback.
+ */
+export function legacyBreaksOf(
+  plan: Pick<
+    SessionPlan,
+    | 'breakStartedAt'
+    | 'breakReason'
+    | 'breakSelectedGame'
+    | 'breakResults'
+    | 'flowState'
+    | 'currentPartIndex'
+  >,
+  gameResults: readonly BreakGameResult[] = []
+): BreakRecord[] {
+  if (gameResults.length > 0) {
+    return [...gameResults]
+      .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime())
+      .map((g, breakIndex) => ({
+        breakIndex,
+        afterPartIndex: null,
+        startedAt: isoOf(g.playedAt),
+        game: g.gameName ?? null,
+        gameResultId: g.id,
+        ...(g.durationMs != null ? { durationMs: g.durationMs } : {}),
+        estimated: true,
+      }))
+  }
+  const hasBreak =
+    plan.breakStartedAt != null ||
+    plan.breakReason != null ||
+    plan.breakSelectedGame != null ||
+    plan.breakResults != null
+  if (!hasBreak) return []
+  const open =
+    plan.flowState === 'break_pending' ||
+    plan.flowState === 'break_active' ||
+    plan.flowState === 'break_results'
+  return [
+    {
+      breakIndex: 0,
+      afterPartIndex: open ? plan.currentPartIndex - 1 : null,
+      startedAt: isoOf(plan.breakStartedAt),
+      ...(plan.breakReason ? { reason: plan.breakReason } : {}),
+      game: plan.breakSelectedGame ?? null,
+      results: plan.breakResults ?? null,
+      estimated: true,
+    },
+  ]
 }

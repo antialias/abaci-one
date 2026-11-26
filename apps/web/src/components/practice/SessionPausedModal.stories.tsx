@@ -149,6 +149,10 @@ function createMockSessionPlan(config: {
     pausedBy: null,
     pauseReason: null,
     retryState: null,
+    rowVersion: 0,
+    breaks: [],
+    partStates: {},
+    pauses: [],
     gameBreakSettings: null,
     remoteCameraSessionId: null,
   }

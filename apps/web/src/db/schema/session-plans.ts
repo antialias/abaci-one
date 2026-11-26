@@ -341,6 +341,15 @@ export interface SlotResult {
   /** Index of the part in `parts` (partNumber is kept for legacy readers) */
   partIndex?: number
 
+  /**
+   * Voided by an adult (worksheet unapproval, Phase 3a): the try stays in the
+   * append-only array but counts nowhere (`isCountedTry`).
+   */
+  voided?: boolean
+
+  /** The worksheet attachment whose approval appended this try (Phase 3a) */
+  attachmentId?: string
+
   // ---- Timing Integrity (shared contract #156 / #157 / #158) ----
   //
   // All optional; `results` is a JSON text column so absent fields = a plain
@@ -568,6 +577,36 @@ export type SessionRetryState = {
 }
 
 // ============================================================================
+// Breaks and pauses (session architecture §3.1, Phase 3a)
+// ============================================================================
+
+/** One break between parts, as the flow machine records it. */
+export interface BreakRecord {
+  breakIndex: number
+  /** The part the break follows; null when unknown (reconstructed legacy breaks) */
+  afterPartIndex: number | null
+  /** ISO time; null only on a reconstructed legacy break whose start was cleared */
+  startedAt: string | null
+  /** Absent while the break is open */
+  endedAt?: string
+  reason?: GameBreakEndReason
+  game?: string | null
+  results?: GameResultsReport | null
+  gameResultId?: string
+  durationMs?: number
+  /** True when reconstructed from `game_results` or the legacy columns */
+  estimated?: boolean
+}
+
+/** One pause interval (§8 Q5). */
+export interface PauseRecord {
+  pausedAt: string
+  resumedAt?: string
+  pausedBy?: string | null
+  reason?: string | null
+}
+
+// ============================================================================
 // Database Table
 // ============================================================================
 
@@ -671,6 +710,33 @@ export const sessionPlans = sqliteTable(
     retryState: text('retry_state', {
       mode: 'json',
     }).$type<SessionRetryState>(),
+
+    // ---- Row version, breaks, part states, pauses (session architecture Phase 3a) ----
+    //
+    // Expand/contract (plan of record §5, D5): from Phase 3a every writer
+    // writes these AND the legacy columns (current_slot_index, retry_state,
+    // break_*); readers stay on the legacy columns until Phase 5.
+
+    /**
+     * Compare-and-set version for every writer of the row (`withRowCas`),
+     * bumped on every write. Distinct from `flowVersion`, which moves only on
+     * flow transitions and is the client's optimistic token (D2).
+     */
+    rowVersion: integer('row_version').notNull().default(0),
+
+    // The three JSON columns below default to a value, not a JSON string: drizzle
+    // stringifies a json-mode default, so `.default('[]')` would store `"[]"`.
+    /** Every break of the session, in order (written by the flow machine) */
+    breaks: text('breaks', { mode: 'json' }).notNull().default([]).$type<BreakRecord[]>(),
+
+    /** Each part's cursor, keyed by part index; opaque to structure (the kind's `State`) */
+    partStates: text('part_states', { mode: 'json' })
+      .notNull()
+      .default({})
+      .$type<Record<string, unknown>>(),
+
+    /** Pause intervals (§8 Q5); nothing writes them yet */
+    pauses: text('pauses', { mode: 'json' }).notNull().default([]).$type<PauseRecord[]>(),
 
     // ---- Vision/Camera State ----
 

@@ -17,8 +17,6 @@
  *   change, since `SlotResult` has no other per-attempt reviewer field.
  */
 
-import { eq } from 'drizzle-orm'
-import { db, schema } from '@/db'
 import { calculateMasteryWeight } from '@/db/schema/session-plan-helpers'
 import { findTryIndex, normalizeTries } from '@/db/schema/session-plan-normalize'
 import type {
@@ -28,7 +26,8 @@ import type {
   SlotResultSource,
   SlotTimingReview,
 } from '@/db/schema/session-plans'
-import { getSessionPlan, updateSessionPlanResults } from './session-planner'
+import { PlanNotFoundError, setPlanFields } from './row-cas'
+import { updateSessionPlanResults } from './session-planner'
 import { weightOfTry } from './try-weight'
 
 /**
@@ -57,6 +56,12 @@ export class SessionReviewError extends Error {
     super(message)
     this.name = 'SessionReviewError'
   }
+}
+
+/** A missing plan answers 404 like one that is not the caller's. */
+function notFoundAsReviewError(error: unknown): never {
+  if (error instanceof PlanNotFoundError) throw new SessionReviewError('Plan not found', 404)
+  throw error
 }
 
 /** Which axis (or both) a scoped exclude/include acts on. */
@@ -333,36 +338,38 @@ export async function applySlotResultReview(
 ): Promise<SessionPlan> {
   const { planId, playerId, target, reviewerUserId, action, now = new Date() } = params
 
-  const plan = await getSessionPlan(planId)
-  if (!plan || plan.playerId !== playerId) {
-    // Don't distinguish "missing" from "not yours".
-    throw new SessionReviewError('Plan not found', 404)
-  }
-
-  let resultIndex: number
-  if ('tryId' in target) {
-    resultIndex = findTryIndex(plan.id, plan.results, target.tryId)
-    if (resultIndex < 0) throw new SessionReviewError('Try not found', 404)
-  } else {
-    resultIndex = target.resultIndex
-    if (!Number.isInteger(resultIndex) || resultIndex < 0 || resultIndex >= plan.results.length) {
-      throw new SessionReviewError('Result index out of bounds', 400)
+  // Resolve and apply against the row being written: if another write lands
+  // first, the CAS re-reads and the review is applied to the newer row.
+  return updateSessionPlanResults(planId, (plan) => {
+    if (plan.playerId !== playerId) {
+      // Don't distinguish "missing" from "not yours".
+      throw new SessionReviewError('Plan not found', 404)
     }
-  }
 
-  const tryRecord = normalizeTries(plan.id, plan.parts, plan.results).find(
-    (t) => t.arrayIndex === resultIndex
-  )
-  const updatedResults = [...plan.results]
-  updatedResults[resultIndex] = computeReviewedResult(
-    updatedResults[resultIndex],
-    action,
-    reviewerUserId,
-    now,
-    tryRecord
-  )
+    let resultIndex: number
+    if ('tryId' in target) {
+      resultIndex = findTryIndex(plan.id, plan.results, target.tryId)
+      if (resultIndex < 0) throw new SessionReviewError('Try not found', 404)
+    } else {
+      resultIndex = target.resultIndex
+      if (!Number.isInteger(resultIndex) || resultIndex < 0 || resultIndex >= plan.results.length) {
+        throw new SessionReviewError('Result index out of bounds', 400)
+      }
+    }
 
-  return updateSessionPlanResults(planId, updatedResults)
+    const tryRecord = normalizeTries(plan.id, plan.parts, plan.results).find(
+      (t) => t.arrayIndex === resultIndex
+    )
+    const updatedResults = [...plan.results]
+    updatedResults[resultIndex] = computeReviewedResult(
+      updatedResults[resultIndex],
+      action,
+      reviewerUserId,
+      now,
+      tryRecord
+    )
+    return updatedResults
+  }).catch(notFoundAsReviewError)
 }
 
 /**
@@ -383,35 +390,26 @@ export async function softDeleteSessionPlan(params: {
 }): Promise<SessionPlan> {
   const { planId, playerId, deletedByUserId, now = new Date() } = params
 
-  const plan = await getSessionPlan(planId)
-  if (!plan || plan.playerId !== playerId) {
-    throw new SessionReviewError('Plan not found', 404)
-  }
-  if (plan.status === 'deleted') {
-    throw new SessionReviewError('Session is already deleted', 400)
-  }
-  if (!SOFT_DELETABLE_STATUSES.includes(plan.status)) {
-    throw new SessionReviewError(
-      `Only completed or abandoned sessions can be deleted (status: ${plan.status})`,
-      409
-    )
-  }
-
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({
+  return setPlanFields(planId, (plan) => {
+    if (plan.playerId !== playerId) {
+      throw new SessionReviewError('Plan not found', 404)
+    }
+    if (plan.status === 'deleted') {
+      throw new SessionReviewError('Session is already deleted', 400)
+    }
+    if (!SOFT_DELETABLE_STATUSES.includes(plan.status)) {
+      throw new SessionReviewError(
+        `Only completed or abandoned sessions can be deleted (status: ${plan.status})`,
+        409
+      )
+    }
+    return {
       status: 'deleted',
       statusBeforeDeletion: plan.status,
       deletedAt: now,
       deletedBy: deletedByUserId,
-    })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
-
-  if (!updated) {
-    throw new SessionReviewError('Plan not found', 404)
-  }
-  return updated
+    }
+  }).catch(notFoundAsReviewError)
 }
 
 /**
@@ -423,30 +421,20 @@ export async function restoreSessionPlan(params: {
 }): Promise<SessionPlan> {
   const { planId, playerId } = params
 
-  const plan = await getSessionPlan(planId)
-  if (!plan || plan.playerId !== playerId) {
-    throw new SessionReviewError('Plan not found', 404)
-  }
-  if (plan.status !== 'deleted') {
-    throw new SessionReviewError('Session is not deleted', 400)
-  }
-
-  // Fall back to 'completed' for legacy rows deleted before this column existed.
-  const restoredStatus: SessionStatus = plan.statusBeforeDeletion ?? 'completed'
-
-  const [updated] = await db
-    .update(schema.sessionPlans)
-    .set({
+  return setPlanFields(planId, (plan) => {
+    if (plan.playerId !== playerId) {
+      throw new SessionReviewError('Plan not found', 404)
+    }
+    if (plan.status !== 'deleted') {
+      throw new SessionReviewError('Session is not deleted', 400)
+    }
+    // Fall back to 'completed' for legacy rows deleted before this column existed.
+    const restoredStatus: SessionStatus = plan.statusBeforeDeletion ?? 'completed'
+    return {
       status: restoredStatus,
       statusBeforeDeletion: null,
       deletedAt: null,
       deletedBy: null,
-    })
-    .where(eq(schema.sessionPlans.id, planId))
-    .returning()
-
-  if (!updated) {
-    throw new SessionReviewError('Plan not found', 404)
-  }
-  return updated
+    }
+  }).catch(notFoundAsReviewError)
 }

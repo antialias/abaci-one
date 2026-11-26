@@ -28,9 +28,8 @@ import {
  * latest counted try was wrong redeems it; anything else (practice-only,
  * wrong, a part with no retry state) returns `state` itself.
  *
- * `recordRedoResult` uses this for a do-over outside the part being practiced
- * (another part, or a break), where today's code redeems without settling
- * (§10 P2-3).
+ * The kind's `applyTryAside`: a do-over outside the part being practiced
+ * (another part, or a break) redeems without settling (§10 P2-3).
  */
 export function redeemByDoOver(
   slots: ArithmeticContent,
@@ -77,6 +76,9 @@ export const arithmeticKind: PartKind<
     }
     return stepPastItem(slots, state, item, t.isCorrect)
   },
+
+  // Redeem without settling, as recordRedoResult did before Phase 3a (§10 P2-3)
+  applyTryAside: (slots, state, _tries, t) => redeemByDoOver(slots, state, t),
 
   isDone: (slots, state) => expectedArithmeticItem(slots, state) === null,
 
