@@ -124,6 +124,7 @@ export default function FlowchartPickerPage() {
   const [publishedFlowcharts, setPublishedFlowcharts] = useState<PublishedFlowchart[]>([])
   const [isLoadingPublished, setIsLoadingPublished] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   // Draft sessions state
   const [draftSessions, setDraftSessions] = useState<WorkshopSession[]>([])
@@ -543,6 +544,7 @@ export default function FlowchartPickerPage() {
         const data = await response.json()
         setPublishedFlowcharts(data.flowcharts || [])
         setCurrentUserId(data.currentUserId || null)
+        setIsAdmin(data.isAdmin === true)
         setDistanceData(data.distances ?? null)
         setLabelBreadths(data.labelBreadths ?? null)
       }
@@ -1780,7 +1782,7 @@ export default function FlowchartPickerPage() {
                                 },
                               ]
 
-                      if (flowchart.hasEmbedding === false) {
+                      if (isAdmin && flowchart.hasEmbedding === false) {
                         const isGenerating = generatingEmbeddingIds.has(flowchart.id)
                         actions.push({
                           label: isGenerating ? 'Generating...' : 'Generate Embedding',
@@ -2173,7 +2175,7 @@ export default function FlowchartPickerPage() {
                                 backgroundColor: { base: 'gray.200', _dark: 'gray.700' },
                               })}
                             />
-                            {missingEmbeddings && (
+                            {isAdmin && missingEmbeddings && (
                               <button
                                 onClick={handleGenerateEmbeddings}
                                 disabled={isGeneratingEmbeddings}

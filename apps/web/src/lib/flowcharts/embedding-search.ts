@@ -127,6 +127,12 @@ export interface SearchOptions {
  * @param options - Search options
  * @returns Array of matching flowcharts sorted by similarity
  */
+/**
+ * Longest search query that is embedded; longer ones are cut to this. A search is
+ * a topic, not a document, and the suggest route is open to guests.
+ */
+export const MAX_SEARCH_QUERY_CHARS = 300
+
 export async function searchSimilarFlowcharts(
   query: string,
   options: SearchOptions = {}
@@ -134,7 +140,7 @@ export async function searchSimilarFlowcharts(
   const { limit = 5, minSimilarity = 0.5, excludeId } = options
 
   // Generate embedding for the query
-  const queryEmbedding = await generateEmbedding(query)
+  const queryEmbedding = await generateEmbedding(query.slice(0, MAX_SEARCH_QUERY_CHARS))
 
   // Get all flowchart embeddings
   const embeddings = await getAllFlowchartEmbeddings()

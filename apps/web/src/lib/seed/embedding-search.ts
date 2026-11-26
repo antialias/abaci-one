@@ -1,6 +1,6 @@
 import { createHash } from 'crypto'
 import { generateEmbedding, generateEmbeddings } from '@/lib/flowcharts/embedding'
-import { cosineSimilarity } from '@/lib/flowcharts/embedding-search'
+import { cosineSimilarity, MAX_SEARCH_QUERY_CHARS } from '@/lib/flowcharts/embedding-search'
 import { getProfileInfoList } from './profiles'
 import type { ProfileInfo } from './types'
 
@@ -141,7 +141,7 @@ export async function searchProfiles(
   const { limit = 21, minSimilarity = 0.3 } = options
 
   const [queryEmbedding, cache] = await Promise.all([
-    generateEmbedding(query),
+    generateEmbedding(query.slice(0, MAX_SEARCH_QUERY_CHARS)),
     getProfileEmbeddings(),
   ])
 

@@ -37,6 +37,15 @@ export {
  */
 export const EMBEDDING_BATCH_SIZE = 8
 
+/**
+ * Characters of each input the tokenizer ever sees. Tokenizing runs before the
+ * model's own 512-token truncation, so without this a multi-megabyte string
+ * blocks the event loop and balloons RSS before being cut down. 8192 characters
+ * is well past 512 tokens of any real text, so nothing the model would have read
+ * is lost.
+ */
+export const MAX_EMBED_INPUT_CHARS = 8192
+
 /** Directory holding `<model id>/…`; EMBEDDING_MODEL_DIR overrides `<cwd>/models`. */
 export function embeddingModelRoot(): string {
   return process.env.EMBEDDING_MODEL_DIR || join(process.cwd(), 'models')
@@ -102,7 +111,9 @@ export async function embedTexts(texts: string[]): Promise<Float32Array[]> {
   const extractor = await getExtractor()
   const out: Float32Array[] = []
   for (let i = 0; i < texts.length; i += EMBEDDING_BATCH_SIZE) {
-    const batch = texts.slice(i, i + EMBEDDING_BATCH_SIZE)
+    const batch = texts
+      .slice(i, i + EMBEDDING_BATCH_SIZE)
+      .map((t) => (t.length > MAX_EMBED_INPUT_CHARS ? t.slice(0, MAX_EMBED_INPUT_CHARS) : t))
     const tensor = await runExclusive(() => extractor(batch, { pooling: 'mean', normalize: true }))
     const data = tensor.data as Float32Array
     const [rows, dims] = tensor.dims
