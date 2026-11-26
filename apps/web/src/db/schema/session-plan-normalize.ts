@@ -14,6 +14,7 @@ import { kindIdOf, partKindOf } from '@/lib/curriculum/parts/registry'
 import { sameProblem } from './session-plan-helpers'
 import type {
   BreakRecord,
+  SessionAdjustment,
   SessionPart,
   SessionPlan,
   SessionRetryState,
@@ -413,4 +414,21 @@ export function sessionOutcome(plan: Pick<SessionPlan, 'status' | 'completedAt'>
 /** Whether the session has ended (completed or abandoned). */
 export function isEndedOutcome(outcome: SessionOutcome): boolean {
   return outcome === 'completed' || outcome === 'abandoned'
+}
+
+/**
+ * A row's teacher adjustments, always an array of adjustment objects. Rows
+ * inserted without `adjustments` got the column's default, `'[]'`, run
+ * through the JSON mode: they store the JSON string `"[]"` and read back as
+ * the string `'[]'`, so `.some` threw and a spread appended the characters
+ * `'['` and `']'`. Anything that is not an adjustment object reads as none,
+ * which also cleans up rows an early end corrupted that way.
+ */
+export function adjustmentsOf(plan: Pick<SessionPlan, 'adjustments'>): SessionAdjustment[] {
+  const raw: unknown = plan.adjustments
+  if (!Array.isArray(raw)) return []
+  return raw.filter(
+    (a): a is SessionAdjustment =>
+      typeof a === 'object' && a !== null && typeof (a as { type?: unknown }).type === 'string'
+  )
 }

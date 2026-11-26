@@ -191,6 +191,8 @@ export const POST = withAuth(async (request, { params }) => {
       currentPartIndex: 3, // Past all parts
       currentSlotIndex: 0,
       results: [],
+      // Spelled out: omitted, the column's '[]' default is stored as the JSON string "[]"
+      adjustments: [],
       createdAt: sessionDate,
       completedAt: sessionDate,
     })

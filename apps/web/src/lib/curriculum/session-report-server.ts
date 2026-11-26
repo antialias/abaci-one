@@ -24,7 +24,7 @@
 
 import { and, asc, desc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
-import { isEndedOutcome, sessionOutcome } from '@/db/schema/session-plan-normalize'
+import { adjustmentsOf, isEndedOutcome, sessionOutcome } from '@/db/schema/session-plan-normalize'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { readTries } from './read-tries'
 import { setRowCommitListener } from './row-cas'
@@ -118,9 +118,7 @@ function rememberPushed(sessionId: string, rowVersion: number) {
 
 function endReasonOf(plan: SessionPlan): 'completed' | 'ended_early' | 'abandoned' {
   if (sessionOutcome(plan) === 'abandoned') return 'abandoned'
-  return (plan.adjustments ?? []).some((a) => a.type === 'ended_early')
-    ? 'ended_early'
-    : 'completed'
+  return adjustmentsOf(plan).some((a) => a.type === 'ended_early') ? 'ended_early' : 'completed'
 }
 
 async function pushOne(before: SessionPlan, after: SessionPlan): Promise<void> {

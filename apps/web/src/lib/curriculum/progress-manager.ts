@@ -346,6 +346,9 @@ export async function refreshSkillRecency(
     },
     status: 'recency-refresh',
     results: [sentinelResult],
+    // Spelled out: omitted, the columns' '[]' default is stored as the JSON string "[]"
+    masteredSkillIds: [],
+    adjustments: [],
     createdAt: now,
     completedAt: now,
   }

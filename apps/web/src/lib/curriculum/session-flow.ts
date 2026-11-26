@@ -19,6 +19,7 @@
 
 import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import {
+  adjustmentsOf,
   normalizeTries,
   partStateOf,
   partStatePatch,
@@ -365,7 +366,7 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
           ...flowMove(plan, 'completed', now),
           status: 'completed',
           completedAt: now,
-          adjustments: [...(plan.adjustments ?? []), event.adjustment],
+          adjustments: [...adjustmentsOf(plan), event.adjustment],
           breaks: closeOpenBreak(breaksOf(plan), now),
         },
       }
