@@ -12,12 +12,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPartType } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
-import {
-  selectTransitionMessage,
-  requiresAbacusPutAway,
-  requiresAbacusPickUp,
-} from './partTransitionMessages'
 import { usePartTransitionAudio } from './hooks/usePartTransitionAudio'
+import {
+  requiresAbacusPickUp,
+  requiresAbacusPutAway,
+  selectTransitionMessage,
+} from './partTransitionMessages'
 
 // ============================================================================
 // Constants
@@ -123,12 +123,12 @@ export function PartTransitionScreen({
   // Speak the transition message when screen becomes visible
   usePartTransitionAudio({ isVisible, message, abacusAction: abacusActionText })
 
-  // Handle skip
+  // Handle skip. Every tap reaches the parent, also after the countdown ran
+  // out: the screen stays up until the server leaves part_transition, so a tap
+  // is how the kid asks again after a completion that failed (Phase 3c).
   const handleSkip = useCallback(() => {
-    if (!hasCompletedRef.current) {
-      hasCompletedRef.current = true
-      onComplete()
-    }
+    hasCompletedRef.current = true
+    onComplete()
   }, [onComplete])
 
   // Countdown timer using requestAnimationFrame for smooth updates

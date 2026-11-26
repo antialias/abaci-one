@@ -23,6 +23,13 @@
  * [], see the mock below); it was re-recorded on that code with only this
  * test changed, so the `skillAttempts` lines are new and every other line is
  * as before.
+ *
+ * Phase 3c (§10 P3c-7) re-recorded it: a try in `part_transition` is refused
+ * (409 `not_practicing`) instead of completing the transition implicitly, so
+ * the scenarios gained explicit "client completes the transition" steps (with
+ * breaks on, the break is skipped), and `breakStartedAt` is masked (a skipped
+ * break stamps the wall clock). Results, positions, retry state, health,
+ * skill-attempt writes and revocations of every existing step are unchanged.
  */
 
 import { eq } from 'drizzle-orm'
@@ -39,6 +46,7 @@ import type {
   SlotResultSubmission,
 } from '@/db/schema/session-plans'
 import {
+  applySessionFlowEvent,
   getSessionPlan,
   type RedoContext,
   recordRedoResult,
@@ -227,7 +235,8 @@ function projectRow(row: SessionPlan) {
     currentPartIndex: row.currentPartIndex,
     currentSlotIndex: row.currentSlotIndex,
     retryState: row.retryState,
-    breakStartedAt: row.breakStartedAt,
+    // Wall clock when a step opens a break (the client's transition step, 3c)
+    breakStartedAt: row.breakStartedAt ? '<set>' : null,
     breakResults: row.breakResults,
     breakReason: row.breakReason,
     breakSelectedGame: row.breakSelectedGame,
@@ -283,6 +292,27 @@ const redo =
   (plan) =>
     recordRedoResult(plan.id, ...doOver(plan, partIndex, slotIndex, correct, tryId))
 
+/**
+ * The client finishing a part transition (Phase 3c): its screen completes the
+ * transition, and with breaks on the break is skipped. Before 3c the next try
+ * did this implicitly; since 3c a try in `part_transition` is refused.
+ */
+const completeTransition: Step = async (plan) => {
+  const after = await applySessionFlowEvent(
+    plan.id,
+    { type: 'PART_TRANSITION_COMPLETED' },
+    plan.flowVersion
+  )
+  if (after.flowState === 'break_pending') {
+    await applySessionFlowEvent(
+      plan.id,
+      { type: 'BREAK_FINISHED', reason: 'skipped' },
+      after.flowVersion
+    )
+  }
+}
+const TRANSITION = 'client completes the transition (3c)'
+
 const setFlowState =
   (flowState: SessionFlowState): Step =>
   async (plan) => {
@@ -313,6 +343,7 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
     const planId = await insertPlan(playerId, { breaks: true })
     const steps: [string, Step][] = []
     for (let p = 0; p < 3; p++) {
+      if (p > 0) steps.push([TRANSITION, completeTransition])
       for (let s = 0; s < 3; s++) {
         steps.push([`p${p}s${s} right`, answer(true, { tryId: next(), sendEpoch: true })])
       }
@@ -326,6 +357,8 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
     // p0: right, wrong, right, retry right; p1: right, right, wrong, retry right; p2: right x3
     const pattern = [true, false, true, true, true, true, false, true, true, true, true]
     pattern.forEach((right, i) => {
+      // Answers 4 and 8 open parts 2 and 3
+      if (i === 4 || i === 8) steps.push([TRANSITION, completeTransition])
       steps.push([`answer ${i} ${right ? 'right' : 'wrong'}`, answer(right)])
     })
     expect(await replay(planId, steps)).toMatchSnapshot()
@@ -343,6 +376,7 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
         ['r1 s1 right -> round 2 [s0]', answer(true, { ...o, tryId: next() })],
         ['r2 s0 wrong -> divulged, part 2', answer(false, { ...o, tryId: next() })],
         ['redo of divulged s0 refused', redo(0, 0, true, next())],
+        [TRANSITION, completeTransition],
         ['p1 s0 wrong', answer(false, { ...o, tryId: next() })],
         ['p1 s1 right', answer(true, { ...o, tryId: next() })],
         ['p1 s2 wrong -> round 1 [s0, s2]', answer(false, { ...o, tryId: next() })],
@@ -363,10 +397,12 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
         ['redo s2 wrong: counted, no redemption', redo(0, 2, false, next())],
         ['redo s1 right: skips s1 in the round', redo(0, 1, true, next())],
         ['r1 s2 right -> transition', answer(true, { tryId: next(), sendEpoch: true })],
+        [TRANSITION, completeTransition],
         ['p1 s0 wrong', answer(false, { tryId: next() })],
         ['p1 s1 right', answer(true, { tryId: next() })],
         ['p1 s2 right -> round 1 [s0]', answer(true, { tryId: next() })],
         ['redo p1 s0 right: empties the round -> transition', redo(1, 0, true, next())],
+        [TRANSITION, completeTransition],
         ['p2 s0 right', answer(true, { tryId: next() })],
         ['p2 s1 wrong', answer(false, { tryId: next() })],
         ['p2 s2 right -> round 1 [s1]', answer(true, { tryId: next() })],
@@ -471,9 +507,16 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
             })
           },
         ],
-        ['p1 s0 right during part_transition (reload)', answer(true, { tryId: next() })],
+        [
+          'p1 s0 right during part_transition (old tab): 409 not_practicing',
+          // Outside the sequence, so the tries after it keep their ids
+          answer(true, { tryId: tid(199) }),
+        ],
+        [TRANSITION, completeTransition],
+        ['p1 s0 right', answer(true, { tryId: next() })],
         ['p1 s1 right', answer(true, { tryId: next() })],
         ['p1 s2 right -> transition', answer(true, { tryId: next() })],
+        [TRANSITION, completeTransition],
         ['p2 s0 right', answer(true, { tryId: next() })],
         ['p2 s1 right', answer(true, { tryId: next() })],
         ['p2 s2 right -> completed', answer(true, { tryId: next() })],

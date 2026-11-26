@@ -1346,6 +1346,23 @@ export class SlotResultMismatchError extends Error {
 }
 
 /**
+ * A first or retry try reached a live session that is not `practicing` (a part
+ * transition or a break owns the next step). Nothing is recorded; the route
+ * answers 409 `not_practicing` with this plan in the body, and the client
+ * applies it, which renders the transition or break screen (plan of record
+ * §1.1, Phase 3c). Replaces Phase 3a's implicit `PART_TRANSITION_COMPLETED` for
+ * a try in `part_transition` and its `INVALID_FLOW_TRANSITION` for a try during
+ * a break.
+ */
+export class NotPracticingError extends Error {
+  readonly code = 'not_practicing'
+  constructor(public readonly plan: SessionPlan) {
+    super(`The session is in ${plan.flowState}, not practicing; the try was not recorded`)
+    this.name = 'NotPracticingError'
+  }
+}
+
+/**
  * A submitted try without the fields only the server stamps. Clients from
  * before Phase 1 send `isRetry`/`epochNumber` guesses and `masteryWeight`;
  * `epochNumber` stays (it tells a resubmit from the next round), the rest go.
@@ -1509,7 +1526,9 @@ export async function recordSlotResult(
       t.slotIndex === result.slotIndex &&
       (result.epochNumber === undefined || (t.epochNumber ?? 0) === result.epochNumber) &&
       sameProblem(t.problem, result.problem)
-    if (!expected || !isSubmittedTry({ ...expected, slotIndex: expected.originalSlotIndex })) {
+    const isExpectedItem =
+      !!expected && isSubmittedTry({ ...expected, slotIndex: expected.originalSlotIndex })
+    if (!isExpectedItem) {
       const lastTry = [...plan.results].reverse().find((r) => !r.isManualRedo)
       const lastTryPartNumber = lastTry?.partNumber
       if (
@@ -1528,6 +1547,15 @@ export async function recordSlotResult(
         })
         return noWrite(null)
       }
+    }
+    // A live session whose next step is a transition or a break takes no try,
+    // whatever item it names: the client applies the plan sent back (Phase 3c).
+    // Resubmits of a recorded try were answered above, so a resend of a part's
+    // final try stays a no-op.
+    if (plan.status === 'in_progress' && (plan.flowState ?? 'practicing') !== 'practicing') {
+      throw new NotPracticingError(plan)
+    }
+    if (!expected || !isExpectedItem) {
       throw new SlotResultMismatchError(result.slotId, expected?.slotId ?? null)
     }
     if (result.slotId !== expected.slotId) {

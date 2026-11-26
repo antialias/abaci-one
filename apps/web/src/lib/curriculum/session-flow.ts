@@ -450,11 +450,11 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
 /**
  * TRY_RECORDED: the part's kind applies the try; the machine decides the rhythm.
  *
- * - A first or retry try is accepted while `practicing`. In `part_transition`
- *   it first completes the transition implicitly (a tab reloaded during the
- *   transition shows no transition screen and simply answers, §1.1 B3); with
- *   breaks on, that break is recorded as skipped. In any break state it is
- *   refused (409). Phase 3c refuses it in `part_transition` too.
+ * - A first or retry try is accepted only while `practicing`. In
+ *   `part_transition` or a break it is refused: since Phase 3c the client
+ *   renders the transition from `flowState`, so a try arriving there is stale
+ *   (§1.1 B3). `recordSlotResult` refuses it first, as 409 `not_practicing`
+ *   with the plan; this throw is the machine's own guard.
  * - A do-over moves the cursor only in the part being practiced while
  *   practicing (`applyTry`); anywhere else the kind records it aside
  *   (`applyTryAside`) and the flow does not move.
@@ -477,25 +477,8 @@ function applyTryRecorded(
   }
 
   const isDoOver = t.kind === 'do_over'
-  let breaks = breaksOf(plan)
-  let implicitTransition = false
   if (!isDoOver) {
-    if (current === 'part_transition') {
-      implicitTransition = true
-      if (breaksEnabled(plan)) {
-        breaks = [
-          ...breaks,
-          {
-            breakIndex: breaks.length,
-            afterPartIndex: plan.currentPartIndex - 1,
-            startedAt: now.toISOString(),
-            endedAt: now.toISOString(),
-            reason: 'skipped',
-            durationMs: 0,
-          },
-        ]
-      }
-    } else if (current !== 'practicing') {
+    if (current !== 'practicing') {
       throw new InvalidFlowTransitionError(
         `TRY_RECORDED not allowed from ${current}`,
         current,
@@ -528,8 +511,6 @@ function applyTryRecorded(
     results: [...plan.results, event.row],
     ...partStatePatch(plan, t.partIndex, changed ? next : undefined, nextPartIndex),
   }
-  if (breaks !== plan.breaks) patch.breaks = breaks
-
   // A first/retry try always settles the position; a do-over only when it
   // finished the part (it never steps past an item).
   if (!isDoOver || nextPartIndex !== plan.currentPartIndex) {
@@ -541,10 +522,7 @@ function applyTryRecorded(
         ? 'part_transition'
         : 'practicing'
     const flowStateChanged =
-      implicitTransition ||
-      current !== nextFlowState ||
-      plan.breakStartedAt !== null ||
-      plan.breakResults !== null
+      current !== nextFlowState || plan.breakStartedAt !== null || plan.breakResults !== null
     Object.assign(patch, {
       currentPartIndex: nextPartIndex,
       status: isComplete ? 'completed' : 'in_progress',

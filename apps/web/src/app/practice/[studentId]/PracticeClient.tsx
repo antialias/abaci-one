@@ -15,6 +15,16 @@ import {
 } from '@/components/practice'
 import { GameBreakResultsScreen } from '@/components/practice/GameBreakResultsScreen'
 import { GameBreakScreen } from '@/components/practice/GameBreakScreen'
+import {
+  PartTransitionScreen,
+  TRANSITION_COUNTDOWN_MS,
+} from '@/components/practice/PartTransitionScreen'
+import {
+  nextCompletionRequest,
+  partTransitionKey,
+  type TransitionCompletionRequest,
+  transitionCompletionToSend,
+} from '@/components/practice/partTransitionFlow'
 import { createWriteQueue } from '@/components/practice/writeQueue'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import type { Player } from '@/db/schema/players'
@@ -62,7 +72,8 @@ import {
 } from '@/hooks/useSessionBroadcast'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import {
-  SlotMismatchClientError,
+  isQuietFlowEventFailure,
+  isQuietTryWriteFailure,
   sessionPlanKeys,
   useAcknowledgeGameBreakResults,
   useActiveSessionPlan,
@@ -332,11 +343,14 @@ export function PracticeClient({
 
   // A write that failed (after its one resend) has already refetched the plan and
   // the screen resyncs. What the kid reads carries no technical text; the cause
-  // goes to the console. A stale answer (409) resyncs with no message at all.
+  // goes to the console. A stale answer (409 SLOT_MISMATCH), a try while a
+  // transition or break owns the next step (409 not_practicing, whose plan is
+  // already applied) and a write lost to contention (503) resync with no
+  // message at all.
   const reportTryWriteFailure = useCallback(
     (err: unknown) => {
-      if (err instanceof SlotMismatchClientError) {
-        console.warn('[PracticeClient] answer rejected as stale; resyncing:', err.message)
+      if (isQuietTryWriteFailure(err)) {
+        console.warn('[PracticeClient] answer not taken; resyncing to the server:', err)
         return
       }
       const message = err instanceof Error ? err.message : 'Unknown error'
@@ -614,6 +628,8 @@ export function PracticeClient({
           })
         })
         .catch((err) => {
+          // The fresh plan drives the screen; nothing for the kid to read
+          if (isQuietFlowEventFailure(err)) return
           showError(
             'Failed to finish game break',
             err instanceof Error ? err.message : 'Unknown error'
@@ -666,6 +682,8 @@ export function PracticeClient({
         })
       })
       .catch((err) => {
+        // The fresh plan drives the screen; nothing for the kid to read
+        if (isQuietFlowEventFailure(err)) return
         showError(
           'Failed to return to practice',
           err instanceof Error ? err.message : 'Unknown error'
@@ -828,63 +846,134 @@ export function PracticeClient({
     }
   }, [redoState, sendProblemMarker, getRetryContext, currentPlan.parts])
 
-  const handlePartTransition = useCallback(
-    (
-      previousPartType: 'abacus' | 'visualization' | 'linear' | null,
-      nextPartType: 'abacus' | 'visualization' | 'linear',
-      countdownStartTime: number,
-      countdownDurationMs: number
-    ) => {
-      logGameBreakTrace('part-transition-start', {
-        previousPartType,
-        nextPartType,
-        countdownStartTime,
-        countdownDurationMs,
-      })
-      sendPartTransition(previousPartType, nextPartType, countdownStartTime, countdownDurationMs)
-    },
-    [sendPartTransition, logGameBreakTrace]
+  // The part-transition screen renders from the server's flowState (Phase 3c):
+  // a tab reloaded during a transition shows it too, and completes it.
+  const transitionKey = partTransitionKey(currentPlan)
+  const [transitionShown, setTransitionShown] = useState<{
+    key: string
+    countdownStartTime: number
+  } | null>(null)
+  const [completionRequest, setCompletionRequest] = useState<TransitionCompletionRequest | null>(
+    null
   )
+  const sentCompletionRef = useRef<string | null>(null)
+  const transitionPartTypes = transitionKey
+    ? {
+        previous: currentPlan.parts[currentPlan.currentPartIndex - 1]?.type ?? null,
+        next: currentPlan.parts[currentPlan.currentPartIndex].type,
+      }
+    : null
 
-  // Handle part transition complete - called when transition screen finishes
-  const handlePartTransitionComplete = useCallback(async () => {
+  // Entering a transition: start its countdown and tell observers
+  useEffect(() => {
+    if (!transitionKey || !transitionPartTypes || transitionShown?.key === transitionKey) return
+    const countdownStartTime = Date.now()
+    setTransitionShown({ key: transitionKey, countdownStartTime })
+    logGameBreakTrace('part-transition-start', {
+      previousPartType: transitionPartTypes.previous,
+      nextPartType: transitionPartTypes.next,
+      countdownStartTime,
+    })
+    sendPartTransition(
+      transitionPartTypes.previous,
+      transitionPartTypes.next,
+      countdownStartTime,
+      TRANSITION_COUNTDOWN_MS
+    )
+  }, [
+    transitionKey,
+    transitionPartTypes?.previous,
+    transitionPartTypes?.next,
+    transitionShown?.key,
+    sendPartTransition,
+    logGameBreakTrace,
+  ])
+
+  // The screen's countdown ran out, or the kid tapped to go on
+  const handleTransitionScreenDone = useCallback(() => {
+    if (!transitionKey) return
     logGameBreakTrace('part-transition-complete-callback', {
       flowStateBefore: flowState,
       currentPartIndex: currentPlan.currentPartIndex,
-      currentSlotIndex: currentPlan.currentSlotIndex,
     })
-    sendPartTransitionComplete()
-    try {
-      const shouldRunBreak =
-        ((currentPlan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false) &&
-        currentPlan.currentPartIndex < currentPlan.parts.length
-      const updatedPlan = await completePartTransition.mutateAsync({
-        playerId: studentId,
-        planId: currentPlan.id,
-        expectedFlowVersion: currentPlan.flowVersion,
-        shouldRunBreak,
+    setCompletionRequest((previous) => nextCompletionRequest(previous, transitionKey))
+  }, [transitionKey, flowState, currentPlan.currentPartIndex, logGameBreakTrace])
+
+  // Observers close their transition view when the server's plan leaves the
+  // transition, not when the kid's screen asks to: an ask can fail
+  const lastTransitionKeyRef = useRef(transitionKey)
+  useEffect(() => {
+    const previous = lastTransitionKeyRef.current
+    lastTransitionKeyRef.current = transitionKey
+    if (previous && previous !== transitionKey) sendPartTransitionComplete()
+  }, [transitionKey, sendPartTransitionComplete])
+
+  // A plan that ended outside this tab (an adult ended it, learned from a
+  // resync): leave for the summary, as this tab's own completion does
+  const planEnded =
+    currentPlan.status === 'completed' ||
+    currentPlan.status === 'abandoned' ||
+    currentPlan.completedAt != null
+  const endedRedirectRef = useRef(false)
+  useEffect(() => {
+    if (!planEnded || endedRedirectRef.current) return
+    endedRedirectRef.current = true
+    stopRecordingRef.current?.()
+    router.push(
+      `/practice/${studentId}/summary${currentPlan.status === 'completed' ? '?completed=1' : ''}`,
+      { scroll: false }
+    )
+  }, [planEnded, currentPlan.status, studentId, router])
+
+  // Complete the transition with the plan's current token. A stale token
+  // refetches the plan (in the mutation); if the fresh plan is still in this
+  // transition at a newer version, this runs again and sends with it.
+  const sendCompletePartTransition = completePartTransition.mutateAsync
+  const completionInFlight = completePartTransition.isPending
+  useEffect(() => {
+    const flowVersion = currentPlan.flowVersion ?? 0
+    const token = transitionCompletionToSend({
+      key: transitionKey,
+      flowVersion,
+      request: completionRequest,
+      inFlight: completionInFlight,
+      sent: sentCompletionRef.current,
+    })
+    if (!token) return
+    sentCompletionRef.current = token
+    sendCompletePartTransition({
+      playerId: studentId,
+      planId: currentPlan.id,
+      expectedFlowVersion: flowVersion,
+      // Ignored since Phase 3a (the plan's break setting decides); kept for one
+      // release for a server from before it, which reads undefined as false
+      shouldRunBreak: (gameBreakSettings?.enabled ?? false) && transitionKey !== null,
+    })
+      .then((updatedPlan) => {
+        logGameBreakTrace('part-transition-complete-resolved', {
+          updatedFlowState: updatedPlan.flowState,
+          updatedBreakStartedAt: updatedPlan.breakStartedAt,
+        })
       })
-      logGameBreakTrace('part-transition-complete-resolved', {
-        updatedFlowState: updatedPlan.flowState,
-        updatedBreakStartedAt: updatedPlan.breakStartedAt,
+      .catch((err) => {
+        // A stale token, or a plan that moved on (an adult ended the session
+        // during the countdown): the fresh plan drives the screen, quietly.
+        // Still in this transition: a real failure; the kid can tap again.
+        if (isQuietFlowEventFailure(err)) return
+        showError(
+          'Failed to transition session',
+          err instanceof Error ? err.message : 'Unknown transition error'
+        )
       })
-    } catch (err) {
-      showError(
-        'Failed to transition session',
-        err instanceof Error ? err.message : 'Unknown transition error'
-      )
-    }
   }, [
-    sendPartTransitionComplete,
-    flowState,
-    completePartTransition,
-    studentId,
-    currentPlan.id,
+    transitionKey,
     currentPlan.flowVersion,
-    currentPlan.currentPartIndex,
-    currentPlan.currentSlotIndex,
-    currentPlan.parts.length,
-    currentPlan.gameBreakSettings,
+    currentPlan.id,
+    completionRequest,
+    completionInFlight,
+    sendCompletePartTransition,
+    studentId,
+    gameBreakSettings?.enabled,
     logGameBreakTrace,
     showError,
   ])
@@ -1061,8 +1150,6 @@ export function PracticeClient({
               onTeacherResumeHandled={() => setTeacherResumeRequest(false)}
               manualPauseRequest={manualPauseRequest}
               onManualPauseHandled={() => setManualPauseRequest(false)}
-              onPartTransition={handlePartTransition}
-              onPartTransitionComplete={handlePartTransitionComplete}
               redoState={redoState}
               resyncRequest={resyncRequest}
               onRecordRedo={handleRecordRedo}
@@ -1074,6 +1161,17 @@ export function PracticeClient({
                   queryKey: sessionPlanKeys.active(studentId),
                 })
               }}
+            />
+          )}
+          {transitionKey && transitionPartTypes && transitionShown?.key === transitionKey && (
+            <PartTransitionScreen
+              key={transitionShown.key}
+              isVisible
+              previousPartType={transitionPartTypes.previous}
+              nextPartType={transitionPartTypes.next}
+              countdownStartTime={transitionShown.countdownStartTime}
+              student={{ name: player.name, emoji: player.emoji, color: player.color }}
+              onComplete={handleTransitionScreenDone}
             />
           )}
         </PracticeErrorBoundary>

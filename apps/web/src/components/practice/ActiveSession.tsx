@@ -11,7 +11,6 @@ import type {
   ProblemSlot,
   SessionHealth,
   SessionPart,
-  SessionPartType,
   SessionPlan,
   SlotResult,
   SlotResultSubmission,
@@ -21,7 +20,6 @@ import { css } from '../../../styled-system/css'
 import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'
 import { calculateComplexityScaledThresholds, getComplexityCost } from './autoPauseCalculator'
 import { BrowseModeView, getLinearIndex } from './BrowseModeView'
-import { PartTransitionScreen, TRANSITION_COUNTDOWN_MS } from './PartTransitionScreen'
 import { extractTargetSkillName, PurposeBadge } from './PurposeBadge'
 import { RetryTransitionScreen } from './RetryTransitionScreen'
 import { SessionPausedModal } from './SessionPausedModal'
@@ -200,15 +198,6 @@ interface ActiveSessionProps {
   manualPauseRequest?: boolean
   /** Called after manual pause has been handled (to clear the state) */
   onManualPauseHandled?: () => void
-  /** Called when a part transition starts (for broadcasting to observers) */
-  onPartTransition?: (
-    previousPartType: SessionPartType | null,
-    nextPartType: SessionPartType,
-    countdownStartTime: number,
-    countdownDurationMs: number
-  ) => void
-  /** Called when a part transition completes (for broadcasting to observers) */
-  onPartTransitionComplete?: () => void
   /** Redo state - when set, show a redo problem instead of current session problem */
   redoState?: {
     isActive: boolean
@@ -311,8 +300,6 @@ export function ActiveSession({
   onTeacherResumeHandled,
   manualPauseRequest,
   onManualPauseHandled,
-  onPartTransition,
-  onPartTransitionComplete,
   redoState,
   onRecordRedo,
   onRedoComplete,
@@ -934,16 +921,6 @@ export function ActiveSession({
   // Track pause info for displaying in the modal (single source of truth)
   const [pauseInfo, setPauseInfo] = useState<PauseInfo | undefined>(undefined)
 
-  // Part transition state - for showing transition screen between parts
-  const [isInPartTransition, setIsInPartTransition] = useState(false)
-  const [transitionData, setTransitionData] = useState<{
-    previousPartType: SessionPartType | null
-    nextPartType: SessionPartType
-    countdownStartTime: number
-  } | null>(null)
-  // Track the previous part index to detect part changes
-  const prevPartIndexRef = useRef<number>(plan.currentPartIndex)
-
   // Retry transition state - for showing transition screen between retry epochs
   const [isInRetryTransition, setIsInRetryTransition] = useState(false)
   const [retryTransitionData, setRetryTransitionData] = useState<{
@@ -1099,22 +1076,6 @@ export function ActiveSession({
   const parts = plan.parts
   const currentPartIndex = plan.currentPartIndex
   const currentSlotIndex = plan.currentSlotIndex
-  const gameBreakTraceEnabled =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('debugGameBreakTrace') === '1'
-  const logGameBreakTrace = useCallback(
-    (event: string, details: Record<string, unknown> = {}) => {
-      if (!gameBreakTraceEnabled) return
-      console.log('[GBTRACE][client]', event, {
-        ts: new Date().toISOString(),
-        planId: plan.id,
-        currentPartIndex,
-        currentSlotIndex,
-        ...details,
-      })
-    },
-    [gameBreakTraceEnabled, plan.id, currentPartIndex, currentSlotIndex]
-  )
   const currentPart = parts[currentPartIndex] as SessionPart | undefined
   // Use getCurrentProblemInfo which handles both original slots and retry epochs
   const regularSlot = currentProblemInfo
@@ -1156,53 +1117,6 @@ export function ActiveSession({
       onComplete()
     }
   }, [currentPartIndex, parts.length, onComplete])
-
-  // Detect part index changes and trigger transition screen
-  useEffect(() => {
-    const prevIndex = prevPartIndexRef.current
-
-    logGameBreakTrace('active-session-part-transition-effect', {
-      prevIndex,
-      currentPartIndex,
-      partsLength: parts.length,
-      willTriggerTransition: currentPartIndex !== prevIndex && currentPartIndex < parts.length,
-    })
-
-    // If part index changed and we have a valid next part
-    if (currentPartIndex !== prevIndex && currentPartIndex < parts.length) {
-      const prevPart = prevIndex < parts.length ? parts[prevIndex] : null
-      const nextPart = parts[currentPartIndex]
-
-      logGameBreakTrace('active-session-trigger-transition-screen', {
-        previousPartType: prevPart?.type ?? null,
-        nextPartType: nextPart.type,
-      })
-
-      // Trigger transition screen
-      const startTime = Date.now()
-      setTransitionData({
-        previousPartType: prevPart?.type ?? null,
-        nextPartType: nextPart.type,
-        countdownStartTime: startTime,
-      })
-      setIsInPartTransition(true)
-
-      // Broadcast transition to observers
-      onPartTransition?.(prevPart?.type ?? null, nextPart.type, startTime, TRANSITION_COUNTDOWN_MS)
-    }
-
-    // Update ref for next comparison
-    prevPartIndexRef.current = currentPartIndex
-  }, [currentPartIndex, parts, onPartTransition, logGameBreakTrace])
-
-  // Handle transition screen completion (countdown finished or user skipped)
-  const handleTransitionComplete = useCallback(() => {
-    logGameBreakTrace('active-session-transition-complete-callback')
-    setIsInPartTransition(false)
-    setTransitionData(null)
-    // Broadcast transition complete to observers
-    onPartTransitionComplete?.()
-  }, [onPartTransitionComplete, logGameBreakTrace])
 
   // Detect retry epoch transitions and show retry transition screen
   useEffect(() => {
@@ -2492,18 +2406,6 @@ export function ActiveSession({
         onResume={handleResume}
         onEndSession={() => onEndEarly('Session ended by user')}
       />
-
-      {/* Part Transition Screen - full screen overlay between parts */}
-      {transitionData && (
-        <PartTransitionScreen
-          isVisible={isInPartTransition}
-          previousPartType={transitionData.previousPartType}
-          nextPartType={transitionData.nextPartType}
-          countdownStartTime={transitionData.countdownStartTime}
-          student={student}
-          onComplete={handleTransitionComplete}
-        />
-      )}
 
       {/* Retry Transition Screen - shown when entering a retry epoch */}
       {retryTransitionData && (

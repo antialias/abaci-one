@@ -43,6 +43,7 @@ interface Plan {
   id: string
   status: string
   flowState: string
+  flowVersion: number
   currentPartIndex: number
   currentSlotIndex: number
   parts: { type: string; slots: Slot[] }[]
@@ -89,13 +90,17 @@ async function seedStudent(request: APIRequestContext): Promise<string> {
   return playerId
 }
 
-async function startSession(request: APIRequestContext, playerId: string): Promise<Plan> {
+async function startSession(
+  request: APIRequestContext,
+  playerId: string,
+  opts: { breaks?: boolean } = {}
+): Promise<Plan> {
   const gen = await request.post(`/api/curriculum/${playerId}/sessions/plans`, {
     data: {
       durationMinutes: 1,
       enabledParts: { abacus: true, visualization: true, linear: false },
       gameBreakSettings: {
-        enabled: true,
+        enabled: opts.breaks ?? true,
         maxDurationMinutes: 1,
         selectionMode: 'auto-start',
         selectedGame: 'matching',
@@ -511,7 +516,7 @@ test.describe('retry / do-over attribution', () => {
     expect(await toasts(page)).toEqual([])
   })
 
-  for (const failure of ['500', 'abort', 'lost-reply'] as const) {
+  for (const failure of ['500', 'contention', 'abort', 'lost-reply'] as const) {
     test(`a failed save (${failure}) is resent once with the same tryId and the session goes on`, async ({
       page,
       request,
@@ -532,11 +537,23 @@ test.describe('retry / do-over attribution', () => {
           if (recordCount === 2) {
             if (failure === 'abort') return route.abort('failed')
             if (failure === 'lost-reply') await route.fetch() // reaches the server, reply lost
-            return route.fulfill({
-              status: 500,
-              contentType: 'application/json',
-              body: JSON.stringify({ error: 'Injected failure' }),
-            })
+            // contention: the server's row CAS lost three times (Phase 3a's 503)
+            return route.fulfill(
+              failure === 'contention'
+                ? {
+                    status: 503,
+                    contentType: 'application/json',
+                    body: JSON.stringify({
+                      error: 'Injected contention',
+                      code: 'write_contention',
+                    }),
+                  }
+                : {
+                    status: 500,
+                    contentType: 'application/json',
+                    body: JSON.stringify({ error: 'Injected failure' }),
+                  }
+            )
           }
         }
         return route.continue()
@@ -738,5 +755,257 @@ test.describe('retry / do-over attribution', () => {
     expect(last).toMatchObject({ slotId: plan.parts[0].slots[2].slotId, slotIndex: 2 })
     expect(server.currentPartIndex).toBe(1)
     expect(await toasts(page)).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Phase 3c: the client renders from the server's flowState
+// ---------------------------------------------------------------------------
+
+const transitionScreen = (page: Page) => page.locator('[data-component="part-transition-screen"]')
+
+/** Answers every problem of part 0 correctly; the server is then in part_transition. */
+async function finishFirstPart(
+  page: Page,
+  request: APIRequestContext,
+  playerId: string,
+  plan: Plan
+) {
+  for (let i = 0; i < plan.parts[0].slots.length; i++) await answer(page, plan.id, true)
+  await expect(transitionScreen(page)).toBeVisible({ timeout: 20_000 })
+  const server = await getPlan(request, playerId, plan.id)
+  expect(server).toMatchObject({ flowState: 'part_transition', currentPartIndex: 1 })
+  return server
+}
+
+test.describe('the client renders from the server flow state (Phase 3c)', () => {
+  test.setTimeout(240_000)
+
+  let playerId = ''
+  test.afterEach(async ({ request }) => {
+    if (playerId && !process.env.RF_KEEP_PLAYERS) await cleanupPlayer(request, playerId)
+    playerId = ''
+  })
+
+  test('a reload during part_transition shows the screen, completes it, and the break runs', async ({
+    page,
+    request,
+  }) => {
+    playerId = await seedStudent(request)
+    const plan = await startSession(request, playerId)
+    await openSession(page, playerId)
+    await finishFirstPart(page, request, playerId, plan)
+
+    await page.reload()
+    // Before 3c a reloaded tab showed no transition screen (it rendered from a
+    // part-index change it never saw) and answered into the transition
+    await expect(transitionScreen(page)).toBeVisible({ timeout: 20_000 })
+    await page.screenshot({ path: `${SHOTS}/s3c-reload-transition.png` })
+    // Its countdown runs out and the transition completes: the break starts
+    await expect(page.locator('[data-component="game-break-screen"]')).toBeVisible({
+      timeout: 30_000,
+    })
+    await expect
+      .poll(async () => (await getPlan(request, playerId, plan.id)).flowState)
+      .toMatch(/^break_(pending|active)$/)
+    await page.locator('[data-action="skip-break"]').click()
+    const next = await shownProblem(page)
+    expect(sameProblem(next, slotProblem(plan, 1, 0))).toBe(true)
+    expect(await toasts(page)).toEqual([])
+  })
+
+  test('a stale flow token refetches and completes the transition with no toast (breaks off, P3a-8)', async ({
+    page,
+    request,
+  }) => {
+    playerId = await seedStudent(request)
+    const plan = await startSession(request, playerId, { breaks: false })
+    await openSession(page, playerId)
+
+    // The part-ending try's reply reaches the tab carrying an older flow
+    // version than the server's, so the tab's PART_TRANSITION_COMPLETED goes
+    // out with a stale token, as when that reply outran the countdown (§10 P3a-8)
+    await page.route(`**/sessions/plans/${plan.id}`, async (route) => {
+      const req = route.request()
+      const body = JSON.parse(req.postData() ?? '{}')
+      if (req.method() !== 'PATCH' || body.action !== 'record') return route.continue()
+      const res = await route.fetch()
+      const json = await res.json()
+      if (json.plan?.flowState === 'part_transition') json.plan.flowVersion -= 1
+      return route.fulfill({ response: res, json })
+    })
+    const sentVersions: number[] = []
+    await page.route(`**/sessions/plans/${plan.id}/flow-events`, async (route) => {
+      const body = JSON.parse(route.request().postData() ?? '{}')
+      if (body.event?.type === 'PART_TRANSITION_COMPLETED')
+        sentVersions.push(body.expectedFlowVersion)
+      return route.continue()
+    })
+
+    const inTransition = await finishFirstPart(page, request, playerId, plan)
+    await page.locator('[data-action="skip-transition"]').click()
+
+    // The stale event got 409; the plan was refetched and the event sent again
+    // with the fresh token; the session goes on to part 2
+    await expect
+      .poll(async () => (await getPlan(request, playerId, plan.id)).flowState, { timeout: 20_000 })
+      .toBe('practicing')
+    const next = await shownProblem(page)
+    expect(sameProblem(next, slotProblem(plan, 1, 0))).toBe(true)
+    await expect(transitionScreen(page)).toHaveCount(0)
+    // Stale first (else this test exercised nothing), then the refetched token
+    expect(sentVersions).toEqual([inTransition.flowVersion - 1, inTransition.flowVersion])
+    await page.screenshot({ path: `${SHOTS}/s3c-stale-token-after.png` })
+    expect(await toasts(page)).toEqual([])
+  })
+
+  test('an adult ends the session during the countdown: the kid leaves the transition, no reload, no toast', async ({
+    page,
+    request,
+  }) => {
+    playerId = await seedStudent(request)
+    const plan = await startSession(request, playerId)
+    await openSession(page, playerId)
+    await finishFirstPart(page, request, playerId, plan)
+
+    // The teacher ends early; the kid's tab gets no push for it
+    const end = await request.patch(`/api/curriculum/${playerId}/sessions/plans/${plan.id}`, {
+      data: { action: 'end_early', reason: 'e2e: adult ends during the countdown' },
+    })
+    expect(end.ok()).toBe(true)
+    await expect(transitionScreen(page)).toBeVisible()
+
+    // The kid goes on: the event meets a completed plan (409, not stale)
+    const reply = page.waitForResponse(
+      (r) =>
+        r.url().endsWith(`/sessions/plans/${plan.id}/flow-events`) &&
+        r.request().method() === 'POST'
+    )
+    await page.locator('[data-action="skip-transition"]').click()
+    const res = await reply
+    expect(res.status()).toBe(409)
+    expect((await res.json()).code).toBe('INVALID_FLOW_TRANSITION')
+
+    // The plan fetched after the failure drives the screen: off to the summary
+    await page.waitForURL(`**/practice/${playerId}/summary**`, { timeout: 20_000 })
+    expect(await toasts(page)).toEqual([])
+  })
+
+  test('a 503 on an optimistic advance: one row, the queued answer waits for the resend', async ({
+    page,
+    request,
+  }) => {
+    playerId = await seedStudent(request)
+    const plan = await startSession(request, playerId)
+    await openSession(page, playerId)
+
+    // Record write 2 (slot 1) answers 503 write_contention; its resend (3) is
+    // held until the kid has answered slot 2, so that answer has to queue
+    let recordCount = 0
+    const recordTryIds: string[] = []
+    let releaseResend!: () => void
+    const resendHeld = new Promise<void>((resolve) => {
+      releaseResend = resolve
+    })
+    let resendArrived!: () => void
+    const resendSeen = new Promise<void>((resolve) => {
+      resendArrived = resolve
+    })
+    await page.route(`**/sessions/plans/${plan.id}`, async (route) => {
+      const req = route.request()
+      const body = JSON.parse(req.postData() ?? '{}')
+      if (req.method() !== 'PATCH' || body.action !== 'record') return route.continue()
+      recordCount++
+      recordTryIds.push(body.result?.tryId)
+      if (recordCount === 2) {
+        return route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'Injected contention', code: 'write_contention' }),
+        })
+      }
+      if (recordCount === 3) {
+        resendArrived()
+        await resendHeld
+      }
+      return route.continue()
+    })
+
+    await answer(page, plan.id, true)
+    const slot1 = await shownProblem(page)
+    expect(sameProblem(slot1, slotProblem(plan, 0, 1))).toBe(true)
+    await typeCorrect(page, slot1)
+    await resendSeen
+
+    // Slot 2 is up optimistically; its answer is taken but not sent
+    const slot2 = await shownProblem(page)
+    expect(sameProblem(slot2, slotProblem(plan, 0, 2))).toBe(true)
+    const slot2Reply = page.waitForResponse(
+      (r) => r.url().includes(plan.id) && isWrite('record')(r) && r.status() === 200
+    )
+    await typeCorrect(page, slot2)
+    expect(recordCount).toBe(3)
+
+    releaseResend()
+    await slot2Reply
+    await expect(transitionScreen(page)).toBeVisible({ timeout: 20_000 })
+    const end = await getPlan(request, playerId, plan.id)
+    const part1 = end.results.filter((r) => r.partNumber === 1)
+    expect(part1.map((r) => r.slotId)).toEqual(plan.parts[0].slots.map((s) => s.slotId))
+    expect(recordTryIds[2]).toBe(recordTryIds[1])
+    expect(recordCount).toBe(4)
+    expect(end).toMatchObject({ flowState: 'part_transition', currentPartIndex: 1 })
+    expect(await toasts(page)).toEqual([])
+  })
+
+  test('a try that reaches a break gets 409 not_practicing and the tab applies its plan', async ({
+    page,
+    context,
+    request,
+  }) => {
+    playerId = await seedStudent(request)
+    const plan = await startSession(request, playerId)
+    await openSession(page, playerId)
+    const last = plan.parts[0].slots.length - 1
+    for (let i = 0; i < last; i++) await answer(page, plan.id, true)
+
+    // Tab B opens on part 0's last problem
+    const stale = await context.newPage()
+    await openSession(stale, playerId)
+    expect(sameProblem(await shownProblem(stale), slotProblem(plan, 0, last))).toBe(true)
+
+    // Tab A finishes the part and goes through the transition into the break
+    await answer(page, plan.id, true)
+    await expect(transitionScreen(page)).toBeVisible({ timeout: 20_000 })
+    await page.locator('[data-action="skip-transition"]').click()
+    await expect(page.locator('[data-component="game-break-screen"]')).toBeVisible({
+      timeout: 20_000,
+    })
+    await expect
+      .poll(async () => (await getPlan(request, playerId, plan.id)).flowState)
+      .toMatch(/^break_(pending|active)$/)
+
+    if (!sameProblem(await shownProblem(stale), slotProblem(plan, 0, last))) {
+      throw new Error('tab B synced before answering; the 409 path was not exercised')
+    }
+    const reply = stale.waitForResponse((r) => r.url().includes(plan.id) && isWrite('record')(r))
+    await typeCorrect(stale, slotProblem(plan, 0, last))
+    const res = await reply
+    expect(res.status()).toBe(409)
+    const body = await res.json()
+    expect(body).toMatchObject({ code: 'not_practicing', plan: { id: plan.id } })
+    expect(body.plan.flowState).toMatch(/^break_(pending|active)$/)
+
+    // Tab B renders the break from the plan the 409 carried; nothing recorded
+    await expect(stale.locator('[data-component="game-break-screen"]')).toBeVisible({
+      timeout: 20_000,
+    })
+    await stale.screenshot({ path: `${SHOTS}/s3c-not-practicing-after.png` })
+    const server = await getPlan(request, playerId, plan.id)
+    expect(server.results.filter((r) => r.partNumber === 1)).toHaveLength(
+      plan.parts[0].slots.length
+    )
+    expect(await toasts(stale)).toEqual([])
+    await stale.close()
   })
 })
