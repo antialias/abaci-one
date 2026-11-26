@@ -24,7 +24,8 @@ describe('voice folders', () => {
     expect(elevenLabsVoiceIdOf('el-..')).toBeNull()
     expect(isSafeVoiceFolder('el-abc')).toBe(true)
     expect(isSafeVoiceFolder('Thomas Hallock')).toBe(true)
-    for (const bad of ['', '..', 'a/b', 'a\\b']) expect(isSafeVoiceFolder(bad)).toBe(false)
+    for (const bad of ['', '.', '..', 'a/b', 'a\\b', 'a\0b'])
+      expect(isSafeVoiceFolder(bad)).toBe(false)
   })
 
   it('keeps retired OpenAI folders distinct from ElevenLabs ones', () => {
@@ -40,6 +41,7 @@ describe('voice folders', () => {
 
   it('reserves generated folder names from custom voices', () => {
     expect(isReservedVoiceName('onyx')).toBe(true)
+    expect(isReservedVoiceName('ONYX')).toBe(true)
     expect(isReservedVoiceName('el-anything')).toBe(true)
     expect(isReservedVoiceName('EL-anything')).toBe(true)
     expect(isReservedVoiceName('Thomas Hallock')).toBe(false)

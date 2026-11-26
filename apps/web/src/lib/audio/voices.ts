@@ -66,6 +66,7 @@ export function isRetiredVoice(folder: string): boolean {
 export function isSafePathSegment(name: string): boolean {
   return (
     name.length > 0 &&
+    name !== '.' &&
     !name.includes('/') &&
     !name.includes('\\') &&
     !name.includes('..') &&
@@ -78,7 +79,9 @@ export const isSafeVoiceFolder = isSafePathSegment
 
 /** Names a custom (recorded) voice may not take: they'd collide with a generated folder. */
 export function isReservedVoiceName(name: string): boolean {
-  return isRetiredVoice(name) || name.toLowerCase().startsWith(ELEVENLABS_VOICE_PREFIX)
+  // Case-insensitive: on a case-insensitive filesystem "ONYX" is onyx's folder.
+  const lower = name.trim().toLowerCase()
+  return isRetiredVoice(lower) || lower.startsWith(ELEVENLABS_VOICE_PREFIX)
 }
 
 /** Why generation into this folder is refused, or null if it's allowed. */
