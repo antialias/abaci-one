@@ -237,7 +237,9 @@ Guests can call this route, so before anything is spent:
 - **Clip fit** (`src/lib/speech/clipAuthority.ts`): a manifest id must carry the manifest's text (which, with its tone, is what's spoken). A hash id must FNV-hash to its id; that's a sanity check only, since storage is keyed by text.
 - **Hourly caps** (`src/lib/speech/generationBudget.ts`, in memory per pod, sliding hour, charged once per upstream request; cache hits and joined generations are free): 500 clips / 20k characters per identity, 1,000 clips / 60k characters per pod. Over a cap → 429. Identity (`src/lib/speech/requestIdentity.ts`): user id, else the signed guest cookie's `sid`, else the rightmost `X-Forwarded-For` hop (the one k3s Traefik appended). Never a client-set header.
 - **Timing and dedupe** (`src/lib/speech/onDemandGeneration.ts`): the caller gets 504 after 5 s and falls to subtitles, but the upstream request keeps running (up to 30 s; the door bills aborted requests in full) and writes the cache file when it lands. Plays of the same clip while it's generating join that generation.
-- **Say text is first-write-wins**: `POST /api/audio/collected-clips` never rewrites an existing (clip, locale) text or a clip's tone.
+- **Say text is first-write-wins**: `POST /api/audio/collected-clips` never rewrites an existing (clip, locale) text or a clip's tone, and what a collected clip says when generated (bulk task, admin status) is its *first-written* text whatever the locale (`src/lib/speech/collectedClipText.ts`), so adding a new locale later can't steer it. One flush is bounded (`FLUSH_LIMITS`: first 1,000 clips; entries over the length limits are skipped).
+- **Bulk cost up front**: the admin's "Generate N Missing" shows the characters and estimated cost (`charsFor` from `GET ?voice=`, `src/lib/speech/cost.ts`).
+- **App-wide settings** (`/api/settings/voice-chain`, `audio-voice`, `bkt`, `practice-config`) are admin-only to change; reads stay open.
 - **`songs`** (children's session songs) is not a voice: no voice route lists, writes, serves from or removes it.
 
 ### Tones

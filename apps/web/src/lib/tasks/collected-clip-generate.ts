@@ -2,12 +2,12 @@ import { inArray } from 'drizzle-orm'
 import { existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
 import { db } from '@/db'
-import { ttsCollectedClipSay, ttsCollectedClips } from '@/db/schema'
+import { ttsCollectedClips } from '@/db/schema'
 import { AiFeature } from '../ai-usage/features'
 import { AUDIO_MANIFEST_MAP } from '../audio/audioManifest'
-import { resolveCanonicalText } from '../audio/clipHash'
 import { generationRefusal } from '../audio/voices'
 import { clipFileStem, writeClipFile } from '../speech/clipStorage'
+import { firstWrittenSayText } from '../speech/collectedClipText'
 import { describeSpeechFailure, SPEECH_TIMEOUT_MS, synthesizeSpeech } from '../speech/synthesize'
 import { createTask } from '../task-manager'
 import type { CollectedClipGenerateEvent } from './events'
@@ -27,20 +27,6 @@ export interface CollectedClipGenerateOutput {
   generated: number
   errors: number
   total: number
-}
-
-/**
- * Resolve the best input text for TTS generation from the say table.
- * Uses shared resolveCanonicalText for consistent priority logic.
- */
-function resolveSayText(
-  sayEntries: Map<string, Record<string, string>>,
-  clipId: string
-): string | null {
-  const sayMap = sayEntries.get(clipId)
-  if (!sayMap) return null
-  const text = resolveCanonicalText(sayMap)
-  return text || null
 }
 
 /**
@@ -109,21 +95,8 @@ export async function startCollectedClipGeneration(
       return
     }
 
-    // Fetch say entries for these clips
-    const sayRows = await db
-      .select()
-      .from(ttsCollectedClipSay)
-      .where(inArray(ttsCollectedClipSay.clipId, config.clipIds))
-
-    const sayByClipId = new Map<string, Record<string, string>>()
-    for (const row of sayRows) {
-      let map = sayByClipId.get(row.clipId)
-      if (!map) {
-        map = {}
-        sayByClipId.set(row.clipId, map)
-      }
-      map[row.locale] = row.text
-    }
+    // What each clip says: its first-written text (lib/speech/collectedClipText).
+    const sayText = await firstWrittenSayText(config.clipIds)
 
     // What each clip speaks and where it's stored. Manifest clips speak the
     // manifest's constant text; others their DB text, falling back to the
@@ -131,7 +104,7 @@ export async function startCollectedClipGeneration(
     // registered as plain strings before the default-say fix).
     const planned = clips.flatMap((clip) => {
       const manifest = AUDIO_MANIFEST_MAP[clip.id]
-      const text = manifest?.text ?? resolveSayText(sayByClipId, clip.id) ?? clip.id
+      const text = manifest?.text ?? sayText.get(clip.id) ?? clip.id
       const tone = manifest?.tone ?? clip.tone
       try {
         return [{ clip, text, tone, stem: clipFileStem(config.voice, clip.id, text, tone) }]

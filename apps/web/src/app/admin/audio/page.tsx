@@ -25,6 +25,7 @@ import {
   isReservedVoiceName,
   isRetiredVoice,
 } from '@/lib/audio/voices'
+import { estimateSpeechCost } from '@/lib/speech/cost'
 import { SPEECH_MODEL } from '@/lib/speech/model'
 import type { CollectedClipGenerateOutput } from '@/lib/tasks/collected-clip-generate'
 import { css } from '../../../../styled-system/css'
@@ -74,6 +75,7 @@ export default function AdminAudioPage() {
   // Where each clip's file lives in this voice (text-keyed for ElevenLabs voices).
   const ccFileFor = ccData?.fileFor ?? {}
   const ccFile = (clipId: string) => ccFileFor[clipId] ?? clipId
+  const ccCharsFor = ccData?.charsFor ?? {}
 
   // React Query: mutation for triggering collected clip generation
   const ccGenerateMutation = useGenerateCollectedClips(ccGenVoice)
@@ -1604,9 +1606,11 @@ export default function AdminAudioPage() {
                       )}
                       {isElevenLabsVoice(ccGenVoice) &&
                         (() => {
-                          const missingCount = collectedClips.filter(
-                            (c) => !ccGeneratedFor[c.id]
-                          ).length
+                          const missing = collectedClips.filter((c) => !ccGeneratedFor[c.id])
+                          const missingCount = missing.length
+                          const { chars, cost } = estimateSpeechCost(
+                            missing.map((c) => ccCharsFor[c.id] ?? 0)
+                          )
                           return missingCount > 0 ? (
                             <button
                               data-action="cc-generate-all-missing"
@@ -1630,7 +1634,8 @@ export default function AdminAudioPage() {
                                 '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
                               })}
                             >
-                              Generate {missingCount} Missing
+                              Generate {missingCount} Missing ({chars.toLocaleString()} chars, ~$
+                              {cost.toFixed(2)})
                             </button>
                           ) : null
                         })()}

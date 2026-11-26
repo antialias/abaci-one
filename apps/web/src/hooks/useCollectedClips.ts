@@ -26,6 +26,8 @@ interface CollectedClipsResponse {
   deactivatedFor?: Record<string, boolean>
   /** File stem each clip is stored under in the requested voice (`t-…` for text-keyed clips). */
   fileFor?: Record<string, string>
+  /** Characters generating each clip in that voice would bill. */
+  charsFor?: Record<string, number>
 }
 
 // ============================================================================

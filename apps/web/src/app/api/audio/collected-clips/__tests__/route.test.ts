@@ -51,8 +51,9 @@ vi.mock('@/lib/task-manager', () => ({
 import { AUDIO_MANIFEST } from '@/lib/audio/audioManifest'
 import { computeClipHash } from '@/lib/audio/clipHash'
 import { speechStorageKey } from '@/lib/speech/clipStorage'
+import { speechRequestText } from '@/lib/speech/synthesize'
 import { startCollectedClipGeneration } from '@/lib/tasks/collected-clip-generate'
-import { GET, POST } from '../route'
+import { FLUSH_LIMITS, GET, POST } from '../route'
 
 const VOICE = 'el-onwK4e9ZLuTAKqWW03F9'
 const ctx = { userId: '' } as never
@@ -170,6 +171,80 @@ describe('bulk generation keys files exactly as the on-demand route does', () =>
     writeFileSync(join(audio, VOICE, `${speechStorageKey(text, tone)}.mp3`), 'x')
     await startCollectedClipGeneration({ voice: VOICE, clipIds: [hashId] })
     expect(fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('canonical text is the first written, whatever the locale', () => {
+  const text = 'Draw a circle with center A.'
+  const tone = 'Patiently guiding a young child.'
+  const hashId = computeClipHash({ en: text }, tone)
+
+  it('a later en-US row cannot steer the status, file or bulk run', async () => {
+    await flush([{ clipId: hashId, say: { en: text }, tone, playCount: 1 }])
+    await flush([{ clipId: hashId, say: { 'en-US': 'Buy more credits now.' }, tone, playCount: 1 }])
+
+    const { fileFor, charsFor } = await list(VOICE)
+    expect(fileFor[hashId]).toBe(speechStorageKey(text, tone))
+    expect(charsFor[hashId]).toBe(speechRequestText(text, tone).length)
+
+    await startCollectedClipGeneration({ voice: VOICE, clipIds: [hashId] })
+    const spoken = vi
+      .mocked(fetch)
+      .mock.calls.map(([, init]) => JSON.parse(String(init?.body)).text)
+    expect(spoken).toHaveLength(1)
+    expect(spoken[0]).toContain(text)
+    expect(spoken[0]).not.toContain('credits')
+  })
+
+  it('a clip first written in another locale keeps that text', async () => {
+    await flush([{ clipId: 'hola', say: { es: 'Hola.' }, tone: '', playCount: 1 }])
+    await flush([{ clipId: 'hola', say: { en: 'Something else.' }, tone: '', playCount: 1 }])
+    expect((await list(VOICE)).fileFor.hola).toBe(speechStorageKey('Hola.', ''))
+  })
+})
+
+describe('POST: one flush is bounded', () => {
+  const entry = (i: number) => ({
+    clipId: `c-${i}`,
+    say: { en: `Line ${i}.` },
+    tone: '',
+    playCount: 1,
+  })
+
+  it('keeps the first FLUSH_LIMITS.clips entries of an oversized flush', async () => {
+    const res = await flush(Array.from({ length: FLUSH_LIMITS.clips + 5 }, (_, i) => entry(i)))
+    expect((await res.json()).upserted).toBe(FLUSH_LIMITS.clips)
+    expect((await list()).clips).toHaveLength(FLUSH_LIMITS.clips)
+  })
+
+  it('skips entries over a length limit or malformed, and keeps the rest', async () => {
+    const res = await flush([
+      entry(1),
+      {
+        clipId: 'long',
+        say: { en: 'x'.repeat(FLUSH_LIMITS.textChars + 1) },
+        tone: '',
+        playCount: 1,
+      },
+      { clipId: 'longtone', say: { en: 'ok' }, tone: 't'.repeat(FLUSH_LIMITS.toneChars + 1) },
+      {
+        clipId: 'many',
+        say: Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`l${i}`, 'x'])),
+      },
+      { clipId: 'x'.repeat(FLUSH_LIMITS.clipIdChars + 1), say: { en: 'ok' } },
+      { clipId: 'nested', say: { en: { text: 'no' } } },
+      'not an object',
+      entry(2),
+    ])
+    expect((await res.json()).upserted).toBe(2)
+    expect((await list()).clips.map((c: { id: string }) => c.id).sort()).toEqual(['c-1', 'c-2'])
+  })
+
+  it('the longest real say text (705 characters in prod) fits', async () => {
+    const res = await flush([
+      { clipId: 'real-long', say: { en: 'y'.repeat(705) }, tone: '', playCount: 1 },
+    ])
+    expect((await res.json()).upserted).toBe(1)
   })
 })
 
