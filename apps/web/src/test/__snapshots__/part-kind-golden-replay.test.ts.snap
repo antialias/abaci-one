@@ -82,7 +82,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "redo s0 right: practice-only",
@@ -561,7 +572,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "s2 wrong -> round 1 [s1, s2]",
@@ -821,7 +843,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "r1 s1 right",
@@ -1115,7 +1148,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "flowState forced to break_active (legacy edge)",
@@ -1724,7 +1768,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "shown": null,
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        2500,
+      ],
+    ],
   },
   {
     "label": "flowState back to practicing",
@@ -3655,7 +3710,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "redo s0 right while queued: redeems",
@@ -3782,7 +3848,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        2500,
+      ],
+    ],
   },
   {
     "label": "s1 wrong",
@@ -3960,7 +4037,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "s2 wrong -> round 1 [s1, s2]",
@@ -4188,7 +4276,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "redo s2 wrong: counted, no redemption",
@@ -4451,7 +4550,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        2500,
+      ],
+    ],
   },
   {
     "label": "redo s1 right: skips s1 in the round",
@@ -4750,7 +4860,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        2500,
+      ],
+    ],
   },
   {
     "label": "r1 s2 right -> transition",
@@ -5050,7 +5171,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1 s0 wrong",
@@ -5407,7 +5539,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1 s1 right",
@@ -5798,7 +5941,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1 s2 right -> round 1 [s0]",
@@ -6223,7 +6377,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "redo p1 s0 right: empties the round -> transition",
@@ -6669,7 +6834,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        2500,
+      ],
+    ],
   },
   {
     "label": "p2 s0 right",
@@ -7149,7 +7325,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p2 s1 wrong",
@@ -7686,7 +7873,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p2 s2 right -> round 1 [s1]",
@@ -8257,7 +8455,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "redo p2 s1 right: last item of the last part -> completed",
@@ -8832,7 +9041,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "shown": null,
       "status": "completed",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        2500,
+      ],
+    ],
   },
 ]
 `;
@@ -8919,7 +9139,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "same tryId again: no-op",
@@ -9305,7 +9536,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "wrong round sent: mismatch",
@@ -9606,7 +9848,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        2500,
+      ],
+    ],
   },
   {
     "label": "same redo tryId again: no-op",
@@ -9962,7 +10215,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "redo p0 s0 during part_transition: practice-only",
@@ -10686,7 +10950,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1 s1 right",
@@ -10984,7 +11259,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1 s2 right -> transition",
@@ -11316,7 +11602,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p2 s0 right",
@@ -11682,7 +11979,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p2 s1 right",
@@ -12082,7 +12390,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p2 s2 right -> completed",
@@ -12499,7 +12818,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "shown": null,
       "status": "completed",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "resend of the final try (same tryId) after completion: no-op",
@@ -13420,7 +13750,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p0s1 right",
@@ -13536,7 +13877,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p0s2 right",
@@ -13686,7 +14038,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1s0 right",
@@ -13870,7 +14233,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1s1 right",
@@ -14088,7 +14462,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1s2 right",
@@ -14340,7 +14725,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p2s0 right",
@@ -14626,7 +15022,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p2s1 right",
@@ -14946,7 +15353,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p2s2 right",
@@ -15283,7 +15701,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "shown": null,
       "status": "completed",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
 ]
 `;
@@ -15370,7 +15799,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "answer 1 wrong",
@@ -15510,7 +15950,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "answer 2 right",
@@ -15684,7 +16135,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "answer 3 right",
@@ -15875,7 +16337,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "answer 4 right",
@@ -16100,7 +16573,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "answer 5 right",
@@ -16359,7 +16843,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "answer 6 wrong",
@@ -16675,7 +17170,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "answer 7 right",
@@ -17008,7 +17514,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "answer 8 right",
@@ -17375,7 +17892,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "answer 9 right",
@@ -17776,7 +18304,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "answer 10 right",
@@ -18194,7 +18733,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "shown": null,
       "status": "completed",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
 ]
 `;
@@ -18305,7 +18855,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "s1 wrong",
@@ -18461,7 +19022,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "s2 right -> round 1 [s0, s1]",
@@ -18651,7 +19223,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "r1 s0 wrong",
@@ -18892,7 +19475,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "r1 s1 right -> round 2 [s0]",
@@ -19134,7 +19728,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "r2 s0 wrong -> divulged, part 2",
@@ -19393,7 +19998,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "redo of divulged s0 refused",
@@ -19968,7 +20584,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1 s1 right",
@@ -20318,7 +20945,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1 s2 wrong -> round 1 [s0, s2]",
@@ -20718,7 +21356,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1 r1 s0 right",
@@ -21152,7 +21801,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
   {
     "label": "p1 r1 s2 right -> part 3",
@@ -21587,7 +22247,18 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       },
       "status": "in_progress",
     },
-    "skillAttempts": [],
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
   },
 ]
 `;
