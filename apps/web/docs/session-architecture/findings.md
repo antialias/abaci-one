@@ -1,6 +1,6 @@
 # Session architecture: findings (2026-11-26)
 
-Fact base for the session-architecture rework. Read from `origin/main` at `6423f579b`. Paths are under `apps/web/src/`. "Confirmed" means a test or a direct read of the code; "reported" means a read-only survey pass, spot-checked where marked.
+Fact base for the session-architecture rework. The decisions, contracts and phases built on it are in [plan-of-record.md](./plan-of-record.md). Read from `origin/main` at `6423f579b`. Paths are under `apps/web/src/`. "Confirmed" means a test or a direct read of the code; "reported" means a read-only survey pass, spot-checked where marked.
 
 ## Owner decisions (2026-11-26)
 
