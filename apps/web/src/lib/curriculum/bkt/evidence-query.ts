@@ -36,6 +36,7 @@ interface RawProjectedEvidence {
   isRetry?: unknown
   epochNumber?: unknown
   isManualRedo?: unknown
+  voided?: unknown
 }
 
 interface RawPartType {
@@ -123,6 +124,8 @@ function toBktEvidence(
   // Practice-only do-overs carry no evidence (the server's stamp; never derived)
   const practiceOnly = raw.practiceOnly === true || raw.practiceOnly === 1
   if (practiceOnly) return null
+  // Voided tries (worksheet unapproval, Phase 3a) count nowhere
+  if (raw.voided === true || raw.voided === 1) return null
 
   const partNumber = optionalNumber(raw.partNumber)
   const mode = partNumber == null ? undefined : modeByPartNumber.get(partNumber)
@@ -205,7 +208,8 @@ async function getEvidenceChunk(
           'practiceOnly', json_extract(value, '$.practiceOnly'),
           'isRetry', json_extract(value, '$.isRetry'),
           'epochNumber', json_extract(value, '$.epochNumber'),
-          'isManualRedo', json_extract(value, '$.isManualRedo')
+          'isManualRedo', json_extract(value, '$.isManualRedo'),
+          'voided', json_extract(value, '$.voided')
         ))
         FROM json_each(session_plans.results)
       ) AS evidenceJson,

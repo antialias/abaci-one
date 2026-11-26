@@ -16160,9 +16160,9 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "completedAt": null,
       "currentPartIndex": 1,
       "currentSlotIndex": 0,
-      "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowState": "part_transition",
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 1,
       "parts": "[{"kind":"arithmetic","partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -16363,8 +16363,8 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "currentPartIndex": 1,
       "currentSlotIndex": 1,
       "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 2,
       "parts": "[{"kind":"arithmetic","partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -16599,8 +16599,8 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "currentPartIndex": 1,
       "currentSlotIndex": 2,
       "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 2,
       "parts": "[{"kind":"arithmetic","partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -16869,8 +16869,8 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "currentPartIndex": 1,
       "currentSlotIndex": 3,
       "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 2,
       "parts": "[{"kind":"arithmetic","partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -17195,9 +17195,9 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "completedAt": null,
       "currentPartIndex": 2,
       "currentSlotIndex": 0,
-      "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowState": "part_transition",
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 3,
       "parts": "[{"kind":"arithmetic","partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -17540,8 +17540,8 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "currentPartIndex": 2,
       "currentSlotIndex": 1,
       "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 4,
       "parts": "[{"kind":"arithmetic","partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -17918,8 +17918,8 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "currentPartIndex": 2,
       "currentSlotIndex": 2,
       "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 4,
       "parts": "[{"kind":"arithmetic","partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -18331,7 +18331,7 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "currentSlotIndex": 0,
       "flowState": "completed",
       "flowUpdatedAtMoved": true,
-      "flowVersion": 1,
+      "flowVersion": 5,
       "parts": "[{"kind":"arithmetic","partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"kind":"arithmetic","partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -19753,9 +19753,9 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "completedAt": null,
       "currentPartIndex": 1,
       "currentSlotIndex": 0,
-      "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowState": "part_transition",
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 1,
       "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -20023,9 +20023,9 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "completedAt": null,
       "currentPartIndex": 1,
       "currentSlotIndex": 0,
-      "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowState": "part_transition",
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 1,
       "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -20283,8 +20283,8 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "currentPartIndex": 1,
       "currentSlotIndex": 1,
       "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 2,
       "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -20610,8 +20610,8 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "currentPartIndex": 1,
       "currentSlotIndex": 2,
       "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 2,
       "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -20971,8 +20971,8 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "currentPartIndex": 1,
       "currentSlotIndex": 3,
       "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 2,
       "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -21382,8 +21382,8 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "currentPartIndex": 1,
       "currentSlotIndex": 3,
       "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 2,
       "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {
@@ -21826,9 +21826,9 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
       "completedAt": null,
       "currentPartIndex": 2,
       "currentSlotIndex": 0,
-      "flowState": "practicing",
-      "flowUpdatedAtMoved": false,
-      "flowVersion": 0,
+      "flowState": "part_transition",
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 3,
       "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
       "results": [
         {

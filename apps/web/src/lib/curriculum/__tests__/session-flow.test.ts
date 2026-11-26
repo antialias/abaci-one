@@ -36,6 +36,10 @@ function buildPlan(overrides: Partial<SessionPlan> = {}): SessionPlan {
     adjustments: [],
     results: [],
     retryState: null,
+    rowVersion: 0,
+    breaks: [],
+    partStates: {},
+    pauses: [],
     remoteCameraSessionId: null,
     isPaused: false,
     pausedAt: null,
@@ -54,10 +58,20 @@ function buildPlan(overrides: Partial<SessionPlan> = {}): SessionPlan {
 
 describe('applyFlowEvent', () => {
   it('transitions part_transition -> break_pending -> break_active', () => {
-    const transitionPlan = buildPlan({ flowState: 'part_transition', flowVersion: 3 })
+    // Breaks follow the plan's settings, not the client's shouldRunBreak (Phase 3a)
+    const transitionPlan = buildPlan({
+      flowState: 'part_transition',
+      flowVersion: 3,
+      gameBreakSettings: {
+        enabled: true,
+        maxDurationMinutes: 5,
+        selectionMode: 'kid-chooses',
+        selectedGame: null,
+      },
+    })
     const completed = applyFlowEvent(transitionPlan, {
       type: 'PART_TRANSITION_COMPLETED',
-      shouldRunBreak: true,
+      shouldRunBreak: false,
     })
 
     expect(completed.changed).toBe(true)

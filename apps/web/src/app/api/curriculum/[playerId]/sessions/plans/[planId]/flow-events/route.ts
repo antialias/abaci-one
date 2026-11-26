@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
+import type { SessionPlan } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
-import type { SessionPlan } from '@/db/schema/session-plans'
+import { WriteContentionError } from '@/lib/curriculum/row-cas'
+import { type ClientFlowEvent, InvalidFlowTransitionError } from '@/lib/curriculum/session-flow'
 import { applySessionFlowEvent, StaleFlowVersionError } from '@/lib/curriculum/session-planner'
-import { InvalidFlowTransitionError, type SessionFlowEvent } from '@/lib/curriculum/session-flow'
 import { getUserId } from '@/lib/viewer'
 
 function serializePlan(plan: SessionPlan) {
@@ -36,7 +37,7 @@ export const POST = withAuth(async (request, { params }) => {
 
     const body = await request.json()
     const { event, expectedFlowVersion } = body as {
-      event?: SessionFlowEvent
+      event?: ClientFlowEvent
       expectedFlowVersion?: number
     }
 
@@ -74,6 +75,10 @@ export const POST = withAuth(async (request, { params }) => {
         },
         { status: 409 }
       )
+    }
+
+    if (error instanceof WriteContentionError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 503 })
     }
 
     console.error('Error applying flow event:', error)

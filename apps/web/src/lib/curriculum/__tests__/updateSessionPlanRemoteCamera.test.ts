@@ -7,15 +7,15 @@
  * with session plans in the database.
  */
 
+import { createId } from '@paralleldrive/cuid2'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
-import { createId } from '@paralleldrive/cuid2'
 import {
   createEphemeralDatabase,
   createTestStudent,
+  type EphemeralDbResult,
   getCurrentEphemeralDb,
   setCurrentEphemeralDb,
-  type EphemeralDbResult,
   type TestDatabase,
 } from '@/test/journey-simulator/EphemeralDatabase'
 
@@ -105,7 +105,7 @@ describe('updateSessionPlanRemoteCamera', () => {
   it('should throw error for non-existent plan', async () => {
     await expect(
       updateSessionPlanRemoteCamera('non-existent-plan-id', 'session-123')
-    ).rejects.toThrow('Plan non-existent-plan-id not found')
+    ).rejects.toThrow('Plan not found: non-existent-plan-id')
   })
 
   it('should update remote camera session ID multiple times', async () => {

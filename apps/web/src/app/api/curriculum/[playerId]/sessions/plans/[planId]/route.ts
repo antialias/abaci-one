@@ -30,6 +30,7 @@ import {
   startSessionPlan,
   updateSessionPlanRemoteCamera,
 } from '@/lib/curriculum'
+import { WriteContentionError } from '@/lib/curriculum/row-cas'
 import { InvalidFlowTransitionError } from '@/lib/curriculum/session-flow'
 import { getUserId } from '@/lib/viewer'
 
@@ -313,6 +314,9 @@ export const PATCH = withAuth(async (request, { params }) => {
         },
         { status: 409 }
       )
+    }
+    if (error instanceof WriteContentionError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 503 })
     }
     console.error('Error updating plan:', error)
     return NextResponse.json({ error: 'Failed to update plan' }, { status: 500 })

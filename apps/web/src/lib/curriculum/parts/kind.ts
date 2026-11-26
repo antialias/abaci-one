@@ -71,6 +71,13 @@ export interface PartKind<Content, State, Item, Part extends StoredPart = Stored
   acceptsDoOver(content: Content, state: State, tries: readonly KindTry[], itemId: string): boolean
   /** The state after a recorded try (`tries` = the part's tries before it) */
   applyTry(content: Content, state: State, tries: readonly KindTry[], t: KindTry): State
+  /**
+   * The state after a do-over recorded while its part is not the one being
+   * practiced (a finished part, or any part during a transition or a break):
+   * the kind updates what the try changes without moving its cursor. Returns
+   * `state` itself when nothing changes. (Phase 3a, §10 P3a-3.)
+   */
+  applyTryAside(content: Content, state: State, tries: readonly KindTry[], t: KindTry): State
   isDone(content: Content, state: State): boolean
   progress(content: Content, state: State, tries: readonly KindTry[]): PartProgress
   /** Whether `answer` is correct for `itemId` */

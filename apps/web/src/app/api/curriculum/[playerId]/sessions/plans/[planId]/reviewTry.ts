@@ -6,6 +6,7 @@ import {
   parseSlotResultReviewAction,
   SessionReviewError,
 } from '@/lib/curriculum'
+import { WriteContentionError } from '@/lib/curriculum/row-cas'
 import { getUserId } from '@/lib/viewer'
 
 const toMs = (d: Date | null | undefined) => (d instanceof Date ? d.getTime() : d)
@@ -51,6 +52,9 @@ export async function reviewTry(
   } catch (error) {
     if (error instanceof SessionReviewError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
+    }
+    if (error instanceof WriteContentionError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 503 })
     }
     console.error('Error updating result:', error)
     return NextResponse.json({ error: 'Failed to update result' }, { status: 500 })
