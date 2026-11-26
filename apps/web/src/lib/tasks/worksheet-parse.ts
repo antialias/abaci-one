@@ -11,16 +11,17 @@
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
 import { type ParsingStatus, practiceAttachments } from '@/db/schema/practice-attachments'
-import { createTaskLLM } from '../llm'
+import { AiFeature } from '@/lib/ai-usage/features'
+import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
+import { createTaskLLM, llm } from '../llm'
 import { createTask, type TaskHandle } from '../task-manager'
 import {
   buildWorksheetParsingPrompt,
   computeParsingStats,
+  getDefaultModelConfig,
   type StreamParseWorksheetOptions,
   streamParseWorksheetImage,
 } from '../worksheet-parsing'
-import { AiFeature } from '@/lib/ai-usage/features'
-import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
 import type { BoundingBox, WorksheetParsingResult } from '../worksheet-parsing/schemas'
 import type { WorksheetParseEvent } from './events'
 
@@ -118,7 +119,7 @@ export async function startWorksheetParsing(input: WorksheetParseInput): Promise
       handle.setProgress(5, 'Initializing parser...')
       handle.emit({
         type: 'parse_started',
-        modelConfigId: 'gpt-5.2-thinking',
+        modelConfigId: getDefaultModelConfig().id,
         useStreaming: true,
         attachmentId,
       })
@@ -204,11 +205,13 @@ async function runStreamingParse(
       handle.emit({
         type: 'parse_llm_started',
         responseId: event.responseId,
-        model: 'gpt-5.2',
-        provider: 'openai',
+        model: llm.getDefaultModel(),
+        provider: llm.getDefaultProvider(),
       })
     } else if (event.type === 'complete') {
       handle.setProgress(90, 'Validating results...')
+      const provider = event.provider ?? llm.getDefaultProvider()
+      const model = event.model ?? llm.getDefaultModel()
 
       // Merge preserved bounding boxes
       let parsingResult = event.data
@@ -235,8 +238,8 @@ async function runStreamingParse(
           confidenceScore: parsingResult.overallConfidence,
           needsReview: parsingResult.needsReview,
           parsingError: null,
-          llmProvider: 'openai',
-          llmModel: 'gpt-5.2',
+          llmProvider: provider,
+          llmModel: model,
           llmPromptUsed: promptUsed,
           llmRawResponse: null,
           llmJsonSchema: null,
@@ -252,8 +255,8 @@ async function runStreamingParse(
       handle.complete({
         data: parsingResult,
         stats,
-        provider: 'openai',
-        model: 'gpt-5.2',
+        provider,
+        model,
         usage: {
           promptTokens: event.usage.promptTokens,
           completionTokens: event.usage.completionTokens,

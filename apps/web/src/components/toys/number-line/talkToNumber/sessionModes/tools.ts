@@ -5,9 +5,9 @@
  * Composed sets group tools by session mode.
  */
 
-import type { RealtimeTool, ModeContext } from './types'
 import { AVAILABLE_EXPLORATIONS } from '../explorationRegistry'
 import { GAME_IDS, getGameToolDescription } from '../gameRegistry'
+import type { ModeContext, RealtimeTool } from './types'
 
 // ── Static tools ────────────────────────────────────────────────────────────
 
@@ -379,7 +379,8 @@ export function getDefaultTools(ctx: ModeContext): RealtimeTool[] {
     TOOL_ADD_TO_CALL,
     TOOL_START_EXPLORATION,
     TOOL_LOOK_AT,
-    TOOL_EVOLVE_STORY,
+    // evolve_story develops the scenario, so it is offered only when there is one
+    ...(ctx.scenario ? [TOOL_EVOLVE_STORY] : []),
     makeStartGameTool(),
     TOOL_SET_NUMBER_LINE_STYLE,
     TOOL_INDICATE,
@@ -389,13 +390,13 @@ export function getDefaultTools(ctx: ModeContext): RealtimeTool[] {
   return tools
 }
 
-export function getConferenceTools(): RealtimeTool[] {
+export function getConferenceTools(ctx: Pick<ModeContext, 'scenario'>): RealtimeTool[] {
   return [
     TOOL_SWITCH_SPEAKER,
     TOOL_ADD_TO_CALL,
     TOOL_LOOK_AT,
     TOOL_INDICATE,
-    TOOL_EVOLVE_STORY,
+    ...(ctx.scenario ? [TOOL_EVOLVE_STORY] : []),
     TOOL_START_EXPLORATION,
     makeStartGameTool(),
     TOOL_HANG_UP,

@@ -203,9 +203,10 @@ export async function findRelatedFlowcharts(
     return []
   }
 
-  // Related flowchart pairs score 0.29–0.55 and unrelated ones ≤ 0.23 under
-  // all-MiniLM-L6-v2 (scripts/eval-embedding-models.ts).
-  const { limit = 5, minSimilarity = 0.3 } = options
+  // Under all-MiniLM-L6-v2 related pairs score 0.29–0.55, but cross-subject
+  // pairs reach 0.34 (subtraction ↔ sentence types; times tables ↔ commas),
+  // so "see also" keeps 0.4: precision over recall.
+  const { limit = 5, minSimilarity = 0.4 } = options
 
   const results: FlowchartSearchResult[] = []
 

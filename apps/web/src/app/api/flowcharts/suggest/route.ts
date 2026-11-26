@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import {
-  type FlowchartSearchResult,
   MAX_SEARCH_QUERY_CHARS,
   searchSimilarFlowcharts,
 } from '@/lib/flowcharts/embedding-search'

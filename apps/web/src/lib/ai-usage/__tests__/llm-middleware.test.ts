@@ -59,6 +59,32 @@ describe('LLM middleware', () => {
       )
     })
 
+    it('records the provider and model the complete event names', async () => {
+      const mw = middleware.createUsageRecordingMiddleware(context)
+
+      async function* fakeStream(): AsyncGenerator<any, void, unknown> {
+        yield {
+          type: 'complete',
+          data: { ok: true },
+          usage: { promptTokens: 7, completionTokens: 3 },
+          rawResponse: '{"ok":true}',
+          provider: 'claude_code',
+          model: 'claude-abaci',
+        }
+      }
+
+      for await (const _event of mw.wrap(fakeStream())) {
+        // drain
+      }
+
+      expect(mockRecordLlmClientStreamUsage).toHaveBeenCalledWith(
+        { promptTokens: 7, completionTokens: 3 },
+        'claude_code',
+        'claude-abaci',
+        context
+      )
+    })
+
     it('does not record on non-complete events', async () => {
       const mw = middleware.createUsageRecordingMiddleware(context)
 

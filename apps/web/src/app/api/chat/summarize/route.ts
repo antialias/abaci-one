@@ -1,18 +1,23 @@
 /**
- * API route that summarizes the head of a conversation using GPT-5.
+ * API route that summarizes the head of a conversation.
  *
  * POST /api/chat/summarize
  * Body: { messages: Array<{ role: string, content: string }>, previousSummary?: string }
  * Returns: { summary: string }
  *
- * Uses the OpenAI Responses API in auto mode (no reasoning effort specified).
+ * Goes through the app's LLM client (default provider: claude_code).
  */
 
-import { openAiTextBaseUrl } from '@/lib/openai-base'
 import { NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/withAuth'
-import { recordOpenAiResponsesUsage } from '@/lib/ai-usage/helpers'
+import { z } from 'zod'
 import { AiFeature } from '@/lib/ai-usage/features'
+import { trackedCall } from '@/lib/ai-usage/llm-middleware'
+import { withAuth } from '@/lib/auth/withAuth'
+import { llm } from '@/lib/llm'
+
+const SummarySchema = z.object({
+  summary: z.string().describe('The conversation summary, under 300 words'),
+})
 
 const SUMMARIZE_PROMPT = `You are summarizing a conversation between a student and a tutor character.
 Produce a concise summary that preserves:
@@ -37,11 +42,6 @@ export const POST = withAuth(async (request, { userId }) => {
       return NextResponse.json({ error: 'messages array is required' }, { status: 400 })
     }
 
-    const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 })
-    }
-
     // Build the conversation text to summarize
     const conversationText = messages
       .map((m: { role: string; content: string }) => {
@@ -57,44 +57,17 @@ export const POST = withAuth(async (request, { userId }) => {
       userPrompt = `Summarize the following conversation:\n\n${conversationText}`
     }
 
-    const response = await fetch(`${openAiTextBaseUrl()}/responses`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
+    const response = await trackedCall(
+      llm,
+      {
+        system: SUMMARIZE_PROMPT,
+        prompt: userPrompt,
+        schema: SummarySchema,
+        priority: 'interactive',
       },
-      body: JSON.stringify({
-        model: 'gpt-5',
-        input: [
-          { role: 'developer', content: [{ type: 'input_text', text: SUMMARIZE_PROMPT }] },
-          { role: 'user', content: [{ type: 'input_text', text: userPrompt }] },
-        ],
-      }),
-    })
-
-    if (!response.ok) {
-      const errText = await response.text()
-      console.error('[chat/summarize] API error:', response.status, errText)
-      return NextResponse.json({ error: 'Summarization failed' }, { status: 502 })
-    }
-
-    const data = await response.json()
-    recordOpenAiResponsesUsage(data, { userId, feature: AiFeature.CHAT_SUMMARIZE })
-
-    // Extract text from Responses API output
-    let summary = ''
-    if (data.output && Array.isArray(data.output)) {
-      for (const item of data.output) {
-        if (item.type === 'message' && Array.isArray(item.content)) {
-          for (const part of item.content) {
-            if (part.type === 'output_text' && part.text) {
-              summary = part.text
-              break
-            }
-          }
-        }
-      }
-    }
+      { userId, feature: AiFeature.CHAT_SUMMARIZE }
+    )
+    const summary = response.data.summary.trim()
 
     if (!summary) {
       return NextResponse.json({ error: 'No summary generated' }, { status: 502 })

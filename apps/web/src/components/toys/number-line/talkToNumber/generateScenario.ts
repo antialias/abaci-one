@@ -1,15 +1,17 @@
 /**
  * Dynamic scenario generation for phone calls.
  *
- * Calls GPT-4o-mini to generate a compelling opening scenario and periodic
- * evolutions that keep the conversation engaging.
+ * Asks the app's LLM client (default provider: claude_code) for a compelling
+ * opening scenario and periodic evolutions that keep the conversation engaging.
+ * The call itself stays on OpenAI Realtime; only these text calls moved.
  */
 
-import { openAiTextBaseUrl } from '@/lib/openai-base'
-import type { ExplorationDescriptor } from './explorationRegistry'
+import { z } from 'zod'
+import { AiFeature, type AiFeatureValue } from '@/lib/ai-usage/features'
+import { trackedCall } from '@/lib/ai-usage/llm-middleware'
+import { type LLMRequest, llm } from '@/lib/llm'
 import type { ChildProfile } from './childProfile'
-import { recordOpenAiChatUsage } from '@/lib/ai-usage/helpers'
-import { AiFeature } from '@/lib/ai-usage/features'
+import type { ExplorationDescriptor } from './explorationRegistry'
 
 export interface TranscriptEntry {
   role: 'child' | 'number'
@@ -32,6 +34,60 @@ export interface ScenarioEvolution {
   newTension: string
   /** What the number and child might investigate or try next */
   suggestion: string
+}
+
+const ScenarioSchema = z.object({
+  situation: z
+    .string()
+    .min(1)
+    .describe('2-3 sentences describing what the number was doing (mathematically grounded)'),
+  hook: z.string().min(1).describe('A single intriguing opening line'),
+  involvedNumbers: z
+    .array(z.object({ number: z.number(), role: z.string() }))
+    .describe('Usually empty; at most one number with a minor background role'),
+  relevantExploration: z
+    .object({ constantId: z.string(), connection: z.string() })
+    .nullable()
+    .describe('A loose connection to one exploration, or null (most scenarios)'),
+  archetype: z.enum(['observation', 'puzzle', 'pattern', 'experiment', 'question', 'celebration']),
+  openingMood: z.string().describe('e.g. "curious and absorbed"'),
+})
+
+const EvolutionSchema = z.object({
+  development: z
+    .string()
+    .min(1)
+    .describe('2-3 sentences about a new mathematical observation or connection'),
+  newTension: z.string().min(1).describe('A new question to investigate together'),
+  suggestion: z.string().describe('What the number and child might try next'),
+})
+
+/**
+ * Scenario calls sit in the path of a live phone call: one attempt, 30 s in
+ * all (the wait for a run slot included), then null.
+ */
+const SCENARIO_TIMEOUT_MS = 30_000
+
+async function callScenarioLlm<T extends z.ZodType>(
+  request: LLMRequest<T>,
+  feature: AiFeatureValue,
+  userId?: string
+): Promise<z.infer<T> | null> {
+  try {
+    const full = {
+      ...request,
+      timeoutMs: SCENARIO_TIMEOUT_MS,
+      maxRetries: 0,
+      priority: 'interactive' as const,
+    }
+    const response = userId
+      ? await trackedCall(llm, full, { userId, feature })
+      : await llm.call(full)
+    return response.data
+  } catch (err) {
+    console.warn('[scenario] failed:', err)
+    return null
+  }
 }
 
 function buildScenarioPrompt(
@@ -81,16 +137,7 @@ RULES:${ageGuidance}
 - Pick an archetype that fits: observation, puzzle, pattern, experiment, question, celebration
 - The hook should be a single intriguing sentence — something that makes the child curious about real math
 - Keep the situation to 2-3 sentences max
-
-Respond with JSON matching this schema:
-{
-  "situation": "2-3 sentences describing what the number was doing (mathematically grounded)",
-  "hook": "A single intriguing opening line",
-  "involvedNumbers": [{"number": 7, "role": "mentioned in passing"}],
-  "relevantExploration": {"constantId": "pi", "connection": "involves circles"} or null,
-  "archetype": "pattern",
-  "openingMood": "curious and absorbed"
-}`
+`
 }
 
 const EVOLUTION_PROMPT = `You deepen a mathematical conversation happening during a phone call between a child (age 5-10) and a number character.
@@ -106,20 +153,13 @@ Given the current scenario and recent conversation, generate a new development t
 - Stays grounded in real mathematics — NO magic, no fantasy, no supernatural twists. The interest comes from the math itself.
 - Keeps the CHILD as the central participant — the number should want the child's help/opinion
 - Think "curious friend who just realized something" not "dramatic plot twist"
-
-Respond with JSON matching this schema:
-{
-  "development": "2-3 sentences about a new mathematical observation or connection",
-  "newTension": "A new question to investigate together",
-  "suggestion": "What the number and child might try next"
-}`
+`
 
 /**
  * Generate an opening scenario for a number's phone call.
  * Returns null on any failure (timeout, parse error, etc.)
  */
 export async function generateScenario(
-  apiKey: string,
   number: number,
   traitsSummary: string,
   neighborsSummary: string,
@@ -128,68 +168,17 @@ export async function generateScenario(
   childProfile?: ChildProfile,
   userId?: string
 ): Promise<GeneratedScenario | null> {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 30000)
-
-    const prompt = buildScenarioPrompt(availableExplorations, recommendedExplorations, childProfile)
-
-    const response = await fetch(`${openAiTextBaseUrl()}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 1.0,
-        max_tokens: 500,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: prompt },
-          {
-            role: 'user',
-            content: `Number: ${number}
+  return callScenarioLlm(
+    {
+      system: buildScenarioPrompt(availableExplorations, recommendedExplorations, childProfile),
+      prompt: `Number: ${number}
 Traits: ${traitsSummary}
 Nearby interesting numbers: ${neighborsSummary}`,
-          },
-        ],
-      }),
-      signal: controller.signal,
-    })
-
-    clearTimeout(timeout)
-
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => '(no body)')
-      console.warn('[scenario] generate API error:', response.status, errBody)
-      return null
-    }
-
-    const data = await response.json()
-    if (userId) {
-      recordOpenAiChatUsage(data, { userId, feature: AiFeature.NUMBER_LINE_SCENARIO })
-    }
-    const content = data.choices?.[0]?.message?.content
-    if (!content) return null
-
-    const parsed = JSON.parse(content) as GeneratedScenario
-
-    // Basic validation
-    if (!parsed.situation || !parsed.hook || !parsed.archetype) {
-      console.warn('[scenario] incomplete response:', parsed)
-      return null
-    }
-
-    return parsed
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      console.warn('[scenario] timed out (30s)')
-    } else {
-      console.warn('[scenario] failed:', err)
-    }
-    return null
-  }
+      schema: ScenarioSchema,
+    },
+    AiFeature.NUMBER_LINE_SCENARIO,
+    userId
+  )
 }
 
 /**
@@ -197,33 +186,16 @@ Nearby interesting numbers: ${neighborsSummary}`,
  * Returns null on any failure.
  */
 export async function evolveScenario(
-  apiKey: string,
   number: number,
   currentScenario: GeneratedScenario,
   recentTranscripts: TranscriptEntry[],
   conferenceNumbers: number[],
   userId?: string
 ): Promise<ScenarioEvolution | null> {
-  try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 30000)
-
-    const response = await fetch(`${openAiTextBaseUrl()}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 1.0,
-        max_tokens: 300,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: EVOLUTION_PROMPT },
-          {
-            role: 'user',
-            content: `Number on the call: ${number}
+  return callScenarioLlm(
+    {
+      system: EVOLUTION_PROMPT,
+      prompt: `Number on the call: ${number}
 ${conferenceNumbers.length > 1 ? `Conference call with: ${conferenceNumbers.join(', ')}` : ''}
 
 Original scenario:
@@ -231,41 +203,9 @@ ${JSON.stringify(currentScenario)}
 
 Recent conversation (most recent last):
 ${recentTranscripts.map((t, i) => `${i + 1}. [${t.role === 'child' ? 'Child' : 'Number'}] "${t.text}"`).join('\n')}`,
-          },
-        ],
-      }),
-      signal: controller.signal,
-    })
-
-    clearTimeout(timeout)
-
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => '(no body)')
-      console.warn('[scenario] evolve API error:', response.status, errBody)
-      return null
-    }
-
-    const data = await response.json()
-    if (userId) {
-      recordOpenAiChatUsage(data, { userId, feature: AiFeature.NUMBER_LINE_SCENARIO_EVOLVE })
-    }
-    const content = data.choices?.[0]?.message?.content
-    if (!content) return null
-
-    const parsed = JSON.parse(content) as ScenarioEvolution
-
-    if (!parsed.development || !parsed.newTension) {
-      console.warn('[scenario] incomplete response:', parsed)
-      return null
-    }
-
-    return parsed
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      console.warn('[scenario] timed out (30s)')
-    } else {
-      console.warn('[scenario] failed:', err)
-    }
-    return null
-  }
+      schema: EvolutionSchema,
+    },
+    AiFeature.NUMBER_LINE_SCENARIO_EVOLVE,
+    userId
+  )
 }

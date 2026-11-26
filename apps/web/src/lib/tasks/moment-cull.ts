@@ -6,14 +6,14 @@
  * and generates a brief session summary from the number's perspective.
  */
 
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { createTask, type TaskHandle } from '../task-manager'
-import { createTaskLLM } from '../llm'
+import { getTraitSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
 import { db } from '@/db'
 import * as schema from '@/db/schema'
-import { eq, and } from 'drizzle-orm'
-import { getTraitSummary } from '@/components/toys/number-line/talkToNumber/generateNumberPersonality'
 import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
+import { createTaskLLM } from '../llm'
+import { createTask, type TaskHandle } from '../task-manager'
 import type { MomentCullEvent } from './events'
 
 export interface MomentCullInput {
@@ -122,8 +122,6 @@ const handler: Handler = async (handle, config) => {
   for await (const event of taskLLM.stream({
     prompt,
     schema: cullSchema,
-    provider: 'openai',
-    model: 'gpt-4o-mini',
   })) {
     if (event.type === 'complete') {
       result = event.data

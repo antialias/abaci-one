@@ -1,34 +1,33 @@
 /**
- * API route for the "think hard" tool — GPT-5.2 Responses API with vision.
+ * API route for the "think hard" tool: a reasoning call with vision.
  *
  * POST /api/realtime/euclid/think-hard
  * Body: { question, effort, screenshot, proofState, propositionId, currentStep }
  * Returns: { answer: string }
  *
- * Uses the OpenAI Responses API with configurable reasoning effort.
+ * Goes through the app's LLM client (default provider: claude_code) with the
+ * requested reasoning effort.
  */
 
-import { openAiTextBaseUrl } from '@/lib/openai-base'
 import { NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/withAuth'
-import { recordOpenAiResponsesUsage } from '@/lib/ai-usage/helpers'
-import { AiFeature } from '@/lib/ai-usage/features'
-import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
+import { z } from 'zod'
 import {
-  PROPOSITION_SUMMARIES,
   buildReferenceContext,
+  PROPOSITION_SUMMARIES,
 } from '@/components/toys/euclid/agent/euclidReferenceContext'
+import { PROP_REGISTRY } from '@/components/toys/euclid/propositions/registry'
+import { AiFeature } from '@/lib/ai-usage/features'
+import { trackedCall } from '@/lib/ai-usage/llm-middleware'
+import { withAuth } from '@/lib/auth/withAuth'
+import { llm } from '@/lib/llm'
+import { prepareImageForLlm } from '@/lib/llm-image'
 
 const VALID_EFFORTS = ['low', 'medium', 'high', 'xhigh'] as const
 type Effort = (typeof VALID_EFFORTS)[number]
 
-// Map our effort levels to the Responses API reasoning.effort values
-const EFFORT_MAP: Record<Effort, string> = {
-  low: 'low',
-  medium: 'medium',
-  high: 'high',
-  xhigh: 'high', // 'xhigh' maps to 'high' — the Responses API doesn't support 'xhigh'
-}
+const AnswerSchema = z.object({
+  answer: z.string().describe('Your answer, to be spoken aloud by Euclid'),
+})
 
 export const POST = withAuth(async (request, { userId }) => {
   try {
@@ -40,11 +39,6 @@ export const POST = withAuth(async (request, { userId }) => {
     }
 
     const effortLevel = VALID_EFFORTS.includes(effort) ? (effort as Effort) : 'medium'
-
-    const apiKey = process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 })
-    }
 
     // Build context for the reasoning model
     const propId = typeof propositionId === 'number' ? propositionId : 1
@@ -69,66 +63,39 @@ Answer the following geometric question. Be rigorous and cite specific postulate
 
 Keep your answer concise but thorough — it will be spoken aloud by an AI character playing Euclid.`
 
-    // Build input content parts
-    const contentParts: Array<Record<string, unknown>> = [
-      { type: 'input_text', text: `${systemText}\n\nQuestion: ${question}` },
-    ]
-
-    // Add screenshot if available
+    const images: string[] = []
     if (screenshot && typeof screenshot === 'string') {
       const base64 = screenshot.includes(',') ? screenshot.split(',')[1] : screenshot
-      contentParts.push({
-        type: 'input_image',
-        image_url: `data:image/png;base64,${base64}`,
-      })
+      try {
+        images.push(await prepareImageForLlm(`data:image/png;base64,${base64}`))
+      } catch (err) {
+        // An unreadable screenshot: answer without it rather than not at all.
+        console.warn('[think-hard] screenshot dropped:', err)
+      }
     }
 
-    // Call the Responses API
-    const response = await fetch(`${openAiTextBaseUrl()}/responses`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5.2',
-        input: [
-          {
-            role: 'user',
-            content: contentParts,
-          },
-        ],
-        reasoning: {
-          effort: EFFORT_MAP[effortLevel],
+    let answer: string
+    try {
+      const response = await trackedCall(
+        llm,
+        {
+          system: systemText,
+          prompt: `Question: ${question}`,
+          images: images.length ? images : undefined,
+          schema: AnswerSchema,
+          reasoningEffort: effortLevel,
+          timeoutMs: 180_000,
+          priority: 'interactive',
         },
-      }),
-    })
-
-    if (!response.ok) {
-      const errText = await response.text()
-      console.error('[think-hard] API error:', response.status, errText)
+        { userId, feature: AiFeature.EUCLID_THINK_HARD }
+      )
+      answer = response.data.answer.trim() || 'I could not find the answer in my writings.'
+    } catch (err) {
+      console.error('[think-hard] LLM error:', err)
       return NextResponse.json(
         { error: 'Could not work through the proof right now.' },
         { status: 502 }
       )
-    }
-
-    const data = await response.json()
-    recordOpenAiResponsesUsage(data, { userId, feature: AiFeature.EUCLID_THINK_HARD })
-
-    // Extract text from response output
-    let answer = 'I could not find the answer in my writings.'
-    if (data.output && Array.isArray(data.output)) {
-      for (const item of data.output) {
-        if (item.type === 'message' && Array.isArray(item.content)) {
-          for (const part of item.content) {
-            if (part.type === 'output_text' && part.text) {
-              answer = part.text
-              break
-            }
-          }
-        }
-      }
     }
 
     return NextResponse.json({ answer })
