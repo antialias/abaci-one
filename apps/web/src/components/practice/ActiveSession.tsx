@@ -1498,8 +1498,8 @@ export function ActiveSession({
     }
 
     // The slot of the problem actually answered. After an optimistic advance the
-    // plan can still point at the previous problem, so currentProblemInfo can lag;
-    // the server rejects (or ignores as a resubmit) a try named for the wrong slot.
+    // plan can still point at the previous problem, so currentProblemInfo can lag.
+    // (The server attributes by problem and slotIndex either way.)
     const answeredSlotId =
       plan.parts[attemptData.partIndex]?.slots[attemptData.slotIndex]?.slotId ??
       currentProblemInfo!.slotId

@@ -215,4 +215,65 @@ describe('retry and do-over attribution', () => {
     expect(plan.results.at(-1)!.epochNumber).toBe(1)
     expect(plan.status).toBe('completed')
   })
+
+  describe('old clients whose slotId lags the answered problem', () => {
+    /** The payload an answer to `slotIndex` produces, named with `slotId`. */
+    function tryFor(plan: SessionPlan, slotIndex: number, slotId: string, studentAnswer?: number) {
+      const problem = plan.parts[0].slots[slotIndex].problem!
+      return {
+        slotId,
+        slotIndex,
+        problem,
+        studentAnswer: studentAnswer ?? problem.answer,
+        isCorrect: (studentAnswer ?? problem.answer) === problem.answer,
+        responseTimeMs: 3000,
+        skillsExercised: problem.skillsRequired,
+        usedOnScreenAbacus: false,
+        hadHelp: false,
+        incorrectAttempts: 0,
+      }
+    }
+
+    it('(a) records a lagging payload against the problem answered, with its own slotId', async () => {
+      let plan = await newPlan(playerId, 3)
+      plan = await answerShown(plan, true) // slot 0
+      const slot0 = plan.parts[0].slots[0].slotId
+      const slot1 = plan.parts[0].slots[1].slotId
+      // Answer to slot 1, built before slot 0's response arrived: slotId still names slot 0
+      plan = await recordSlotResult(plan.id, tryFor(plan, 1, slot0))
+      expect(plan.results).toHaveLength(2)
+      expect(plan.results[1].slotId).toBe(slot1)
+      expect(plan.results[1].originalSlotIndex).toBe(1)
+      expect(plan.currentSlotIndex).toBe(2) // advanced once
+      // and the next lagging answer (slot 2, named slot 1) goes to slot 2, not slot 1
+      plan = await recordSlotResult(plan.id, tryFor(plan, 2, slot1))
+      expect(plan.results[2].slotId).toBe(plan.parts[0].slots[2].slotId)
+      expect(plan.results[2].originalSlotIndex).toBe(2)
+    })
+
+    it('(b) ignores an exact resubmit, but rejects the same slot with a different answer', async () => {
+      let plan = await newPlan(playerId, 3)
+      const slot0 = plan.parts[0].slots[0].slotId
+      plan = await recordSlotResult(plan.id, tryFor(plan, 0, slot0))
+      const after = await recordSlotResult(plan.id, tryFor(plan, 0, slot0))
+      expect(after.results).toHaveLength(1)
+      expect(after.currentSlotIndex).toBe(1)
+
+      const wrong = plan.parts[0].slots[0].problem!.answer + 1
+      await expect(recordSlotResult(plan.id, tryFor(plan, 0, slot0, wrong))).rejects.toBeInstanceOf(
+        SlotResultMismatchError
+      )
+    })
+
+    it('(c) records the genuine next answer after a resubmit', async () => {
+      let plan = await newPlan(playerId, 3)
+      const slot0 = plan.parts[0].slots[0].slotId
+      plan = await recordSlotResult(plan.id, tryFor(plan, 0, slot0))
+      plan = await recordSlotResult(plan.id, tryFor(plan, 0, slot0)) // resubmit: no-op
+      plan = await answerShown(plan, true) // slot 1
+      expect(plan.results.map((r) => r.originalSlotIndex)).toEqual([0, 1])
+      expect(plan.results[1].slotId).toBe(plan.parts[0].slots[1].slotId)
+      expect(plan.currentSlotIndex).toBe(2)
+    })
+  })
 })

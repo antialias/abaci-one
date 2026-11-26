@@ -26,6 +26,7 @@ import {
   DEFAULT_GAME_BREAK_SETTINGS,
   DEFAULT_PLAN_CONFIG,
   type GameBreakSettings,
+  type GeneratedProblem,
   initRetryState,
   MAX_RETRY_EPOCHS,
   type NewSessionPlan,
@@ -1346,6 +1347,16 @@ export class SlotResultMismatchError extends Error {
   }
 }
 
+/** Same problem: same terms and answer. */
+function sameProblem(a: GeneratedProblem | undefined, b: GeneratedProblem | undefined): boolean {
+  if (!a || !b) return false
+  return (
+    a.answer === b.answer &&
+    a.terms.length === b.terms.length &&
+    a.terms.every((t, i) => t === b.terms[i])
+  )
+}
+
 /** Where a part's cursor lands after a step, and whether the session is done. */
 interface SettledPosition {
   partIndex: number
@@ -1458,11 +1469,14 @@ async function revokeSharesIfComplete(planId: string, isComplete: boolean, calle
  * Record a result for the current item and advance to the next.
  *
  * The try is attributed to the item the student is shown (resolveCurrentItem),
- * and the submitted `slotId` must name it. `epochNumber`, when sent, is the
- * client's view of the try; it only tells a resubmit apart from the next try of
- * the same slot (a retry right after its original). The stored values are the
- * server's. A resubmit of the try just recorded returns the plan unchanged; any
- * other mismatch throws SlotResultMismatchError.
+ * identified by content: the submitted `problem` and `slotIndex` must be that
+ * item's (and `epochNumber`, when sent, its round). The submitted `slotId` is
+ * not trusted: older clients can send the previous slot's id after an
+ * optimistic advance, so the stored `slotId` is always the item's own.
+ *
+ * A resubmit that equals the last recorded try exactly (slot, round when sent,
+ * problem, answer) returns the plan unchanged; anything else that is not the
+ * current item throws SlotResultMismatchError.
  */
 export async function recordSlotResult(
   planId: string,
@@ -1500,22 +1514,39 @@ export async function recordSlotResult(
     throw new Error(`Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`)
   }
 
-  // Attribute the try to the item the student is shown. Checked before the
-  // position checks so a resubmit of a session's final answer is still a no-op.
+  // Attribute the try to the item the student is shown, by content. Checked
+  // before the position checks so a resubmit of a session's final answer is
+  // still a no-op.
   const expected = resolveCurrentItem(plan)
-  const isSubmittedTry = (t: { slotId: string; epochNumber?: number }) =>
-    t.slotId === result.slotId &&
-    (result.epochNumber === undefined || (t.epochNumber ?? 0) === result.epochNumber)
-  if (!expected || !isSubmittedTry(expected)) {
+  const isSubmittedTry = (t: {
+    slotIndex: number
+    epochNumber?: number
+    problem: GeneratedProblem | undefined
+  }) =>
+    t.slotIndex === result.slotIndex &&
+    (result.epochNumber === undefined || (t.epochNumber ?? 0) === result.epochNumber) &&
+    sameProblem(t.problem, result.problem)
+  if (!expected || !isSubmittedTry({ ...expected, slotIndex: expected.originalSlotIndex })) {
     let lastTry: SlotResult | undefined
     for (let i = plan.results.length - 1; i >= 0 && !lastTry; i--) {
       if (!plan.results[i].isManualRedo) lastTry = plan.results[i]
     }
-    if (lastTry && isSubmittedTry(lastTry)) {
+    if (
+      lastTry &&
+      isSubmittedTry({ ...lastTry, slotIndex: lastTry.originalSlotIndex ?? lastTry.slotIndex }) &&
+      lastTry.studentAnswer === result.studentAnswer
+    ) {
       console.log('[recordSlotResult] duplicate submit ignored', { planId, slotId: result.slotId })
       return plan
     }
     throw new SlotResultMismatchError(result.slotId, expected?.slotId ?? null)
+  }
+  if (result.slotId !== expected.slotId) {
+    console.log('[recordSlotResult] submitted slotId lags the answered problem; storing its own', {
+      planId,
+      submittedSlotId: result.slotId,
+      slotId: expected.slotId,
+    })
   }
 
   if (plan.currentPartIndex < 0 || plan.currentPartIndex >= plan.parts.length) {
@@ -1566,6 +1597,7 @@ export async function recordSlotResult(
 
   const newResult: SlotResult = {
     ...result,
+    slotId: expected.slotId,
     slotIndex: originalSlotIndex,
     partNumber: currentPart.partNumber,
     timestamp: new Date(),
