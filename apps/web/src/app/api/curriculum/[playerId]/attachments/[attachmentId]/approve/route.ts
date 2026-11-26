@@ -7,15 +7,16 @@
  *   - Does NOT create a new session - attachments are already associated with sessions
  */
 
-import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
+import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { practiceAttachments } from '@/db/schema/practice-attachments'
-import { sessionPlans, type SlotResult } from '@/db/schema/session-plans'
+import { summarizeTries } from '@/db/schema/session-plan-helpers'
+import { type SlotResult, sessionPlans } from '@/db/schema/session-plans'
+import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getUserId } from '@/lib/viewer'
-import { convertToSlotResults, computeParsingStats } from '@/lib/worksheet-parsing'
-import { withAuth } from '@/lib/auth/withAuth'
+import { computeParsingStats, convertToSlotResults } from '@/lib/worksheet-parsing'
 
 /**
  * POST - Approve parsing and add problems to existing session
@@ -121,8 +122,7 @@ export const POST = withAuth(async (_request, { params }) => {
     const mergedResults = [...existingResults, ...slotResultsWithTimestamps]
 
     // Calculate updated stats
-    const totalCount = mergedResults.length
-    const correctCount = mergedResults.filter((r) => r.isCorrect).length
+    const { completed: totalCount, correct: correctCount } = summarizeTries(mergedResults)
 
     // Update the existing session with the new problems
     await db

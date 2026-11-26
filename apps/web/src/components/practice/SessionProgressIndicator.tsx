@@ -17,8 +17,8 @@
 'use client'
 
 import { useMemo } from 'react'
+import { isCountedTry, MAX_RETRY_EPOCHS } from '@/db/schema/session-plan-helpers'
 import type { ProblemSlot, SessionPart, SlotResult } from '@/db/schema/session-plans'
-import { MAX_RETRY_EPOCHS } from '@/db/schema/session-plan-helpers'
 import { css } from '../../../styled-system/css'
 import { Tooltip } from '../ui/Tooltip'
 import { formatMs } from './autoPauseCalculator'
@@ -175,6 +175,8 @@ function GameBreakIcon({ state, progressPercent, isDark }: GameBreakIconProps) {
  * Get the most recent result for a specific slot.
  * Returns the last matching result because results are appended chronologically,
  * so the last match is the most recent (e.g., a redo after the original).
+ * Practice-only do-overs are skipped: redoing a problem already answered
+ * correctly never changes its verdict.
  */
 function getSlotResult(
   results: SlotResult[],
@@ -184,7 +186,7 @@ function getSlotResult(
   // Iterate from end to find most recent result for this slot
   for (let i = results.length - 1; i >= 0; i--) {
     const r = results[i]
-    if (r.partNumber === partNumber && r.slotIndex === slotIndex) {
+    if (r.partNumber === partNumber && r.slotIndex === slotIndex && isCountedTry(r)) {
       return r
     }
   }

@@ -9,6 +9,7 @@ import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-c
 import type { NewPlayerSkillMastery, PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import { isActive, type PracticeLevel } from '@/db/schema/player-skill-mastery'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
+import { countedTries, isCountedTry, summarizeTries } from '@/db/schema/session-plan-helpers'
 import type { SlotResult } from '@/db/schema/session-plans'
 import {
   isTutorialSatisfied,
@@ -539,7 +540,8 @@ interface RawSessionRow {
  * via the shared timing helpers with Tier-1 samples excluded.
  */
 function toPracticeSession(session: RawSessionRow): PracticeSession {
-  const results = session.results ?? []
+  // Practice-only do-overs count nowhere (not attempted, not timed)
+  const results = countedTries(session.results)
 
   const problemsAttempted = results.length
   const problemsCorrect = results.filter((r) => r.isCorrect).length
@@ -633,7 +635,7 @@ function toTimedAttempts(sessions: readonly PaceWindowSession[]): TimedAttempt[]
   const attempts: TimedAttempt[] = []
   for (const session of sessions) {
     const completedAt = session.completedAt ? session.completedAt.toISOString() : null
-    for (const result of session.results) {
+    for (const result of countedTries(session.results)) {
       attempts.push({
         sessionId: session.id,
         completedAt,
@@ -713,7 +715,7 @@ export async function getTimingReviewData(playerId: string): Promise<TimingRevie
   // stats; Tier-2 is judged against the child's own windowed spread).
   const cleanEffectiveMs: number[] = []
   for (const session of windowSessions) {
-    for (const result of session.results) {
+    for (const result of countedTries(session.results)) {
       if (classifyAttemptTiming(result).tier === 'tier1') continue
       const effective = getEffectiveResponseTimeMs(result)
       if (effective != null) cleanEffectiveMs.push(effective)
@@ -725,6 +727,8 @@ export async function getTimingReviewData(playerId: string): Promise<TimingRevie
   for (const session of windowSessions) {
     const completedAt = session.completedAt ? session.completedAt.toISOString() : null
     session.results.forEach((result, resultIndex) => {
+      // resultIndex stays the raw array index (the review route addresses it)
+      if (!isCountedTry(result)) return
       const classification = classifyAttemptTiming(result, childStats)
 
       let displayTier: 'tier1' | 'tier2'
@@ -780,13 +784,13 @@ export async function getTimingReviewData(playerId: string): Promise<TimingRevie
   flagged.sort((a, b) => (b.effectiveMs ?? 0) - (a.effectiveMs ?? 0))
 
   const deletedSessions: DeletedSessionSummary[] = deletedRows.map((row) => {
-    const results = (row.results as SlotResult[] | null) ?? []
+    const { completed, correct } = summarizeTries(row.results as SlotResult[] | null)
     return {
       sessionId: row.id,
       completedAt: row.completedAt ? row.completedAt.toISOString() : null,
       deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
-      problemsAttempted: results.length,
-      problemsCorrect: results.filter((r) => r.isCorrect).length,
+      problemsAttempted: completed,
+      problemsCorrect: correct,
     }
   })
 

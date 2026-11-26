@@ -28,6 +28,8 @@ interface RawProjectedEvidence {
   originalSource?: unknown
   timingReview?: unknown
   partNumber?: unknown
+  kind?: unknown
+  practiceOnly?: unknown
 }
 
 interface RawPartType {
@@ -76,6 +78,10 @@ function toBktEvidence(
 
   const timestamp = normalizeTimestamp(raw.timestamp)
   if (!timestamp) return null
+
+  // Practice-only do-overs carry no evidence (the server's stamp; never derived)
+  const practiceOnly = raw.practiceOnly === true || raw.practiceOnly === 1
+  if (practiceOnly) return null
 
   const partNumber = optionalNumber(raw.partNumber)
   const timingReview =
@@ -140,7 +146,9 @@ async function getEvidenceChunk(
           'source', json_extract(value, '$.source'),
           'originalSource', json_extract(value, '$.originalSource'),
           'timingReview', json_extract(value, '$.timingReview'),
-          'partNumber', json_extract(value, '$.partNumber')
+          'partNumber', json_extract(value, '$.partNumber'),
+          'kind', json_extract(value, '$.kind'),
+          'practiceOnly', json_extract(value, '$.practiceOnly')
         ))
         FROM json_each(session_plans.results)
       ) AS evidenceJson,

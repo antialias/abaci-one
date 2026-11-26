@@ -313,6 +313,28 @@ export interface SlotResult {
    */
   isManualRedo?: boolean
 
+  // ---- Try record (session architecture Phase 1) ----
+  //
+  // Stamped by the server on every row it records from Phase 1 on. Legacy rows
+  // lack them; read them through `normalizeTry` (session-plan-normalize.ts),
+  // which derives them. The legacy fields above keep being written until
+  // Phase 6.
+
+  /** Idempotency key: minted by the client when it shows the item (server-minted for old clients) */
+  tryId?: string
+  /** first = the item's original try; retry = a retry round; do_over = the kid tapped a finished dot */
+  kind?: TryKind
+  /** first 0; retry 1..MAX_RETRY_EPOCHS; do_over = prior non-practiceOnly tries of the item */
+  round?: number
+  /**
+   * A do-over of an item whose latest non-practiceOnly try was correct: recorded
+   * with weight 0 and skipped by every mastery, readiness, gate, health and
+   * verdict reader.
+   */
+  practiceOnly?: boolean
+  /** Index of the part in `parts` (partNumber is kept for legacy readers) */
+  partIndex?: number
+
   // ---- Timing Integrity (shared contract #156 / #157 / #158) ----
   //
   // All optional; `results` is a JSON text column so absent fields = a plain
@@ -340,11 +362,19 @@ export interface SlotResult {
   originalSource?: SlotResultSource
 }
 
+/** How a try came about (session architecture §1.2). */
+export type TryKind = 'first' | 'retry' | 'do_over'
+
 /**
  * One try as a client submits it; the server fills in the rest. `partIndex`,
- * when sent, names the part of the problem answered (checked, never stored).
+ * when sent, names the part of the problem answered (checked, then stamped by
+ * the server). `kind`, `round`, `practiceOnly` and `masteryWeight` are the
+ * server's to stamp; anything a client sends for them is ignored.
  */
-export type SlotResultSubmission = Omit<SlotResult, 'timestamp' | 'partNumber'> & {
+export type SlotResultSubmission = Omit<
+  SlotResult,
+  'timestamp' | 'partNumber' | 'kind' | 'round' | 'practiceOnly'
+> & {
   partIndex?: number
 }
 
@@ -726,6 +756,7 @@ export {
   calculateMasteryWeight,
   calculateSessionHealth,
   calculateTotalProblemsWithRetries,
+  countedTries,
   DEFAULT_GAME_BREAK_SETTINGS,
   DEFAULT_PLAN_CONFIG,
   getCompletedProblemCount,
@@ -736,9 +767,12 @@ export {
   getSlotRetryStatus,
   getTotalProblemCount,
   initRetryState,
+  isCountedTry,
   isInRetryEpoch,
   isPartComplete,
   isSessionComplete,
   MAX_RETRY_EPOCHS,
   needsRetryTransition,
+  summarizeTries,
+  type TryStats,
 } from './session-plan-helpers'

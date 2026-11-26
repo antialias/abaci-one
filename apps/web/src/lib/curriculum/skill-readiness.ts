@@ -14,6 +14,7 @@
  * No new metrics are tracked — just smarter analysis of what's already there.
  */
 
+import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import type { SkillBktResult } from '@/lib/curriculum/bkt/types'
 import { READINESS_THRESHOLDS } from '@/lib/curriculum/config/readiness-thresholds'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
@@ -67,7 +68,7 @@ export interface SkillReadinessResult {
 
 /**
  * Filter results to those relevant for a skill's readiness assessment.
- * Excludes retries and sentinel records (recency-refresh).
+ * Excludes retries, practice-only do-overs and sentinel records (recency-refresh).
  */
 export function filterResultsForSkill(
   allResults: ProblemResultWithContext[],
@@ -75,7 +76,10 @@ export function filterResultsForSkill(
 ): ProblemResultWithContext[] {
   return allResults.filter(
     (r) =>
-      r.skillsExercised.includes(skillId) && r.source !== 'recency-refresh' && r.isRetry !== true
+      r.skillsExercised.includes(skillId) &&
+      r.source !== 'recency-refresh' &&
+      r.isRetry !== true &&
+      isCountedTry(r)
   )
 }
 

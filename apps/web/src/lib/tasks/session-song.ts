@@ -15,6 +15,8 @@ import { mkdir, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { db, schema } from '@/db'
 import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
+import { summarizeTries } from '@/db/schema/session-plan-helpers'
+import type { SlotResult } from '@/db/schema/session-plans'
 import type {
   SessionSong,
   SessionSongLLMOutput,
@@ -188,13 +190,9 @@ async function buildSongPromptInput(input: SessionSongInput): Promise<SongPrompt
     .orderBy(schema.sessionPlans.createdAt)
     .limit(10)
 
-  const recentSessions = recentPlans.map((p) => {
-    const results = (p as { results: Array<{ isCorrect: boolean }> }).results ?? []
-    const correct = results.filter((r) => r.isCorrect).length
-    return {
-      accuracy: results.length > 0 ? correct / results.length : 0,
-    }
-  })
+  const recentSessions = recentPlans.map((p) => ({
+    accuracy: summarizeTries((p as { results: SlotResult[] | null }).results).accuracy,
+  }))
 
   const recentSongs = await getRecentSongSummaries(input.playerId)
 
@@ -514,13 +512,9 @@ export async function startSessionSongGeneration(
           .orderBy(schema.sessionPlans.createdAt)
           .limit(10)
 
-        const recentSessions = recentPlans.map((p) => {
-          const results = (p as { results: Array<{ isCorrect: boolean }> }).results ?? []
-          const correct = results.filter((r) => r.isCorrect).length
-          return {
-            accuracy: results.length > 0 ? correct / results.length : 0,
-          }
-        })
+        const recentSessions = recentPlans.map((p) => ({
+          accuracy: summarizeTries((p as { results: SlotResult[] | null }).results).accuracy,
+        }))
 
         const recentSongs = await getRecentSongSummaries(input.playerId)
 

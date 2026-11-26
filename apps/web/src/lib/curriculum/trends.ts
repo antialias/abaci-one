@@ -4,6 +4,7 @@
  * Calculates historical trends from session data for display in the session summary.
  */
 
+import { summarizeTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 
 export interface SessionTrends {
@@ -29,18 +30,14 @@ export interface SessionTrends {
  * Calculate accuracy from a session's results
  */
 function getSessionAccuracy(session: SessionPlan): number {
-  const results = (session.results ?? []) as SlotResult[]
-  if (results.length === 0) return 0
-  const correct = results.filter((r) => r.isCorrect).length
-  return correct / results.length
+  return summarizeTries(session.results as SlotResult[] | null).accuracy
 }
 
 /**
  * Get problem count from a session
  */
 function getSessionProblemCount(session: SessionPlan): number {
-  const results = (session.results ?? []) as SlotResult[]
-  return results.length
+  return summarizeTries(session.results as SlotResult[] | null).completed
 }
 
 /**
@@ -142,18 +139,18 @@ export function calculateSessionTrends(
   // This week stats (last 7 days)
   const weekSessions = allSessions.filter((s) => isSessionWithinDays(s, 7))
   const weekProblems = weekSessions.reduce((sum, s) => sum + getSessionProblemCount(s), 0)
-  const weekCorrect = weekSessions.reduce((sum, s) => {
-    const results = (s.results ?? []) as SlotResult[]
-    return sum + results.filter((r) => r.isCorrect).length
-  }, 0)
+  const weekCorrect = weekSessions.reduce(
+    (sum, s) => sum + summarizeTries(s.results as SlotResult[] | null).correct,
+    0
+  )
   const weekAccuracy = weekProblems > 0 ? weekCorrect / weekProblems : 0
 
   // All-time stats
   const totalProblems = allSessions.reduce((sum, s) => sum + getSessionProblemCount(s), 0)
-  const totalCorrect = allSessions.reduce((sum, s) => {
-    const results = (s.results ?? []) as SlotResult[]
-    return sum + results.filter((r) => r.isCorrect).length
-  }, 0)
+  const totalCorrect = allSessions.reduce(
+    (sum, s) => sum + summarizeTries(s.results as SlotResult[] | null).correct,
+    0
+  )
   const avgAccuracy = totalProblems > 0 ? totalCorrect / totalProblems : 0
 
   // Streak

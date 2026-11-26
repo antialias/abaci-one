@@ -10,6 +10,7 @@ import { PRACTICE_TYPES } from '@/constants/practiceTypes'
 import type { GameResult } from '@/db/schema/game-results'
 import type { Player } from '@/db/schema/players'
 import {
+  countedTries,
   getCompletedProblemCount,
   getSessionPlanAccuracy,
   getTotalProblemCount,
@@ -692,12 +693,18 @@ interface PlanBreakFallback {
  * @param planBreakFallback - Fallback break info from the plan
  */
 export function extractSessionStats(
-  plan: SessionPlan,
+  sessionPlan: SessionPlan,
   player: Player,
   recentSessions: RecentSessionSummary[],
   gameBreakResult?: GameResult | null,
   planBreakFallback?: PlanBreakFallback
 ): SongPromptInput {
+  // Practice-only do-overs (problems already answered correctly, done again)
+  // count toward nothing the song says: accuracy, streaks, moments, comebacks.
+  const plan: SessionPlan = {
+    ...sessionPlan,
+    results: countedTries(sessionPlan.results),
+  }
   const accuracy = getSessionPlanAccuracy(plan)
   const problemsDone = getCompletedProblemCount(plan)
   const problemsTotal = getTotalProblemCount(plan)

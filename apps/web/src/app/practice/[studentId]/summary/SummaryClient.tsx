@@ -22,6 +22,7 @@ import { ScrollspyNav } from '@/components/practice/ScrollspyNav'
 import { SessionHero } from '@/components/practice/SessionHero'
 import { SessionSongPlayer } from '@/components/practice/SessionSongPlayer'
 import { SkillsPanel } from '@/components/practice/SkillsPanel'
+import { countedTries, summarizeTries } from '@/db/schema/session-plan-helpers'
 
 // Dynamic import: StartPracticeModal → SkillTutorialLauncher → TutorialPlayer → @soroban/abacus-react
 // This breaks the dependency chain that pulls the entire abacus library into page.js
@@ -74,9 +75,9 @@ import {
   useUpdateReviewProgress,
 } from '@/hooks/useWorksheetParsing'
 import { computeBktFromHistory, type SkillBktResult } from '@/lib/curriculum/bkt'
+import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { countUnresolvedFlagged } from '@/lib/curriculum/timing/effective-time'
 import type { PaceAssessment } from '@/lib/curriculum/timing/pace-estimation'
-import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { api } from '@/lib/queryClient'
 import { attachmentKeys } from '@/lib/queryKeys'
 import type { SessionAttachmentResponse } from '@/types/attachments'
@@ -259,14 +260,17 @@ export function SummaryClient({
   const isInProgress = session?.startedAt && !session?.completedAt
 
   // Check if session has actual problems (not just photos)
-  const sessionResults = (session?.results ?? []) as SlotResult[]
+  // Practice-only do-overs count nowhere in the summary
+  const sessionResults = useMemo(
+    () => countedTries(session?.results as SlotResult[] | undefined),
+    [session?.results]
+  )
   const hasProblems = sessionResults.length > 0
 
   // Compute current session accuracy for guest banner
   const sessionAccuracy = useMemo(() => {
     if (sessionResults.length === 0) return null
-    const correct = sessionResults.filter((r) => r.isCorrect).length
-    return correct / sessionResults.length
+    return summarizeTries(sessionResults).accuracy
   }, [sessionResults])
 
   // Count timings in this session that still NEED adult review (#158): flagged
@@ -274,10 +278,7 @@ export function SummaryClient({
   // is resolution-aware via the shared helper, so the banner shows only
   // unresolved flags and disappears once every flag has been acted on. Single-arg
   // (no child stats) → the read-time signal available without the child's window.
-  const flaggedTimingCount = useMemo(
-    () => countUnresolvedFlagged(sessionResults),
-    [sessionResults]
-  )
+  const flaggedTimingCount = useMemo(() => countUnresolvedFlagged(sessionResults), [sessionResults])
 
   // Compute BKT from problem history to get skill masteries
   const skillMasteries = useMemo<Record<string, SkillBktResult>>(() => {
@@ -583,7 +584,11 @@ export function SummaryClient({
                               review
                             </span>
                             <span
-                              className={css({ fontSize: '0.85rem', fontWeight: 'semibold', whiteSpace: 'nowrap' })}
+                              className={css({
+                                fontSize: '0.85rem',
+                                fontWeight: 'semibold',
+                                whiteSpace: 'nowrap',
+                              })}
                             >
                               Review timings →
                             </span>

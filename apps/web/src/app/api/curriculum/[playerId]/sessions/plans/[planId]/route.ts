@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { players } from '@/db/schema'
-import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPlan, SlotResult, SlotResultSubmission } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction, getStudentPresence } from '@/lib/classroom'
 import {
@@ -162,7 +162,8 @@ export const PATCH = withAuth(async (request, { params }) => {
             { status: 400 }
           )
         }
-        plan = await recordSlotResult(planId, result as Omit<SlotResult, 'timestamp'>)
+        // Idempotent by result.tryId; the server stamps kind/round/practiceOnly/weight
+        plan = await recordSlotResult(planId, result as SlotResultSubmission)
         break
 
       case 'record_redo':
@@ -174,6 +175,9 @@ export const PATCH = withAuth(async (request, { params }) => {
             { status: 400 }
           )
         }
+        // Every do-over is recorded; a do-over of a problem already answered
+        // correctly is stamped practiceOnly (weight 0). redoContext.originalWasCorrect
+        // is ignored: the server derives it from the item's tries.
         plan = await recordRedoResult(
           planId,
           result as Omit<SlotResult, 'timestamp' | 'partNumber'>,

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 import { SpeedMeter } from './SpeedMeter'
@@ -130,13 +131,14 @@ export function PracticeTimingDisplay({
   }, [attemptStartTime, accumulatedPauseMs, isPaused])
 
   // Calculate overall stats
-  const allTimes = results.map((r) => r.responseTimeMs)
+  const counted = countedTries(results)
+  const allTimes = counted.map((r) => r.responseTimeMs)
   const overallStats = calculateStats(allTimes)
   const hasEnoughData = overallStats.count >= MIN_SAMPLES_FOR_STATS
 
   // Calculate per-part-type stats
   const partTypeStats = (['abacus', 'visualization', 'linear'] as const).map((type) => {
-    const typeTimes = results
+    const typeTimes = counted
       .filter((r) => {
         const part = parts[r.partNumber - 1]
         return part && part.type === type

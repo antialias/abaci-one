@@ -17,6 +17,7 @@ import { AttemptHistoryPanel } from './AttemptHistoryPanel'
 import { calculateAutoPauseInfo } from './autoPauseCalculator'
 import { DetailedProblemCard } from './DetailedProblemCard'
 import { PracticePreview } from './PracticePreview'
+import { getResultForProblem } from './sessionSummaryUtils'
 
 /**
  * Flattened problem item with all context needed for display
@@ -78,26 +79,6 @@ export interface BrowseModeViewProps {
   studentId: string
   /** Callback when results are edited (to refetch plan) */
   onResultEdited?: () => void
-}
-
-/**
- * Get the most recent result for a specific problem if it exists.
- * Returns the last matching result because results are appended chronologically,
- * so the last match is the most recent (e.g., a redo after the original).
- */
-function getResultForProblem(
-  results: SlotResult[],
-  partNumber: number,
-  slotIndex: number
-): SlotResult | undefined {
-  // Iterate from end to find most recent result for this slot
-  for (let i = results.length - 1; i >= 0; i--) {
-    const r = results[i]
-    if (r.partNumber === partNumber && r.slotIndex === slotIndex) {
-      return r
-    }
-  }
-  return undefined
 }
 
 /**

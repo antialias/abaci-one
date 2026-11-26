@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { PRACTICE_TYPES, type PracticeTypeId } from '@/constants/practiceTypes'
 import { useTheme } from '@/contexts/ThemeContext'
+import { countedTries, summarizeTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { computeBktFromHistory, type SkillBktResult } from '@/lib/curriculum/bkt'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
@@ -10,8 +11,8 @@ import { css } from '../../../styled-system/css'
 import { calculateAutoPauseInfo } from './autoPauseCalculator'
 import { PerfectSessionCelebration } from './PerfectSessionCelebration'
 import { ProblemsToReviewPanel } from './ProblemsToReviewPanel'
-import { filterProblemsNeedingAttention, getProblemsWithContext } from './sessionSummaryUtils'
 import { SkillsPanel } from './SkillsPanel'
+import { filterProblemsNeedingAttention, getProblemsWithContext } from './sessionSummaryUtils'
 import { TrendIndicator } from './TrendIndicator'
 
 interface SessionSummaryProps {
@@ -46,7 +47,8 @@ export function SessionSummary({
 }: SessionSummaryProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
-  const results = plan.results as SlotResult[]
+  // Practice-only do-overs never count toward the summary
+  const results = useMemo(() => countedTries(plan.results as SlotResult[]), [plan.results])
   const parts = (plan.parts ?? []) as SessionPart[]
 
   // Get unique practice types from the session parts
@@ -85,12 +87,14 @@ export function SessionSummary({
     return Object.fromEntries(bktResult.skills.map((skill) => [skill.skillId, skill]))
   }, [problemHistory])
 
-  const totalProblems = results.length
-  const correctProblems = results.filter((r) => r.isCorrect).length
-  const accuracy = totalProblems > 0 ? correctProblems / totalProblems : 0
+  const {
+    completed: totalProblems,
+    correct: correctProblems,
+    accuracy,
+    totalTimeMs,
+  } = summarizeTries(results)
 
   // Calculate time stats
-  const totalTimeMs = results.reduce((sum, r) => sum + r.responseTimeMs, 0)
   const avgTimeMs = totalProblems > 0 ? totalTimeMs / totalProblems : 0
 
   // Timestamps are serialized as milliseconds from the API (not Date objects)

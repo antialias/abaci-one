@@ -136,10 +136,12 @@ type SubmitMode = 'practice' | 'redo'
 /**
  * Identity of the problem an attempt answers, as the server matches it: the
  * attempt's own slot and round, never the plan's current one (which lags one
- * problem behind an optimistic advance).
+ * problem behind an optimistic advance), plus the try id minted when the
+ * problem was shown (the server records a try id once).
  */
 function answeredProblemIdentity(plan: SessionPlan, attempt: AttemptInput) {
   return {
+    tryId: attempt.tryId,
     slotId: plan.parts[attempt.partIndex]?.slots[attempt.slotIndex]?.slotId ?? '',
     slotIndex: attempt.slotIndex,
     epochNumber: attempt.epochNumber ?? 0,
@@ -1559,10 +1561,10 @@ export function ActiveSession({
     // Handle redo recording separately - return path is still unified through submit advance resolver.
     let redoOutcome: RedoWriteOutcome = { recorded: false }
     if (submitMode === 'redo' && redoState) {
-      // Only record if the original problem was incorrect
-      // (Original correct = pure practice, no recording to avoid unintentional penalty)
-      if (!redoOriginalWasCorrect && onRecordRedo) {
-        // Add retry tracking fields
+      // Every do-over is recorded. The server stamps its round and weight; a
+      // do-over of a problem already answered correctly is practice-only
+      // (weight 0, no effect on mastery, the score or the dot).
+      if (onRecordRedo) {
         const redoSlotId =
           plan.parts[redoState.originalPartIndex]?.slots[redoState.originalSlotIndex]?.slotId
         const redoResult: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
@@ -1570,8 +1572,6 @@ export function ActiveSession({
           // Override slotId + slotIndex with the original slot from the redo
           slotId: redoSlotId,
           slotIndex: redoState.originalSlotIndex,
-          isRetry: true,
-          epochNumber: (redoState.originalResult.epochNumber ?? 0) + 1,
           originalSlotIndex: redoState.originalSlotIndex,
         }
         // Use the special redo mutation. It can move the session on (a redeemed
@@ -1583,6 +1583,7 @@ export function ActiveSession({
           redoContext: {
             originalPartIndex: redoState.originalPartIndex,
             originalSlotIndex: redoState.originalSlotIndex,
+            // For servers from before Phase 1; a current server derives it
             originalWasCorrect: redoOriginalWasCorrect,
           },
         })

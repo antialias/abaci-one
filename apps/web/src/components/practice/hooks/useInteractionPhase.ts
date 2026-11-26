@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { mintTryId } from '@/db/schema/session-plan-normalize'
 import type { GeneratedProblem } from '@/db/schema/session-plans'
 
 // =============================================================================
@@ -34,6 +35,11 @@ export interface AttemptInput {
   partIndex: number
   /** Retry round of the problem on screen (0 = original slot; absent = 0) */
   epochNumber?: number
+  /**
+   * Id of the try this attempt becomes, minted when the problem is shown. Sent
+   * with the answer; the server records a try id once, so a resend is a no-op.
+   */
+  tryId: string
   /** When the attempt started */
   startTime: number
   /** Accumulated time spent paused (ms) - subtract from elapsed time for actual response time */
@@ -185,6 +191,7 @@ export function createAttemptInput(
     slotIndex,
     partIndex,
     epochNumber,
+    tryId: mintTryId(),
     startTime: Date.now(),
     accumulatedPauseMs: 0,
     accumulatedHiddenMs: 0,

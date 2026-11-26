@@ -10,12 +10,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
-import { createSocket } from '@/lib/socket'
+import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import type { PracticeStateEvent } from '@/lib/classroom/socket-events'
+import { createSocket } from '@/lib/socket'
 import {
-  calculateTimingStats,
   calculateEstimatedTimeRemainingMs,
+  calculateTimingStats,
   formatEstimatedTimeRemaining,
   type SessionTimeEstimate,
 } from './useSessionTimeEstimate'
@@ -184,7 +185,8 @@ export function useLiveSessionTimeEstimate({
   }, [sessionId, enabled, cleanup])
 
   // Compute time estimates from current data
-  const results = liveResults
+  // Practice-only do-overs count nowhere
+  const results = countedTries(liveResults)
   const parts = liveParts
 
   const totalProblems = parts.reduce((sum, p) => sum + (p.slots?.length ?? 0), 0)

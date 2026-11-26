@@ -24,8 +24,9 @@
  */
 
 import { getSkillCategory, type SkillCategoryKey } from '@/constants/skillCategories'
-import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import { READINESS_THRESHOLDS } from '@/lib/curriculum/config/readiness-thresholds'
+import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 
 export interface LinearGateThresholds {
   /** Minimum first-attempt accuracy in the recent window to pass the gate (0..1). */
@@ -81,12 +82,13 @@ export function resolveLinearGateThresholds(config: unknown): LinearGateThreshol
 
 /**
  * A result counts toward the gate only if it is a genuine first-attempt LINEAR result:
- * linear mode, not a retry, and not a sentinel/excluded record.
+ * linear mode, not a retry, not a practice-only do-over, and not a sentinel/excluded record.
  */
 function isGateEligible(r: ProblemResultWithContext): boolean {
   return (
     r.partType === 'linear' &&
     r.isRetry !== true &&
+    isCountedTry(r) &&
     (r.epochNumber ?? 0) === 0 &&
     r.source !== 'recency-refresh' &&
     r.source !== 'teacher-excluded'
