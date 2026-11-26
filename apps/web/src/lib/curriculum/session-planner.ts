@@ -32,7 +32,6 @@ import {
   DEFAULT_PLAN_CONFIG,
   type GameBreakSettings,
   type GeneratedProblem,
-  initRetryState,
   MAX_RETRY_EPOCHS,
   type NewSessionPlan,
   type PartSummary,
@@ -90,6 +89,10 @@ import {
 } from './linear-gate'
 import { explainLinearReadiness } from './linear-readiness'
 import { resolveEnabledPartTypes } from './part-gating'
+import { arithmeticKind, redeemByDoOver } from './parts/arithmetic/server'
+import { type ArithmeticState, arithmeticStateOf } from './parts/arithmetic/state'
+import type { KindTry } from './parts/kind'
+import { isPartPlayable } from './parts/registry'
 import { generateProblemFromConstraints } from './problem-generator'
 import {
   getAllSkillMastery,
@@ -918,6 +921,7 @@ function buildSessionPart(
   }))
 
   return {
+    kind: 'arithmetic',
     partNumber,
     type,
     format: type === 'linear' ? 'linear' : 'vertical',
@@ -1080,6 +1084,7 @@ async function buildSessionPartAsync(
   }
 
   return {
+    kind: 'arithmetic',
     partNumber,
     type,
     format: type === 'linear' ? 'linear' : 'vertical',
@@ -1104,18 +1109,11 @@ export async function getSessionPlan(planId: string): Promise<SessionPlan | null
 }
 
 /**
- * Check if a session plan has pre-generated problems for all slots
- * Old sessions created before problem pre-generation was added will fail this check
+ * Whether every part of a session can be played (its kind's `isPlayable`).
+ * Old arithmetic sessions from before problem pre-generation fail this check.
  */
-function sessionHasPreGeneratedProblems(plan: SessionPlan): boolean {
-  for (const part of plan.parts) {
-    for (const slot of part.slots) {
-      if (!slot.problem) {
-        return false
-      }
-    }
-  }
-  return true
+function sessionIsPlayable(plan: SessionPlan): boolean {
+  return plan.parts.every(isPartPlayable)
 }
 
 /**
@@ -1141,9 +1139,9 @@ export async function getActiveSessionPlan(playerId: string): Promise<SessionPla
     return null
   }
 
-  // Validate session has pre-generated problems
-  // Old sessions may not have them - auto-abandon those
-  if (!sessionHasPreGeneratedProblems(result)) {
+  // Validate every part is playable (old sessions may lack pre-generated
+  // problems) - auto-abandon those
+  if (!sessionIsPlayable(result)) {
     console.warn(
       `[getActiveSessionPlan] Session ${result.id} missing pre-generated problems, auto-abandoning`
     )
@@ -1365,54 +1363,22 @@ interface SettledPosition {
 }
 
 /**
- * Settle a cursor that may have nothing left to show in its part: when the
- * part's original slots are done and the current retry round has no
- * unredeemed item left, start the next retry round, or move to the next part
- * (completing the session after the last one). Mutates `retryState`.
- *
- * Shared by recordSlotResult (after a try) and recordRedoResult (after a
- * do-over redeems the remaining retry items).
+ * The session position after a part's kind has applied a try: the same part
+ * with the kind's new cursor, or, when the part is done, the next part's start
+ * (completing the session after the last one). Phase 2 still writes the
+ * arithmetic legacy encoding (`currentSlotIndex`); Phase 3a moves this into
+ * the flow machine.
  */
-function settlePosition(
-  parts: SessionPlan['parts'],
-  position: { partIndex: number; slotIndex: number },
-  retryState: SessionRetryState
+function positionAfter(
+  plan: SessionPlan,
+  partIndex: number,
+  state: ArithmeticState
 ): SettledPosition {
-  const { partIndex, slotIndex } = position
-  const partRetry = retryState[partIndex]
-  for (;;) {
-    if (
-      resolveCurrentItem({
-        parts,
-        currentPartIndex: partIndex,
-        currentSlotIndex: slotIndex,
-        retryState,
-      })
-    ) {
-      return { partIndex, slotIndex, isComplete: false }
-    }
-    if (
-      !partRetry ||
-      partRetry.pendingRetries.length === 0 ||
-      partRetry.currentEpoch >= MAX_RETRY_EPOCHS
-    ) {
-      break
-    }
-    // Start the next retry round. Slot index stays at the end (original slots done).
-    partRetry.currentEpoch += 1
-    partRetry.currentEpochItems = [...partRetry.pendingRetries]
-    partRetry.pendingRetries = []
-    partRetry.currentRetryIndex = 0
-  }
-
-  // No more retries (all correct, redeemed, or max rounds reached): next part.
-  if (partRetry) {
-    partRetry.currentEpochItems = []
-    partRetry.currentRetryIndex = 0
-    partRetry.pendingRetries = []
+  if (!arithmeticKind.isDone(plan.parts[partIndex].slots, state)) {
+    return { partIndex, slotIndex: state.slotIndex, isComplete: false }
   }
   const nextPartIndex = partIndex + 1
-  return { partIndex: nextPartIndex, slotIndex: 0, isComplete: nextPartIndex >= parts.length }
+  return { partIndex: nextPartIndex, slotIndex: 0, isComplete: nextPartIndex >= plan.parts.length }
 }
 
 /**
@@ -1634,8 +1600,6 @@ export async function recordSlotResult(
     )
   }
 
-  // Initialize mutable copy of retry state
-  const updatedRetryState: SessionRetryState = plan.retryState ? { ...plan.retryState } : {}
   const partIndex = plan.currentPartIndex
 
   const inRetryEpoch = expected.retryIndex !== null
@@ -1676,28 +1640,26 @@ export async function recordSlotResult(
 
   const updatedResults = [...plan.results, newResult]
 
-  // Handle wrong answers: queue the same problem for the next retry round.
-  // Past the last round it is not re-queued (counted as definitively wrong).
-  if (!result.isCorrect && epochNumber < MAX_RETRY_EPOCHS) {
-    const retryState = initRetryState({ ...plan, retryState: updatedRetryState }, partIndex)
-    retryState.pendingRetries.push({
-      slotId: expected.slotId,
-      originalSlotIndex,
-      problem: expected.problem!,
-      epochNumber: epochNumber + 1,
-      originalPurpose: expected.purpose,
-    })
-  }
-
-  // Step past the item just answered, then settle (next round / next part / done)
-  if (expected.retryIndex !== null) {
-    updatedRetryState[partIndex]!.currentRetryIndex = expected.retryIndex + 1
-  }
-  const next = settlePosition(
-    plan.parts,
-    { partIndex, slotIndex: plan.currentSlotIndex + (inRetryEpoch ? 0 : 1) },
-    updatedRetryState
+  // The part's kind moves its cursor: past the item answered (a wrong answer is
+  // queued for the next retry round), then settled (next round, or done).
+  const partTries = normalizeTries(plan.id, plan.parts, plan.results).filter(
+    (t) => t.partIndex === partIndex
   )
+  const nextState = arithmeticKind.applyTry(
+    currentPart.slots,
+    arithmeticStateOf(plan, partIndex),
+    partTries,
+    {
+      itemId: expected.slotId,
+      kind,
+      round: epochNumber,
+      practiceOnly: false,
+      isCorrect: result.isCorrect,
+    }
+  )
+  const updatedRetryState: SessionRetryState = plan.retryState ? { ...plan.retryState } : {}
+  if (nextState.retry) updatedRetryState[partIndex] = nextState.retry
+  const next = positionAfter(plan, partIndex, nextState)
   const { partIndex: nextPartIndex, slotIndex: nextSlotIndex, isComplete } = next
 
   // Calculate elapsed time since start
@@ -1830,14 +1792,20 @@ export async function recordRedoResult(
 
   const part = plan.parts[redoContext.originalPartIndex]
   const slot = part.slots?.[redoContext.originalSlotIndex]
-  const priorTries = slot
-    ? normalizeTries(plan.id, plan.parts, plan.results || []).filter(
-        (t) => t.itemId === slot.slotId
-      )
-    : []
-  if (!slot || priorTries.length === 0 || !sameProblem(slot.problem, result.problem)) {
+  const tries = normalizeTries(plan.id, plan.parts, plan.results || [])
+  if (
+    !slot ||
+    !arithmeticKind.acceptsDoOver(
+      part.slots,
+      arithmeticStateOf(plan, redoContext.originalPartIndex),
+      tries,
+      slot.slotId
+    ) ||
+    !sameProblem(slot.problem, result.problem)
+  ) {
     throw new SlotResultMismatchError(result.slotId, null)
   }
+  const priorTries = tries.filter((t) => t.itemId === slot.slotId)
 
   // Reject redo if the answer was already divulged (student exhausted all retries wrong)
   const answerWasDivulged = (plan.results || []).some(
@@ -1886,42 +1854,39 @@ export async function recordRedoResult(
 
   const updatedResults = [...(plan.results || []), newResult]
 
-  // A correct do-over of an item whose latest counted try was wrong redeems it
+  // A correct do-over of an item whose latest counted try was wrong redeems it.
+  // Redeeming the practiced part's remaining retry items must not strand the
+  // session, so there the kind settles the cursor exactly as after a try. Only
+  // while practicing that part: elsewhere (another part, a break or a
+  // transition, which already owns the next step) it redeems without settling.
+  const partIndex = redoContext.originalPartIndex
+  const doOverTry: KindTry = {
+    itemId: slot.slotId,
+    kind: 'do_over',
+    round,
+    practiceOnly,
+    isCorrect: result.isCorrect,
+  }
+  const state = arithmeticStateOf(plan, partIndex)
+  const practicingThisPart =
+    partIndex === plan.currentPartIndex && (plan.flowState ?? 'practicing') === 'practicing'
+  const nextState = practicingThisPart
+    ? arithmeticKind.applyTry(
+        part.slots,
+        state,
+        tries.filter((t) => t.partIndex === partIndex),
+        doOverTry
+      )
+    : redeemByDoOver(part.slots, state, doOverTry)
   const updatedRetryState = plan.retryState ? { ...plan.retryState } : {}
   let settled: ReturnType<typeof settledPositionFields> | null = null
-
-  if (!practiceOnly && result.isCorrect) {
-    const partRetryState = updatedRetryState[redoContext.originalPartIndex]
-
-    if (partRetryState) {
-      // Remove from pendingRetries (if not yet in active epoch)
-      partRetryState.pendingRetries = partRetryState.pendingRetries.filter(
-        (item) => item.originalSlotIndex !== redoContext.originalSlotIndex
-      )
-
-      // Add to redeemedSlots (for skipping in currentEpochItems)
-      partRetryState.redeemedSlots = partRetryState.redeemedSlots || []
-      if (!partRetryState.redeemedSlots.includes(redoContext.originalSlotIndex)) {
-        partRetryState.redeemedSlots.push(redoContext.originalSlotIndex)
-      }
-
-      updatedRetryState[redoContext.originalPartIndex] = partRetryState
-
-      // Redeeming the current part's remaining retry items must not strand the
-      // session: settle the cursor the same way recordSlotResult does.
-      // Only while practicing: a break or transition already owns the next step.
-      if (
-        redoContext.originalPartIndex === plan.currentPartIndex &&
-        (plan.flowState ?? 'practicing') === 'practicing'
-      ) {
-        const next = settlePosition(
-          plan.parts,
-          { partIndex: plan.currentPartIndex, slotIndex: plan.currentSlotIndex },
-          updatedRetryState
-        )
-        if (next.partIndex !== plan.currentPartIndex) {
-          settled = settledPositionFields(plan, next)
-        }
+  // Same object = nothing redeemed: no retry-state write, no settle
+  if (nextState !== state) {
+    updatedRetryState[partIndex] = nextState.retry!
+    if (practicingThisPart) {
+      const next = positionAfter(plan, partIndex, nextState)
+      if (next.partIndex !== plan.currentPartIndex) {
+        settled = settledPositionFields(plan, next)
       }
     }
   }

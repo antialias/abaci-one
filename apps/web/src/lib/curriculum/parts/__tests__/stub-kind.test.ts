@@ -1,0 +1,81 @@
+/**
+ * Phase 2 acceptance: a stub kind compiles against the contract with no
+ * structural import of slots, and structure treats a kind it does not know
+ * safely.
+ */
+
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+import { describe, expect, it } from 'vitest'
+import type { AnyPartKind, KindTry } from '../kind'
+import { bktModeOf, findPartKind, isPartPlayable, plannedItemCount } from '../registry'
+import { type ReadAbacusPart, readAbacusKind } from './fixtures/read-abacus-kind'
+
+const read = (rel: string) => readFileSync(path.join(__dirname, rel), 'utf8')
+const importsOf = (src: string) =>
+  [...src.matchAll(/^import\s[\s\S]*?from\s+'([^']+)'/gm)].map((m) => m[1])
+
+/** The arithmetic vocabulary structure must not know. */
+const SLOT_WORDS = /slot|retryState|currentSlotIndex|ProblemSlot|GeneratedProblem|SessionPart\b/
+
+const part: ReadAbacusPart = {
+  kind: 'read_abacus',
+  partNumber: 4,
+  content: {
+    items: [
+      { itemId: 'a', beadState: [1, 0], expectedValue: 5, skillsRequired: [] },
+      { itemId: 'b', beadState: [0, 2], expectedValue: 2, skillsRequired: [] },
+    ],
+  },
+}
+
+const tryOf = (itemId: string, isCorrect: boolean, kind: KindTry['kind'] = 'first'): KindTry => ({
+  itemId,
+  kind,
+  round: 0,
+  practiceOnly: false,
+  isCorrect,
+})
+
+describe('a stub kind against the contract', () => {
+  it('imports only the contract, which names no slot', () => {
+    expect(importsOf(read('fixtures/read-abacus-kind.ts'))).toEqual(['../../kind'])
+    const contract = read('../kind.ts')
+    expect(contract).not.toMatch(SLOT_WORDS)
+    expect(importsOf(contract)).toEqual(['@/db/schema/session-plans']) // `import type { TryKind }`
+    expect(contract).toMatch(/^import type \{ TryKind \} from '@\/db\/schema\/session-plans'$/m)
+  })
+
+  it('is assignable to the registry type and plays through by the contract alone', () => {
+    const kind: AnyPartKind = readAbacusKind as unknown as AnyPartKind
+    const content = kind.contentOf(part)
+    expect(kind.isPlayable(content)).toBe(true)
+
+    let state = kind.initialState(content)
+    const tries: KindTry[] = []
+    const answers: [string, number][] = [
+      ['a', 5],
+      ['b', 3],
+    ]
+    for (const [itemId, answer] of answers) {
+      expect(kind.expectedItem(content, state)).toMatchObject({ itemId })
+      const t = tryOf(itemId, kind.judge(content, itemId, answer))
+      state = kind.applyTry(content, state, tries, t)
+      tries.push(t)
+    }
+    expect(tries.map((t) => t.isCorrect)).toEqual([true, false])
+    expect(kind.isDone(content, state)).toBe(true)
+    expect(kind.expectedItem(content, state)).toBeNull()
+    expect(kind.progress(content, state, tries)).toEqual({ done: 2, total: 2 })
+    expect(kind.acceptsDoOver(content, state, tries, 'b')).toBe(true)
+    expect(kind.acceptsDoOver(content, state, tries, 'zzz')).toBe(false)
+    expect(kind.bktMode(part)).toBeNull()
+  })
+
+  it('a kind this image does not know: no kind, not evidence, not abandoned, no planned items', () => {
+    expect(findPartKind(part)).toBeUndefined()
+    expect(bktModeOf(part)).toBeNull()
+    expect(isPartPlayable(part)).toBe(true)
+    expect(plannedItemCount(part)).toBe(0)
+  })
+})

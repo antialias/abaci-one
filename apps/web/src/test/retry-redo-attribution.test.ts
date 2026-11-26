@@ -152,6 +152,11 @@ describe('retry and do-over attribution', () => {
     eph.cleanup()
   })
 
+  it('stamps every generated part with its kind (Phase 2)', async () => {
+    const plan = await newPlan(playerId, 2, { twoParts: true })
+    expect(plan.parts.map((p) => p.kind)).toEqual(['arithmetic', 'arithmetic'])
+  })
+
   it('records the answer against the problem shown after a do-over redeems the current retry', async () => {
     let plan = await newPlan(playerId, 3)
     plan = await answerShown(plan, false) // slot 0 wrong

@@ -21,6 +21,13 @@ export type SessionPartType = PracticeTypeId
  * A session part containing multiple problem slots
  */
 export interface SessionPart {
+  /**
+   * The part kind (`lib/curriculum/parts/registry.ts`). Absent on parts stored
+   * before kinds existed: they are arithmetic. Only arithmetic exists, so the
+   * type stays this shape until structural slot readers move off it (Phase 5;
+   * session architecture §10 P2-2).
+   */
+  kind?: 'arithmetic'
   /** Part number (1, 2, or 3) */
   partNumber: 1 | 2 | 3
   /** Type of practice for this part */

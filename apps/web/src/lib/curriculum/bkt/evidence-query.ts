@@ -2,7 +2,9 @@ import 'server-only'
 
 import { sql } from 'drizzle-orm'
 import { db } from '@/db'
-import type { SessionPartType, SlotResult } from '@/db/schema/session-plans'
+import type { SlotResult } from '@/db/schema/session-plans'
+import type { BktMode } from '../parts/kind'
+import { bktModeOf } from '../parts/registry'
 import type { BktEvidence } from './types'
 
 /**
@@ -35,6 +37,30 @@ interface RawProjectedEvidence {
 interface RawPartType {
   n?: unknown
   t?: unknown
+  k?: unknown
+}
+
+/**
+ * Each part's BKT mode by part number, from its kind's `bktMode` (absent kind
+ * = arithmetic: the part's type). null = the part's tries are not evidence.
+ * (Arithmetic answers 'linear' for a part stored without a type, as main did.)
+ * A non-string, non-null answer is left out, so its rows fall back to the
+ * legacy default below.
+ */
+function bktModesByPartNumber(parts: RawPartType[]): Map<number, BktMode | null> {
+  const modes = new Map<number, BktMode | null>()
+  for (const part of parts) {
+    if (!part || typeof part.n !== 'number') continue
+    // The projected part: what the kinds' bktMode reads (arithmetic: `type`)
+    const stored = {
+      kind: typeof part.k === 'string' ? part.k : undefined,
+      partNumber: part.n,
+      type: part.t,
+    }
+    const mode = bktModeOf(stored)
+    if (mode === null || typeof mode === 'string') modes.set(part.n, mode)
+  }
+  return modes
 }
 
 function parseJsonArray(value: string | null): unknown[] {
@@ -72,7 +98,7 @@ function normalizeTimestamp(value: unknown): Date | string | null {
 
 function toBktEvidence(
   raw: RawProjectedEvidence,
-  typeByPartNumber: ReadonlyMap<number, SessionPartType>
+  modeByPartNumber: ReadonlyMap<number, BktMode | null>
 ): BktEvidence | null {
   if (!Array.isArray(raw.skillsExercised)) return null
 
@@ -84,6 +110,9 @@ function toBktEvidence(
   if (practiceOnly) return null
 
   const partNumber = optionalNumber(raw.partNumber)
+  const mode = partNumber == null ? undefined : modeByPartNumber.get(partNumber)
+  // The part's kind says its tries are not BKT evidence
+  if (mode === null) return null
   const timingReview =
     raw.timingReview && typeof raw.timingReview === 'object'
       ? (raw.timingReview as SlotResult['timingReview'])
@@ -101,7 +130,9 @@ function toBktEvidence(
     source: optionalSource(raw.source),
     originalSource: optionalSource(raw.originalSource),
     timingReview,
-    partType: (partNumber == null ? undefined : typeByPartNumber.get(partNumber)) ?? 'linear',
+    // Rows that name no part (recency-refresh sentinels, parts: []) keep the
+    // legacy 'linear' default (§10 P2-5)
+    partType: mode ?? 'linear',
   }
 }
 
@@ -155,7 +186,8 @@ async function getEvidenceChunk(
       (
         SELECT json_group_array(json_object(
           'n', json_extract(value, '$.partNumber'),
-          't', json_extract(value, '$.type')
+          't', json_extract(value, '$.type'),
+          'k', json_extract(value, '$.kind')
         ))
         FROM json_each(session_plans.parts)
       ) AS partTypeMap
@@ -187,14 +219,9 @@ export async function batchGetRecentBktEvidence(
     const sessions = await getEvidenceChunk(chunk, sessionLimit)
 
     for (const session of sessions) {
-      const partTypes = parseJsonArray(session.partTypeMap) as RawPartType[]
-      const typeByPartNumber = new Map<number, SessionPartType>()
-
-      for (const part of partTypes) {
-        if (typeof part.n === 'number' && typeof part.t === 'string') {
-          typeByPartNumber.set(part.n, part.t as SessionPartType)
-        }
-      }
+      const modeByPartNumber = bktModesByPartNumber(
+        parseJsonArray(session.partTypeMap) as RawPartType[]
+      )
 
       let evidence = resultMap.get(session.playerId)
       if (!evidence) {
@@ -204,7 +231,7 @@ export async function batchGetRecentBktEvidence(
 
       for (const raw of parseJsonArray(session.evidenceJson) as RawProjectedEvidence[]) {
         if (!raw || typeof raw !== 'object') continue
-        const normalized = toBktEvidence(raw, typeByPartNumber)
+        const normalized = toBktEvidence(raw, modeByPartNumber)
         if (normalized) evidence.push(normalized)
       }
     }

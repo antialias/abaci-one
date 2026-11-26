@@ -8,13 +8,14 @@ import type { SessionPart, SessionStatus, SlotResult } from '@/db/schema/session
 import {
   createEphemeralDatabase,
   createTestStudent,
+  type EphemeralDbResult,
   getCurrentEphemeralDb,
   setCurrentEphemeralDb,
-  type EphemeralDbResult,
 } from '@/test/journey-simulator/EphemeralDatabase'
+import { arithmeticKind } from '../../parts/arithmetic/server'
 import { batchGetRecentSessionResults } from '../../session-planner'
 import { computeBktFromHistory } from '../compute-bkt'
-import { batchGetRecentBktEvidence, BKT_EVIDENCE_PLAYER_CHUNK_SIZE } from '../evidence-query'
+import { BKT_EVIDENCE_PLAYER_CHUNK_SIZE, batchGetRecentBktEvidence } from '../evidence-query'
 
 vi.mock('server-only', () => ({}))
 
@@ -321,5 +322,87 @@ describe('batchGetRecentBktEvidence', () => {
     const evidence = (await batchGetRecentBktEvidence([playerId])).get(playerId)!
     expect(JSON.stringify(evidence).length).toBeLessThan(1_000)
     expect(JSON.stringify(evidence)).not.toContain('large-trace')
+  })
+
+  describe("the part kind's bktMode decides the mode (Phase 2)", () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('excludes rows of a part whose kind answers bktMode null; keeps the rest', async () => {
+      const { playerId } = await createTestStudent(ephemeralDb.db, 'bkt-mode-null')
+      const nullKindPart = { kind: 'read_abacus', partNumber: 2, content: { items: [] } }
+      await insertSession({
+        id: 'bkt-mode-null-session',
+        playerId,
+        parts: [makeSessionPart(1, 'abacus'), nullKindPart as never],
+        results: [
+          makeSlotResult({ partNumber: 1, skillsExercised: ['basic.directAddition'] }),
+          makeSlotResult({ partNumber: 2, skillsExercised: ['basic.heavenBead'] }),
+        ],
+      })
+
+      // 'read_abacus' is no kind this image knows: bktModeOf answers null
+      const evidence = (await batchGetRecentBktEvidence([playerId])).get(playerId)!
+      expect(evidence.map((e) => [e.skillsExercised, e.partType])).toEqual([
+        [['basic.directAddition'], 'abacus'],
+      ])
+    })
+
+    it('excludes every row of a registered kind whose bktMode is null', async () => {
+      const { playerId } = await createTestStudent(ephemeralDb.db, 'bkt-mode-null-registered')
+      await insertSession({
+        id: 'bkt-mode-null-registered-session',
+        playerId,
+        parts: [
+          makeSessionPart(1, 'abacus'),
+          { ...makeSessionPart(2, 'linear'), kind: 'arithmetic' },
+        ],
+        results: [makeSlotResult({ partNumber: 1 }), makeSlotResult({ partNumber: 2 })],
+      })
+      vi.spyOn(arithmeticKind, 'bktMode').mockReturnValue(null)
+
+      expect((await batchGetRecentBktEvidence([playerId])).get(playerId)).toEqual([])
+    })
+
+    it("arithmetic parts, with or without kind, keep their type; rows naming no part keep 'linear'", async () => {
+      const { playerId } = await createTestStudent(ephemeralDb.db, 'bkt-mode-arithmetic')
+      await insertSession({
+        id: 'bkt-mode-arithmetic-session',
+        playerId,
+        parts: [
+          makeSessionPart(1, 'abacus'),
+          { ...makeSessionPart(2, 'visualization'), kind: 'arithmetic' },
+        ],
+        results: [
+          makeSlotResult({ partNumber: 1 }),
+          makeSlotResult({ partNumber: 2 }),
+          makeSlotResult({ partNumber: 3 }),
+        ],
+      })
+
+      const modes = (await batchGetRecentBktEvidence([playerId]))
+        .get(playerId)!
+        .map((e) => e.partType)
+        .sort()
+      expect(modes).toEqual(['abacus', 'linear', 'visualization'])
+    })
+
+    it("an arithmetic part stored without a type stays evidence, as 'linear' (main's default)", async () => {
+      const { playerId } = await createTestStudent(ephemeralDb.db, 'bkt-mode-untyped')
+      const { type: _t1, ...untyped1 } = makeSessionPart(1, 'abacus')
+      const { type: _t2, ...untyped2 } = makeSessionPart(2, 'abacus')
+      await insertSession({
+        id: 'bkt-mode-untyped-session',
+        playerId,
+        parts: [untyped1 as never, { ...untyped2, kind: 'arithmetic' } as never],
+        results: [makeSlotResult({ partNumber: 1 }), makeSlotResult({ partNumber: 2 })],
+      })
+
+      const modes = (await batchGetRecentBktEvidence([playerId]))
+        .get(playerId)!
+        .map((e) => e.partType)
+      expect(modes).toEqual(['linear', 'linear'])
+    })
   })
 })
