@@ -1,7 +1,7 @@
 /**
  * Extract session statistics for song prompt generation.
  *
- * Takes a session plan, player, recent history, and optional game-break report
+ * Takes a session plan, player, recent history, and the session's game breaks
  * and produces a structured input object that gives the LLM concrete story
  * material instead of vague achievement summaries.
  */
@@ -103,16 +103,46 @@ export interface SongPromptInput {
     averageAccuracy: number
     trend: 'improving' | 'steady' | 'declining'
   }
-  /** Optional game break results from this session */
-  gameBreak?: {
-    gameName: string
-    headline: string
-    accuracy?: number
-    highlights: string[]
-    details: string[]
-    moments: string[]
-    outcome?: string
-  }
+  /**
+   * Every game break of this session, in the order played (§3.1 legacy path:
+   * one per `practice-break` game result, else the plan's legacy break
+   * columns as at most one). Absent when the session had no break.
+   */
+  gameBreaks?: SongGameBreak[]
+  /**
+   * @deprecated The single break that inputs stored before Phase 3b carry.
+   * Never written; read only through `gameBreaksOf`.
+   */
+  gameBreak?: SongGameBreak
+}
+
+export interface SongGameBreak {
+  gameName: string
+  headline: string
+  accuracy?: number
+  highlights: string[]
+  details: string[]
+  moments: string[]
+  outcome?: string
+}
+
+/**
+ * The breaks a song input names, in the order played. Reads `gameBreaks`, or
+ * the single `gameBreak` of an input stored before Phase 3b (the backtest and
+ * the share page read stored inputs).
+ */
+export function gameBreaksOf(
+  input: Pick<SongPromptInput, 'gameBreaks' | 'gameBreak'>
+): SongGameBreak[] {
+  if (input.gameBreaks && input.gameBreaks.length > 0) return input.gameBreaks
+  return input.gameBreak ? [input.gameBreak] : []
+}
+
+/** "A", "A and B", "A, B and C"; a name repeated is named once */
+export function joinGameNames(gameBreaks: readonly SongGameBreak[]): string {
+  const names = [...new Set(gameBreaks.map((gb) => gb.gameName))]
+  if (names.length <= 1) return names.join('')
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
 }
 
 // ============================================================================
@@ -581,7 +611,7 @@ function buildSkillSpotlights(summaries: ProblemAttemptSummary[]): SongSkillSpot
 function buildSessionArcs(
   summaries: ProblemAttemptSummary[],
   bestCorrectStreak: number,
-  gameBreak?: SongPromptInput['gameBreak']
+  gameBreaks: SongGameBreak[]
 ): string[] {
   const arcs: string[] = []
   const comeback = summaries.find((s) => s.outcome === 'eventually_correct')
@@ -604,17 +634,18 @@ function buildSessionArcs(
   if (hard?.complexityCost != null) {
     arcs.push(`Boss problem: ${hard.problemText} carried complexity cost ${hard.complexityCost}.`)
   }
-  if (gameBreak) {
+  for (const gameBreak of gameBreaks) {
     arcs.push(`Side quest: ${gameBreak.gameName} - ${gameBreak.headline}.`)
   }
 
-  return uniqueStrings(arcs, 5)
+  // At most four practice arcs, then one per break: no cap, so every break keeps its arc.
+  return uniqueStrings(arcs)
 }
 
 function buildStoryAngle(
   summaries: ProblemAttemptSummary[],
   bestCorrectStreak: number,
-  gameBreak?: SongPromptInput['gameBreak']
+  gameBreaks: SongGameBreak[]
 ): string {
   const comeback = summaries.find((s) => s.outcome === 'eventually_correct')
   if (comeback) return `the ${comeback.problemText} comeback`
@@ -629,7 +660,8 @@ function buildStoryAngle(
     .sort((a, b) => (b.complexityCost ?? 0) - (a.complexityCost ?? 0))[0]
   if (hard) return `the ${hard.problemText} boss level`
 
-  if (gameBreak) return `practice quest with a ${gameBreak.gameName} side quest`
+  if (gameBreaks.length === 1) return `practice quest with a ${gameBreaks[0].gameName} side quest`
+  if (gameBreaks.length > 1) return `practice quest with ${joinGameNames(gameBreaks)} side quests`
 
   return 'the steady bead-building mission'
 }
@@ -637,12 +669,12 @@ function buildStoryAngle(
 function buildPracticeDrama(
   plan: SessionPlan,
   bestCorrectStreak: number,
-  gameBreak?: SongPromptInput['gameBreak']
+  gameBreaks: SongGameBreak[]
 ): SongPromptInput['practiceDrama'] {
   const summaries = summarizeProblemAttempts(plan)
   return {
-    storyAngle: buildStoryAngle(summaries, bestCorrectStreak, gameBreak),
-    arcs: buildSessionArcs(summaries, bestCorrectStreak, gameBreak),
+    storyAngle: buildStoryAngle(summaries, bestCorrectStreak, gameBreaks),
+    arcs: buildSessionArcs(summaries, bestCorrectStreak, gameBreaks),
     problemMoments: selectProblemMoments(summaries, plan.results),
     skillSpotlights: buildSkillSpotlights(summaries),
   }
@@ -676,7 +708,7 @@ interface RecentSessionSummary {
   accuracy: number
 }
 
-/** Fallback break info from the session plan (when no gameResults record exists) */
+/** Fallback break info from the session plan (when no gameResults record exists; one break at most) */
 interface PlanBreakFallback {
   breakSelectedGame: string | null
   breakReason: GameBreakEndReason | null
@@ -688,15 +720,15 @@ interface PlanBreakFallback {
  *
  * @param plan - The current session plan (may be in-progress or completed)
  * @param player - The player profile
- * @param recentSessions - Summary of recent sessions (past week) for trend calculation
- * @param gameBreakResult - Optional game result from the practice break
- * @param planBreakFallback - Fallback break info from the plan
+ * @param recentSessions - The kid's latest completed sessions, newest first, for the trend
+ * @param gameBreakResults - The session's `practice-break` game results, in `played_at` order
+ * @param planBreakFallback - Legacy break columns, used only when no result yields a break
  */
 export function extractSessionStats(
   sessionPlan: SessionPlan,
   player: Player,
   recentSessions: RecentSessionSummary[],
-  gameBreakResult?: GameResult | null,
+  gameBreakResults: readonly GameResult[] = [],
   planBreakFallback?: PlanBreakFallback
 ): SongPromptInput {
   // Practice-only do-overs (problems already answered correctly, done again)
@@ -731,10 +763,11 @@ export function extractSessionStats(
     averageAccuracy = recentSessions.reduce((sum, s) => sum + s.accuracy, 0) / recentCount
 
     if (recentCount >= 3) {
+      const chronological = [...recentSessions].reverse()
       const mid = Math.floor(recentCount / 2)
-      const olderAvg = recentSessions.slice(0, mid).reduce((sum, s) => sum + s.accuracy, 0) / mid
+      const olderAvg = chronological.slice(0, mid).reduce((sum, s) => sum + s.accuracy, 0) / mid
       const newerAvg =
-        recentSessions.slice(mid).reduce((sum, s) => sum + s.accuracy, 0) / (recentCount - mid)
+        chronological.slice(mid).reduce((sum, s) => sum + s.accuracy, 0) / (recentCount - mid)
 
       const diff = newerAvg - olderAvg
       if (diff > 0.05) trend = 'improving'
@@ -742,11 +775,14 @@ export function extractSessionStats(
     }
   }
 
-  const gameBreak =
-    extractGameBreak(gameBreakResult) ??
+  const fromResults = distinctBreaks(gameBreakResults)
+    .map(extractGameBreak)
+    .filter((gb): gb is SongGameBreak => gb != null)
+  const fallback =
     extractGameBreakFromReport(planBreakFallback?.breakResults ?? null) ??
     extractGameBreakFallback(planBreakFallback)
-  const practiceDrama = buildPracticeDrama(plan, bestCorrectStreak, gameBreak)
+  const gameBreaks = fromResults.length > 0 ? fromResults : fallback ? [fallback] : []
+  const practiceDrama = buildPracticeDrama(plan, bestCorrectStreak, gameBreaks)
   const attemptStats = getCurrentSessionAttemptStats(plan)
   const age = computeAge(player.birthday)
 
@@ -773,7 +809,7 @@ export function extractSessionStats(
       averageAccuracy,
       trend,
     },
-    gameBreak,
+    ...(gameBreaks.length > 0 && { gameBreaks }),
   }
 }
 
@@ -807,7 +843,7 @@ function playerResultDetails(report: GameResultsReport): string[] {
 function extractGameBreakFromReport(
   report?: GameResultsReport | null,
   storedAccuracy?: number | null
-): SongPromptInput['gameBreak'] {
+): SongGameBreak | undefined {
   if (!report) return undefined
 
   const headline = report.headline ?? report.gameDisplayName
@@ -875,7 +911,26 @@ function extractGameBreakFromReport(
   }
 }
 
-function extractGameBreak(result?: GameResult | null): SongPromptInput['gameBreak'] {
+/**
+ * One row per break: the results route inserts without a dedupe, so a double
+ * POST (or a re-fired completion) stores the same break twice. A break is its
+ * game and its end time (`played_at` is the report's `endedAt`).
+ */
+function distinctBreaks(results: readonly GameResult[]): GameResult[] {
+  const seen = new Set<string>()
+  return results.filter((result) => {
+    const report = result.fullReport as GameResultsReport | null | undefined
+    const endedAt =
+      report?.endedAt ?? (result.playedAt ? new Date(result.playedAt).getTime() : null)
+    if (endedAt == null) return true
+    const key = `${result.gameName ?? report?.gameName}|${endedAt}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function extractGameBreak(result?: GameResult | null): SongGameBreak | undefined {
   if (!result?.fullReport) return undefined
   return extractGameBreakFromReport(result.fullReport as GameResultsReport, result.accuracy)
 }
@@ -886,7 +941,7 @@ const BREAK_REASON_LABELS: Record<GameBreakEndReason, string> = {
   gameFinished: 'completed',
 }
 
-function extractGameBreakFallback(fallback?: PlanBreakFallback): SongPromptInput['gameBreak'] {
+function extractGameBreakFallback(fallback?: PlanBreakFallback): SongGameBreak | undefined {
   if (!fallback?.breakSelectedGame) return undefined
 
   const gameName = fallback.breakSelectedGame

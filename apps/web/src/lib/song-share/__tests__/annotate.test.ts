@@ -64,7 +64,7 @@ const FULL_FACTS: AnnotateFacts = {
   playerName: 'Fern',
   problemMoments: [comeback, boss],
   storyAngle: 'the 313 comeback',
-  gameBreak: { gameName: 'Type Racer Jr.', headline: 'Great Typing!' },
+  gameBreaks: [{ gameName: 'Type Racer Jr.', headline: 'Great Typing!' }],
   skillSpotlights: [
     { skill: 'Direct Addition (1-4)', attempts: 4, correct: 4, problems: 4, exampleProblems: [] },
   ],
@@ -120,6 +120,29 @@ describe('annotateSections — story / game / skill', () => {
     expect(out[3].annotations ?? []).toContain(
       'A shout-out to the Type Racer Jr. break Fern earned.'
     )
+  })
+
+  it('gives no shout-out for a game name with no letters or digits (empty stem)', () => {
+    const out = annotateSections([section('Verse', ['Nothing about a game here'])], {
+      playerName: 'Fern',
+      gameBreaks: [{ gameName: '★★★' }],
+    })
+    expect(out[0].annotations ?? []).toEqual([])
+  })
+
+  it('gives each break of a two-break session its own shout-out', () => {
+    const out = annotateSections(
+      [
+        section('Side Quest One', ['Memory Lightning, flash flash']),
+        section('Side Quest Two', ['Type Racer Jr., keys on fire']),
+      ],
+      {
+        playerName: 'Fern',
+        gameBreaks: [{ gameName: 'Memory Lightning' }, { gameName: 'Type Racer Jr.' }],
+      }
+    )
+    expect(out[0].annotations).toEqual(['A shout-out to the Memory Lightning break Fern earned.'])
+    expect(out[1].annotations).toEqual(['A shout-out to the Type Racer Jr. break Fern earned.'])
   })
 
   it('attaches a skill note when the display skill is literally in the lyric', () => {

@@ -48,8 +48,8 @@ export interface AnnotateFacts {
   problemMoments?: SongProblemMoment[]
   /** Gated by `showProblemDetail`. */
   storyAngle?: string
-  /** Gated by `showProblemDetail` — game name only, no scores. */
-  gameBreak?: { gameName?: string | null; headline?: string | null }
+  /** Gated by `showProblemDetail` — game names only, no scores; one per break, in played order. */
+  gameBreaks?: Array<{ gameName?: string | null; headline?: string | null }>
   /** Gated by `showStreakSkills`. */
   skillSpotlights?: SongSkillSpotlight[]
   /** Gated by `showStreakSkills`. */
@@ -131,7 +131,9 @@ export function annotateSections(
   const moments = Array.isArray(facts.problemMoments) ? facts.problemMoments : []
   const spotlights = Array.isArray(facts.skillSpotlights) ? facts.skillSpotlights : []
   const skills = Array.isArray(facts.skills) ? facts.skills : []
-  const gameName = facts.gameBreak?.gameName?.trim() || ''
+  const gameNames = (Array.isArray(facts.gameBreaks) ? facts.gameBreaks : [])
+    .map((gb) => gb?.gameName?.trim() || '')
+    .filter(Boolean)
   const storyAngle = facts.storyAngle?.trim() || ''
 
   // Nothing gated in → return the input untouched (default share / old row).
@@ -139,7 +141,7 @@ export function annotateSections(
     moments.length === 0 &&
     spotlights.length === 0 &&
     skills.length === 0 &&
-    !gameName &&
+    gameNames.length === 0 &&
     !storyAngle
   ) {
     return sections
@@ -153,7 +155,7 @@ export function annotateSections(
   })
 
   const storyNumbers = storyAngle ? digitsIn(storyAngle) : new Set<string>()
-  const gameStem = gameName ? gameNameStem(gameName) : ''
+  const gameStems = gameNames.map(gameNameStem)
   const usedKeys = new Set<string>() // a given fact annotates the song only once
   let storyUsed = false
 
@@ -186,9 +188,11 @@ export function annotateSections(
     }
 
     // 2. Game-break shout-out (section name often is "… Side Quest").
-    if (gameStem && (text.includes(lc(gameName)) || text.includes(gameStem))) {
-      push('game', `A shout-out to the ${gameName} break ${name} earned.`)
-    }
+    gameNames.forEach((gameName, i) => {
+      if (gameStems[i] && (text.includes(lc(gameName)) || text.includes(gameStems[i]))) {
+        push(`game:${i}`, `A shout-out to the ${gameName} break ${name} earned.`)
+      }
+    })
 
     // 3. The story's signature number (e.g. the "313" comeback) — once, total.
     if (!storyUsed && storyAngle && [...storyNumbers].some((n) => sectionDigits.has(n))) {

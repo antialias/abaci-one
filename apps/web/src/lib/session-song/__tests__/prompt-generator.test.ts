@@ -59,6 +59,47 @@ function makeInput(overrides: Partial<SongPromptInput> = {}): SongPromptInput {
   return { ...base, ...overrides }
 }
 
+const MEMORY_BREAK = {
+  gameName: 'Memory Lightning',
+  headline: 'Fast recall round',
+  accuracy: 90,
+  highlights: ['Numbers recalled: 12'],
+  details: [],
+  moments: ['Recovered after one miss'],
+}
+const MATCHING_BREAK = {
+  gameName: 'Matching Pairs',
+  headline: 'Board cleared',
+  highlights: ['Pairs found: 8'],
+  details: [],
+  moments: [],
+}
+
+describe('buildSongUserPrompt — game breaks (Phase 3b)', () => {
+  it('gives no game-break evidence without a break', () => {
+    expect(buildSongUserPrompt(makeInput())).not.toContain('Game break evidence')
+  })
+
+  it('renders one break as before, from a stored pre-3b input too', () => {
+    const expected =
+      '\n\nGame break evidence:\n- Played Memory Lightning: Fast recall round | 90% accuracy | Numbers recalled: 12 | moment: Recovered after one miss'
+    const fresh = buildSongUserPrompt(makeInput({ gameBreaks: [MEMORY_BREAK] }))
+    const stored = buildSongUserPrompt(makeInput({ gameBreak: MEMORY_BREAK }))
+    expect(fresh).toContain(expected)
+    expect(stored).toBe(fresh)
+  })
+
+  it('names both games of a two-break session, in the order played', () => {
+    const prompt = buildSongUserPrompt(makeInput({ gameBreaks: [MEMORY_BREAK, MATCHING_BREAK] }))
+    expect(prompt).toContain(
+      'Game break evidence (2 breaks, in the order played):\n- Played Memory Lightning: Fast recall round'
+    )
+    expect(prompt.indexOf('- Played Memory Lightning')).toBeLessThan(
+      prompt.indexOf('- Played Matching Pairs: Board cleared | Pairs found: 8')
+    )
+  })
+})
+
 describe('buildSongUserPrompt', () => {
   it("lists the kid's recent songs and asks for something unlike them", () => {
     const prompt = buildSongUserPrompt(

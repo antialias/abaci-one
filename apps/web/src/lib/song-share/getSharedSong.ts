@@ -39,6 +39,8 @@ interface PromptInputShape {
     problemMoments?: SongProblemMoment[]
     skillSpotlights?: SongSkillSpotlight[]
   }
+  gameBreaks?: Array<{ gameName?: string; headline?: string }>
+  /** Inputs stored before Phase 3b carry one break here. */
   gameBreak?: { gameName?: string; headline?: string }
 }
 
@@ -215,9 +217,15 @@ export function projectSharedSong(input: {
     if (typeof pi.practiceDrama?.storyAngle === 'string') {
       facts.storyAngle = pi.practiceDrama.storyAngle
     }
-    if (pi.gameBreak?.gameName) {
-      facts.gameBreak = { gameName: pi.gameBreak.gameName, headline: pi.gameBreak.headline }
-    }
+    const storedBreaks = Array.isArray(pi.gameBreaks)
+      ? pi.gameBreaks
+      : pi.gameBreak
+        ? [pi.gameBreak]
+        : []
+    const gameBreaks = storedBreaks
+      .filter((gb) => gb?.gameName)
+      .map((gb) => ({ gameName: gb.gameName, headline: gb.headline }))
+    if (gameBreaks.length > 0) facts.gameBreaks = gameBreaks
   }
   if (visibility.showStreakSkills) {
     if (Array.isArray(pi.practiceDrama?.skillSpotlights)) {
