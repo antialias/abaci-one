@@ -17,6 +17,7 @@
 
 import { countedTries, isCountedTry, isExcludedTry } from '@/db/schema/session-plan-helpers'
 import {
+  adjustmentsOf,
   type BreakGameResult,
   distinctBreakResults,
   legacyBreaksOf,
@@ -541,7 +542,7 @@ export function buildSessionReport(input: SessionReportInput): SessionReport {
     sessionId: plan.id,
     playerId: plan.playerId,
     outcome,
-    endedEarly: (plan.adjustments ?? []).some((a) => a.type === 'ended_early'),
+    endedEarly: adjustmentsOf(plan).some((a) => a.type === 'ended_early'),
     startedAt,
     // The same instant wall time ends at: `completedAt` when completed, the
     // last activity when abandoned (so endedAt − startedAt === wallMs)

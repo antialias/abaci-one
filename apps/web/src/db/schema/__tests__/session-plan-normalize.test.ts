@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  adjustmentsOf,
   doOverStamp,
   findTryIndex,
   legacyTryId,
@@ -242,5 +243,30 @@ describe('resolveItemId', () => {
   it('trusts a stored slotId only when the indexed slot holds the same problem', () => {
     expect(resolveItemId(row({ slotId: 's1', slotIndex: 1, problem: P[1] }), parts)).toBe('s1')
     expect(resolveItemId(row({ slotId: 's2', slotIndex: 1, problem: P[1] }), parts)).toBe('s1')
+  })
+})
+
+describe('adjustmentsOf', () => {
+  const ended = {
+    timestamp: new Date('2026-01-01T00:00:00.000Z'),
+    type: 'ended_early',
+    reason: 'bedtime',
+  } as const
+  const of = (adjustments: unknown) =>
+    adjustmentsOf({ adjustments } as Parameters<typeof adjustmentsOf>[0])
+
+  it('passes a well-formed list through', () => {
+    expect(of([ended])).toEqual([ended])
+    expect(of([])).toEqual([])
+  })
+
+  it("reads the JSON-string default ('[]') and a missing value as no adjustments", () => {
+    expect(of('[]')).toEqual([])
+    expect(of(null)).toEqual([])
+    expect(of(undefined)).toEqual([])
+  })
+
+  it('drops the characters an early end spread into a string row, keeping the adjustment', () => {
+    expect(of(['[', ']', ended])).toEqual([ended])
   })
 })
