@@ -82,3 +82,6 @@ DEPLOYMENT_PLAN.md
 **/.next
 **/build
 **/styled-system
+
+# Embedding model weights from the laptop; the image fetches its own pinned copy
+apps/web/models

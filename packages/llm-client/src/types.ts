@@ -585,34 +585,3 @@ export type StreamEvent<T> =
   | StreamEventOutputReset
   | StreamEventError
   | StreamEventComplete<T>;
-
-// ============================================================================
-// Embedding Types
-// ============================================================================
-
-/**
- * Request for embedding generation
- */
-export interface EmbeddingRequest {
-  /** Text or array of texts to embed */
-  input: string | string[];
-  /** Model to use (default: text-embedding-3-small) */
-  model?: string;
-  /** Number of dimensions to return (optional, for models that support it) */
-  dimensions?: number;
-}
-
-/**
- * Response from embedding generation
- */
-export interface EmbeddingResponse {
-  /** Array of embeddings (one per input text) */
-  embeddings: Float32Array[];
-  /** Token usage statistics */
-  usage: {
-    promptTokens: number;
-    totalTokens: number;
-  };
-  /** Model that was used */
-  model: string;
-}

@@ -1,7 +1,6 @@
 export { AiFeature, type AiFeatureValue } from './features'
 export {
   recordElevenLabsUsage,
-  recordEmbeddingUsage,
   recordImageGenUsage,
   recordLlmClientStreamUsage,
   recordLlmClientUsage,
@@ -12,7 +11,6 @@ export {
 export {
   createUsageRecordingMiddleware,
   trackedCall,
-  trackedEmbed,
   type UsageRecordingContext,
 } from './llm-middleware'
 export { recordAiUsage } from './record'

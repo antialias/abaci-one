@@ -1,22 +1,13 @@
 import { createHash } from 'crypto'
-import { LLMClient } from '@soroban/llm-client'
+import { embedText, embedTexts } from '@/lib/embeddings'
 
-/**
- * Current embedding version - increment when changing embedding strategy
- * (e.g., changing the content format, model, or dimensions)
- */
-export const EMBEDDING_VERSION = '2.0.0'
-
-/**
- * Embedding model to use
- * Using text-embedding-3-large for better semantic understanding
- */
-export const EMBEDDING_MODEL = 'text-embedding-3-large'
-
-/**
- * Embedding dimensions (3072 for text-embedding-3-large)
- */
-export const EMBEDDING_DIMENSIONS = 3072
+// Model identity lives in @/lib/embeddings/model (client-safe); re-exported here
+// for the flowchart callers that already import it from this module.
+export {
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
+  EMBEDDING_VERSION,
+} from '@/lib/embeddings/model'
 
 /**
  * Data structure for building embedding content
@@ -76,48 +67,30 @@ export function generateContentHash(content: string): string {
 }
 
 /**
- * Generate an embedding for flowchart content.
+ * Generate an embedding for flowchart content (in-process, see @/lib/embeddings).
  *
  * @param content - The text content to embed (from buildEmbeddingContent)
  * @returns Float32Array containing the embedding vector
  */
 export async function generateEmbedding(content: string): Promise<Float32Array> {
-  const llm = new LLMClient()
-
-  const response = await llm.embed({
-    input: content,
-    model: EMBEDDING_MODEL,
-  })
-
-  return response.embeddings[0]
+  return embedText(content)
 }
 
 /**
- * Generate embeddings for multiple flowcharts efficiently (batched API call).
+ * Generate embeddings for multiple texts in one batched pass.
  *
  * @param contents - Array of text contents to embed
  * @returns Array of Float32Array embeddings in the same order
  */
 export async function generateEmbeddings(contents: string[]): Promise<Float32Array[]> {
-  if (contents.length === 0) {
-    return []
-  }
-
-  const llm = new LLMClient()
-
-  const response = await llm.embed({
-    input: contents,
-    model: EMBEDDING_MODEL,
-  })
-
-  return response.embeddings
+  return embedTexts(contents)
 }
 
 /**
  * Convert a Float32Array embedding to a Buffer for database storage.
  */
 export function embeddingToBuffer(embedding: Float32Array): Buffer {
-  return Buffer.from(embedding.buffer)
+  return Buffer.from(embedding.buffer, embedding.byteOffset, embedding.byteLength)
 }
 
 /**
@@ -163,7 +136,7 @@ export interface FlowchartEmbeddingsResult {
 
 /**
  * Generate both content and prompt embeddings for a flowchart.
- * Uses a single batched API call for efficiency.
+ * Both texts are embedded in one batch.
  *
  * - Content embedding: title + description + topic + difficulty (good for detailed queries)
  * - Prompt embedding: just the topic description (good for short, natural language queries)
@@ -177,7 +150,7 @@ export async function generateFlowchartEmbeddings(
   const content = buildEmbeddingContent(flowchart)
   const contentHash = generateContentHash(content)
 
-  // If we have a topic description, generate both embeddings in one batch call
+  // If we have a topic description, embed both texts in one batch
   if (flowchart.topicDescription) {
     const embeddings = await generateEmbeddings([content, flowchart.topicDescription])
     return {

@@ -2,9 +2,9 @@ import { LLMClient } from '@soroban/llm-client'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db, schema } from '@/db'
-import { EMBEDDING_MODEL, embeddingToBuffer } from './embedding'
-import { cosineSimilarity } from './embedding-search'
+import { EMBEDDING_MODEL, embeddingToBuffer, generateEmbeddings } from './embedding'
 import { clearTaxonomyCache } from './taxonomy'
+import { buildLabelEmbeddingContent, computeLabelBreadths } from './taxonomy-embedding'
 
 /**
  * Common stop words to exclude from word frequency analysis
@@ -288,64 +288,10 @@ function deduplicateLabels(labels: string[]): string[] {
 }
 
 /**
- * Build rich context for a taxonomy label to match how flowcharts are embedded.
- * This ensures labels and flowcharts are in the same semantic space.
- */
-function buildLabelEmbeddingContent(label: string): string {
-  return `Educational topic category: ${label}
-
-This is a topic label for categorizing educational flowcharts and learning materials. Flowcharts in this category teach concepts related to ${label.toLowerCase()}.`
-}
-
-/**
- * Embed labels using OpenAI with rich educational context.
- * Labels are embedded with context to match how flowcharts are embedded,
- * ensuring they're in the same semantic space.
+ * Embed labels in-process (see buildLabelEmbeddingContent for the text used).
  */
 async function embedLabels(labels: string[]): Promise<Float32Array[]> {
-  const llm = new LLMClient()
-
-  // Build rich context for each label
-  const labelContents = labels.map(buildLabelEmbeddingContent)
-
-  const response = await llm.embed({
-    input: labelContents,
-    model: EMBEDDING_MODEL,
-  })
-
-  return response.embeddings
-}
-
-/**
- * Compute breadth scores for each label based on average proximity to all other labels.
- * Broader labels (e.g., "Mathematics") have lower average distance to all labels
- * because they're conceptually central. Specific labels (e.g., "Fraction Addition")
- * have higher average distance because they're in specialized "corners" of the space.
- *
- * Returns scores 0-100 where higher = broader.
- *
- * @param embeddings - Array of label embeddings
- * @returns Array of breadth scores (one per label)
- */
-function computeLabelBreadths(embeddings: Float32Array[]): number[] {
-  const n = embeddings.length
-  const breadths: number[] = []
-
-  for (let i = 0; i < n; i++) {
-    let totalDist = 0
-    for (let j = 0; j < n; j++) {
-      if (i !== j) {
-        totalDist += 1 - cosineSimilarity(embeddings[i], embeddings[j])
-      }
-    }
-    const avgDist = totalDist / (n - 1)
-    // Convert to 0-100 scale where higher = broader (lower avg distance)
-    // Typical distances range from ~0.3 to ~0.7, so scale accordingly
-    const breadth = Math.round(Math.max(0, Math.min(100, (1 - avgDist) * 150 - 20)))
-    breadths.push(breadth)
-  }
-
-  return breadths
+  return generateEmbeddings(labels.map(buildLabelEmbeddingContent))
 }
 
 export interface TaxonomyGenerationResult {
@@ -358,7 +304,7 @@ export interface TaxonomyGenerationResult {
  *
  * 1. Loads word frequencies from existing flowcharts for context
  * 2. Generates ~200 topic labels via LLM (broad, domain, and specific tiers)
- * 3. Embeds all labels via OpenAI
+ * 3. Embeds all labels with the in-process embedding model
  * 4. Replaces the entire topic_taxonomy table with new labels
  * 5. Clears the in-memory taxonomy cache
  */
@@ -404,4 +350,56 @@ export async function regenerateTaxonomy(): Promise<TaxonomyGenerationResult> {
     labelCount: labels.length,
     labels,
   }
+}
+
+export interface TaxonomyReembedResult {
+  /** Labels whose vectors were recomputed (0 when all were already current) */
+  reembeddedCount: number
+  labelCount: number
+}
+
+/**
+ * Recompute the vectors of the labels already in topic_taxonomy with the current
+ * embedding model, keeping the labels themselves (no LLM call).
+ *
+ * Runs when any row was embedded by another model, or always with `force`.
+ * All rows are rewritten together because breadth scores compare every label
+ * with every other.
+ */
+export async function reembedTaxonomy(
+  options: { force?: boolean } = {}
+): Promise<TaxonomyReembedResult> {
+  const rows = await db
+    .select({
+      id: schema.topicTaxonomy.id,
+      label: schema.topicTaxonomy.label,
+      embeddingModel: schema.topicTaxonomy.embeddingModel,
+    })
+    .from(schema.topicTaxonomy)
+
+  const stale = rows.some((row) => row.embeddingModel !== EMBEDDING_MODEL)
+  if (rows.length === 0 || (!stale && !options.force)) {
+    return { reembeddedCount: 0, labelCount: rows.length }
+  }
+
+  const embeddings = await embedLabels(rows.map((row) => row.label))
+  const breadths = computeLabelBreadths(embeddings)
+
+  // Row by row, like regenerateTaxonomy. If this stops part-way the table holds
+  // two models' vectors; loadTaxonomy then ignores it (falls back to the static
+  // files) until a re-run finishes the job.
+  for (let i = 0; i < rows.length; i++) {
+    await db
+      .update(schema.topicTaxonomy)
+      .set({
+        embedding: embeddingToBuffer(embeddings[i]),
+        embeddingModel: EMBEDDING_MODEL,
+        breadth: breadths[i],
+      })
+      .where(eq(schema.topicTaxonomy.id, rows[i].id))
+  }
+
+  clearTaxonomyCache()
+
+  return { reembeddedCount: rows.length, labelCount: rows.length }
 }

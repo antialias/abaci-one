@@ -1,6 +1,6 @@
 import { createHash } from 'crypto'
 import { generateEmbedding, generateEmbeddings } from '@/lib/flowcharts/embedding'
-import { cosineSimilarity } from '@/lib/flowcharts/embedding-search'
+import { cosineSimilarity, MAX_SEARCH_QUERY_CHARS } from '@/lib/flowcharts/embedding-search'
 import { getProfileInfoList } from './profiles'
 import type { ProfileInfo } from './types'
 
@@ -60,7 +60,7 @@ function computeContentHash(): string {
 
 /**
  * Lazily compute and cache embeddings for all seed profiles.
- * Uses a single batched API call for efficiency.
+ * Embedded in-process in batches (@/lib/embeddings).
  * The promise is shared so concurrent calls don't duplicate work.
  */
 async function getProfileEmbeddings(): Promise<Map<string, Float32Array>> {
@@ -81,7 +81,11 @@ async function getProfileEmbeddings(): Promise<Map<string, Float32Array>> {
       cachedContentHash = computeContentHash()
       cachedAt = new Date()
       return cache
-    })()
+    })().catch((err) => {
+      // Don't cache a failure: the next search retries.
+      embeddingPromise = null
+      throw err
+    })
   }
 
   return embeddingPromise
@@ -138,10 +142,12 @@ export async function searchProfiles(
   query: string,
   options: { limit?: number; minSimilarity?: number } = {}
 ): Promise<ProfileSearchResult[]> {
-  const { limit = 21, minSimilarity = 0.3 } = options
+  // On-topic queries score 0.31–0.49 against profiles, off-topic ones ≤ 0.12
+  // (all-MiniLM-L6-v2), so 0.2 keeps the useful tail and drops noise.
+  const { limit = 21, minSimilarity = 0.2 } = options
 
   const [queryEmbedding, cache] = await Promise.all([
-    generateEmbedding(query),
+    generateEmbedding(query.slice(0, MAX_SEARCH_QUERY_CHARS)),
     getProfileEmbeddings(),
   ])
 

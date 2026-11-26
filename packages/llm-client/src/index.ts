@@ -65,9 +65,6 @@ export {
 } from "./retry";
 // Types
 export type {
-	// Embedding types
-	EmbeddingRequest,
-	EmbeddingResponse,
 	LLMClientConfig,
 	LLMProgress,
 	LLMProvider,

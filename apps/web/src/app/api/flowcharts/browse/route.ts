@@ -1,10 +1,10 @@
 import { desc, eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/withAuth'
 import { db, schema } from '@/db'
+import { withAuth } from '@/lib/auth/withAuth'
+import { cosineSimilarity, getAllFlowchartEmbeddings } from '@/lib/flowcharts/embedding-search'
+import { labelId, loadTaxonomy } from '@/lib/flowcharts/taxonomy'
 import { getUserId } from '@/lib/viewer'
-import { getAllFlowchartEmbeddings, cosineSimilarity } from '@/lib/flowcharts/embedding-search'
-import { loadTaxonomy, labelId } from '@/lib/flowcharts/taxonomy'
 
 /**
  * GET /api/flowcharts/browse
@@ -21,7 +21,7 @@ import { loadTaxonomy, labelId } from '@/lib/flowcharts/taxonomy'
  *
  * Returns: { flowcharts: FlowchartMeta[], total: number }
  */
-export const GET = withAuth(async (request) => {
+export const GET = withAuth(async (request, { userRole }) => {
   try {
     const url = new URL(request.url)
     const difficulty = url.searchParams.get('difficulty') as
@@ -154,6 +154,8 @@ export const GET = withAuth(async (request) => {
       limit,
       offset,
       currentUserId,
+      // Lets the page show admin-only controls (embedding generation).
+      isAdmin: userRole === 'admin',
       distances,
       labelBreadths,
     })
