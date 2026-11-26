@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import type { z } from 'zod'
 import { db, schema } from '@/db'
+import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
 import {
   GeneratedFlowchartSchema,
   getGenerationSystemPrompt,
@@ -9,7 +10,6 @@ import {
 } from '@/lib/flowchart-workshop/llm-schemas'
 import { validateTestCasesWithCoverage } from '@/lib/flowchart-workshop/test-case-validator'
 import { createTaskLLM } from '@/lib/llm'
-import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
 import { createTask } from '../task-manager'
 import type { FlowchartGenerateEvent } from './events'
 
@@ -144,14 +144,9 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
         )
 
         const llmStream = taskLLM.stream({
-          provider: 'openai',
-          model: 'gpt-5.2',
           prompt: fullPrompt,
           schema: GeneratedFlowchartSchema,
-          reasoning: {
-            effort: 'medium',
-            summary: 'auto',
-          },
+          reasoning: { effort: 'medium' },
           timeoutMs: 300_000,
           debug: true,
         })

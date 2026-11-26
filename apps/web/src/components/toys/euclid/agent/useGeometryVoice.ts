@@ -8,37 +8,37 @@
  *  - Construction screenshot capture for think_hard
  *  - Proof state serialization
  *  - Character modes (greeting → conversing → thinking)
- *  - Async think_hard tool (GPT-5.2 via Responses API)
+ *  - Async think_hard tool (the app's LLM client, with vision)
  */
 
-import { useCallback, useRef, useMemo } from 'react'
-import { useVoiceCall } from '@/lib/voice/useVoiceCall'
-import type {
-  VoiceSessionConfig,
-  ToolCallResult,
-  CallState,
-  UseVoiceCallReturn,
-} from '@/lib/voice/types'
-import { sendSystemMessage } from '@/lib/voice/toolCallHelpers'
+import { useCallback, useMemo, useRef } from 'react'
 import { captureScreenshot } from '@/lib/character/captureScreenshot'
 import type { ChatMessage } from '@/lib/character/types'
+import { sendSystemMessage } from '@/lib/voice/toolCallHelpers'
 import type {
-  ConstructionState,
+  CallState,
+  ToolCallResult,
+  UseVoiceCallReturn,
+  VoiceSessionConfig,
+} from '@/lib/voice/types'
+import { useVoiceCall } from '@/lib/voice/useVoiceCall'
+import type { AuthorToolCallbacks } from '../authorToolCallbacks'
+import type { GeometricEntityRef } from '../chat/parseGeometricEntities'
+import type { FactStore } from '../engine/factStore'
+import type { ProofFact } from '../engine/facts'
+import { useGeometryTeacher } from '../GeometryTeacherContext'
+import type {
   ActiveTool,
   CompassPhase,
-  StraightedgePhase,
+  ConstructionState,
   ExtendPhase,
   MacroPhase,
   PropositionStep,
+  StraightedgePhase,
 } from '../types'
-import type { ProofFact } from '../engine/facts'
-import type { GeometricEntityRef } from '../chat/parseGeometricEntities'
-import type { FactStore } from '../engine/factStore'
-import type { GeometryModeContext } from './types'
+import { AUTHOR_TOOL_NAMES, dispatchAuthorTool } from './dispatchAuthorTool'
 import { serializeFullProofState } from './serializeProofState'
-import { useGeometryTeacher } from '../GeometryTeacherContext'
-import type { AuthorToolCallbacks } from '../authorToolCallbacks'
-import { dispatchAuthorTool, AUTHOR_TOOL_NAMES } from './dispatchAuthorTool'
+import type { GeometryModeContext } from './types'
 
 interface UseGeometryVoiceOptions {
   /** Canvas ref for screenshot capture */

@@ -19,6 +19,7 @@ export const AiFeature = {
 
   // Worksheet / vision
   WORKSHEET_PARSE: 'worksheet:parse',
+  WORKSHEET_REPARSE: 'worksheet:reparse',
   WORKSHEET_GRADE: 'worksheet:grade',
 
   // TTS

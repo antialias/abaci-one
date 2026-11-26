@@ -1,23 +1,19 @@
 /**
- * Shared base URLs + API key for direct OpenAI REST calls — the call sites
- * that don't go through `@soroban/llm-client`.
+ * Base URL for the OpenAI calls that stay on OpenAI: realtime voice
+ * (`…/realtime/*`) and speech (`…/audio/speech`).
  *
- * Text generation (`…/chat/completions`, `…/responses`) follows
- * `LLM_OPENAI_BASE_URL` — the same env var `@soroban/llm-client` honors — so
- * ALL text-LLM traffic in the app can be repointed at an OpenAI-compatible
- * proxy with a single env change.
+ * Realtime voice is the one documented exception to "every LLM call goes
+ * through `@soroban/llm-client`": a live speech-to-speech session has no
+ * `claude -p` equivalent. Text and vision calls go through the LLM client
+ * (default provider `claude_code`); images go through the switch proxy
+ * (`src/lib/images/switch-images.ts`).
  *
- * Media/realtime endpoints (`…/audio/speech`, `…/realtime/sessions`)
- * intentionally do NOT follow `LLM_OPENAI_BASE_URL`: a chat-only proxy has no audio/realtime routes, so pointing text at a
- * proxy must not strand them. (Images don't come here at all: they go
- * through the switch proxy, see `src/lib/images/switch-images.ts`.) They stay on api.openai.com unless
- * `OPENAI_MEDIA_BASE_URL` is set explicitly.
+ * Follows `OPENAI_MEDIA_BASE_URL`, else api.openai.com. (Deliberately NOT
+ * `LLM_OPENAI_*`: the llm-client config loader sweeps every extra
+ * `LLM_OPENAI_*` var into provider options.)
  *
- * (Deliberately NOT `LLM_OPENAI_MEDIA_BASE_URL`: the llm-client config loader
- * sweeps every extra `LLM_OPENAI_*` var into provider options.)
- *
- * These are functions rather than constants so env is read at call time —
- * runtime env always wins over anything the bundler evaluated at build.
+ * A function rather than a constant so env is read at call time: runtime env
+ * always wins over anything the bundler evaluated at build.
  *
  * Known exception: the browser-side WebRTC SDP exchange in
  * `src/lib/voice/useVoiceCall.ts` calls api.openai.com directly with an
@@ -25,24 +21,7 @@
  */
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
 
-function stripTrailingSlash(url: string): string {
-  return url.replace(/\/+$/, '')
-}
-
-/** Base URL for text-generation calls (`…/chat/completions`, `…/responses`). */
-export function openAiTextBaseUrl(): string {
-  return stripTrailingSlash(process.env.LLM_OPENAI_BASE_URL || DEFAULT_OPENAI_BASE_URL)
-}
-
-/** Base URL for media/realtime calls (`…/audio/speech`, `…/realtime/*`). Images use the switch proxy. */
+/** Base URL for media/realtime calls (`…/audio/speech`, `…/realtime/*`). */
 export function openAiMediaBaseUrl(): string {
-  return stripTrailingSlash(process.env.OPENAI_MEDIA_BASE_URL || DEFAULT_OPENAI_BASE_URL)
-}
-
-/**
- * API key for direct OpenAI calls. `LLM_OPENAI_API_KEY` is the canonical name
- * (the only one set in production); `OPENAI_API_KEY` is the legacy fallback.
- */
-export function openAiApiKey(): string | undefined {
-  return process.env.LLM_OPENAI_API_KEY || process.env.OPENAI_API_KEY
+  return (process.env.OPENAI_MEDIA_BASE_URL || DEFAULT_OPENAI_BASE_URL).replace(/\/+$/, '')
 }

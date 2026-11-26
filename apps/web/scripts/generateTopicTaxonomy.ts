@@ -1,5 +1,6 @@
 #!/usr/bin/env npx tsx
 import dotenv from 'dotenv'
+
 dotenv.config({ path: '.env.local' })
 dotenv.config() // .env as fallback
 
@@ -18,12 +19,12 @@ dotenv.config() // .env as fallback
  *   npx tsx scripts/generateTopicTaxonomy.ts --expand  # Add new labels to existing taxonomy
  */
 
-import { writeFileSync, readFileSync, existsSync } from 'fs'
-import { join } from 'path'
-import Database from 'better-sqlite3'
 import { LLMClient } from '@soroban/llm-client'
+import Database from 'better-sqlite3'
+import { existsSync, readFileSync, writeFileSync } from 'fs'
+import { join } from 'path'
 import { z } from 'zod'
-import { EMBEDDING_MODEL, EMBEDDING_DIMENSIONS } from '../src/lib/flowcharts/embedding'
+import { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL } from '../src/lib/flowcharts/embedding'
 
 const OUTPUT_DIR = join(__dirname, '../src/lib/flowcharts')
 const JSON_PATH = join(OUTPUT_DIR, 'topic-taxonomy.json')
@@ -305,10 +306,6 @@ Return approximately 200 labels total across all tiers.${avoidClause}`,
     schema: z.object({
       labels: z.array(z.string()).min(150).max(250),
     }),
-    // Pinned to OpenAI: 'gpt-4o-mini' is a real OpenAI model. The switch
-    // wire only accepts the abaci/claude-abaci class aliases and would 404.
-    provider: 'openai',
-    model: 'gpt-4o-mini',
   })
 
   return response.data.labels

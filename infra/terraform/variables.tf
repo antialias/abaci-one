@@ -62,27 +62,15 @@ variable "openai_api_key" {
   default     = ""
 }
 
-variable "llm_openai_base_url" {
-  description = "Base URL for OpenAI-wire text-generation LLM calls (LLM_OPENAI_BASE_URL). Point at an OpenAI-compatible proxy to reroute all text LLM traffic; media/TTS/realtime calls are unaffected."
-  type        = string
-  default     = "https://api.openai.com/v1"
-}
-
 variable "llm_switch_api_key" {
-  description = "Client secret for the claude-switch-proxy OpenAI wire (LLM_SWITCH_API_KEY). Deliberately its own variable — never reuse openai_api_key: the proxy secret must never reach api.openai.com, and the OpenAI key must never reach the proxy."
+  description = "Client secret for the claude-switch-proxy (feeds LLM_CLAUDE_CODE_API_KEY). Deliberately its own variable — never reuse openai_api_key: the proxy secret must never reach api.openai.com, and the OpenAI key must never reach the proxy."
   type        = string
   sensitive   = true
   default     = ""
 }
 
-variable "llm_switch_base_url" {
-  description = "Base URL of the claude-switch-proxy OpenAI-compatible wire (LLM_SWITCH_BASE_URL). The llm-client switch provider requires an explicit value and refuses the auto-derived fallback."
-  type        = string
-  default     = "http://192.168.86.51:8787/v1"
-}
-
 variable "llm_default_provider" {
-  description = "Default @soroban/llm-client text provider (LLM_DEFAULT_PROVIDER). \"claude_code\" runs default text calls as `claude -p` through the claude-switch-proxy (needs an image with the claude CLI); \"switch\" uses the proxy's OpenAI wire; kill switch = set back to \"openai\" and apply (streaming/reasoning and media calls stay pinned to openai regardless). Deliberately defaults to \"openai\": set llm_default_provider = \"switch\" in terraform.tfvars only once the app image containing the switch provider factory is deployed, so an unrelated scoped apply can never flip the provider ahead of the code."
+  description = "Default @soroban/llm-client text/vision provider (LLM_DEFAULT_PROVIDER). \"claude_code\" runs every call as `claude -p` through the claude-switch-proxy (needs an image with the claude CLI); kill switch = set \"openai\" and apply — it answers streamed calls in one piece (\"anthropic\" would also work but no LLM_ANTHROPIC_API_KEY is wired here). Realtime voice and TTS stay on OpenAI regardless. Deliberately defaults to \"openai\", so an unrelated scoped apply can never flip the provider ahead of the code; production sets \"claude_code\" in terraform.tfvars."
   type        = string
   default     = "openai"
 }

@@ -1,11 +1,13 @@
-import { openAiApiKey, openAiTextBaseUrl } from '@/lib/openai-base'
 import { readFile } from 'fs/promises'
+import { z } from 'zod'
 import { SINGLE_CARRY_PATH } from '@/app/create/worksheets/progressionPath'
-import { recordOpenAiResponsesUsage } from '@/lib/ai-usage/helpers'
 import { AiFeature } from '@/lib/ai-usage/features'
+import { trackedCall } from '@/lib/ai-usage/llm-middleware'
+import { llm } from '@/lib/llm'
+import { prepareImageForLlm } from '@/lib/llm-image'
 
 /**
- * Grading result structure returned by GPT-5
+ * Grading result structure returned by the vision model
  */
 export interface GradingResult {
   problems: Array<{
@@ -40,63 +42,30 @@ interface ValidationError {
 }
 
 /**
- * JSON schema for GPT-5 strict mode
+ * The grading answer's shape (checked again by validateGradingResult)
  */
-const gradingSchema = {
-  type: 'object',
-  properties: {
-    problems: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          index: { type: 'integer' },
-          operandA: { type: 'integer' },
-          operandB: { type: 'integer' },
-          correctAnswer: { type: 'integer' },
-          studentAnswer: { type: ['integer', 'null'] },
-          isCorrect: { type: 'boolean' },
-          digitCount: { type: 'integer' },
-          requiresRegrouping: { type: 'boolean' },
-        },
-        required: [
-          'index',
-          'operandA',
-          'operandB',
-          'correctAnswer',
-          'studentAnswer',
-          'isCorrect',
-          'digitCount',
-          'requiresRegrouping',
-        ],
-        additionalProperties: false,
-      },
-    },
-    totalProblems: { type: 'integer' },
-    correctCount: { type: 'integer' },
-    accuracy: { type: 'number' },
-    errorPatterns: {
-      type: 'array',
-      items: { type: 'string' },
-    },
-    currentStepEstimate: { type: 'string' },
-    suggestedStepId: { type: 'string' },
-    reasoning: { type: 'string' },
-    feedback: { type: 'string' },
-  },
-  required: [
-    'problems',
-    'totalProblems',
-    'correctCount',
-    'accuracy',
-    'errorPatterns',
-    'currentStepEstimate',
-    'suggestedStepId',
-    'reasoning',
-    'feedback',
-  ],
-  additionalProperties: false,
-}
+const GradingSchema = z.object({
+  problems: z.array(
+    z.object({
+      index: z.number().int(),
+      operandA: z.number().int(),
+      operandB: z.number().int(),
+      correctAnswer: z.number().int(),
+      studentAnswer: z.number().int().nullable(),
+      isCorrect: z.boolean(),
+      digitCount: z.number().int(),
+      requiresRegrouping: z.boolean(),
+    })
+  ),
+  totalProblems: z.number().int(),
+  correctCount: z.number().int(),
+  accuracy: z.number(),
+  errorPatterns: z.array(z.string()),
+  currentStepEstimate: z.string(),
+  suggestedStepId: z.string(),
+  reasoning: z.string(),
+  feedback: z.string(),
+}) satisfies z.ZodType<GradingResult>
 
 /**
  * Build the grading prompt with progression context
@@ -146,71 +115,26 @@ CRITICAL: suggestedStepId MUST be one of: ${validStepIds}`
 }
 
 /**
- * Call GPT-5 Responses API with vision
+ * Grade the worksheet image with the app's LLM client (deep reasoning)
  */
-async function callGPT5Vision(
+async function callVisionModel(
   imageDataUrl: string,
   prompt: string,
   userId?: string
 ): Promise<GradingResult> {
-  const response = await fetch(`${openAiTextBaseUrl()}/responses`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${openAiApiKey()}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-5-2025-08-07',
-      input: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'input_image',
-              image_url: imageDataUrl,
-              detail: 'high', // High detail for handwriting recognition
-            },
-            {
-              type: 'input_text',
-              text: prompt,
-            },
-          ],
-        },
-      ],
-      reasoning: {
-        effort: 'high', // Use deep thinking for analysis
-      },
-      max_output_tokens: 4000, // Enough for 20 problems + analysis
-      text: {
-        verbosity: 'medium', // Balanced output
-        format: {
-          type: 'json_schema',
-          name: 'worksheet_grading',
-          schema: gradingSchema,
-          strict: true, // Enforce schema strictly
-        },
-      },
-    }),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`OpenAI API error (${response.status}): ${errorText}`)
+  const request = {
+    prompt,
+    images: [imageDataUrl],
+    schema: GradingSchema,
+    reasoningEffort: 'high' as const,
+    timeoutMs: 300_000,
+    // Retries live in gradeWorksheetWithVision, which feeds back its own checks.
+    maxRetries: 0,
   }
-
-  const apiResponse = await response.json()
-
-  // Check for API errors
-  if (apiResponse.error) {
-    throw new Error(`OpenAI API error: ${apiResponse.error.message}`)
-  }
-
-  if (userId) {
-    recordOpenAiResponsesUsage(apiResponse, { userId, feature: AiFeature.WORKSHEET_GRADE })
-  }
-
-  // Extract the grading result (already parsed JSON due to schema)
-  return apiResponse.output[0].content[0].text as GradingResult
+  const response = userId
+    ? await trackedCall(llm, request, { userId, feature: AiFeature.WORKSHEET_GRADE })
+    : await llm.vision(request)
+  return response.data
 }
 
 /**
@@ -251,7 +175,7 @@ function validateGradingResult(result: GradingResult): ValidationError | null {
 }
 
 /**
- * Grade worksheet with GPT-5 vision and retry logic
+ * Grade worksheet with a vision model and retry logic
  *
  * @param imagePath - Path to worksheet image file
  * @param maxRetries - Maximum number of retry attempts (default: 2)
@@ -264,9 +188,8 @@ export async function gradeWorksheetWithVision(
 ): Promise<GradingResult> {
   // Read and encode image
   const imageBuffer = await readFile(imagePath)
-  const base64Image = imageBuffer.toString('base64')
-  const mimeType = imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg'
-  const dataUrl = `data:${mimeType};base64,${base64Image}`
+  // Its real type from its bytes, scaled to what the API takes
+  const dataUrl = await prepareImageForLlm(imageBuffer)
 
   let lastError: Error | null = null
   let validationError: ValidationError | undefined
@@ -276,8 +199,7 @@ export async function gradeWorksheetWithVision(
       // Build prompt (includes validation error if retry)
       const prompt = buildGradingPrompt(validationError)
 
-      // Call GPT-5
-      const result = await callGPT5Vision(dataUrl, prompt, userId)
+      const result = await callVisionModel(dataUrl, prompt, userId)
 
       // Validate result
       const error = validateGradingResult(result)

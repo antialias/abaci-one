@@ -36,7 +36,7 @@ function inferErrorType(
  *
  * This is the main orchestration function that:
  * 1. Updates status to 'processing'
- * 2. Calls GPT-5 Vision for single-pass grading (OCR + analysis)
+ * 2. Calls a vision model for single-pass grading (OCR + analysis)
  * 3. Stores individual problem results
  * 4. Updates attempt with AI analysis
  * 5. TODO: Updates mastery profile
@@ -65,7 +65,7 @@ export async function processWorksheetAttempt(attemptId: string, userId?: string
     // 1. Build image path
     const imagePath = join(process.cwd(), 'data', attempt.uploadedImageUrl)
 
-    // 2. Grade with GPT-5 Vision (single-pass: OCR + grading + analysis)
+    // 2. Grade with a vision model (single-pass: OCR + grading + analysis)
     const gradingResult = await gradeWorksheetWithVision(imagePath, 2, userId)
 
     // Extract data for database storage

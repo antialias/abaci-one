@@ -27,6 +27,12 @@ export interface PersistenceOptions {
 	onOutputDelta?: (text: string, accumulated: string) => void;
 
 	/**
+	 * Called when the output so far is void (the model starts its answer
+	 * again); the accumulated output is cleared first.
+	 */
+	onOutputReset?: () => void;
+
+	/**
 	 * Called periodically with accumulated reasoning (for persistence).
 	 * @param text - The full accumulated reasoning text
 	 */
@@ -103,6 +109,14 @@ export function createPersistenceMiddleware(
 						outputText += event.text;
 						options.onOutputDelta?.(event.text, outputText);
 						await maybeSnapshot();
+					} else if (event.type === "output_reset") {
+						outputText = "";
+						options.onOutputReset?.();
+						if (lastOutputSnapshot) {
+							// A reload must not bring back the voided answer.
+							lastOutputSnapshot = "";
+							await options.onOutputSnapshot?.("");
+						}
 					}
 					yield event;
 				}

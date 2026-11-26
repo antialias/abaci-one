@@ -53,6 +53,7 @@ export type WorksheetParseEvent =
     }
   | { type: 'reasoning'; text: string }
   | { type: 'output_delta'; text: string }
+  | { type: 'output_reset' }
   | { type: 'reasoning_snapshot'; text: string }
   | { type: 'output_snapshot'; text: string }
   | {
@@ -96,6 +97,7 @@ export type WorksheetReparseEvent =
       text: string
       outputIndex?: number
     }
+  | { type: 'output_reset'; problemIndex: number }
   | { type: 'reasoning_snapshot'; problemIndex: number; text: string }
   | { type: 'output_snapshot'; problemIndex: number; text: string }
   | {
@@ -191,6 +193,7 @@ export type FlowchartGenerateEvent =
   | { type: 'generate_progress'; stage: string; message: string }
   | { type: 'reasoning'; text: string; isDelta: boolean; summaryIndex?: number }
   | { type: 'output_delta'; text: string; outputIndex?: number }
+  | { type: 'output_reset' }
   | { type: 'reasoning_snapshot'; text: string }
   | { type: 'output_snapshot'; text: string }
   | {
@@ -228,6 +231,7 @@ export type FlowchartRefineEvent =
   | { type: 'refine_progress'; stage: string; message: string }
   | { type: 'reasoning'; text: string; isDelta: boolean; summaryIndex?: number }
   | { type: 'output_delta'; text: string; outputIndex?: number }
+  | { type: 'output_reset' }
   | { type: 'reasoning_snapshot'; text: string }
   | { type: 'output_snapshot'; text: string }
   | {
@@ -673,6 +677,7 @@ export type PostcardReviewEvent =
     }
   | { type: 'reasoning'; text: string; isDelta: boolean }
   | { type: 'output_delta'; text: string }
+  | { type: 'output_reset' }
   | { type: 'reasoning_snapshot'; text: string }
   | { type: 'output_snapshot'; text: string }
 
@@ -717,6 +722,7 @@ export type MomentCullEvent =
     }
   | { type: 'reasoning'; text: string; isDelta: boolean }
   | { type: 'output_delta'; text: string }
+  | { type: 'output_reset' }
   | { type: 'reasoning_snapshot'; text: string }
   | { type: 'output_snapshot'; text: string }
 

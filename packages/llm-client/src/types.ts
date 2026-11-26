@@ -89,12 +89,20 @@ export type ReasoningEffort =
   | "high"
   | "xhigh";
 
+/** Queue class for capped providers: see LLMRequest.priority. */
+export type RequestPriority = "interactive" | "background";
+
 /**
  * Request to make an LLM call with type-safe schema validation
  */
 export interface LLMRequest<T extends z.ZodType> {
   /** The prompt to send to the LLM */
   prompt: string;
+  /**
+   * Standing instructions for the model, kept apart from the prompt. Providers
+   * with a system slot use it; the others put it before the prompt.
+   */
+  system?: string;
   /** Base64 data URLs for vision requests */
   images?: string[];
   /** Zod schema for response validation */
@@ -117,6 +125,14 @@ export interface LLMRequest<T extends z.ZodType> {
    * Set to 0 for no timeout (not recommended)
    */
   timeoutMs?: number;
+  /**
+   * Queue class when runs are capped (claude_code): "interactive" (a child is
+   * waiting on the answer) goes ahead of "background" and always has a slot
+   * kept for it. Default: "background".
+   */
+  priority?: RequestPriority;
+  /** Aborting cancels the request, including while it waits for a slot. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -181,6 +197,13 @@ export interface LLMResponse<T> {
 export interface ProviderRequest {
   /** The prompt to send */
   prompt: string;
+  /** Standing instructions (see LLMRequest.system) */
+  system?: string;
+  /**
+   * Free text instead of JSON: the answer is the model's text, and
+   * `jsonSchema` is ignored. Only providers that can stream text see this.
+   */
+  textOutput?: boolean;
   /** Base64 data URLs for vision */
   images?: string[];
   /** JSON schema for structured output */
@@ -193,6 +216,10 @@ export interface ProviderRequest {
   reasoningEffort?: ReasoningEffort;
   /** Request timeout in milliseconds */
   timeoutMs?: number;
+  /** Queue class (see LLMRequest.priority) */
+  priority?: RequestPriority;
+  /** Aborting cancels the request */
+  signal?: AbortSignal;
 }
 
 /**
@@ -213,6 +240,17 @@ export interface ProviderResponse {
 }
 
 /**
+ * What a provider's stream() yields: progress as it happens, then exactly one
+ * `result` carrying the unvalidated answer. Failures are thrown, as from call().
+ */
+export type ProviderStreamEvent =
+  | StreamEventStarted
+  | StreamEventReasoning
+  | StreamEventOutputDelta
+  | StreamEventOutputReset
+  | { type: "result"; response: ProviderResponse };
+
+/**
  * LLM Provider interface for implementing different providers
  */
 export interface LLMProvider {
@@ -220,6 +258,13 @@ export interface LLMProvider {
   readonly name: string;
   /** Make an LLM call */
   call(request: ProviderRequest): Promise<ProviderResponse>;
+  /**
+   * Stream one call (optional). A provider without it still serves
+   * LLMClient.stream(): the client makes one call() and reports its result.
+   */
+  stream?(
+    request: ProviderRequest,
+  ): AsyncGenerator<ProviderStreamEvent, void, unknown>;
 }
 
 /**
@@ -348,8 +393,18 @@ export class LLMNetworkError extends Error {
   }
 }
 
+/**
+ * The caller aborted the request (its signal fired). Never retried.
+ */
+export class LLMAbortedError extends Error {
+  constructor(public readonly provider: string) {
+    super(`${provider} request was aborted`);
+    this.name = "LLMAbortedError";
+  }
+}
+
 // ============================================================================
-// Streaming Types (for Responses API)
+// Streaming Types
 // ============================================================================
 
 /**
@@ -358,7 +413,7 @@ export class LLMNetworkError extends Error {
 export interface ReasoningConfig {
   /** How much reasoning effort to apply */
   effort: ReasoningEffort;
-  /** Whether to include reasoning summaries ("auto" = detailed summaries) */
+  /** Kept for callers written against the OpenAI Responses API; ignored. */
   summary?: "auto" | "concise" | "detailed";
 }
 
@@ -368,6 +423,8 @@ export interface ReasoningConfig {
 export interface LLMStreamRequest<T extends z.ZodType> {
   /** The prompt to send to the LLM */
   prompt: string;
+  /** Standing instructions for the model (see LLMRequest.system) */
+  system?: string;
   /** Base64 data URLs for vision requests */
   images?: string[];
   /** Zod schema for response validation */
@@ -376,8 +433,13 @@ export interface LLMStreamRequest<T extends z.ZodType> {
   provider?: string;
   /** Override default model */
   model?: string;
-  /** Reasoning configuration (enables reasoning summaries when set) */
+  /** Reasoning configuration: its effort is the call's reasoning effort */
   reasoning?: ReasoningConfig;
+  /**
+   * Retries when the answer fails the schema (fed back to the model) or the
+   * call fails before anything streamed (default: the client's maxRetries)
+   */
+  maxRetries?: number;
   /**
    * Request timeout in milliseconds (default: 300000 = 5 minutes for streaming)
    * Streaming requests typically take longer, so default is higher
@@ -388,6 +450,47 @@ export interface LLMStreamRequest<T extends z.ZodType> {
    * Set to true to enable, false to disable, or omit to use global setting
    */
   debug?: boolean;
+  /**
+   * Queue class when runs are capped (claude_code): "interactive" (a child is
+   * waiting on the answer) goes ahead of "background" and always has a slot
+   * kept for it. Default: "background".
+   */
+  priority?: RequestPriority;
+  /** Aborting cancels the request, including while it waits for a slot. */
+  signal?: AbortSignal;
+}
+
+/**
+ * Request for a streamed free-text answer (LLMClient.streamText). The text
+ * arrives as `output_delta` events; `complete.data` is the whole text.
+ */
+export interface LLMTextStreamRequest {
+  /** The prompt to send to the LLM */
+  prompt: string;
+  /** Standing instructions for the model */
+  system?: string;
+  /** Base64 data URLs */
+  images?: string[];
+  /** Override default provider */
+  provider?: string;
+  /** Override default model */
+  model?: string;
+  /** Reasoning effort */
+  reasoningEffort?: ReasoningEffort;
+  /** Request timeout in milliseconds (default: 120000) */
+  timeoutMs?: number;
+  /** Retries when the call fails before any text streamed (default: client's) */
+  maxRetries?: number;
+  /** Enable debug logging for this request */
+  debug?: boolean;
+  /**
+   * Queue class when runs are capped (claude_code): "interactive" (a child is
+   * waiting on the answer) goes ahead of "background" and always has a slot
+   * kept for it. Default: "background".
+   */
+  priority?: RequestPriority;
+  /** Aborting cancels the request, including while it waits for a slot. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -432,6 +535,15 @@ export interface StreamEventOutputDelta extends StreamEventBase {
 }
 
 /**
+ * The output streamed so far is void: the model is starting its answer again
+ * (a retry after a failed schema check, or the CLI asking the model again).
+ * A consumer accumulating output_delta text should clear it.
+ */
+export interface StreamEventOutputReset extends StreamEventBase {
+  type: "output_reset";
+}
+
+/**
  * Event when an error occurs during streaming
  */
 export interface StreamEventError extends StreamEventBase {
@@ -449,6 +561,10 @@ export interface StreamEventComplete<T> extends StreamEventBase {
   type: "complete";
   /** The validated response data */
   data: T;
+  /** Provider that answered (e.g. "claude_code") */
+  provider?: string;
+  /** Model or class id that was asked for */
+  model?: string;
   /** Token usage statistics */
   usage: {
     promptTokens: number;
@@ -466,6 +582,7 @@ export type StreamEvent<T> =
   | StreamEventStarted
   | StreamEventReasoning
   | StreamEventOutputDelta
+  | StreamEventOutputReset
   | StreamEventError
   | StreamEventComplete<T>;
 

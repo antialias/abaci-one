@@ -343,6 +343,12 @@ export function WorksheetParsingProvider({
               })
               break
 
+            case 'output_reset':
+              // A retry starts the answer over; problems already found stay.
+              accumulatedOutput = ''
+              dispatch({ type: 'STREAM_OUTPUT_RESET', attachmentId })
+              break
+
             case 'output_delta': {
               accumulatedOutput += payload.text as string
               dispatch({ type: 'STREAM_OUTPUT', attachmentId, text: payload.text as string })

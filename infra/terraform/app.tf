@@ -19,7 +19,6 @@ resource "kubernetes_secret" "app_env" {
     EMAIL_SERVER                   = var.email_server
     EMAIL_FROM                     = var.email_from
     LLM_OPENAI_API_KEY             = var.openai_api_key
-    LLM_SWITCH_API_KEY             = var.llm_switch_api_key
     LLM_CLAUDE_CODE_API_KEY        = var.llm_switch_api_key
     SWITCH_MEDIA_LOGIN             = var.switch_media_login
     ELEVENLABS_MUSIC_API_KEY       = var.elevenlabs_music_api_key
@@ -84,19 +83,18 @@ resource "kubernetes_config_map" "app_config" {
     OTEL_SERVICE_NAME           = "abaci-app"
     # Web Push VAPID public key (served to clients at runtime via API)
     VAPID_PUBLIC_KEY = var.vapid_public_key
-    # OpenAI-wire base URL for text-generation LLM calls. Honored by
-    # @soroban/llm-client and the raw-fetch sites via apps/web/src/lib/openai-base.ts.
-    LLM_OPENAI_BASE_URL = var.llm_openai_base_url
-    # claude-switch-proxy wire: default text provider for @soroban/llm-client.
-    # Kill switch = flip llm_default_provider back to "openai" and apply.
-    LLM_SWITCH_BASE_URL      = var.llm_switch_base_url
-    LLM_SWITCH_DEFAULT_MODEL = "abaci"
-    LLM_DEFAULT_PROVIDER     = var.llm_default_provider
-    # Claude Code in print mode (`claude -p`) through the same proxy, using its
-    # native Claude wire; the key is the same proxy client secret. Selected by
-    # llm_default_provider = "claude_code".
+    # Default text/vision provider for @soroban/llm-client. "claude_code" runs
+    # every call as `claude -p` through the claude-switch-proxy; kill switch =
+    # set llm_default_provider to "openai" and apply.
+    LLM_DEFAULT_PROVIDER = var.llm_default_provider
+    # Claude Code in print mode (`claude -p`) through the proxy, on its native
+    # Claude wire; the key is the proxy client secret.
     LLM_CLAUDE_CODE_BASE_URL      = var.llm_claude_code_base_url
     LLM_CLAUDE_CODE_DEFAULT_MODEL = var.llm_claude_code_model
+    # Runs at once per pod (~120 MiB each): kids' chat shares these slots with
+    # flowchart and worksheet jobs. 4 runs ≈ 480 MiB against the 1536Mi limit
+    # (the app itself peaked at ~240 MiB, 2026-11-25).
+    LLM_CLAUDE_CODE_MAX_CONCURRENCY = "4"
     # ElevenLabs music: empty = ElevenLabs itself; the proxy's door is
     # http://<nas>:8788/elevenlabs (then elevenlabs_music_api_key is the app's
     # proxy login, base64 "name:password").

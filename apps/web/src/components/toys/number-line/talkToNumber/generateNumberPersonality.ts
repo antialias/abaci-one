@@ -1,8 +1,8 @@
-import { smallestPrimeFactor, factorize } from '../primes/sieve'
-import { MATH_CONSTANTS } from '../constants/constantsData'
-import type { GeneratedScenario } from './generateScenario'
-import type { ChildProfile } from './childProfile'
 import type { SharedHistory } from '@/lib/number-line/shared-history'
+import { MATH_CONSTANTS } from '../constants/constantsData'
+import { factorize, smallestPrimeFactor } from '../primes/sieve'
+import type { ChildProfile } from './childProfile'
+import type { GeneratedScenario } from './generateScenario'
 
 // --- Sequence checks ---
 
@@ -217,7 +217,7 @@ export function getNeighborsSummary(n: number): string {
 // --- Exploration recommendation for a number ---
 
 import { AVAILABLE_EXPLORATIONS } from './explorationRegistry'
-import { GAMES, GAME_CATEGORY_META, type GameCategory } from './gameRegistry'
+import { GAME_CATEGORY_META, GAMES, type GameCategory } from './gameRegistry'
 import type { SessionActivity } from './sessionModes/types'
 
 interface ExplorationHint {
@@ -655,10 +655,22 @@ The vibe is a friend who's OBSESSED with math in a fun way — like someone show
 YOUR FAVORITE EXPLORATION: You know about the "${explorationHint.name}" exploration (${explorationHint.constantId}) — it's about ${explorationHint.shortDesc}. If the conversation hits a lull or the child seems curious, casually suggest it: "Hey, want to see something cool about ${explorationHint.name}?" Once per call max. If they say no, drop it.${sessionContext}`
 }
 
-function buildConversationPacingBlock(): string {
-  return `HOW TO TALK:
+/**
+ * Without a scenario there is no story to evolve (and no evolve_story tool),
+ * so a lull is answered with a game or something shown on the number line.
+ */
+function buildConversationPacingBlock(hasScenario: boolean): string {
+  const talk = `HOW TO TALK:
 - Keep responses SHORT (1-3 sentences). You're on the phone with a kid.
-- Use kid-friendly analogies when explaining, but always back them up with something visible on the number line.
+- Use kid-friendly analogies when explaining, but always back them up with something visible on the number line.`
+  if (!hasScenario) {
+    return `${talk}
+
+KEEPING THE CONVERSATION ALIVE:
+- Bring something new PROACTIVELY. Don't wait for awkward silence. After 4-6 exchanges, when the opening topic settles or the child gives short answers, offer a specific game (start_game) or show them something surprising on the number line.
+- If the child's energy drops or they give one-word answers — that's your cue to suggest a specific, exciting activity right away.`
+  }
+  return `${talk}
 
 KEEPING THE CONVERSATION ALIVE:
 - Use evolve_story PROACTIVELY. Don't wait for awkward silence. Call it after 4-6 exchanges when the opening topic settles, when the child gives short answers, when you're about to pivot, or during any natural breath. Think of it like a jazz musician reaching for a new riff — you don't wait until the music stops.
@@ -838,7 +850,7 @@ export function generateNumberPersonality(
     buildCallOpeningBlock(activity, scenario, childProfile, profileFailed, availablePlayers),
     sharedHistory ? buildSharedHistoryBlock(sharedHistory) : '',
     buildMissionBlock(explorationHint, sessionActivity),
-    buildConversationPacingBlock(),
+    buildConversationPacingBlock(Boolean(scenario)),
     buildAttunement(),
     scenario ? buildScenarioBlock(scenario) : '',
     buildToolGuide(explorationList, childProfile, sessionActivity),
