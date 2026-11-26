@@ -324,6 +324,69 @@ describe('batchGetRecentBktEvidence', () => {
     expect(JSON.stringify(evidence)).not.toContain('large-trace')
   })
 
+  it('weighs legacy wrong rows stored at 0 the same way on both paths (Phase 1w, retroactive)', async () => {
+    const skill = 'fiveComplement.add.4'
+    const history = (wrong: SlotResult[]) => [
+      ...[1, 2, 3, 4].map((i) =>
+        makeSlotResult({
+          skillsExercised: [skill],
+          masteryWeight: 1,
+          timestamp: new Date(`2026-01-01T12:0${i}:00Z`),
+        })
+      ),
+      ...wrong,
+    ]
+    // Main's wrong rows: weight 0, no Phase 1 stamps (a first try, a round-1
+    // retry, a do-over, which stays 0), then a Phase 1 row stamped kind/round with weight 0
+    const legacyWrong = [
+      makeSlotResult({ skillsExercised: [skill], isCorrect: false, masteryWeight: 0 }),
+      makeSlotResult({
+        skillsExercised: [skill],
+        isCorrect: false,
+        isRetry: true,
+        epochNumber: 1,
+        masteryWeight: 0,
+      }),
+      makeSlotResult({
+        skillsExercised: [skill],
+        isCorrect: false,
+        isManualRedo: true,
+        epochNumber: 0,
+        masteryWeight: 0,
+      }),
+      makeSlotResult({
+        skillsExercised: [skill],
+        isCorrect: false,
+        kind: 'retry',
+        round: 2,
+        practiceOnly: false,
+        masteryWeight: 0,
+      }),
+    ].map((r, i) => ({ ...r, timestamp: new Date(`2026-01-01T12:1${i}:00Z`) }))
+
+    const { playerId: withWrong } = await createTestStudent(ephemeralDb.db, 'legacy-wrong')
+    await insertSession({ id: 'legacy-wrong', playerId: withWrong, results: history(legacyWrong) })
+    const { playerId: without } = await createTestStudent(ephemeralDb.db, 'no-wrong')
+    await insertSession({ id: 'no-wrong', playerId: without, results: history([]) })
+
+    const lean = (await batchGetRecentBktEvidence([withWrong], 100)).get(withWrong)!
+    const full = (await batchGetRecentSessionResults([withWrong], 100)).get(withWrong)!
+    const leanWithout = (await batchGetRecentBktEvidence([without], 100)).get(without)!
+
+    expect(lean.filter((e) => !e.isCorrect)).toEqual([
+      expect.objectContaining({ kind: 'retry', round: 2 }),
+      expect.objectContaining({ isManualRedo: true, epochNumber: 0 }),
+      expect.objectContaining({ isRetry: true, epochNumber: 1 }),
+      expect.objectContaining({ masteryWeight: 0 }),
+    ])
+    const pKnown = (e: Parameters<typeof computeBktFromHistory>[0]) =>
+      computeBktFromHistory(e, { applyDecay: false }).skills.find((s) => s.skillId === skill)!
+        .pKnown
+    expect(computeBktFromHistory(lean)).toEqual(computeBktFromHistory(full))
+    // Each of these wrong rows would have left pKnown alone at weight 0; three now count
+    expect(pKnown(lean)).toBeLessThan(pKnown(leanWithout) - 0.02)
+  })
+
   describe("the part kind's bktMode decides the mode (Phase 2)", () => {
     afterEach(() => {
       vi.restoreAllMocks()

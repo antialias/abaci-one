@@ -13,6 +13,11 @@
  * "old path"); the extracted code (the "new path") must reproduce it byte for
  * byte. Never update the snapshot to make this pass: a difference is a
  * behaviour change and needs its own decision.
+ *
+ * Phase 1w was such a decision (§8 Q10, §10 P1w-1, P1w-3) and re-recorded it:
+ * only stored `masteryWeight` values changed (a wrong try 1/2^round instead of
+ * 0, a counted do-over 1/2^round instead of 1.0); every other line is as
+ * recorded on `bbc801c48`.
  */
 
 import { eq } from 'drizzle-orm'

@@ -1762,7 +1762,7 @@ export interface RedoContext {
  * - A do-over of an item whose latest such try was correct is `practiceOnly`:
  *   weight 0, no skill-attempt bump, no redemption, skipped by every mastery,
  *   readiness, gate, health and verdict reader.
- * - Otherwise it weighs as today (weightOfTry: 1.0 correct, 0 wrong), and a
+ * - Otherwise it weighs weightOfTry: 1/2^round, right or wrong (Phase 1w), and a
  *   correct one redeems the item from the retry queue. If that leaves the current retry
  *   round with nothing to show, the cursor settles exactly as after a try: next
  *   round, next part, or completion.

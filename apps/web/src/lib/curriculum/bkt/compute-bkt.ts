@@ -9,6 +9,7 @@
 import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import { BKT_THRESHOLDS } from '../config/bkt-integration'
 import { getEffectiveResponseTimeMs } from '../timing/effective-time'
+import { evidenceWeightOf } from '../try-weight'
 import { calculateConfidence, getUncertaintyRange } from './confidence'
 import { type BlameMethod, updateOnCorrect, updateOnIncorrectWithMethod } from './conjunctive-bkt'
 import { helpWeight, responseTimeWeight } from './evidence-quality'
@@ -27,6 +28,12 @@ import type {
 export interface BktComputeExtendedOptions extends BktComputeOptions {
   /** Which blame attribution method to use for incorrect multi-skill problems */
   blameMethod?: BlameMethod
+  /**
+   * How a row's try weight is read. Default `evidenceWeightOf`; set only to
+   * replay another reading rule, as the Phase 1w re-baseline does for main's
+   * (stored weight, `masteryWeight ?? 1.0`).
+   */
+  weighTry?: (row: BktEvidence) => number
 }
 
 /**
@@ -201,9 +208,11 @@ export function computeBktFromHistory(
     const helpW = helpWeight(result.hadHelp)
     const effectiveResponseTimeMs = getEffectiveResponseTimeMs(result) ?? 0
     const rtWeight = responseTimeWeight(effectiveResponseTimeMs, result.isCorrect)
-    // Apply mastery weight from retry system (1.0 for first attempt, 0.5 for first retry, 0.25 for second retry)
-    // If masteryWeight is undefined (old data), default to 1.0
-    const retryWeight = result.masteryWeight ?? 1.0
+    // The try's weight, 1/2^round right or wrong (1.0 first, 0.5 first retry,
+    // 0.25 second): a correct row's stored weight (?? 1.0), a wrong row's
+    // re-derived from the row, so wrong tries recorded at 0 before Phase 1w
+    // count too (retroactive, §10 P1w-1)
+    const retryWeight = (opts.weighTry ?? evidenceWeightOf)(result)
     const evidenceWeight = helpW * rtWeight * retryWeight
 
     // Compute BKT updates (conjunctive model)

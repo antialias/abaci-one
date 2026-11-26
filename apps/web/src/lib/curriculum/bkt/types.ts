@@ -24,6 +24,12 @@ export type BktEvidence = Pick<
   | 'originalSource'
   | 'timingReview'
   | 'practiceOnly'
+  // What `evidenceWeightOf` reads to weigh a wrong row (Phase 1w)
+  | 'kind'
+  | 'round'
+  | 'isRetry'
+  | 'epochNumber'
+  | 'isManualRedo'
 > & {
   /** JSON persistence serializes Date values as ISO strings. */
   timestamp: Date | string

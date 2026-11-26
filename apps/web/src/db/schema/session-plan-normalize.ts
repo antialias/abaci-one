@@ -32,7 +32,7 @@ export interface Try {
   practiceOnlyDerived: boolean
   isCorrect: boolean
   answer: number
-  /** As stored; readers keep `masteryWeight ?? 1.0` */
+  /** As stored; readers weigh the row through `evidenceWeightOf` (try-weight.ts) */
   masteryWeight: number | undefined
   recordedAt: SlotResult['timestamp']
   arrayIndex: number

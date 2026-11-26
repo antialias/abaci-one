@@ -11,6 +11,7 @@
 
 import { useState } from 'react'
 import type { SlotResult } from '@/db/schema/session-plans'
+import { evidenceWeightOf, type WeighedRow } from '@/lib/curriculum/try-weight'
 import { css } from '../../../styled-system/css'
 
 /**
@@ -57,21 +58,19 @@ function formatTime(ms: number): string {
 /**
  * Get mastery weight display
  */
-function getMasteryWeightDisplay(
-  isCorrect: boolean,
-  epochNumber: number | undefined,
+export function getMasteryWeightDisplay(
+  result: WeighedRow,
   isExcluded: boolean
 ): { value: string; color: string } {
   if (isExcluded) {
     return { value: '0 (excluded)', color: 'gray' }
   }
-  if (!isCorrect) {
-    return { value: '0', color: 'red' }
-  }
-  const epoch = epochNumber ?? 0
-  const weight = 1.0 / 2 ** epoch
-  const percent = Math.round(weight * 100)
-  return { value: `${weight} (${percent}%)`, color: 'green' }
+  // The weight BKT reads: a correct row's stored weight, a wrong row's 1/2^round
+  // re-derived from the row (Phase 1w, retroactive)
+  const weight = evidenceWeightOf(result)
+  const color = result.isCorrect ? 'green' : 'red'
+  if (weight === 0) return { value: '0', color }
+  return { value: `${weight} (${Math.round(weight * 100)}%)`, color }
 }
 
 export function AttemptHistoryPanel({
@@ -240,11 +239,7 @@ export function AttemptHistoryPanel({
         {sortedResults.map((item, idx) => {
           const { result, globalIndex } = item
           const isExcluded = result.source === 'teacher-excluded'
-          const masteryWeight = getMasteryWeightDisplay(
-            result.isCorrect,
-            result.epochNumber,
-            isExcluded
-          )
+          const masteryWeight = getMasteryWeightDisplay(result, isExcluded)
           const isEditing = editingIndex === globalIndex
 
           return (
@@ -394,15 +389,13 @@ export function AttemptHistoryPanel({
                   {result.studentAnswer}
                 </span>
                 {!result.isCorrect && (
-                  <>
-                    <span
-                      className={css({
-                        color: isDark ? 'gray.500' : 'gray.400',
-                      })}
-                    >
-                      (correct: {correctAnswer})
-                    </span>
-                  </>
+                  <span
+                    className={css({
+                      color: isDark ? 'gray.500' : 'gray.400',
+                    })}
+                  >
+                    (correct: {correctAnswer})
+                  </span>
                 )}
               </div>
 
