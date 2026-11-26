@@ -20,6 +20,7 @@ import { AiFeature } from '@/lib/ai-usage/features'
 import { trackedCall } from '@/lib/ai-usage/llm-middleware'
 import { withAuth } from '@/lib/auth/withAuth'
 import { llm } from '@/lib/llm'
+import { prepareImageForLlm } from '@/lib/llm-image'
 
 const VALID_EFFORTS = ['low', 'medium', 'high', 'xhigh'] as const
 type Effort = (typeof VALID_EFFORTS)[number]
@@ -65,7 +66,12 @@ Keep your answer concise but thorough — it will be spoken aloud by an AI chara
     const images: string[] = []
     if (screenshot && typeof screenshot === 'string') {
       const base64 = screenshot.includes(',') ? screenshot.split(',')[1] : screenshot
-      images.push(`data:image/png;base64,${base64}`)
+      try {
+        images.push(await prepareImageForLlm(`data:image/png;base64,${base64}`))
+      } catch (err) {
+        // An unreadable screenshot: answer without it rather than not at all.
+        console.warn('[think-hard] screenshot dropped:', err)
+      }
     }
 
     let answer: string
@@ -79,6 +85,7 @@ Keep your answer concise but thorough — it will be spoken aloud by an AI chara
           schema: AnswerSchema,
           reasoningEffort: effortLevel,
           timeoutMs: 180_000,
+          priority: 'interactive',
         },
         { userId, feature: AiFeature.EUCLID_THINK_HARD }
       )

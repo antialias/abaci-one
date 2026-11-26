@@ -3,6 +3,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 
 const streamText = vi.fn()
 const stream = vi.fn()
@@ -38,6 +39,10 @@ vi.mock('@/components/toys/euclid/agent/attitudes', () => ({
 }))
 
 import { POST } from '../route'
+
+/** A real 1×1 PNG. */
+const PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
 
 const complete = {
   type: 'complete',
@@ -83,15 +88,17 @@ describe('POST /api/realtime/euclid/chat', () => {
 
     const res = await call({
       messages: [{ role: 'user', content: 'What is a circle?' }],
-      screenshot: 'data:image/png;base64,AAAA',
+      screenshot: `data:image/png;base64,${PNG}`,
     })
 
     expect(await sseEvents(res)).toEqual([{ text: 'Behold, ' }, { text: 'the circle.' }, '[DONE]'])
     const req = streamText.mock.calls[0][0]
     expect(req.system).toBe('SYSTEM')
-    expect(req.images).toEqual(['data:image/png;base64,AAAA'])
+    expect(req.images).toEqual([`data:image/png;base64,${PNG}`])
     expect(req.prompt).toContain('Euclid: I am ready.')
     expect(req.prompt).toContain('Student: What is a circle?')
+    expect(req.priority).toBe('interactive')
+    expect(req.signal).toBeInstanceOf(AbortSignal)
     expect(stream).not.toHaveBeenCalled()
     expect(recordLlmClientStreamUsage).toHaveBeenCalledWith(
       complete.usage,
@@ -108,7 +115,10 @@ describe('POST /api/realtime/euclid/chat', () => {
         ...complete,
         data: {
           reply: 'Let me draw it.',
-          toolCalls: [{ name: 'postulate_1', arguments: { from: 'A', to: 'B' } }],
+          toolCalls: [
+            { name: 'postulate_1', arguments: '{"from":"A","to":"B"}' },
+            { name: 'postulate_1', arguments: 'not json' },
+          ],
         },
       }
     })
@@ -136,8 +146,12 @@ describe('POST /api/realtime/euclid/chat', () => {
         arguments: { from: 'A', to: 'B' },
       },
     })
-    expect(events[2]).toBe('[DONE]')
+    expect(events[2]).toBe('[DONE]') // the malformed call was dropped
     const req = stream.mock.calls[0][0]
+    expect(req.priority).toBe('interactive')
+    // Strict-mode safe: arguments travel as a JSON string, not an open object.
+    const json = z.toJSONSchema(req.schema) as any
+    expect(json.properties.toolCalls.items.properties.arguments.type).toBe('string')
     expect(req.system).toContain('postulate_1: Join')
     expect(req.prompt).toContain('[Euclid called the tool postulate_1 with {"from":"B","to":"C"}]')
     expect(req.prompt).toContain('[Tool result: ok]')
@@ -156,5 +170,22 @@ describe('POST /api/realtime/euclid/chat', () => {
       { error: 'Something went wrong. Try again later.' },
       '[DONE]',
     ])
+  })
+
+  it('aborts the LLM request when the student cancels', async () => {
+    let seen: AbortSignal | undefined
+    streamText.mockImplementation(async function* (req: { signal: AbortSignal }) {
+      seen = req.signal
+      yield { type: 'output_delta', text: 'Hello', outputIndex: 0 }
+      await new Promise((resolve) => req.signal.addEventListener('abort', resolve))
+      throw new Error('aborted')
+    })
+
+    const res = await call({ messages: [{ role: 'user', content: 'Hello' }] })
+    const reader = res.body!.getReader()
+    await reader.read()
+    await reader.cancel()
+
+    expect(seen?.aborted).toBe(true)
   })
 })

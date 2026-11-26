@@ -11,6 +11,7 @@ import type { PostcardManifest } from '@/db/schema/number-line-postcards'
 import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
 import { readPersistentImage } from '../image-storage'
 import { createTaskLLM } from '../llm'
+import { prepareImageForLlm } from '../llm-image'
 import { createChildTask, createTask, type TaskHandle } from '../task-manager'
 import type { PostcardReviewEvent } from './events'
 
@@ -128,7 +129,7 @@ const handler: ReviewHandler = async (handle, config) => {
     return
   }
 
-  const imageDataUrl = `data:image/png;base64,${imageData.buffer.toString('base64')}`
+  const imageDataUrl = await prepareImageForLlm(imageData.buffer)
 
   // Build review prompt
   const callerNum = manifest.callerNumber

@@ -102,17 +102,12 @@ export const POST = withAuth(async (request, { userId }) => {
       )
     }
 
-    // If scenario generation failed (API quota, etc.) and we're not reusing a prior one,
-    // bail early — otherwise the call connects but the number never speaks.
-    if (!scenario && !previousScenario) {
-      console.warn('[realtime/session] scenario generation returned null for number %d', number)
-      return NextResponse.json(
-        {
-          error: 'Phone calls are taking a break right now. Try again later!',
-          code: 'quota_exceeded',
-        },
-        { status: 502 }
-      )
+    // No scenario (the LLM was slow or failed): the call still goes ahead. The
+    // answering instructions have their own opening for this case, and the
+    // scenario no longer comes from OpenAI, so its failure says nothing about
+    // whether the realtime call itself can connect.
+    if (!scenario) {
+      console.warn('[realtime/session] no scenario for number %d; answering without one', number)
     }
 
     // Use answering mode for initial session — focused greeting prompt + minimal tools

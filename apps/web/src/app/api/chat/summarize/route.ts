@@ -59,7 +59,12 @@ export const POST = withAuth(async (request, { userId }) => {
 
     const response = await trackedCall(
       llm,
-      { system: SUMMARIZE_PROMPT, prompt: userPrompt, schema: SummarySchema },
+      {
+        system: SUMMARIZE_PROMPT,
+        prompt: userPrompt,
+        schema: SummarySchema,
+        priority: 'interactive',
+      },
       { userId, feature: AiFeature.CHAT_SUMMARIZE }
     )
     const summary = response.data.summary.trim()

@@ -62,7 +62,10 @@ const EvolutionSchema = z.object({
   suggestion: z.string().describe('What the number and child might try next'),
 })
 
-/** Scenario calls sit in the path of a live phone call: fail fast to null. */
+/**
+ * Scenario calls sit in the path of a live phone call: one attempt, 30 s in
+ * all (the wait for a run slot included), then null.
+ */
 const SCENARIO_TIMEOUT_MS = 30_000
 
 async function callScenarioLlm<T extends z.ZodType>(
@@ -71,7 +74,12 @@ async function callScenarioLlm<T extends z.ZodType>(
   userId?: string
 ): Promise<z.infer<T> | null> {
   try {
-    const full = { ...request, timeoutMs: SCENARIO_TIMEOUT_MS, maxRetries: 1 }
+    const full = {
+      ...request,
+      timeoutMs: SCENARIO_TIMEOUT_MS,
+      maxRetries: 0,
+      priority: 'interactive' as const,
+    }
     const response = userId
       ? await trackedCall(llm, full, { userId, feature })
       : await llm.call(full)

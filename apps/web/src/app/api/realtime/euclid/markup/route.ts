@@ -154,6 +154,7 @@ CRITICAL RULES — read carefully:
         reasoningEffort: 'low',
         maxRetries: 1,
         timeoutMs: 60_000,
+        priority: 'interactive',
       },
       { userId, feature: AiFeature.EUCLID_MARKUP }
     )

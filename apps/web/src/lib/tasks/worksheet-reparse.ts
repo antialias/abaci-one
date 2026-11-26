@@ -15,7 +15,10 @@ import sharp from 'sharp'
 import { z } from 'zod'
 import { db } from '@/db'
 import { type ParsingStatus, practiceAttachments } from '@/db/schema/practice-attachments'
+import { AiFeature } from '@/lib/ai-usage/features'
+import { createUsageRecordingMiddleware } from '@/lib/ai-usage/llm-middleware'
 import { createPersistenceMiddleware, LLM_SNAPSHOT_INTERVAL_MS, llm } from '@/lib/llm'
+import { prepareImageForLlm } from '@/lib/llm-image'
 import { createTask, type TaskHandle } from '../task-manager'
 import {
   type BoundingBox,
@@ -40,6 +43,8 @@ export interface WorksheetReparseInput {
   boundingBoxes: BoundingBox[]
   /** Additional context for the LLM */
   additionalContext?: string
+  /** Who asked, for AI usage records */
+  _userId?: string
 }
 
 /**
@@ -201,6 +206,7 @@ export async function startWorksheetReparse(input: WorksheetReparseInput): Promi
           problemIndices,
           boundingBoxes,
           additionalContext,
+          _userId: config._userId,
         })
       } catch (error) {
         // Update DB with error
@@ -248,10 +254,20 @@ async function runReparse(
   const uploadDir = join(process.cwd(), 'data', 'uploads', 'players', playerId)
   const filepath = join(uploadDir, attachment.filename)
   const imageBuffer = await readFile(filepath)
-  const mimeType = attachment.mimeType || 'image/jpeg'
 
   // Build the prompt
   const prompt = buildSingleProblemPrompt(additionalContext)
+
+  // Usage is recorded per problem call, as worksheet:reparse
+  const usageMiddleware = config._userId
+    ? [
+        createUsageRecordingMiddleware({
+          userId: config._userId,
+          feature: AiFeature.WORKSHEET_REPARSE,
+          backgroundTaskId: handle.id,
+        }),
+      ]
+    : []
 
   // Process each selected problem
   const reparsedProblems: Array<{
@@ -294,8 +310,7 @@ async function runReparse(
     try {
       // Crop image to bounding box
       const croppedBuffer = await cropToBoundingBox(imageBuffer, box)
-      const base64Cropped = croppedBuffer.toString('base64')
-      const croppedDataUrl = `data:${mimeType};base64,${base64Cropped}`
+      const croppedDataUrl = await prepareImageForLlm(croppedBuffer)
 
       // Create per-problem middleware-enhanced client (captures problemIndex in closure)
       const problemLLM = llm.with(
@@ -316,6 +331,9 @@ async function runReparse(
               text,
             } as WorksheetReparseEvent)
           },
+          onOutputReset: () => {
+            handle.emitTransient({ type: 'output_reset', problemIndex } as WorksheetReparseEvent)
+          },
           onReasoningSnapshot: (text) => {
             handle.emit({
               type: 'reasoning_snapshot',
@@ -330,7 +348,8 @@ async function runReparse(
               text,
             } as WorksheetReparseEvent)
           },
-        })
+        }),
+        ...usageMiddleware
       )
 
       // Stream the LLM call for this problem

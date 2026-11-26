@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import {
-  parsingReducer,
-  initialParsingState,
-  isParsingAttachment,
-  isAnyParsingActive,
-  getStreamingStatus,
-  getStreamingState,
-  getActiveParsingCount,
-  type ParsingAction,
-} from '../state-machine'
 import type { WorksheetParsingResult } from '../schemas'
+import {
+  getActiveParsingCount,
+  getStreamingState,
+  getStreamingStatus,
+  initialParsingState,
+  isAnyParsingActive,
+  isParsingAttachment,
+  type ParsingAction,
+  parsingReducer,
+} from '../state-machine'
 
 const TEST_ATTACHMENT_ID = 'attachment-1'
 const TEST_ATTACHMENT_ID_2 = 'attachment-2'
@@ -193,6 +193,32 @@ describe('parsingReducer', () => {
 
       stream = state.activeStreams.get(TEST_ATTACHMENT_ID)
       expect(stream?.outputText).toBe('{"problems": [{"problemNumber": 1}')
+    })
+  })
+
+  describe('STREAM_OUTPUT_RESET', () => {
+    it('clears the output so a retried answer does not join the voided one', () => {
+      let state = parsingReducer(initialParsingState, {
+        type: 'START_STREAMING',
+        attachmentId: TEST_ATTACHMENT_ID,
+        streamType: 'initial',
+      })
+      state = parsingReducer(state, {
+        type: 'STREAM_OUTPUT',
+        attachmentId: TEST_ATTACHMENT_ID,
+        text: '{"problems": [',
+      })
+      state = parsingReducer(state, {
+        type: 'STREAM_OUTPUT_RESET',
+        attachmentId: TEST_ATTACHMENT_ID,
+      })
+      state = parsingReducer(state, {
+        type: 'STREAM_OUTPUT',
+        attachmentId: TEST_ATTACHMENT_ID,
+        text: '{"problems": []}',
+      })
+
+      expect(state.activeStreams.get(TEST_ATTACHMENT_ID)?.outputText).toBe('{"problems": []}')
     })
   })
 

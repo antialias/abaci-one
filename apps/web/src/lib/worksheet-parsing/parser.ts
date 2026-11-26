@@ -11,6 +11,7 @@ import {
   type ReasoningEffort,
   type StreamEvent,
 } from '@/lib/llm'
+import { prepareImageForLlm } from '../llm-image'
 import { buildWorksheetParsingPrompt, type PromptOptions } from './prompt-builder'
 import { type WorksheetParsingResult, WorksheetParsingResultSchema } from './schemas'
 
@@ -177,7 +178,7 @@ export async function parseWorksheetImage(
   // Make the vision call
   const response = await llm.vision({
     prompt,
-    images: [imageDataUrl],
+    images: [await prepareImageForLlm(imageDataUrl)],
     schema: WorksheetParsingResultSchema,
     maxRetries,
     onProgress,
@@ -279,7 +280,7 @@ export async function* streamParseWorksheetImage(
   // Stream the response using provided client (with middleware)
   const stream = llmClient.stream({
     prompt,
-    images: [imageDataUrl],
+    images: [await prepareImageForLlm(imageDataUrl)],
     schema: WorksheetParsingResultSchema,
     provider,
     model,

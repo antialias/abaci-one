@@ -93,6 +93,9 @@ export function createTaskLLM<
       onOutputDelta: (text, _accumulated) => {
         handle.emitTransient({ type: 'output_delta', text } as TEvent)
       },
+      onOutputReset: () => {
+        handle.emitTransient({ type: 'output_reset' } as TEvent)
+      },
       onReasoningSnapshot: (text) => {
         handle.emit({ type: 'reasoning_snapshot', text } as TEvent)
       },

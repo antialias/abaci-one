@@ -4,6 +4,7 @@ import { SINGLE_CARRY_PATH } from '@/app/create/worksheets/progressionPath'
 import { AiFeature } from '@/lib/ai-usage/features'
 import { trackedCall } from '@/lib/ai-usage/llm-middleware'
 import { llm } from '@/lib/llm'
+import { prepareImageForLlm } from '@/lib/llm-image'
 
 /**
  * Grading result structure returned by the vision model
@@ -187,9 +188,8 @@ export async function gradeWorksheetWithVision(
 ): Promise<GradingResult> {
   // Read and encode image
   const imageBuffer = await readFile(imagePath)
-  const base64Image = imageBuffer.toString('base64')
-  const mimeType = imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg'
-  const dataUrl = `data:${mimeType};base64,${base64Image}`
+  // Its real type from its bytes, scaled to what the API takes
+  const dataUrl = await prepareImageForLlm(imageBuffer)
 
   let lastError: Error | null = null
   let validationError: ValidationError | undefined

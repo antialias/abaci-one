@@ -103,6 +103,8 @@ export type ParsingAction =
   | { type: 'STREAM_CONNECTING'; attachmentId: string }
   | { type: 'STREAM_REASONING'; attachmentId: string; text: string; append?: boolean }
   | { type: 'STREAM_OUTPUT'; attachmentId: string; text: string }
+  /** The output so far is void: the model is starting its answer again */
+  | { type: 'STREAM_OUTPUT_RESET'; attachmentId: string }
   | {
       type: 'STREAM_PROBLEM_COMPLETE'
       attachmentId: string
@@ -204,6 +206,15 @@ export function parsingReducer(
           reasoningText: action.append ? stream.reasoningText + action.text : action.text,
           progressMessage:
             stream.streamType === 'initial' ? 'AI is thinking...' : stream.progressMessage,
+        })),
+      }
+
+    case 'STREAM_OUTPUT_RESET':
+      return {
+        ...state,
+        activeStreams: updateStream(state.activeStreams, action.attachmentId, (stream) => ({
+          ...stream,
+          outputText: '',
         })),
       }
 

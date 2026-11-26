@@ -53,6 +53,7 @@ export type WorksheetParseEvent =
     }
   | { type: 'reasoning'; text: string }
   | { type: 'output_delta'; text: string }
+  | { type: 'output_reset' }
   | { type: 'reasoning_snapshot'; text: string }
   | { type: 'output_snapshot'; text: string }
   | {
@@ -96,6 +97,7 @@ export type WorksheetReparseEvent =
       text: string
       outputIndex?: number
     }
+  | { type: 'output_reset'; problemIndex: number }
   | { type: 'reasoning_snapshot'; problemIndex: number; text: string }
   | { type: 'output_snapshot'; problemIndex: number; text: string }
   | {

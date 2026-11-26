@@ -36,7 +36,10 @@ describe('generateScenario', () => {
     expect(result).toEqual(scenario)
     const [, req, ctx] = trackedCall.mock.calls[0]
     expect(req.prompt).toContain('Number: 6')
+    // One attempt, 30 s all told (main's budget), ahead of background work
     expect(req.timeoutMs).toBe(30_000)
+    expect(req.maxRetries).toBe(0)
+    expect(req.priority).toBe('interactive')
     expect(ctx.userId).toBe('u1')
   })
 

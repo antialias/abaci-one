@@ -20,6 +20,7 @@ import { getTeacherConfig } from '@/components/toys/euclid/characters/registry'
 import { AiFeature } from '@/lib/ai-usage/features'
 import { withAuth } from '@/lib/auth/withAuth'
 import { llm, type StreamEvent } from '@/lib/llm'
+import { prepareImageForLlm } from '@/lib/llm-image'
 import type { RealtimeTool } from '@/lib/voice/types'
 
 interface ChatMessage {
@@ -58,6 +59,18 @@ function describeTools(tools: RealtimeTool[]): string {
     .join('\n')
 }
 
+/** A tool call's arguments, or null when they are not a JSON object. */
+function parseToolArguments(json: string): Record<string, unknown> | null {
+  try {
+    const parsed: unknown = JSON.parse(json || '{}')
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null
+  } catch {
+    return null
+  }
+}
+
 function toolTurnSchema(tools: RealtimeTool[]) {
   const names = tools.map((t) => t.name) as [string, ...string[]]
   return z.object({
@@ -66,9 +79,13 @@ function toolTurnSchema(tools: RealtimeTool[]) {
       .array(
         z.object({
           name: z.enum(names).describe('The tool to call'),
+          // A JSON string, not an object: an open-ended object breaks OpenAI
+          // strict mode, which the kill switch would use.
           arguments: z
-            .record(z.string(), z.unknown())
-            .describe("Arguments matching the tool's parameters"),
+            .string()
+            .describe(
+              'The arguments as a JSON object, written as a string, matching the tool\'s parameters, e.g. {"from":"A","to":"B"}'
+            ),
         })
       )
       .describe('Tools to call now, in order; empty when you are not calling any'),
@@ -141,7 +158,12 @@ export const POST = withAuth(async (request, { userId }) => {
   const images: string[] = []
   if (screenshot && typeof screenshot === 'string') {
     const base64 = screenshot.includes(',') ? screenshot.split(',')[1] : screenshot
-    images.push(`data:image/png;base64,${base64}`)
+    try {
+      images.push(await prepareImageForLlm(`data:image/png;base64,${base64}`))
+    } catch (err) {
+      // An unreadable screenshot: answer without it rather than not at all.
+      console.warn('[euclid-chat-api] screenshot dropped:', err)
+    }
   }
   const tools = clientTools && clientTools.length > 0 ? clientTools : undefined
   const screenshotNote = images.length
@@ -173,7 +195,8 @@ export const POST = withAuth(async (request, { userId }) => {
   }
 
   let cancelled = false
-  let running: AsyncGenerator<unknown, void, unknown> | undefined
+  // Ends the LLM request: while it waits for a run slot, or while it runs.
+  const abort = new AbortController()
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -186,8 +209,9 @@ export const POST = withAuth(async (request, { userId }) => {
             reasoningEffort: 'low',
             maxRetries: 1,
             timeoutMs: 120_000,
+            priority: 'interactive',
+            signal: abort.signal,
           })
-          running = events
           for await (const event of events) {
             if (cancelled) break
             if (event.type === 'output_delta' && event.text) {
@@ -205,19 +229,28 @@ export const POST = withAuth(async (request, { userId }) => {
             reasoning: { effort: 'low' },
             maxRetries: 1,
             timeoutMs: 180_000,
+            priority: 'interactive',
+            signal: abort.signal,
           })
-          running = events
           for await (const event of events) {
             if (cancelled) break
             if (event.type !== 'complete') continue
             await recordUsage(event)
             if (event.data.reply) send(controller, { text: event.data.reply })
             for (const call of event.data.toolCalls) {
+              const args = parseToolArguments(call.arguments)
+              if (!args) {
+                console.warn(
+                  '[euclid-chat-api] dropped %s: arguments are not a JSON object',
+                  call.name
+                )
+                continue
+              }
               send(controller, {
                 toolCall: {
                   callId: `call_${crypto.randomUUID()}`,
                   name: call.name,
-                  arguments: call.arguments,
+                  arguments: args,
                 },
               })
             }
@@ -243,7 +276,7 @@ export const POST = withAuth(async (request, { userId }) => {
     cancel() {
       // The student closed the chat or sent another message: end the run.
       cancelled = true
-      void running?.return(undefined)
+      abort.abort()
     },
   })
 
