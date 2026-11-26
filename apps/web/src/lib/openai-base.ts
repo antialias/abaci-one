@@ -1,6 +1,7 @@
 /**
- * Base URL for the OpenAI calls that stay on OpenAI: realtime voice
- * (`…/realtime/*`) and speech (`…/audio/speech`).
+ * Base URL for the one call that stays on OpenAI: realtime voice
+ * (`…/realtime/*`). Speech goes to ElevenLabs through the proxy's door
+ * (`src/lib/speech/synthesize.ts`).
  *
  * Realtime voice is the one documented exception to "every LLM call goes
  * through `@soroban/llm-client`": a live speech-to-speech session has no
@@ -21,7 +22,7 @@
  */
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1'
 
-/** Base URL for media/realtime calls (`…/audio/speech`, `…/realtime/*`). */
+/** Base URL for realtime voice calls (`…/realtime/*`). */
 export function openAiMediaBaseUrl(): string {
   return (process.env.OPENAI_MEDIA_BASE_URL || DEFAULT_OPENAI_BASE_URL).replace(/\/+$/, '')
 }
