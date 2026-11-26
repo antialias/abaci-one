@@ -38,7 +38,7 @@ export async function prepareImageForLlm(image: string | Buffer): Promise<string
 
   const sharp = (await import('sharp')).default
   const meta = await sharp(bytes).metadata()
-  const format = meta.format === 'jpg' ? 'jpeg' : meta.format
+  const format = meta.format // sharp names JPEG by its decoder, 'jpeg'
   const longEdge = Math.max(meta.width ?? 0, meta.height ?? 0)
   const upright = !meta.orientation || meta.orientation === 1
 
