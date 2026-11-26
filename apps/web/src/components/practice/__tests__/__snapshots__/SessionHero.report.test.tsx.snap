@@ -1,0 +1,29 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`SessionHero from the session report > an abandoned session shows its real outcome and wall time to the last activity 1`] = `
+{
+  "practice-types": "🧮 Use Abacus 🧠 Visualize 📝 Linear",
+  "session-outcome": "Not finished",
+  "stat-break": "5 minutes break",
+  "stat-final": "100% right by the end",
+  "stat-first-try": "71% First try",
+  "stat-fixed": "2 fixed in retries",
+  "stat-planned": "7 of 10 planned",
+  "stat-problems": "7 Problems · 9 tries",
+  "stat-time": "< 1 Active minute",
+  "stat-wall": "10 minutes total",
+}
+`;
+
+exports[`SessionHero from the session report > shows the ten-problem acceptance numbers 1`] = `
+{
+  "practice-types": "🧮 Use Abacus 🧠 Visualize 📝 Linear",
+  "stat-break": "5 minutes break",
+  "stat-final": "100% right by the end",
+  "stat-first-try": "70% First try",
+  "stat-fixed": "3 fixed in retries",
+  "stat-problems": "10 Problems · 13 tries",
+  "stat-time": "< 1 Active minute",
+  "stat-wall": "12 minutes total",
+}
+`;

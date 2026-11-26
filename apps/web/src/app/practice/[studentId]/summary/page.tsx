@@ -8,6 +8,7 @@ import {
   getRecentSessionResults,
   getRecentSessions,
 } from '@/lib/curriculum/server'
+import { getSessionReport, loadSessionReport } from '@/lib/curriculum/session-report-server'
 import { isEnabled } from '@/lib/feature-flags'
 import { getEffectiveTierForStudent } from '@/lib/subscription'
 import { getUserId } from '@/lib/viewer'
@@ -15,6 +16,11 @@ import { SummaryClient } from './SummaryClient'
 
 // Disable caching for this page - session data should be fresh
 export const dynamic = 'force-dynamic'
+
+function reportFailed(error: unknown): null {
+  console.error('Error building session report:', error)
+  return null
+}
 
 interface SummaryPageProps {
   params: Promise<{ studentId: string }>
@@ -71,22 +77,25 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
   // stored per-session value could be poisoned by legacy/idle-capped samples.
   const avgSecondsPerProblem = paceAssessment.avgSecondsPerProblem
 
-  // Calculate previous session's accuracy for trend comparison
-  // The current session (if completed) is included in recentSessions, so we need to find the one after it
-  let previousAccuracy: number | null = null
+  // The previous session, for the trend: the current session (if ended) is in
+  // recentSessions (newest first), so the previous one is the next after it
+  let previousSessionId: string | null = null
   if (sessionToShow && recentSessions.length > 0) {
-    // Find index of current session in recent sessions
     const currentIndex = recentSessions.findIndex((s) => s.id === sessionToShow.id)
-    // Previous session is the next one in the list (since ordered newest first)
     const previousSession = currentIndex >= 0 ? recentSessions[currentIndex + 1] : recentSessions[0]
     if (previousSession && previousSession.id !== sessionToShow.id) {
-      // Get accuracy from the session - it's stored as problemsCorrect/problemsAttempted
-      previousAccuracy =
-        previousSession.problemsAttempted > 0
-          ? previousSession.problemsCorrect / previousSession.problemsAttempted
-          : null
+      previousSessionId = previousSession.id
     }
   }
+
+  // Both sessions' numbers come from their reports (§4, Phase 4b), so the
+  // trend compares first-try accuracy with first-try accuracy
+  // A report that fails to build renders as null: the client's live report fills in
+  const [initialReport, previousReport] = await Promise.all([
+    sessionToShow ? loadSessionReport(sessionToShow).catch(reportFailed) : null,
+    previousSessionId ? getSessionReport(previousSessionId).catch(reportFailed) : null,
+  ])
+  const previousAccuracy = previousReport?.totals.firstTryAccuracy ?? null
 
   // Check if session songs are enabled for this student
   const [songFlagEnabled, tierResult] = await Promise.all([
@@ -100,6 +109,8 @@ export default async function SummaryPage({ params, searchParams }: SummaryPageP
       studentId={studentId}
       player={player}
       session={sessionToShow}
+      initialReport={initialReport}
+      viewerId={viewerId}
       avgSecondsPerProblem={avgSecondsPerProblem}
       paceAssessment={paceAssessment}
       problemHistory={problemHistory}

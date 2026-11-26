@@ -22,7 +22,7 @@ import { ScrollspyNav } from '@/components/practice/ScrollspyNav'
 import { SessionHero } from '@/components/practice/SessionHero'
 import { SessionSongPlayer } from '@/components/practice/SessionSongPlayer'
 import { SkillsPanel } from '@/components/practice/SkillsPanel'
-import { countedTries, summarizeTries } from '@/db/schema/session-plan-helpers'
+import { countedTries } from '@/db/schema/session-plan-helpers'
 
 // Dynamic import: StartPracticeModal → SkillTutorialLauncher → TutorialPlayer → @soroban/abacus-react
 // This breaks the dependency chain that pulls the entire abacus library into page.js
@@ -34,6 +34,7 @@ const StartPracticeModal = dynamic(
 import {
   filterProblemsNeedingAttention,
   getProblemsWithContext,
+  reportedProblems,
 } from '@/components/practice/sessionSummaryUtils'
 import type { ProblemCorrection } from '@/components/worksheet-parsing'
 import type { ParsingStatus } from '@/db/schema/practice-attachments'
@@ -65,6 +66,7 @@ import { usePhotoViewer } from '@/hooks/usePhotoViewer'
 import { canUploadPhotos, usePlayerAccess } from '@/hooks/usePlayerAccess'
 import { useSessionMode } from '@/hooks/useSessionMode'
 import { useSessionRecording } from '@/hooks/useSessionRecording'
+import { useSessionReport } from '@/hooks/useSessionReport'
 import {
   getPendingAttachmentId,
   useApproveAndCreateSession,
@@ -76,12 +78,14 @@ import {
 } from '@/hooks/useWorksheetParsing'
 import { computeBktFromHistory, type SkillBktResult } from '@/lib/curriculum/bkt'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import type { SessionReport } from '@/lib/curriculum/session-report'
 import { countUnresolvedFlagged } from '@/lib/curriculum/timing/effective-time'
 import type { PaceAssessment } from '@/lib/curriculum/timing/pace-estimation'
 import { api } from '@/lib/queryClient'
 import { attachmentKeys } from '@/lib/queryKeys'
 import type { SessionAttachmentResponse } from '@/types/attachments'
 import { css } from '../../../../../styled-system/css'
+import { pickSummaryReport } from './summaryReport'
 
 // Combined height of sticky elements above content area
 // Main nav (80px) + Sub-nav (~56px with padding)
@@ -109,6 +113,13 @@ interface SummaryClientProps {
   studentId: string
   player: Player
   session: SessionPlan | null
+  /**
+   * The session's report, built on the server for the first render
+   * (`loadSessionReport`); kept fresh on the client by `useSessionReport`.
+   */
+  initialReport?: SessionReport | null
+  /** The signed-in viewer (joins the report's push room) */
+  viewerId?: string | null
   /** Average seconds per problem from recent sessions */
   avgSecondsPerProblem?: number
   /** Outlier-aware pace assessment (#157) — powers the Start-Practice timing notice. */
@@ -117,7 +128,7 @@ interface SummaryClientProps {
   problemHistory?: ProblemResultWithContext[]
   /** Whether we just transitioned from active practice to this summary */
   justCompleted?: boolean
-  /** Previous session accuracy (0-1) for trend comparison */
+  /** Previous session's first-try accuracy (0-1, from its report) for trend comparison */
   previousAccuracy?: number | null
   /** Whether session song generation is available (feature flag + family tier) */
   songEnabled?: boolean
@@ -136,6 +147,8 @@ export function SummaryClient({
   studentId,
   player,
   session,
+  initialReport = null,
+  viewerId = null,
   avgSecondsPerProblem = 40,
   paceAssessment = null,
   problemHistory,
@@ -257,21 +270,27 @@ export function SummaryClient({
 
   const hasPhotos = attachments.length > 0
 
-  const isInProgress = session?.startedAt && !session?.completedAt
+  // The session report (§4, Phase 4b): every number the summary shows. The
+  // server's copy renders first; pushes and invalidation keep it current.
+  const { data: liveReport } = useSessionReport(
+    session && viewerId ? { playerId: studentId, planId: session.id, viewerId } : null
+  )
+  const report = pickSummaryReport(session?.id ?? null, initialReport, liveReport)
 
-  // Check if session has actual problems (not just photos)
-  // Practice-only do-overs count nowhere in the summary
+  // The report's outcome, never `completedAt`: an abandoned row may have none
+  const isInProgress = report?.outcome === 'in_progress'
+
+  // Per-try rows for the review panels (skills, timing flags, problems to
+  // review). Practice-only do-overs count nowhere in the summary.
   const sessionResults = useMemo(
     () => countedTries(session?.results as SlotResult[] | undefined),
     [session?.results]
   )
-  const hasProblems = sessionResults.length > 0
+  // Whether the session has problems (not just photos), from the report
+  const hasProblems = (report?.totals.tries ?? 0) > 0
 
-  // Compute current session accuracy for guest banner
-  const sessionAccuracy = useMemo(() => {
-    if (sessionResults.length === 0) return null
-    return summarizeTries(sessionResults).accuracy
-  }, [sessionResults])
+  // First-try accuracy for the guest banner, from the report
+  const sessionAccuracy = report?.totals.firstTryAccuracy ?? null
 
   // Count timings in this session that still NEED adult review (#158): flagged
   // by the classifier and not yet resolved (omitted / adjusted / confirmed). This
@@ -303,7 +322,11 @@ export function SummaryClient({
   // Get problems that need attention (incorrect, slow, or used heavy help)
   const problemsNeedingAttention = useMemo(() => {
     if (!session || !hasProblems) return []
-    const problemsWithContext = getProblemsWithContext(session)
+    // Only problems the report counts, so "N of M" has M = totals.problems
+    const problemsWithContext = reportedProblems(
+      getProblemsWithContext(session),
+      session.results as SlotResult[]
+    )
     return filterProblemsNeedingAttention(problemsWithContext, autoPauseInfo.threshold)
   }, [session, hasProblems, autoPauseInfo.threshold])
 
@@ -326,7 +349,7 @@ export function SummaryClient({
 
   // Determine header text based on session state
   // Only shown for photo-only sessions and no-session state
-  // (SessionSummary handles its own header for sessions with problems)
+  // (SessionHero is the header for sessions with problems)
   const headerTitle = isInProgress
     ? 'Session In Progress'
     : session
@@ -374,7 +397,7 @@ export function SummaryClient({
                 margin: '0 auto',
               })}
             >
-              {/* Header - only show when SessionSummary won't (photo-only or no session) */}
+              {/* Header - only when there is no SessionHero (photo-only or no session) */}
               {!hasProblems && (
                 <header
                   className={css({
@@ -450,10 +473,10 @@ export function SummaryClient({
                       })}
                     >
                       {/* Session Hero - celebration header, stats, trend */}
-                      {hasProblems && (
+                      {hasProblems && report && (
                         <div data-scrollspy-section="overview">
                           <SessionHero
-                            plan={session}
+                            report={report}
                             studentName={player.name}
                             justCompleted={justCompleted}
                             previousAccuracy={previousAccuracy ?? null}
@@ -631,7 +654,7 @@ export function SummaryClient({
                             problems={problemsNeedingAttention}
                             results={sessionResults}
                             skillMasteries={skillMasteries}
-                            totalProblems={sessionResults.length}
+                            totalProblems={report?.totals.problems ?? 0}
                             isDark={isDark}
                           />
                         </div>

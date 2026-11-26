@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPart, SessionPlan } from '@/db/schema/session-plans'
+import { useSessionReport } from '@/hooks/useSessionReport'
+import { useUserId } from '@/hooks/useUserId'
 import { css } from '../../../styled-system/css'
 import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'
 import { SpeedMeter } from './SpeedMeter'
@@ -119,7 +121,7 @@ export interface SessionPausedModalProps {
     emoji: string
     color: string
   }
-  /** Current session plan (for progress info) */
+  /** Current session plan (its id and parts; progress comes from its report) */
   session: SessionPlan
   /** Information about the pause (optional for backwards compatibility) */
   pauseInfo?: PauseInfo
@@ -169,6 +171,22 @@ export function SessionPausedModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pauseInfo?.pausedAt?.getTime(), pauseInfo?.reason])
 
+  // Progress from the session report (§4, Phase 4b): `position.progress`,
+  // the same count every view shows. Fetched while the modal is open and kept
+  // current by the report's pushes.
+  const { data: viewerId } = useUserId()
+  const { data: liveReport } = useSessionReport(
+    viewerId ? { playerId: session.playerId, planId: session.id, viewerId } : null,
+    { enabled: isOpen }
+  )
+  // A cached report from an earlier pause is older than the plan: show no
+  // count until a report at least as new as the plan arrives
+  const report =
+    liveReport?.sessionId === session.id && liveReport.rowVersion >= (session.rowVersion ?? 0)
+      ? liveReport
+      : undefined
+  const progress = report?.position?.progress ?? null
+
   useEffect(() => {
     if (!isOpen || !pauseInfo?.pausedAt) {
       setPauseDuration(0)
@@ -188,13 +206,11 @@ export function SessionPausedModal({
 
   if (!isOpen) return null
 
-  // Calculate progress — count only original attempts, not retries or manual redos
-  const completedProblems = session.results.filter((r) => !r.isRetry && !r.isManualRedo).length
-  const totalProblems = session.parts.reduce((sum, part) => sum + part.slots.length, 0)
   const progressPercent =
-    totalProblems > 0 ? Math.round((completedProblems / totalProblems) * 100) : 0
+    progress && progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0
 
-  const currentPart = session.parts[session.currentPartIndex]
+  const currentPartIndex = report?.position?.currentItem?.partIndex ?? session.currentPartIndex
+  const currentPart = session.parts[currentPartIndex]
 
   // Determine greeting based on pause reason
   const isAutoTimeout = pauseInfo?.reason === 'auto-timeout'
@@ -464,7 +480,7 @@ export function SessionPausedModal({
                 color: isDark ? 'green.300' : 'green.600',
               })}
             >
-              {completedProblems} of {totalProblems} done!
+              {progress ? `${progress.done} of ${progress.total} done!` : null}
             </span>
           </div>
 

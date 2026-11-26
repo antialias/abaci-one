@@ -4,7 +4,7 @@
  * Utilities for filtering and organizing session results for display.
  */
 
-import { countedTries } from '@/db/schema/session-plan-helpers'
+import { countedTries, isExcludedTry } from '@/db/schema/session-plan-helpers'
 import type { ProblemSlot, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 
 // ============================================================================
@@ -104,6 +104,27 @@ export function getProblemsWithContext(plan: SessionPlan): ProblemWithContext[] 
   }
 
   return problems
+}
+
+/**
+ * The problems the session report counts (§4): an item is attempted when its
+ * first counted try (its `first` try, else its earliest counted one) is not
+ * teacher-excluded. Keeps a list's count inside the report's `problems`.
+ */
+export function reportedProblems<T extends ProblemWithContext>(
+  problems: readonly T[],
+  results: readonly SlotResult[]
+): T[] {
+  const firstTry = new Map<string, SlotResult>()
+  for (const r of countedTries(results)) {
+    const key = `${r.partNumber}-${r.slotIndex}`
+    const held = firstTry.get(key)
+    if (!held || (r.kind === 'first' && held.kind !== 'first')) firstTry.set(key, r)
+  }
+  return problems.filter((p) => {
+    const first = firstTry.get(`${p.part.partNumber}-${p.slot.index}`)
+    return first !== undefined && !isExcludedTry(first)
+  })
 }
 
 /**
