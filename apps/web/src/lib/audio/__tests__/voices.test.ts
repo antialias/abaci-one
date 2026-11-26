@@ -44,6 +44,8 @@ describe('voice folders', () => {
     expect(isReservedVoiceName('ONYX')).toBe(true)
     expect(isReservedVoiceName('el-anything')).toBe(true)
     expect(isReservedVoiceName('EL-anything')).toBe(true)
+    expect(isReservedVoiceName('songs')).toBe(true)
+    expect(isReservedVoiceName('Songs')).toBe(true)
     expect(isReservedVoiceName('Thomas Hallock')).toBe(false)
   })
 })

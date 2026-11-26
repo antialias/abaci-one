@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { join } from 'path'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
-import { isSafeVoiceFolder } from '@/lib/audio/voices'
+import { isNonVoiceFolder, isSafeVoiceFolder } from '@/lib/audio/voices'
 import { withAuth } from '@/lib/auth/withAuth'
 
 function audioDir(): string {
@@ -28,6 +28,12 @@ export const DELETE = withAuth(
       // The folder is removed recursively: it must be one folder inside data/audio/.
       if (!isSafeVoiceFolder(voice.trim())) {
         return NextResponse.json({ error: 'Invalid voice' }, { status: 400 })
+      }
+      if (isNonVoiceFolder(voice)) {
+        return NextResponse.json(
+          { error: `"${voice.trim()}" is not a voice folder and can't be removed here.` },
+          { status: 400 }
+        )
       }
 
       // Check if this is the active voice

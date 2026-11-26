@@ -2,9 +2,9 @@ import { eq } from 'drizzle-orm'
 import { type NextRequest, NextResponse } from 'next/server'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS } from '@/db/schema'
-import { withAuth } from '@/lib/auth/withAuth'
-
 import type { VoiceSourceData } from '@/lib/audio/voiceSource'
+import { isNonVoiceFolder, isSafeVoiceFolder } from '@/lib/audio/voices'
+import { withAuth } from '@/lib/auth/withAuth'
 
 async function ensureDefaultSettings() {
   const existing = await db.select().from(appSettings).where(eq(appSettings.id, 'default')).limit(1)
@@ -18,6 +18,11 @@ async function ensureDefaultSettings() {
   }
 }
 
+/** A voice folder name: one path segment, never a non-voice folder such as `songs`. */
+function isVoiceName(name: unknown): boolean {
+  return typeof name === 'string' && isSafeVoiceFolder(name) && !isNonVoiceFolder(name)
+}
+
 function isValidVoiceChain(chain: unknown): chain is VoiceSourceData[] {
   if (!Array.isArray(chain)) return false
   return chain.every(
@@ -25,11 +30,8 @@ function isValidVoiceChain(chain: unknown): chain is VoiceSourceData[] {
       (entry &&
         typeof entry === 'object' &&
         entry.type === 'pregenerated' &&
-        typeof entry.name === 'string') ||
-      (entry &&
-        typeof entry === 'object' &&
-        entry.type === 'custom' &&
-        typeof entry.name === 'string') ||
+        isVoiceName(entry.name)) ||
+      (entry && typeof entry === 'object' && entry.type === 'custom' && isVoiceName(entry.name)) ||
       (entry && typeof entry === 'object' && entry.type === 'browser-tts') ||
       (entry && typeof entry === 'object' && entry.type === 'subtitle') ||
       (entry && typeof entry === 'object' && entry.type === 'generate')

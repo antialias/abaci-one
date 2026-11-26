@@ -5,6 +5,7 @@ import { join } from 'path'
 import { db } from '@/db'
 import { appSettings, DEFAULT_APP_SETTINGS, ttsCollectedClips } from '@/db/schema'
 import { AUDIO_MANIFEST } from '@/lib/audio/audioManifest'
+import { isNonVoiceFolder } from '@/lib/audio/voices'
 import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
@@ -34,7 +35,7 @@ export const GET = withAuth(
         const entries = readdirSync(AUDIO_DIR)
         for (const entry of entries) {
           const entryPath = join(AUDIO_DIR, entry)
-          if (statSync(entryPath).isDirectory()) {
+          if (!isNonVoiceFolder(entry) && statSync(entryPath).isDirectory()) {
             const files = readdirSync(entryPath)
             const existingCount = files.filter((f) => manifestFilenames.has(f)).length
             voices[entry] = {
@@ -55,7 +56,7 @@ export const GET = withAuth(
       if (existsSync(AUDIO_DIR)) {
         for (const entry of readdirSync(AUDIO_DIR)) {
           const entryPath = join(AUDIO_DIR, entry)
-          if (statSync(entryPath).isDirectory()) {
+          if (!isNonVoiceFolder(entry) && statSync(entryPath).isDirectory()) {
             voiceClipCounts[entry] = readdirSync(entryPath).filter(
               (f) => f.endsWith('.mp3') || f.endsWith('.webm')
             ).length

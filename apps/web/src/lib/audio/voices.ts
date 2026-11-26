@@ -34,6 +34,19 @@ export const RETIRED_OPENAI_VOICES = [
 
 const RETIRED_SET: ReadonlySet<string> = new Set(RETIRED_OPENAI_VOICES)
 
+/**
+ * Folders under data/audio/ that are not voices at all. `songs` holds
+ * children's session songs: no voice may take the name, and no voice
+ * route may remove, write into or serve from it.
+ */
+export const NON_VOICE_FOLDERS = ['songs'] as const
+
+const NON_VOICE_SET: ReadonlySet<string> = new Set(NON_VOICE_FOLDERS)
+
+export function isNonVoiceFolder(name: string): boolean {
+  return NON_VOICE_SET.has(name.trim().toLowerCase())
+}
+
 export function isElevenLabsVoiceId(voiceId: string): boolean {
   return ELEVENLABS_VOICE_ID_RE.test(voiceId)
 }
@@ -77,11 +90,13 @@ export function isSafePathSegment(name: string): boolean {
 /** A folder name that can't escape data/audio/. */
 export const isSafeVoiceFolder = isSafePathSegment
 
-/** Names a custom (recorded) voice may not take: they'd collide with a generated folder. */
+/** Names a custom (recorded) voice may not take: a generated voice's folder, or a non-voice folder. */
 export function isReservedVoiceName(name: string): boolean {
   // Case-insensitive: on a case-insensitive filesystem "ONYX" is onyx's folder.
   const lower = name.trim().toLowerCase()
-  return isRetiredVoice(lower) || lower.startsWith(ELEVENLABS_VOICE_PREFIX)
+  return (
+    isRetiredVoice(lower) || lower.startsWith(ELEVENLABS_VOICE_PREFIX) || isNonVoiceFolder(lower)
+  )
 }
 
 /** Why generation into this folder is refused, or null if it's allowed. */

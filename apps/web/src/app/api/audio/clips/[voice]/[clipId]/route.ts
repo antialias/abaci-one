@@ -11,6 +11,7 @@
 import { readFile, stat } from 'fs/promises'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
+import { isNonVoiceFolder, isSafePathSegment, isSafeVoiceFolder } from '@/lib/audio/voices'
 import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
@@ -20,14 +21,8 @@ export const GET = withAuth(async (_request, { params }) => {
     const { voice, clipId } = (await params) as { voice: string; clipId: string }
 
     // Validate path segments to prevent directory traversal
-    if (
-      !voice ||
-      !clipId ||
-      voice.includes('/') ||
-      voice.includes('..') ||
-      clipId.includes('/') ||
-      clipId.includes('..')
-    ) {
+    // (and never serve from a non-voice folder such as children's songs)
+    if (!isSafeVoiceFolder(voice) || isNonVoiceFolder(voice) || !isSafePathSegment(clipId)) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
     }
 

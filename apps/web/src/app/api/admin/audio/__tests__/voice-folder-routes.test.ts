@@ -19,7 +19,7 @@ vi.mock('@/db', () => {
     where: () => q,
     limit: () => Promise.resolve([{ audioVoice: 'el-active' }]),
   }
-  return { db: { select: () => q } }
+  return { db: { select: () => q, delete: () => Promise.resolve() } }
 })
 
 let root: string
@@ -31,6 +31,8 @@ beforeEach(() => {
   audio = join(root, 'app', 'data', 'audio')
   mkdirSync(join(audio, 'el-old'), { recursive: true })
   writeFileSync(join(audio, 'el-old', 'a.mp3'), 'x')
+  mkdirSync(join(audio, 'songs'), { recursive: true })
+  writeFileSync(join(audio, 'songs', 'song-1.mp3'), 'a child song')
   writeFileSync(join(root, 'app', 'precious.txt'), 'keep')
   vi.spyOn(process, 'cwd').mockReturnValue(join(root, 'app'))
   vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -46,7 +48,16 @@ async function routes() {
   vi.resetModules()
   const voice = await import('../voice/[voice]/route')
   const custom = await import('../custom-clips/[voice]/[clipId]/route')
-  return { removeVoice: voice.DELETE, uploadClip: custom.POST }
+  const all = await import('../voices/route')
+  const clips = await import('@/app/api/audio/clips/[voice]/[clipId]/route')
+  return {
+    removeVoice: voice.DELETE,
+    uploadClip: custom.POST,
+    patchClip: custom.PATCH,
+    deleteClip: custom.DELETE,
+    removeAll: all.DELETE,
+    serveClip: clips.GET,
+  }
 }
 
 const ctx = (params: object) => ({ userId: 'admin-1', params: Promise.resolve(params) }) as never
@@ -95,5 +106,57 @@ describe('POST /api/admin/audio/custom-clips/[voice]/[clipId]', () => {
     const res = await uploadClip(upload(), ctx({ voice: 'Thomas Hallock', clipId: 'hello' }))
     expect(res.status).toBe(200)
     expect(existsSync(join(audio, 'Thomas Hallock', 'cc-hello.webm'))).toBe(true)
+  })
+})
+
+describe("songs holds children's session songs: no voice route touches it", () => {
+  const songFile = () => join(audio, 'songs', 'song-1.mp3')
+
+  it.each(['songs', 'SONGS', ' songs '])('DELETE /voice/%j is refused', async (voice) => {
+    const { removeVoice } = await routes()
+    const res = await removeVoice(new NextRequest('http://localhost/x'), ctx({ voice }))
+    expect(res.status).toBe(400)
+    expect(existsSync(songFile())).toBe(true)
+  })
+
+  it('the remove-everything reset keeps songs', async () => {
+    const { removeAll } = await routes()
+    const res = await removeAll(new NextRequest('http://localhost/x'), ctx({}))
+    expect(res.status).toBe(200)
+    expect(existsSync(join(audio, 'el-old'))).toBe(false)
+    expect(existsSync(songFile())).toBe(true)
+  })
+
+  it('custom-clip upload, deactivate and delete refuse it', async () => {
+    const { uploadClip, patchClip, deleteClip } = await routes()
+    const form = new FormData()
+    form.append('audio', new Blob([new Uint8Array([1])], { type: 'audio/webm' }))
+    const params = { voice: 'songs', clipId: 'song-1' }
+    const up = await uploadClip(
+      new NextRequest('http://localhost/x', { method: 'POST', body: form }),
+      ctx(params)
+    )
+    const patch = await patchClip(
+      new NextRequest('http://localhost/x', {
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'deactivate' }),
+      }),
+      ctx(params)
+    )
+    const del = await deleteClip(
+      new NextRequest('http://localhost/x', { method: 'DELETE' }),
+      ctx(params)
+    )
+    expect([up.status, patch.status, del.status]).toEqual([400, 400, 400])
+    expect(existsSync(songFile())).toBe(true)
+  })
+
+  it('the clip server will not serve from it', async () => {
+    const { serveClip } = await routes()
+    const res = await serveClip(
+      new NextRequest('http://localhost/x'),
+      ctx({ voice: 'songs', clipId: 'song-1' })
+    )
+    expect(res.status).toBe(400)
   })
 })

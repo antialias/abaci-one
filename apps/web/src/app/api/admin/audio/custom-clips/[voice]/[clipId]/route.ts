@@ -11,7 +11,7 @@
 import { mkdir, rename, stat, unlink } from 'fs/promises'
 import { NextResponse } from 'next/server'
 import { join } from 'path'
-import { isReservedVoiceName, isSafePathSegment } from '@/lib/audio/voices'
+import { isNonVoiceFolder, isReservedVoiceName, isSafePathSegment } from '@/lib/audio/voices'
 import { withAuth } from '@/lib/auth/withAuth'
 
 const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
@@ -28,7 +28,7 @@ export const POST = withAuth(
     try {
       const { voice, clipId } = (await params) as { voice: string; clipId: string }
 
-      if (!validateSegment(voice) || !validateSegment(clipId)) {
+      if (!validateSegment(voice) || !validateSegment(clipId) || isNonVoiceFolder(voice)) {
         return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
       }
       if (isReservedVoiceName(voice)) {
@@ -76,7 +76,7 @@ export const PATCH = withAuth(
     try {
       const { voice, clipId } = (await params) as { voice: string; clipId: string }
 
-      if (!validateSegment(voice) || !validateSegment(clipId)) {
+      if (!validateSegment(voice) || !validateSegment(clipId) || isNonVoiceFolder(voice)) {
         return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
       }
 
@@ -137,7 +137,7 @@ export const DELETE = withAuth(
     try {
       const { voice, clipId } = (await params) as { voice: string; clipId: string }
 
-      if (!validateSegment(voice) || !validateSegment(clipId)) {
+      if (!validateSegment(voice) || !validateSegment(clipId) || isNonVoiceFolder(voice)) {
         return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
       }
 
