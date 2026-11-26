@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/queryClient'
 import { collectedClipKeys } from '@/lib/queryKeys'
 
@@ -24,6 +24,8 @@ interface CollectedClipsResponse {
   clips: CollectedClipEntry[]
   generatedFor?: Record<string, boolean>
   deactivatedFor?: Record<string, boolean>
+  /** File stem each clip is stored under in the requested voice (`t-…` for text-keyed clips). */
+  fileFor?: Record<string, string>
 }
 
 // ============================================================================

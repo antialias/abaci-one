@@ -322,8 +322,9 @@ describe('timeouts', () => {
     }
   })
 
-  it('on-demand waits only a few seconds; bulk waits longer', () => {
-    expect(SPEECH_TIMEOUT_MS.onDemand).toBeLessThanOrEqual(6_000)
-    expect(SPEECH_TIMEOUT_MS.bulk).toBeGreaterThan(SPEECH_TIMEOUT_MS.onDemand)
+  it('on-demand answers within a few seconds; its upstream request may run longer', () => {
+    expect(SPEECH_TIMEOUT_MS.onDemandWait).toBeLessThanOrEqual(6_000)
+    expect(SPEECH_TIMEOUT_MS.onDemandUpstream).toBeGreaterThan(SPEECH_TIMEOUT_MS.onDemandWait)
+    expect(SPEECH_TIMEOUT_MS.bulk).toBeGreaterThan(SPEECH_TIMEOUT_MS.onDemandWait)
   })
 })

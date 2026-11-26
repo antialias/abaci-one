@@ -71,6 +71,9 @@ export default function AdminAudioPage() {
   const collectedClips = ccData?.clips ?? []
   const ccGeneratedFor = ccData?.generatedFor ?? {}
   const ccDeactivatedFor = ccData?.deactivatedFor ?? {}
+  // Where each clip's file lives in this voice (text-keyed for ElevenLabs voices).
+  const ccFileFor = ccData?.fileFor ?? {}
+  const ccFile = (clipId: string) => ccFileFor[clipId] ?? clipId
 
   // React Query: mutation for triggering collected clip generation
   const ccGenerateMutation = useGenerateCollectedClips(ccGenVoice)
@@ -299,7 +302,7 @@ export default function AdminAudioPage() {
   const handleDeactivateClip = async (clipId: string) => {
     try {
       const res = await fetch(
-        `/api/admin/audio/custom-clips/${encodeURIComponent(ccGenVoice)}/${encodeURIComponent(clipId)}`,
+        `/api/admin/audio/custom-clips/${encodeURIComponent(ccGenVoice)}/${encodeURIComponent(ccFile(clipId))}`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -316,7 +319,7 @@ export default function AdminAudioPage() {
   const handleReactivateClip = async (clipId: string) => {
     try {
       const res = await fetch(
-        `/api/admin/audio/custom-clips/${encodeURIComponent(ccGenVoice)}/${encodeURIComponent(clipId)}`,
+        `/api/admin/audio/custom-clips/${encodeURIComponent(ccGenVoice)}/${encodeURIComponent(ccFile(clipId))}`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -334,7 +337,7 @@ export default function AdminAudioPage() {
     if (!confirm(`Delete this recording for "${clipId}"?`)) return
     try {
       const res = await fetch(
-        `/api/admin/audio/custom-clips/${encodeURIComponent(ccGenVoice)}/${encodeURIComponent(clipId)}`,
+        `/api/admin/audio/custom-clips/${encodeURIComponent(ccGenVoice)}/${encodeURIComponent(ccFile(clipId))}`,
         { method: 'DELETE' }
       )
       if (!res.ok) throw new Error('Failed to delete')
@@ -376,7 +379,9 @@ export default function AdminAudioPage() {
     if (ccAudioRef.current) {
       ccAudioRef.current.pause()
     }
-    const audio = new Audio(`/api/audio/clips/${ccGenVoice}/${clipId}`)
+    const audio = new Audio(
+      `/api/audio/clips/${encodeURIComponent(ccGenVoice)}/${encodeURIComponent(ccFile(clipId))}`
+    )
     ccAudioRef.current = audio
     setCcPlayingClipId(clipId)
     audio.play()

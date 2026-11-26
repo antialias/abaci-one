@@ -1,6 +1,7 @@
 import { getClipMeta } from './audioClipRegistry'
 import { AUDIO_MANIFEST_MAP } from './audioManifest'
 import { computeClipHash, resolveCanonicalText } from './clipHash'
+import { isTextKeyedClip } from './textKeyedClips'
 
 export type SubtitleAnchor = 'top' | 'bottom'
 
@@ -625,7 +626,13 @@ export class TtsAudioManager {
         if (this._isStale(speakId)) return false
 
         const source = effectiveChain[i]
-        if (source instanceof PregeneratedVoice || source instanceof CustomVoice) {
+        if (source instanceof PregeneratedVoice && isTextKeyedClip(source.name, resolved.clipId)) {
+          // Stored under a server-computed text key: ask the server by text.
+          const outcome = await this.playCachedByText(source, resolved)
+          if (this._isStale(speakId)) return false
+          if (outcome === 'played') return true
+          log.push({ source, outcome })
+        } else if (source instanceof PregeneratedVoice || source instanceof CustomVoice) {
           const clipIds = this._pregenClipIds.get(source.name)
           const hasClip = clipIds?.has(resolved.clipId) ?? false
           if (hasClip) {
@@ -909,7 +916,27 @@ export class TtsAudioManager {
     }
   }
 
+  /** Play a text-keyed clip from the server's cache, if it has one. */
+  private async playCachedByText(
+    source: PregeneratedVoice,
+    resolved: ResolvedSegment
+  ): Promise<'played' | 'no-clip' | 'play-error'> {
+    const blob = await source.fetchCached(resolved.clipId, resolved.fallbackText, resolved.tone)
+    if (!blob) return 'no-clip'
+    const blobUrl = URL.createObjectURL(blob)
+    try {
+      return (await this.playMp3(blobUrl)) ? 'played' : 'play-error'
+    } finally {
+      URL.revokeObjectURL(blobUrl)
+    }
+  }
+
+  /**
+   * Remember a clip is on disk for `voice`, for playback by clip id. Text-keyed
+   * clips aren't stored by clip id, so they're never added.
+   */
   private addToPregenCache(voice: string, clipId: string): void {
+    if (isTextKeyedClip(voice, clipId)) return
     let ids = this._pregenClipIds.get(voice)
     if (!ids) {
       ids = new Set()

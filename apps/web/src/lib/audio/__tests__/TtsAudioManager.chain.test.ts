@@ -22,22 +22,43 @@ const EUCLID = 'el-onwK4e9ZLuTAKqWW03F9'
 let fetchMock: Mock<[RequestInfo | URL, RequestInit?], Promise<Response>>
 let audioUrls: string[]
 
-function stubFetch(clipIdsByVoice: Record<string, string[]>, generate: () => Response) {
-  fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+/**
+ * `clipIdsByVoice`: what the manifest says is on disk by clip id.
+ * `cachedText`: text-keyed clips the server has, as `${voice}|${text}`;
+ * answered for `cacheOnly` lookups (everything else is a 404 there).
+ */
+function stubFetch(
+  clipIdsByVoice: Record<string, string[]>,
+  generate: () => Response,
+  cachedText: string[] = []
+) {
+  fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input)
     if (url.startsWith('/api/audio/collected-clips/manifest')) {
       return new Response(JSON.stringify({ clipIdsByVoice }), { status: 200 })
     }
-    if (url === '/api/audio/generate-clip') return generate()
+    if (url === '/api/audio/generate-clip') {
+      const body = JSON.parse(String(init?.body))
+      if (!body.cacheOnly) return generate()
+      return cachedText.includes(`${body.voice}|${body.text}`)
+        ? new Response(new Uint8Array([7]), { status: 200 })
+        : new Response('{"error":"Not cached"}', { status: 404 })
+    }
     // Collection flushes and anything else: accept and ignore.
     return new Response('{}', { status: 200 })
   })
   vi.stubGlobal('fetch', fetchMock)
 }
 
-function generateCalls() {
-  return fetchMock.mock.calls.filter(([u]) => String(u) === '/api/audio/generate-clip')
+function clipPosts(cacheOnly: boolean) {
+  return fetchMock.mock.calls.filter(
+    ([u, init]) =>
+      String(u) === '/api/audio/generate-clip' &&
+      Boolean(JSON.parse(String(init?.body)).cacheOnly) === cacheOnly
+  )
 }
+const generateCalls = () => clipPosts(false)
+const cacheLookups = () => clipPosts(true)
 
 /** Speak and capture any subtitle shown, dismissing it so speak() returns. */
 async function speakCapturingSubtitle(
@@ -175,18 +196,13 @@ describe('a character speaks only in its own voice', () => {
     expect(subtitles).toEqual(['Describe a circle.'])
   })
 
-  it("plays the character's own cached clip when it has one", async () => {
+  it("plays the character's own cached clip, looked up by its text", async () => {
     stubFetch({ onyx: ['prop-1-step-1'] }, () => {
-      throw new Error('generate-clip must not be called')
-    })
+      throw new Error('generate-clip must not generate')
+    }, [`${EUCLID}|Describe a circle.`])
     const m = new TtsAudioManager()
     await m.loadPregenManifest(PROD_CHAIN)
     m.configure({ enabled: true })
-    // The character's clips arrive via the provider's manifest load.
-    ;(m as unknown as { _pregenClipIds: Map<string, Set<string>> })._pregenClipIds.set(
-      EUCLID,
-      new Set(['prop-1-step-1'])
-    )
 
     await speakCapturingSubtitle(
       m,
@@ -194,7 +210,24 @@ describe('a character speaks only in its own voice', () => {
       { prependChain: [new PregeneratedVoice(EUCLID)] }
     )
 
-    expect(audioUrls).toEqual([`/api/audio/clips/${EUCLID}/prop-1-step-1`])
+    expect(cacheLookups()).toHaveLength(1)
+    expect(generateCalls()).toHaveLength(0)
+    expect(audioUrls).toEqual(['blob:generated'])
+  })
+
+  it('after generating, the next play asks by text again, never GETs by clip id', async () => {
+    stubFetch({}, () => new Response(new Uint8Array([1, 2, 3]), { status: 200 }))
+    const m = new TtsAudioManager()
+    await m.loadPregenManifest(PROD_CHAIN)
+    m.configure({ enabled: true })
+    const line = { clipId: 'prop-1-step-2', say: { en: 'Now draw a line.' } }
+    const euclid = { prependChain: [new PregeneratedVoice(EUCLID)] }
+
+    await speakCapturingSubtitle(m, line, euclid)
+    await speakCapturingSubtitle(m, line, euclid)
+
+    expect(cacheLookups()).toHaveLength(2)
+    expect(audioUrls.some((u) => u.startsWith(`/api/audio/clips/${EUCLID}/`))).toBe(false)
   })
 })
 

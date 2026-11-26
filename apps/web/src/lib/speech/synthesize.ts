@@ -40,12 +40,18 @@ export class SpeechError extends Error {
 
 /**
  * How long each kind of caller waits for the door before giving up. Real
- * clips take about 1 s; the on-demand path (a child waiting to hear a line)
- * gives up after a few seconds so the voice chain falls through to subtitles
- * quickly. Admin preview and bulk generation can afford to wait longer.
+ * clips take about 1 s.
  */
 export const SPEECH_TIMEOUT_MS = {
-  onDemand: 5_000,
+  /**
+   * How long an on-demand request waits before answering 504 so the child's
+   * voice chain falls to subtitles. The upstream request keeps running (see
+   * lib/speech/onDemandGeneration): the door bills an aborted request in
+   * full, so aborting at 5 s would pay for a slow line and throw it away.
+   */
+  onDemandWait: 5_000,
+  /** The on-demand upstream request's own limit; the clip is cached when it lands. */
+  onDemandUpstream: 30_000,
   preview: 15_000,
   bulk: 30_000,
   voiceList: 10_000,

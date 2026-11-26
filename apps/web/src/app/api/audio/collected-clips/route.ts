@@ -1,18 +1,26 @@
-import { NextResponse } from 'next/server'
-import { existsSync } from 'fs'
-import { join } from 'path'
 import { sql } from 'drizzle-orm'
+import { existsSync } from 'fs'
+import { NextResponse } from 'next/server'
+import { join } from 'path'
 import { db } from '@/db'
-import { ttsCollectedClips, ttsCollectedClipSay } from '@/db/schema'
+import { ttsCollectedClipSay, ttsCollectedClips } from '@/db/schema'
+import { AUDIO_MANIFEST_MAP } from '@/lib/audio/audioManifest'
+import { resolveCanonicalText } from '@/lib/audio/clipHash'
+import { isNonVoiceFolder, isSafeVoiceFolder } from '@/lib/audio/voices'
 import { withAuth } from '@/lib/auth/withAuth'
+import { clipFileStem } from '@/lib/speech/clipStorage'
 
-const AUDIO_DIR = join(process.cwd(), 'data', 'audio')
+function audioDir(): string {
+  return join(process.cwd(), 'data', 'audio')
+}
 
 /**
  * POST /api/audio/collected-clips
  *
  * Upserts a batch of collected clips from the client.
- * Increments play_count, updates last_seen_at, and upserts say entries.
+ * Increments play_count and updates last_seen_at. A clip's tone and each
+ * (clip, locale) say text are first-write-wins: guests can call this, so a
+ * later request can't rewrite the words an existing clip is known by.
  *
  * Payload: { clips: [{ clipId, say?, tone, playCount }] }
  *   - clipId: human-readable clip ID
@@ -71,9 +79,8 @@ export const POST = withAuth(async (request) => {
               locale,
               text,
             })
-            .onConflictDoUpdate({
+            .onConflictDoNothing({
               target: [ttsCollectedClipSay.clipId, ttsCollectedClipSay.locale],
-              set: { text },
             })
         }
       }
@@ -92,7 +99,10 @@ export const POST = withAuth(async (request) => {
  * GET /api/audio/collected-clips
  *
  * Returns all collected clips with their say entries, sorted by play count descending.
- * Optional `?voice=onyx` param adds per-clip generation status for that voice.
+ * Optional `?voice=onyx` param adds per-clip generation status for that voice,
+ * and `fileFor`: the file stem each clip is stored under in that voice
+ * (text-keyed `t-…` for ElevenLabs voices; see lib/speech/clipStorage), so
+ * the admin page plays and manages the right file.
  */
 export const GET = withAuth(async (request) => {
   try {
@@ -124,21 +134,36 @@ export const GET = withAuth(async (request) => {
 
     let generatedFor: Record<string, boolean> | undefined
     let deactivatedFor: Record<string, boolean> | undefined
+    let fileFor: Record<string, string> | undefined
     if (voice) {
-      const voiceDir = join(AUDIO_DIR, voice)
+      if (!isSafeVoiceFolder(voice) || isNonVoiceFolder(voice)) {
+        return NextResponse.json({ error: 'Invalid voice' }, { status: 400 })
+      }
+      const voiceDir = join(audioDir(), voice)
       generatedFor = {}
       deactivatedFor = {}
+      fileFor = {}
       for (const clip of clips) {
+        // Same text and tone the bulk task speaks (lib/tasks/collected-clip-generate).
+        const manifest = AUDIO_MANIFEST_MAP[clip.id]
+        const text = manifest?.text ?? (resolveCanonicalText(sayByClipId.get(clip.id)) || clip.id)
+        let stem = clip.id
+        try {
+          stem = clipFileStem(voice, clip.id, text, manifest?.tone ?? clip.tone)
+        } catch {
+          // Unspeakable text (empty/too long): nothing can be stored for it.
+        }
+        fileFor[clip.id] = stem
         generatedFor[clip.id] =
-          existsSync(join(voiceDir, `${clip.id}.mp3`)) ||
-          existsSync(join(voiceDir, `cc-${clip.id}.mp3`)) ||
-          existsSync(join(voiceDir, `${clip.id}.webm`)) ||
-          existsSync(join(voiceDir, `cc-${clip.id}.webm`))
+          existsSync(join(voiceDir, `${stem}.mp3`)) ||
+          existsSync(join(voiceDir, `cc-${stem}.mp3`)) ||
+          existsSync(join(voiceDir, `${stem}.webm`)) ||
+          existsSync(join(voiceDir, `cc-${stem}.webm`))
         deactivatedFor[clip.id] =
-          existsSync(join(voiceDir, '.deactivated', `cc-${clip.id}.mp3`)) ||
-          existsSync(join(voiceDir, '.deactivated', `cc-${clip.id}.webm`)) ||
-          existsSync(join(voiceDir, '.deactivated', `${clip.id}.mp3`)) ||
-          existsSync(join(voiceDir, '.deactivated', `${clip.id}.webm`))
+          existsSync(join(voiceDir, '.deactivated', `cc-${stem}.mp3`)) ||
+          existsSync(join(voiceDir, '.deactivated', `cc-${stem}.webm`)) ||
+          existsSync(join(voiceDir, '.deactivated', `${stem}.mp3`)) ||
+          existsSync(join(voiceDir, '.deactivated', `${stem}.webm`))
       }
     }
 
@@ -146,6 +171,7 @@ export const GET = withAuth(async (request) => {
       clips: clipsWithSay,
       ...(generatedFor ? { generatedFor } : {}),
       ...(deactivatedFor ? { deactivatedFor } : {}),
+      ...(fileFor ? { fileFor } : {}),
     })
   } catch (error) {
     console.error('Error fetching collected clips:', error)

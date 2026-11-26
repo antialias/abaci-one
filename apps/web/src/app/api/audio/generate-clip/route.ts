@@ -2,30 +2,47 @@
  * API route for on-demand TTS clip generation.
  *
  * POST /api/audio/generate-clip
- * Body: { voice: string, clipId: string, text: string, tone: string }
+ * Body: { voice, clipId, text, tone?, cacheOnly? }
  * Returns: audio/mpeg bytes (or JSON error)
  *
- * Generates a clip via ElevenLabs (lib/speech), caches it to disk, and returns
- * the audio. If the clip already exists on disk, returns the cached version,
- * for any voice. Otherwise, before anything is spent:
- * - only ElevenLabs voices generate (retired OpenAI voices: 400);
- * - the text must be what the clip id stands for (lib/speech/clipAuthority),
- *   since guests can call this route;
- * - the per-identity and pod-wide hourly caps must allow it
- *   (lib/speech/generationBudget; 429 otherwise).
- * The door gets SPEECH_TIMEOUT_MS.onDemand; a stuck door answers 504 and the
- * client's voice chain falls through to subtitles.
+ * Serves the clip from disk if it's there; with `cacheOnly`, answers 404
+ * instead of generating. Otherwise generates it via ElevenLabs
+ * (lib/speech), caches it and returns it.
+ *
+ * Where a clip lives: for ElevenLabs voices, every clip that isn't a
+ * manifest clip is stored under a key the server computes from the text it
+ * speaks (lib/speech/clipStorage), never under the client's clip id. Guests
+ * can call this route, so that is what keeps one request's words out of
+ * another request's clip. Manifest clips (constant text, checked) and
+ * retired/custom voices keep their files by clip id.
+ *
+ * Before anything is spent: only ElevenLabs voices generate (400), the text
+ * must fit the clip id (lib/speech/clipAuthority, 400), and the per-identity
+ * and pod-wide hourly caps must allow it (429). Plays of a clip already
+ * being generated join that generation and spend nothing.
+ *
+ * Timing: the caller gets 504 after SPEECH_TIMEOUT_MS.onDemandWait so the
+ * child's voice chain falls to subtitles, but the upstream request keeps
+ * running (the door bills aborted requests in full) and caches the clip
+ * when it lands (lib/speech/onDemandGeneration).
  */
 
 import { createHash } from 'crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
-import { NextResponse } from 'next/server'
+import { existsSync, readFileSync } from 'fs'
+import { type NextRequest, NextResponse } from 'next/server'
 import { join } from 'path'
 import { AiFeature } from '@/lib/ai-usage/features'
-import { generationRefusal, isSafePathSegment, isSafeVoiceFolder } from '@/lib/audio/voices'
+import {
+  generationRefusal,
+  isNonVoiceFolder,
+  isSafePathSegment,
+  isSafeVoiceFolder,
+} from '@/lib/audio/voices'
 import { withAuth } from '@/lib/auth/withAuth'
 import { authorizeClipText } from '@/lib/speech/clipAuthority'
-import { onDemandSpeechBudget } from '@/lib/speech/generationBudget'
+import { clipFileStem, writeClipFile } from '@/lib/speech/clipStorage'
+import { onDemandGenerations, waitAtMost } from '@/lib/speech/onDemandGeneration'
+import { requestIdentity } from '@/lib/speech/requestIdentity'
 import { SPEECH_TIMEOUT_MS, SpeechError, synthesizeSpeech } from '@/lib/speech/synthesize'
 
 /** Read per request so tests (and any cwd change) see the right place. */
@@ -44,43 +61,60 @@ function safeClipId(clipId: string): string {
   return `hc-${hash}`
 }
 
-export const POST = withAuth(async (request, { userId }) => {
+function audioResponse(buffer: Buffer): NextResponse {
+  return new NextResponse(new Uint8Array(buffer), {
+    headers: {
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': buffer.byteLength.toString(),
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    },
+  })
+}
+
+export const POST = withAuth(async (request: NextRequest, { userId }) => {
   try {
     const body = await request.json()
-    const { voice, text, tone } = body
-    const requestedClipId: string = typeof body.clipId === 'string' ? body.clipId : ''
-    const clipId = safeClipId(requestedClipId)
+    const { voice, clipId, text, tone } = body ?? {}
+    const cacheOnly = body?.cacheOnly === true
 
-    // Validate required fields
     if (
       typeof voice !== 'string' ||
       !voice ||
-      !requestedClipId ||
+      typeof clipId !== 'string' ||
+      !clipId ||
       typeof text !== 'string' ||
-      !text
+      !text ||
+      (tone != null && typeof tone !== 'string')
     ) {
       return NextResponse.json({ error: 'voice, clipId, and text are required' }, { status: 400 })
     }
-
-    // Prevent directory traversal
-    if (!isSafeVoiceFolder(voice) || !isSafePathSegment(clipId)) {
+    if (!isSafeVoiceFolder(voice) || isNonVoiceFolder(voice)) {
       return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
     }
 
-    // Disk cache check — return existing file if present
+    // Speak only what fits the clip id (manifest text; FNV sanity for hash ids).
+    const authority = authorizeClipText(clipId, text, tone)
+    if (!authority.ok) {
+      return NextResponse.json({ error: authority.error }, { status: authority.status })
+    }
+
+    // Where this clip lives: a server-computed text key, or the clip id.
+    const stem = clipFileStem(voice, safeClipId(clipId), authority.text, authority.tone)
+    if (!isSafePathSegment(stem)) {
+      return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 })
+    }
+
+    const identity = await requestIdentity(request, userId)
+
+    // From here to admit() there is no await: a generation that finishes
+    // meanwhile can't slip between the disk check and the in-flight check.
     const voiceDir = join(audioDir(), voice)
-    const candidates = [join(voiceDir, `${clipId}.mp3`), join(voiceDir, `cc-${clipId}.mp3`)]
-    for (const path of candidates) {
-      if (existsSync(path)) {
-        const fileBuffer = readFileSync(path)
-        return new NextResponse(new Uint8Array(fileBuffer), {
-          headers: {
-            'Content-Type': 'audio/mpeg',
-            'Content-Length': fileBuffer.byteLength.toString(),
-            'Cache-Control': 'public, max-age=31536000, immutable',
-          },
-        })
-      }
+    for (const name of [`${stem}.mp3`, `cc-${stem}.mp3`]) {
+      const path = join(voiceDir, name)
+      if (existsSync(path)) return audioResponse(readFileSync(path))
+    }
+    if (cacheOnly) {
+      return NextResponse.json({ error: 'Not cached' }, { status: 404 })
     }
 
     // Only ElevenLabs voices generate; retired OpenAI folders are play-only.
@@ -89,41 +123,38 @@ export const POST = withAuth(async (request, { userId }) => {
       return NextResponse.json({ error: refusal }, { status: 400 })
     }
 
-    // Speak only what the clip id stands for.
-    const authority = await authorizeClipText(requestedClipId, text, tone)
-    if (!authority.ok) {
-      return NextResponse.json({ error: authority.error }, { status: authority.status })
-    }
-
-    const identity = userId || request.headers.get('x-guest-id') || 'anonymous'
-    const budget = onDemandSpeechBudget.tryConsume(identity, authority.text.length)
-    if (!budget.ok) {
-      console.warn('[generate-clip] hourly cap reached:', budget.scope)
+    const admission = onDemandGenerations.admit(
+      join(voiceDir, stem),
+      identity,
+      authority.text.length,
+      async () => {
+        const { audio } = await synthesizeSpeech({
+          voice,
+          text: authority.text,
+          tone: authority.tone,
+          usage: { userId, feature: AiFeature.TTS_CLIP },
+          timeoutMs: SPEECH_TIMEOUT_MS.onDemandUpstream,
+        })
+        writeClipFile(voiceDir, stem, audio)
+        return audio
+      }
+    )
+    if (admission.kind === 'refused') {
+      console.warn('[generate-clip] hourly cap reached:', admission.scope)
       return NextResponse.json(
         { error: 'Too many new clips this hour; try again later.' },
         { status: 429 }
       )
     }
 
-    const { audio: buffer } = await synthesizeSpeech({
-      voice,
-      text: authority.text,
-      tone: authority.tone,
-      usage: { userId, feature: AiFeature.TTS_CLIP },
-      timeoutMs: SPEECH_TIMEOUT_MS.onDemand,
-    })
-
-    // Save to disk cache
-    mkdirSync(voiceDir, { recursive: true })
-    writeFileSync(join(voiceDir, `${clipId}.mp3`), buffer)
-
-    return new NextResponse(new Uint8Array(buffer), {
-      headers: {
-        'Content-Type': 'audio/mpeg',
-        'Content-Length': buffer.byteLength.toString(),
-        'Cache-Control': 'public, max-age=31536000, immutable',
-      },
-    })
+    const result = await waitAtMost(admission.done, SPEECH_TIMEOUT_MS.onDemandWait)
+    if (!result.done) {
+      return NextResponse.json(
+        { error: 'Still generating; it will be ready shortly.' },
+        { status: 504 }
+      )
+    }
+    return audioResponse(result.value)
   } catch (error) {
     if (error instanceof SpeechError) {
       console.error('[generate-clip] speech error:', error.kind, error.message)
