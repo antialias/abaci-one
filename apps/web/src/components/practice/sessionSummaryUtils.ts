@@ -4,6 +4,7 @@
  * Utilities for filtering and organizing session results for display.
  */
 
+import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { ProblemSlot, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 
 // ============================================================================
@@ -42,15 +43,43 @@ export interface ProblemNeedingAttention extends ProblemWithContext {
 // ============================================================================
 
 /**
+ * Each problem's verdict row: the latest counted try per (partNumber,
+ * slotIndex), with its position among the counted tries. A practice-only
+ * do-over never becomes a problem's verdict.
+ */
+export function buildResultMap(
+  results: readonly SlotResult[]
+): Map<string, { result: SlotResult; position: number }> {
+  const map = new Map<string, { result: SlotResult; position: number }>()
+  countedTries(results).forEach((result, position) => {
+    map.set(`${result.partNumber}-${result.slotIndex}`, { result, position })
+  })
+  return map
+}
+
+/**
+ * The latest counted try for one problem (results are appended in order, so
+ * the last match is the most recent, e.g. a redo after the original).
+ */
+export function getResultForProblem(
+  results: readonly SlotResult[],
+  partNumber: number,
+  slotIndex: number
+): SlotResult | undefined {
+  const counted = countedTries(results)
+  for (let i = counted.length - 1; i >= 0; i--) {
+    const r = counted[i]
+    if (r.partNumber === partNumber && r.slotIndex === slotIndex) return r
+  }
+  return undefined
+}
+
+/**
  * Build a list of all completed problems with their context.
  */
 export function getProblemsWithContext(plan: SessionPlan): ProblemWithContext[] {
-  const results = plan.results as SlotResult[]
   const resultMap = new Map<string, SlotResult>()
-
-  // Build a map for quick lookup
-  for (const result of results) {
-    const key = `${result.partNumber}-${result.slotIndex}`
+  for (const [key, { result }] of buildResultMap(plan.results as SlotResult[])) {
     resultMap.set(key, result)
   }
 

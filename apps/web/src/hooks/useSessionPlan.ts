@@ -84,6 +84,50 @@ export class SlotMismatchClientError extends Error {
 }
 
 /**
+ * A try's write failed twice (network error or 5xx, then the same on its one
+ * resend). The plan has been refetched; show the kid a plain message, never
+ * the technical cause (which goes to the console).
+ */
+export class TryNotSavedError extends Error {
+  constructor(public readonly failure: unknown) {
+    super(failure instanceof Error ? failure.message : String(failure))
+    this.name = 'TryNotSavedError'
+  }
+}
+
+/**
+ * Send a try's write; on a network error or a 5xx, send the same request once
+ * more, immediately (no timer). Safe because the body carries the try's
+ * `tryId`: the server records a try id once, so a resend after a lost reply is
+ * a no-op. A second failure throws TryNotSavedError. 4xx answers are returned
+ * as they are.
+ */
+async function sendTryWrite(send: () => Promise<Response>): Promise<Response> {
+  let lastFailure: unknown
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await send()
+      if (res.status < 500) return res
+      const body = await res.json().catch(() => ({}))
+      lastFailure = new Error(body.error || `HTTP ${res.status}`)
+    } catch (networkError) {
+      lastFailure = networkError
+    }
+    console.warn(`[sessionPlan] try write failed (attempt ${attempt + 1} of 2):`, lastFailure)
+  }
+  throw new TryNotSavedError(lastFailure)
+}
+
+/** Throw the client error a failed try write maps to (4xx after sendTryWrite). */
+async function throwTryWriteError(res: Response, fallback: string): Promise<never> {
+  const error = await res.json().catch(() => ({}))
+  if (res.status === 409 && error.code === 'SLOT_MISMATCH') {
+    throw new SlotMismatchClientError(error.error || 'Answer was for a different problem')
+  }
+  throw new Error(error.error || fallback)
+}
+
+/**
  * Error thrown when the weekly session limit is reached (free tier).
  */
 export class SessionLimitReachedError extends Error {
@@ -198,18 +242,15 @@ async function updateSessionPlan({
   reason?: string
   breakFinishReason?: 'timeout' | 'gameFinished' | 'skipped'
 }): Promise<SessionPlan> {
-  const res = await api(`curriculum/${playerId}/sessions/plans/${planId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, result, reason, breakFinishReason }),
-  })
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    if (res.status === 409 && error.code === 'SLOT_MISMATCH') {
-      throw new SlotMismatchClientError(error.error || 'Answer was for a different problem')
-    }
-    throw new Error(error.error || `Failed to ${action} session plan`)
-  }
+  const send = () =>
+    api(`curriculum/${playerId}/sessions/plans/${planId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, result, reason, breakFinishReason }),
+    })
+  // A recorded answer is resent once on a network error or 5xx (same tryId)
+  const res = action === 'record' ? await sendTryWrite(send) : await send()
+  if (!res.ok) await throwTryWriteError(res, `Failed to ${action} session plan`)
   const data = await res.json()
   return data.plan
 }
@@ -246,7 +287,7 @@ export interface RedoContext {
   originalPartIndex: number
   /** Slot index of the problem being redone */
   originalSlotIndex: number
-  /** Whether the original answer was correct (affects recording logic) */
+  /** Whether the original answer was correct. Read only by servers from before Phase 1. */
   originalWasCorrect: boolean
 }
 
@@ -261,15 +302,14 @@ async function recordRedoResult({
   result: Omit<SlotResult, 'timestamp' | 'partNumber'>
   redoContext: RedoContext
 }): Promise<SessionPlan> {
-  const res = await api(`curriculum/${playerId}/sessions/plans/${planId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'record_redo', result, redoContext }),
-  })
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}))
-    throw new Error(error.error || 'Failed to record redo result')
-  }
+  const res = await sendTryWrite(() =>
+    api(`curriculum/${playerId}/sessions/plans/${planId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'record_redo', result, redoContext }),
+    })
+  )
+  if (!res.ok) await throwTryWriteError(res, 'Failed to record redo result')
   const data = await res.json()
   return data.plan
 }
@@ -655,7 +695,8 @@ export function useAbandonSession() {
  * This is different from useRecordSlotResult because:
  * - It doesn't advance the session position (student returns to where they were)
  * - It can "redeem" incorrect answers (remove from retry queue if original was wrong and redo is correct)
- * - If original was correct and redo is wrong, no result is recorded (avoid penalty)
+ * - A do-over of a problem already answered correctly is recorded practice-only
+ *   (weight 0): it changes no score, verdict or mastery
  */
 export function useRecordRedoResult() {
   const queryClient = useQueryClient()
@@ -677,7 +718,9 @@ export function useRecordRedoResult() {
       queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
     },
     onError: (err, { playerId, planId }) => {
-      console.error('Failed to record redo result:', err.message)
+      if (!(err instanceof SlotMismatchClientError)) {
+        console.error('Failed to record redo result:', err.message)
+      }
       return refetchPlan(queryClient, playerId, planId)
     },
   })

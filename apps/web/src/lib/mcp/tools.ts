@@ -2,40 +2,40 @@
  * MCP Tool implementations for curriculum data access
  */
 
-import { eq, or, inArray, desc, and, gte } from 'drizzle-orm'
+import { eq, inArray, or } from 'drizzle-orm'
+import {
+  type AdditionConfigV4Custom,
+  parseAdditionConfig,
+  serializeAdditionConfig,
+} from '@/app/create/worksheets/config-schemas'
+import {
+  DIFFICULTY_PROFILES,
+  DIFFICULTY_PROGRESSION,
+  type DifficultyProfile,
+} from '@/app/create/worksheets/difficultyProfiles'
+import type { DisplayRules, RuleMode } from '@/app/create/worksheets/displayRules'
 import { db, schema } from '@/db'
 import { parentChild, worksheetShares } from '@/db/schema'
+import { countedTries, summarizeTries } from '@/db/schema/session-plan-helpers'
 import type { GameBreakSettings } from '@/db/schema/session-plans'
 import { getAllSkillMastery, getRecentSessions } from '@/lib/curriculum/progress-manager'
 import {
-  getRecentSessionResults,
+  abandonSessionPlan,
+  approveSessionPlan,
+  completeSessionPlanEarly,
+  type EnabledParts,
   generateSessionPlan,
   getActiveSessionPlan,
-  approveSessionPlan,
+  getRecentSessionResults,
   startSessionPlan,
-  completeSessionPlanEarly,
-  abandonSessionPlan,
-  type EnabledParts,
 } from '@/lib/curriculum/session-planner'
+import { generateShareId, isValidShareId } from '@/lib/generateShareId'
 import {
   createSessionShare,
   getActiveSharesForSession,
   type ShareDuration,
 } from '@/lib/session-share'
 import { getShareUrl } from '@/lib/share/urls'
-import { generateShareId, isValidShareId } from '@/lib/generateShareId'
-import {
-  DIFFICULTY_PROFILES,
-  DIFFICULTY_PROGRESSION,
-  type DifficultyProfile,
-} from '@/app/create/worksheets/difficultyProfiles'
-import {
-  serializeAdditionConfig,
-  parseAdditionConfig,
-  defaultAdditionConfig,
-  type AdditionConfigV4Custom,
-} from '@/app/create/worksheets/config-schemas'
-import type { DisplayRules, RuleMode } from '@/app/create/worksheets/displayRules'
 
 // Tool definitions for MCP tools/list response
 export const MCP_TOOLS = [
@@ -808,15 +808,17 @@ export async function getActiveSession(playerId: string) {
 
   // Calculate progress
   const totalProblems = plan.parts.reduce((sum, part) => sum + part.slots.length, 0)
-  const completedProblems = plan.results.length
-  const correctAnswers = plan.results.filter((r) => r.isCorrect).length
-  const accuracy = completedProblems > 0 ? correctAnswers / completedProblems : 0
+  const {
+    completed: completedProblems,
+    correct: correctAnswers,
+    accuracy,
+  } = summarizeTries(plan.results)
 
   // Find current position
   let currentPart = 1
   let currentProblem = 1
   for (const part of plan.parts) {
-    const partResults = plan.results.filter((r) => r.partNumber === part.partNumber)
+    const partResults = countedTries(plan.results).filter((r) => r.partNumber === part.partNumber)
     if (partResults.length < part.slots.length) {
       currentPart = part.partNumber
       currentProblem = partResults.length + 1

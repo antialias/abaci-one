@@ -14,9 +14,10 @@
  *   }
  */
 
-import { NextResponse } from 'next/server'
 import { and, desc, eq, lt, ne } from 'drizzle-orm'
+import { NextResponse } from 'next/server'
 import { db } from '@/db'
+import { countedTries } from '@/db/schema/session-plan-helpers'
 import { sessionPlans } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
@@ -59,9 +60,7 @@ export const GET = withAuth(async (request, { params }) => {
       eq(sessionPlans.playerId, playerId),
       // Only include completed sessions
       // completedAt is not null check done via ordering
-      includeDeleted
-        ? eq(sessionPlans.status, 'deleted')
-        : ne(sessionPlans.status, 'deleted'),
+      includeDeleted ? eq(sessionPlans.status, 'deleted') : ne(sessionPlans.status, 'deleted'),
     ]
 
     // If cursor provided, get sessions older than the cursor session
@@ -96,7 +95,8 @@ export const GET = withAuth(async (request, { params }) => {
 
     // Transform to match PracticeSession interface expected by client
     const transformedSessions = returnSessions.map((session) => {
-      const results = session.results
+      // Practice-only do-overs are neither attempted nor timed
+      const results = countedTries(session.results)
       return {
         id: session.id,
         playerId: session.playerId,

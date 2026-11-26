@@ -330,6 +330,29 @@ export function PracticeClient({
   const [resyncRequest, setResyncRequest] = useState(0)
   const [writeQueue] = useState(() => createWriteQueue(() => setResyncRequest((n) => n + 1)))
 
+  // A write that failed (after its one resend) has already refetched the plan and
+  // the screen resyncs. What the kid reads carries no technical text; the cause
+  // goes to the console. A stale answer (409) resyncs with no message at all.
+  const reportTryWriteFailure = useCallback(
+    (err: unknown) => {
+      if (err instanceof SlotMismatchClientError) {
+        console.warn('[PracticeClient] answer rejected as stale; resyncing:', err.message)
+        return
+      }
+      const message = err instanceof Error ? err.message : 'Unknown error'
+      if (message.includes('Not authorized')) {
+        showError(
+          'Not authorized',
+          'Only parents or teachers with the student present in their classroom can record answers.'
+        )
+        return
+      }
+      console.error('[PracticeClient] answer not saved:', err)
+      showError("That one didn't save", "No problem, let's keep going!")
+    },
+    [showError]
+  )
+
   // Handle recording an answer
   const handleAnswer = useCallback(
     (result: SlotResultSubmission): Promise<void> => {
@@ -409,21 +432,7 @@ export function PracticeClient({
             })
           }
         } catch (err) {
-          // The answer was for a problem the server is no longer on: the screen
-          // resyncs to the server's current problem; nothing for the kid to read.
-          if (err instanceof SlotMismatchClientError) {
-            console.warn('[PracticeClient] answer rejected as stale; resyncing:', err.message)
-            return
-          }
-          const message = err instanceof Error ? err.message : 'Unknown error'
-          if (message.includes('Not authorized')) {
-            showError(
-              'Not authorized',
-              'Only parents or teachers with the student present in their classroom can record answers.'
-            )
-          } else {
-            showError('Failed to record answer', message)
-          }
+          reportTryWriteFailure(err)
         }
       })()
 
@@ -437,7 +446,7 @@ export function PracticeClient({
       recordResult,
       writeQueue,
       router,
-      showError,
+      reportTryWriteFailure,
       logGameBreakTrace,
       getRetryContext,
     ]
@@ -556,11 +565,11 @@ export function PracticeClient({
       try {
         return (await writeQueue.enqueue(() => recordRedo.mutateAsync(params))) ?? null
       } catch (err) {
-        showError('Failed to record answer', err instanceof Error ? err.message : 'Unknown error')
+        reportTryWriteFailure(err)
         return null
       }
     },
-    [getRetryContext, recordRedo, writeQueue, showError]
+    [getRetryContext, recordRedo, writeQueue, reportTryWriteFailure]
   )
 
   // Handle game break end - show results screen if game finished normally

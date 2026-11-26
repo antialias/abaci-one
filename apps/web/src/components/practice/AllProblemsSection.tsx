@@ -8,11 +8,12 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { ProblemSlot, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 import { calculateAutoPauseInfo, formatMs } from './autoPauseCalculator'
 import { CompactLinearProblem, CompactVerticalProblem } from './CompactProblemDisplay'
-import { getPartTypeLabel, isVerticalPart } from './sessionSummaryUtils'
+import { buildResultMap, getPartTypeLabel, isVerticalPart } from './sessionSummaryUtils'
 
 export interface AllProblemsSectionProps {
   /** The session plan */
@@ -29,20 +30,6 @@ interface SelectedProblemInfo {
   problemNumber: number
   /** Position of the triggering element for popover positioning */
   triggerRect?: DOMRect
-}
-
-/**
- * Build a result map for quick lookup
- */
-function buildResultMap(
-  results: SlotResult[]
-): Map<string, { result: SlotResult; position: number }> {
-  const map = new Map<string, { result: SlotResult; position: number }>()
-  results.forEach((result, position) => {
-    const key = `${result.partNumber}-${result.slotIndex}`
-    map.set(key, { result, position })
-  })
-  return map
 }
 
 /**
@@ -582,7 +569,8 @@ export function AllProblemsSection({ plan, isDark }: AllProblemsSectionProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedProblem, setSelectedProblem] = useState<SelectedProblemInfo | null>(null)
 
-  const results = plan.results as SlotResult[]
+  // Practice-only do-overs are neither a verdict nor timing evidence
+  const results = countedTries(plan.results as SlotResult[])
   const resultMap = buildResultMap(results)
   const totalProblems = plan.parts.reduce((sum, part) => sum + part.slots.length, 0)
 

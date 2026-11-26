@@ -40,6 +40,7 @@ import {
 } from '@/db/schema/player-skill-mastery'
 import type { Player } from '@/db/schema/players'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
+import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { useEnrolledClassrooms, useMyClassroom } from '@/hooks/useClassroom'
 import { useRefreshSkillRecency, useSetSkillLevels } from '@/hooks/usePlayerCurriculum'
@@ -3639,7 +3640,7 @@ export function DashboardClient({
 
     return {
       id: activeSession.id,
-      completedCount: activeSession.results.length,
+      completedCount: countedTries(activeSession.results).length,
       totalCount: activeSession.summary.totalProblemCount,
       createdAt: new Date(activeSession.createdAt),
       startedAt: activeSession.startedAt ? new Date(activeSession.startedAt) : null,
@@ -3848,8 +3849,9 @@ export function DashboardClient({
                 totalParts: activeSession.parts?.length ?? 1,
                 totalProblems:
                   activeSession.parts?.reduce((sum, p) => sum + p.slots.length, 0) ?? 0,
-                completedProblems:
-                  activeSession.results?.filter((r) => r.isCorrect !== null).length ?? 0,
+                completedProblems: countedTries(activeSession.results).filter(
+                  (r) => r.isCorrect !== null
+                ).length,
               }}
               student={{
                 name: player.name,

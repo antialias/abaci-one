@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { PRACTICE_TYPES, type PracticeTypeId } from '@/constants/practiceTypes'
+import { summarizeTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 import { TrendIndicator } from './TrendIndicator'
@@ -33,7 +34,6 @@ export function SessionHero({
   previousAccuracy,
   isDark,
 }: SessionHeroProps) {
-  const results = plan.results as SlotResult[]
   const parts = (plan.parts ?? []) as SessionPart[]
 
   // Get unique practice types from the session parts
@@ -62,9 +62,11 @@ export function SessionHero({
     })
   }, [plan.startedAt, plan.createdAt])
 
-  const totalProblems = results.length
-  const correctProblems = results.filter((r) => r.isCorrect).length
-  const accuracy = totalProblems > 0 ? correctProblems / totalProblems : 0
+  const {
+    completed: totalProblems,
+    correct: correctProblems,
+    accuracy,
+  } = summarizeTries(plan.results as SlotResult[])
 
   // Timestamps are serialized as milliseconds from the API (not Date objects)
   const startedAtMs = plan.startedAt as unknown as number

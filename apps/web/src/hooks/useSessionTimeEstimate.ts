@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 
 // ============================================================================
@@ -77,10 +78,12 @@ function calculateStats(times: number[]): {
  * when the student is working on a specific part.
  */
 export function calculateTimingStats(
-  results: SlotResult[],
+  allResults: SlotResult[],
   parts?: SessionPart[],
   currentPartType?: SessionPart['type']
 ): TimingStats {
+  // Practice-only do-overs are not timing evidence
+  const results = countedTries(allResults)
   let times: number[]
 
   if (currentPartType && parts) {
@@ -170,7 +173,7 @@ export function useSessionTimeEstimate({
   return useMemo(() => {
     // Calculate total and completed problems
     const totalProblems = parts.reduce((sum, p) => sum + (p.slots?.length ?? 0), 0)
-    const completedProblems = results.length
+    const completedProblems = countedTries(results).length
     const problemsRemaining = totalProblems - completedProblems
 
     // Calculate timing stats
@@ -204,7 +207,7 @@ export function getSessionTimeEstimate(
   currentPartType?: SessionPart['type']
 ): SessionTimeEstimate {
   const totalProblems = parts.reduce((sum, p) => sum + (p.slots?.length ?? 0), 0)
-  const completedProblems = results.length
+  const completedProblems = countedTries(results).length
   const problemsRemaining = totalProblems - completedProblems
 
   const timingStats = calculateTimingStats(results, parts, currentPartType)

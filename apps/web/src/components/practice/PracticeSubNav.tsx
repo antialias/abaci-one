@@ -4,28 +4,29 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import * as Popover from '@radix-ui/react-popover'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
-import { NavBannerSlot } from './BannerSlots'
+import { EnrollChildModal } from '@/components/classroom/EnrollChildModal'
+import { FamilyCodeDisplay } from '@/components/family'
+import { PlayerStuffModal } from '@/components/my-stuff/PlayerStuffModal'
 import { Z_INDEX } from '@/constants/zIndex'
 import { useTheme } from '@/contexts/ThemeContext'
-import { useStudentStakeholders } from '@/hooks/useStudentStakeholders'
-import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
-import { useStudentActions, type StudentActionData } from '@/hooks/useStudentActions'
+import { countedTries } from '@/db/schema/session-plan-helpers'
 import type {
   GameBreakSettings,
   SessionPart,
   SessionPlan,
   SlotResult,
 } from '@/db/schema/session-plans'
+import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
+import { type StudentActionData, useStudentActions } from '@/hooks/useStudentActions'
+import { useStudentStakeholders } from '@/hooks/useStudentStakeholders'
+import { getGame } from '@/lib/arcade/game-registry'
 import { css } from '../../../styled-system/css'
-import { EnrollChildModal } from '@/components/classroom/EnrollChildModal'
-import { FamilyCodeDisplay } from '@/components/family'
-import { PlayerStuffModal } from '@/components/my-stuff/PlayerStuffModal'
-import { RelationshipCard } from './RelationshipCard'
+import { NavBannerSlot } from './BannerSlots'
 import { RelationshipSummary } from './RelationshipBadge'
+import { RelationshipCard } from './RelationshipCard'
 import { SessionMoodIndicator } from './SessionMoodIndicator'
 import { SessionProgressIndicator } from './SessionProgressIndicator'
 import { ACTION_DEFINITIONS } from './studentActions'
-import { getGame } from '@/lib/arcade/game-registry'
 
 /**
  * Timing data for the current problem attempt
@@ -440,7 +441,9 @@ export function PracticeSubNav({
   // Extract recent correctness results for mood indicator (last N)
   const recentResults = useMemo(() => {
     if (!sessionHud?.results) return []
-    return sessionHud.results.slice(-10).map((r) => r.isCorrect)
+    return countedTries(sessionHud.results)
+      .slice(-10)
+      .map((r) => r.isCorrect)
   }, [sessionHud?.results])
 
   // Game break indicator calculations

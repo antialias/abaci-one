@@ -6,6 +6,7 @@
  * the current P(known) estimate for each skill.
  */
 
+import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import { BKT_THRESHOLDS } from '../config/bkt-integration'
 import { getEffectiveResponseTimeMs } from '../timing/effective-time'
 import { calculateConfidence, getUncertaintyRange } from './confidence'
@@ -117,6 +118,11 @@ export function computeBktFromHistory(
     if (result.source === 'teacher-excluded' || result.originalSource === 'teacher-excluded') {
       continue
     }
+
+    // A practice-only do-over (of a problem already answered correctly) is not
+    // evidence: no pKnown update, no opportunity, no success, no lastPracticedAt.
+    // Only the server's stamp counts; legacy rows are never re-derived (§1.2).
+    if (!isCountedTry(result)) continue
 
     // Check if this is a recency-refresh sentinel record
     // These update lastPracticedAt but are ZERO-WEIGHT for BKT mastery (pKnown)

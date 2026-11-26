@@ -19,6 +19,8 @@
 
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
+import { calculateMasteryWeight } from '@/db/schema/session-plan-helpers'
+import { findTryIndex, normalizeTries } from '@/db/schema/session-plan-normalize'
 import type {
   SessionPlan,
   SessionStatus,
@@ -27,6 +29,7 @@ import type {
   SlotTimingReview,
 } from '@/db/schema/session-plans'
 import { getSessionPlan, updateSessionPlanResults } from './session-planner'
+import { weightOfTry } from './try-weight'
 
 /**
  * Bounds for a manually-entered response time (`set_time`): 1 second to 24
@@ -76,6 +79,53 @@ export type SlotResultReviewAction =
 
 export type SlotResultReviewActionName = SlotResultReviewAction['action']
 
+const VALID_SCOPES: readonly SlotReviewScope[] = ['timing', 'mastery', 'both']
+
+/**
+ * Translate a request body into a typed {@link SlotResultReviewAction}.
+ * Throws {@link SessionReviewError} (400) on anything unrecognized. Shared by
+ * the `tries/[tryId]` and the legacy `results/[resultIndex]` routes.
+ */
+export function parseSlotResultReviewAction(body: unknown): SlotResultReviewAction {
+  const { action, scope, adjustedResponseTimeMs } = (body ?? {}) as {
+    action?: string
+    scope?: string
+    adjustedResponseTimeMs?: unknown
+  }
+
+  switch (action) {
+    case 'mark_correct':
+    case 'clear_time':
+    case 'confirm_timing':
+    case 'unconfirm_timing':
+      return { action }
+
+    case 'exclude':
+    case 'include': {
+      if (scope !== undefined && !VALID_SCOPES.includes(scope as SlotReviewScope)) {
+        throw new SessionReviewError('Invalid scope. Must be: timing, mastery, or both', 400)
+      }
+      return { action, scope: scope as SlotReviewScope | undefined }
+    }
+
+    case 'set_time': {
+      if (typeof adjustedResponseTimeMs !== 'number' || !Number.isFinite(adjustedResponseTimeMs)) {
+        throw new SessionReviewError(
+          'adjustedResponseTimeMs (number) is required for set_time',
+          400
+        )
+      }
+      return { action, adjustedResponseTimeMs }
+    }
+
+    default:
+      throw new SessionReviewError(
+        'Invalid action. Must be: mark_correct, exclude, include, set_time, clear_time, confirm_timing, or unconfirm_timing',
+        400
+      )
+  }
+}
+
 /** Legacy shape: the pre-#158 route stored the pre-exclusion source here. */
 type LegacyOriginalSource = SlotResult & { _originalSource?: SlotResultSource }
 
@@ -117,15 +167,21 @@ export function computeReviewedResult(
   result: SlotResult,
   action: SlotResultReviewAction,
   reviewerUserId: string,
-  now: Date = new Date()
+  now: Date = new Date(),
+  /** The try as normalized (kind, round, practice-only); legacy rows weigh by epochNumber */
+  tryRecord?: { kind: NonNullable<SlotResult['kind']>; round: number; practiceOnly: boolean }
 ): SlotResult {
   switch (action.action) {
     case 'mark_correct': {
       if (result.isCorrect) {
         throw new SessionReviewError('Result is already correct', 400)
       }
-      const epochNumber = result.epochNumber ?? 0
-      const masteryWeight = 1.0 / 2 ** epochNumber
+      // A try recorded from Phase 1 on weighs as its stamped kind/round says (a
+      // practice-only do-over stays 0); a legacy row as before, by epochNumber.
+      const masteryWeight =
+        result.kind && tryRecord
+          ? weightOfTry({ ...tryRecord, isCorrect: true })
+          : calculateMasteryWeight(true, result.epochNumber ?? 0)
       return {
         ...result,
         isCorrect: true,
@@ -255,7 +311,11 @@ export interface ApplySlotResultReviewParams {
   planId: string
   /** Expected owner; enforced against the loaded plan (returns 404 on mismatch). */
   playerId: string
-  resultIndex: number
+  /**
+   * The try to review: by `tryId` (a stored id, or `legacy:<planId>:<index>` for
+   * a row without one), or by its position in `results` (the legacy route).
+   */
+  target: { tryId: string } | { resultIndex: number }
   /** User ID of the acting adult (stamped into the audit fields). */
   reviewerUserId: string
   action: SlotResultReviewAction
@@ -271,23 +331,35 @@ export interface ApplySlotResultReviewParams {
 export async function applySlotResultReview(
   params: ApplySlotResultReviewParams
 ): Promise<SessionPlan> {
-  const { planId, playerId, resultIndex, reviewerUserId, action, now = new Date() } = params
+  const { planId, playerId, target, reviewerUserId, action, now = new Date() } = params
 
   const plan = await getSessionPlan(planId)
   if (!plan || plan.playerId !== playerId) {
     // Don't distinguish "missing" from "not yours".
     throw new SessionReviewError('Plan not found', 404)
   }
-  if (!Number.isInteger(resultIndex) || resultIndex < 0 || resultIndex >= plan.results.length) {
-    throw new SessionReviewError('Result index out of bounds', 400)
+
+  let resultIndex: number
+  if ('tryId' in target) {
+    resultIndex = findTryIndex(plan.id, plan.results, target.tryId)
+    if (resultIndex < 0) throw new SessionReviewError('Try not found', 404)
+  } else {
+    resultIndex = target.resultIndex
+    if (!Number.isInteger(resultIndex) || resultIndex < 0 || resultIndex >= plan.results.length) {
+      throw new SessionReviewError('Result index out of bounds', 400)
+    }
   }
 
+  const tryRecord = normalizeTries(plan.id, plan.parts, plan.results).find(
+    (t) => t.arrayIndex === resultIndex
+  )
   const updatedResults = [...plan.results]
   updatedResults[resultIndex] = computeReviewedResult(
     updatedResults[resultIndex],
     action,
     reviewerUserId,
-    now
+    now,
+    tryRecord
   )
 
   return updateSessionPlanResults(planId, updatedResults)

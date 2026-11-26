@@ -2,9 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
-import { createSocket } from '@/lib/socket'
-import type { SessionPart, SessionPartType, SlotResult } from '@/db/schema/session-plans'
-import type { SessionFlowState } from '@/db/schema/session-plans'
+import { countedTries } from '@/db/schema/session-plan-helpers'
+import type {
+  SessionFlowState,
+  SessionPart,
+  SessionPartType,
+  SlotResult,
+} from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
   PartTransitionCompleteEvent,
@@ -15,6 +19,7 @@ import type {
   SessionResumedEvent,
   VisionFrameEvent,
 } from '@/lib/classroom/socket-events'
+import { createSocket } from '@/lib/socket'
 
 /**
  * Control actions a teacher can send to a student's practice session abacus
@@ -350,7 +355,7 @@ export function useSessionObserver(
         // Convert slotResults to ObservedResult format
         const historicalResults: ObservedResult[] = []
 
-        for (const result of slotResults) {
+        for (const result of countedTries(slotResults)) {
           // Calculate problem number from part structure
           let problemNumber = 0
           for (let p = 0; p < result.partNumber - 1; p++) {

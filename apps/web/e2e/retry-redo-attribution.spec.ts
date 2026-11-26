@@ -32,6 +32,12 @@ interface Result {
   isCorrect: boolean
   studentAnswer: number
   problem: Problem
+  // The try record (Phase 1), stamped by the server
+  tryId?: string
+  kind?: 'first' | 'retry' | 'do_over'
+  round?: number
+  practiceOnly?: boolean
+  masteryWeight?: number
 }
 interface Plan {
   id: string
@@ -127,6 +133,16 @@ async function getPlan(request: APIRequestContext, playerId: string, planId: str
   const r = await request.get(`/api/curriculum/${playerId}/sessions/plans/${planId}`)
   expect(r.ok()).toBeTruthy()
   return (await r.json()).plan as Plan
+}
+
+/** Each skill's lastPracticedAt: moves whenever a try counts toward mastery. */
+async function skillsPracticedAt(request: APIRequestContext, playerId: string) {
+  const r = await request.get(`/api/curriculum/${playerId}`)
+  expect(r.ok()).toBe(true)
+  const { skills } = (await r.json()) as {
+    skills: { skillId: string; lastPracticedAt: string | null }[]
+  }
+  return Object.fromEntries(skills.map((s) => [s.skillId, s.lastPracticedAt]))
 }
 
 async function cleanupPlayer(request: APIRequestContext, playerId: string) {
@@ -368,6 +384,13 @@ test.describe('retry / do-over attribution', () => {
     server = await getPlan(request, playerId, plan.id)
     const redo = server.results.at(-1)!
     expect(redo).toMatchObject({ isManualRedo: true, slotIndex: 0, isCorrect: true })
+    // A do-over of a once-wrong problem: round 1, weighs 1.0 as on main (1/2^r is Phase 1w)
+    expect(redo).toMatchObject({
+      kind: 'do_over',
+      round: 1,
+      practiceOnly: false,
+      masteryWeight: 1,
+    })
     expect(server.retryState?.['0']?.redeemedSlots).toContain(0)
 
     // The screen moves on to slot 1, not back to the redeemed slot 0
@@ -489,7 +512,7 @@ test.describe('retry / do-over attribution', () => {
   })
 
   for (const failure of ['500', 'abort', 'lost-reply'] as const) {
-    test(`a failed save (${failure}) mid-part resyncs to the server's problem and later answers attribute right`, async ({
+    test(`a failed save (${failure}) is resent once with the same tryId and the session goes on`, async ({
       page,
       request,
     }) => {
@@ -497,12 +520,15 @@ test.describe('retry / do-over attribution', () => {
       const plan = await startSession(request, playerId)
       await openSession(page, playerId)
 
-      // Fail exactly the second record write (slot 1)
+      // Fail exactly the second record write (slot 1); the client resends it once
       let recordCount = 0
+      const recordTryIds: string[] = []
       await page.route(`**/sessions/plans/${plan.id}`, async (route) => {
         const req = route.request()
-        if (req.method() === 'PATCH' && JSON.parse(req.postData() ?? '{}').action === 'record') {
+        const body = JSON.parse(req.postData() ?? '{}')
+        if (req.method() === 'PATCH' && body.action === 'record') {
           recordCount++
+          recordTryIds.push(body.result?.tryId)
           if (recordCount === 2) {
             if (failure === 'abort') return route.abort('failed')
             if (failure === 'lost-reply') await route.fetch() // reaches the server, reply lost
@@ -525,8 +551,9 @@ test.describe('retry / do-over attribution', () => {
       await typeCorrect(page, failedShown)
       await failedReply
 
-      // The screen settles on the problem the server is on
-      const expectedSlot = failure === 'lost-reply' ? 2 : 1
+      // The resend (same tryId) lands, or for a lost reply is the no-op of an
+      // already-recorded try: either way slot 1 is recorded once and slot 2 is up
+      const expectedSlot = 2
       await expect
         .poll(async () => (await getPlan(request, playerId, plan.id)).currentSlotIndex)
         .toBe(expectedSlot)
@@ -551,10 +578,58 @@ test.describe('retry / do-over attribution', () => {
       const part1 = end.results.filter((r) => r.partNumber === 1)
       expect(part1.map((r) => r.slotId)).toEqual(plan.parts[0].slots.map((s) => s.slotId))
       expect(end.currentPartIndex).toBe(1)
-      // What the kid sees for a real failed save is reported, not asserted
-      console.log(`[s5 ${failure}] toasts: ${JSON.stringify(await toasts(page))}`)
+      expect(recordTryIds[2]).toBe(recordTryIds[1])
+      expect(new Set(part1.map((r) => r.tryId)).size).toBe(part1.length)
+      expect(await toasts(page)).toEqual([])
     })
   }
+
+  test('a save that fails twice tells the kid plainly, resyncs, and the session goes on', async ({
+    page,
+    request,
+  }) => {
+    playerId = await seedStudent(request)
+    const plan = await startSession(request, playerId)
+    await openSession(page, playerId)
+
+    // Fail the second record write and its one resend
+    let recordCount = 0
+    await page.route(`**/sessions/plans/${plan.id}`, async (route) => {
+      const req = route.request()
+      if (req.method() === 'PATCH' && JSON.parse(req.postData() ?? '{}').action === 'record') {
+        recordCount++
+        if (recordCount === 2 || recordCount === 3) return route.abort('failed')
+      }
+      return route.continue()
+    })
+
+    await answer(page, plan.id, true)
+    const failedShown = await shownProblem(page)
+    await typeCorrect(page, failedShown)
+
+    // The screen resyncs to the problem the server is on: slot 1, unsaved
+    await expect
+      .poll(async () => sameProblem(await shownProblem(page), slotProblem(plan, 0, 1)), {
+        timeout: 20_000,
+      })
+      .toBe(true)
+    expect(recordCount).toBe(3)
+    const shown = await toasts(page)
+    expect(shown.length).toBeGreaterThan(0)
+    for (const text of shown) expect(text).not.toMatch(/fetch|inject|error|failed|\d{3}/i)
+    await page.screenshot({ path: `${SHOTS}/s5-double-failure-after.png` })
+
+    for (let i = 1; i < plan.parts[0].slots.length; i++) {
+      const r = await answer(page, plan.id, true)
+      expect(r.status).toBe(200)
+    }
+    await expect(page.locator('[data-component="part-transition-screen"]')).toBeVisible({
+      timeout: 20_000,
+    })
+    const end = await getPlan(request, playerId, plan.id)
+    const part1 = end.results.filter((r) => r.partNumber === 1)
+    expect(part1.map((r) => r.slotId)).toEqual(plan.parts[0].slots.map((s) => s.slotId))
+  })
 
   test('a stale tab answering an old problem resyncs quietly (409, no toast)', async ({
     page,
@@ -616,20 +691,42 @@ test.describe('retry / do-over attribution', () => {
     await doOverCorrectly(page, plan.id, 1)
     let server = await getPlan(request, playerId, plan.id)
     expect(server.results.at(-1)).toMatchObject({ isManualRedo: true, slotIndex: 1 })
+    // Redeemed: round 1 (one counted try before it), weighs 1.0 as on main
+    expect(server.results.at(-1)).toMatchObject({
+      kind: 'do_over',
+      round: 1,
+      practiceOnly: false,
+      masteryWeight: 1,
+    })
     expect(server.retryState?.['0']?.pendingRetries ?? []).toHaveLength(0)
     expect(server.currentSlotIndex).toBe(2)
     expect(sameProblem(await shownProblem(page), slotProblem(plan, 0, 2))).toBe(true)
 
-    // Do over slot 0 (correct): the position does not move
+    // Do over slot 0 (correct): recorded as practice, the position and mastery do not move
     const before = server.results.length
+    const practicedBefore = await skillsPracticedAt(request, playerId)
     await startDoOver(page, 0)
+    const redoReply = page.waitForResponse(
+      (r) => r.url().includes(plan.id) && isWrite('record_redo')(r)
+    )
     await typeCorrect(page, await shownProblem(page))
+    expect((await redoReply).status()).toBe(200)
     await expect
       .poll(async () => sameProblem(await shownProblem(page), slotProblem(plan, 0, 2)))
       .toBe(true)
     server = await getPlan(request, playerId, plan.id)
     expect(server.currentSlotIndex).toBe(2)
-    console.log(`[s6] correct do-over recorded: ${server.results.length > before}`)
+    expect(server.results).toHaveLength(before + 1)
+    expect(server.results.at(-1)).toMatchObject({
+      isManualRedo: true,
+      slotId: plan.parts[0].slots[0].slotId,
+      kind: 'do_over',
+      round: 1,
+      practiceOnly: true,
+      masteryWeight: 0,
+    })
+    expect(server.retryState?.['0']?.pendingRetries ?? []).toHaveLength(0)
+    expect(await skillsPracticedAt(request, playerId)).toEqual(practicedBefore)
 
     // Slot 2 is attributed to slot 2, and no retry round follows
     await answer(page, plan.id, true)

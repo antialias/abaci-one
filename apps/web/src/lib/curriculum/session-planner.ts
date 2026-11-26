@@ -19,9 +19,14 @@ import { getSkillCategory, type SkillCategoryKey } from '@/constants/skillCatego
 import { db, schema } from '@/db'
 import { appSettings } from '@/db/schema'
 import { isActive, isVisualReady, type PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
-import { resolveCurrentItem } from '@/db/schema/session-plan-helpers'
+import { isCountedTry, resolveCurrentItem, sameProblem } from '@/db/schema/session-plan-helpers'
 import {
-  calculateMasteryWeight,
+  doOverStamp,
+  isClientTryId,
+  mintTryId,
+  normalizeTries,
+} from '@/db/schema/session-plan-normalize'
+import {
   calculateSessionHealth,
   DEFAULT_GAME_BREAK_SETTINGS,
   DEFAULT_PLAN_CONFIG,
@@ -97,6 +102,7 @@ import { applyFlowEvent, type SessionFlowEvent } from './session-flow'
 import { getWeakSkillIds, type SessionMode } from './session-mode'
 import { describeSkippedPart } from './skipped-parts'
 import { sanitizeResultTiming } from './timing/response-time-guard'
+import { weightOfTry } from './try-weight'
 
 // ============================================================================
 // Plan Generation
@@ -1267,6 +1273,9 @@ export async function batchGetRecentSessionResults(
       // SlotResult contract holds. Real practice records always have at
       // least `skillsExercised: []` from `recordSlotResult`.
       if (!Array.isArray((result as Partial<SlotResult>).skillsExercised)) continue
+      // Practice-only do-overs (Phase 1) carry no evidence for any history
+      // reader: readiness, the linear gate, skill metrics, leaderboards, MCP.
+      if (!isCountedTry(result)) continue
 
       const partType = (typeByPartNumber.get(result.partNumber) ?? 'linear') as SessionPartType
 
@@ -1346,16 +1355,6 @@ export class SlotResultMismatchError extends Error {
     )
     this.name = 'SlotResultMismatchError'
   }
-}
-
-/** Same problem: same terms and answer. */
-function sameProblem(a: GeneratedProblem | undefined, b: GeneratedProblem | undefined): boolean {
-  if (!a || !b) return false
-  return (
-    a.answer === b.answer &&
-    a.terms.length === b.terms.length &&
-    a.terms.every((t, i) => t === b.terms[i])
-  )
 }
 
 /** Where a part's cursor lands after a step, and whether the session is done. */
@@ -1455,6 +1454,43 @@ function settledPositionFields(plan: SessionPlan, next: SettledPosition) {
   }
 }
 
+/**
+ * A submitted try without the fields only the server stamps. Clients from
+ * before Phase 1 send `isRetry`/`epochNumber` guesses and `masteryWeight`;
+ * `epochNumber` stays (it tells a resubmit from the next round), the rest go.
+ * A `tryId` not in the form the client mints (see `isClientTryId`) is treated
+ * as absent: the server mints one and the exact-match rule applies.
+ */
+type Unstamped<T> = Omit<
+  T,
+  'kind' | 'round' | 'practiceOnly' | 'masteryWeight' | 'isRetry' | 'originalSlotIndex'
+>
+
+function withoutServerStamps<T extends Partial<SlotResult>>(submission: T): Unstamped<T> {
+  const {
+    kind: _kind,
+    round: _round,
+    practiceOnly: _practiceOnly,
+    masteryWeight: _masteryWeight,
+    isRetry: _isRetry,
+    originalSlotIndex: _originalSlotIndex,
+    tryId,
+    ...rest
+  } = submission
+  if (tryId !== undefined && !isClientTryId(tryId)) {
+    console.warn('[session-planner] ignoring malformed tryId', {
+      tryId: String(tryId).slice(0, 80),
+    })
+    return rest as Unstamped<T>
+  }
+  return (tryId === undefined ? rest : { ...rest, tryId }) as Unstamped<T>
+}
+
+/** Whether a try with this id is already recorded (idempotent record by `tryId`). */
+function isRecordedTry(plan: SessionPlan, tryId: string | undefined): boolean {
+  return tryId !== undefined && plan.results.some((r) => r.tryId === tryId)
+}
+
 /** Revoke any active share links once a session completes (non-critical). */
 async function revokeSharesIfComplete(planId: string, isComplete: boolean, caller: string) {
   if (!isComplete) return
@@ -1475,16 +1511,20 @@ async function revokeSharesIfComplete(planId: string, isComplete: boolean, calle
  * not trusted: older clients can send the previous slot's id after an
  * optimistic advance, so the stored `slotId` is always the item's own.
  *
- * A resubmit that equals the last recorded try exactly (slot, round when sent,
- * problem, answer) returns the plan unchanged; anything else that is not the
- * current item throws SlotResultMismatchError.
+ * Idempotent by `tryId`: a try whose id is already recorded returns the plan
+ * unchanged. Without a `tryId` (clients from before Phase 1), a resubmit that
+ * equals the last recorded try exactly (slot, round when sent, problem, answer)
+ * returns the plan unchanged. Anything else that is not the current item
+ * throws SlotResultMismatchError.
+ *
+ * The server stamps `kind`, `round`, `practiceOnly`, `partIndex` and
+ * `masteryWeight` (weightOfTry); client-sent values for them are ignored.
  */
 export async function recordSlotResult(
   planId: string,
-  submission: Omit<SlotResultSubmission, 'masteryWeight' | 'isRetry' | 'originalSlotIndex'>
+  submission: SlotResultSubmission
 ): Promise<SessionPlan> {
-  // partIndex only identifies the answered problem; it is not stored
-  const { partIndex: submittedPartIndex, ...submitted } = submission
+  const { partIndex: submittedPartIndex, ...submitted } = withoutServerStamps(submission)
   let result = submitted
   const traceStart = Date.now()
   let plan: SessionPlan | null
@@ -1515,6 +1555,12 @@ export async function recordSlotResult(
     throw new Error(`Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`)
   }
 
+  // A try already recorded (a resend after a lost reply, a double submit)
+  if (isRecordedTry(plan, result.tryId)) {
+    console.log('[recordSlotResult] duplicate tryId ignored', { planId, tryId: result.tryId })
+    return plan
+  }
+
   // Attribute the try to the item the student is shown, by content. Checked
   // before the position checks so a resubmit of a session's final answer is
   // still a no-op.
@@ -1538,6 +1584,7 @@ export async function recordSlotResult(
     const lastTry = [...plan.results].reverse().find((r) => !r.isManualRedo)
     const lastTryPartNumber = lastTry?.partNumber
     if (
+      result.tryId === undefined &&
       lastTry &&
       isSubmittedTry({
         ...lastTry,
@@ -1595,8 +1642,13 @@ export async function recordSlotResult(
   const epochNumber = expected.epochNumber
   const originalSlotIndex = expected.originalSlotIndex
 
-  // Calculate mastery weight based on epoch and correctness
-  const masteryWeight = calculateMasteryWeight(result.isCorrect, epochNumber)
+  const kind = inRetryEpoch ? ('retry' as const) : ('first' as const)
+  const masteryWeight = weightOfTry({
+    kind,
+    round: epochNumber,
+    isCorrect: result.isCorrect,
+    practiceOnly: false,
+  })
 
   // Server-side timing backstop (#156): cap any value that outran the absolute
   // ceiling (stale/hostile clients, clock anomalies) before it is ever stored
@@ -1607,6 +1659,11 @@ export async function recordSlotResult(
 
   const newResult: SlotResult = {
     ...result,
+    tryId: result.tryId ?? mintTryId(),
+    kind,
+    round: epochNumber,
+    practiceOnly: false,
+    partIndex,
     slotId: expected.slotId,
     slotIndex: originalSlotIndex,
     partNumber: currentPart.partNumber,
@@ -1727,27 +1784,44 @@ export interface RedoContext {
   originalPartIndex: number
   /** Slot index of the problem being redone */
   originalSlotIndex: number
-  /** Whether the original answer was correct (affects recording logic) */
-  originalWasCorrect: boolean
+  /**
+   * Whether the original answer was correct, as the client saw it. Sent for
+   * servers from before Phase 1; this server derives it from the item's tries.
+   */
+  originalWasCorrect?: boolean
 }
 
 /**
- * Record a result from a manual redo (student tapped a completed problem to redo it).
+ * Record a do-over (the student tapped a finished problem to do it again).
+ * Every do-over is recorded (Phase 1), as a try of kind `do_over`.
  *
- * Key differences from recordSlotResult:
- * - Does not step the session position past an item
- * - If original was wrong and redo is correct: removes from retry queue (redeems).
- *   If that leaves the current retry round with nothing to show, the cursor
- *   settles exactly as after a try: next round, next part, or completion.
- * - Result is marked with isManualRedo: true
+ * - Idempotent by `tryId`, like recordSlotResult.
+ * - `round` = the item's earlier tries that are not practice-only.
+ * - A do-over of an item whose latest such try was correct is `practiceOnly`:
+ *   weight 0, no skill-attempt bump, no redemption, skipped by every mastery,
+ *   readiness, gate, health and verdict reader.
+ * - Otherwise it weighs as today (weightOfTry: 1.0 correct, 0 wrong), and a
+ *   correct one redeems the item from the retry queue. If that leaves the current retry
+ *   round with nothing to show, the cursor settles exactly as after a try: next
+ *   round, next part, or completion.
+ * - Never steps the session position past an item.
+ *
+ * The item is the slot `redoContext` names; a do-over of a slot with no try
+ * yet, or whose problem is not the submitted one, throws SlotResultMismatchError.
  */
 export async function recordRedoResult(
   planId: string,
-  result: Omit<SlotResult, 'timestamp' | 'partNumber'>,
+  submission: Omit<SlotResult, 'timestamp' | 'partNumber'>,
   redoContext: RedoContext
 ): Promise<SessionPlan> {
   const plan = await getSessionPlan(planId)
   if (!plan) throw new Error(`Plan not found: ${planId}`)
+
+  let result = withoutServerStamps(submission)
+  if (isRecordedTry(plan, result.tryId)) {
+    console.log('[recordRedoResult] duplicate tryId ignored', { planId, tryId: result.tryId })
+    return plan
+  }
 
   // Validate part index
   if (redoContext.originalPartIndex < 0 || redoContext.originalPartIndex >= plan.parts.length) {
@@ -1755,6 +1829,15 @@ export async function recordRedoResult(
   }
 
   const part = plan.parts[redoContext.originalPartIndex]
+  const slot = part.slots?.[redoContext.originalSlotIndex]
+  const priorTries = slot
+    ? normalizeTries(plan.id, plan.parts, plan.results || []).filter(
+        (t) => t.itemId === slot.slotId
+      )
+    : []
+  if (!slot || priorTries.length === 0 || !sameProblem(slot.problem, result.problem)) {
+    throw new SlotResultMismatchError(result.slotId, null)
+  }
 
   // Reject redo if the answer was already divulged (student exhausted all retries wrong)
   const answerWasDivulged = (plan.results || []).some(
@@ -1775,27 +1858,39 @@ export async function recordRedoResult(
   // any value above the absolute ceiling before storing or feeding BKT.
   result = { ...result, ...sanitizeResultTiming(result) }
 
-  // Build the result with manual redo flag
+  const { round, practiceOnly } = doOverStamp(priorTries)
   const newResult: SlotResult = {
     ...result,
+    tryId: result.tryId ?? mintTryId(),
+    kind: 'do_over',
+    round,
+    practiceOnly,
+    partIndex: redoContext.originalPartIndex,
+    slotId: slot.slotId,
+    slotIndex: redoContext.originalSlotIndex,
     partNumber: part.partNumber,
     timestamp: new Date(),
     isManualRedo: true,
-    // For manual redos, we use epoch 0 and no retry flags since this is user-initiated
+    masteryWeight: weightOfTry({
+      kind: 'do_over',
+      round,
+      isCorrect: result.isCorrect,
+      practiceOnly,
+    }),
+    // Legacy fields keep their legacy meaning until Phase 6: a do-over is not a
+    // retry-round try. Its round is `round`.
     epochNumber: 0,
-    masteryWeight: result.isCorrect ? 1.0 : 0,
     isRetry: false,
     originalSlotIndex: redoContext.originalSlotIndex,
   }
 
   const updatedResults = [...(plan.results || []), newResult]
 
-  // Handle retry queue updates if original was wrong and redo is correct
+  // A correct do-over of an item whose latest counted try was wrong redeems it
   const updatedRetryState = plan.retryState ? { ...plan.retryState } : {}
   let settled: ReturnType<typeof settledPositionFields> | null = null
 
-  if (!redoContext.originalWasCorrect && result.isCorrect) {
-    // Original was wrong, redo is correct - redeem from retry queue
+  if (!practiceOnly && result.isCorrect) {
     const partRetryState = updatedRetryState[redoContext.originalPartIndex]
 
     if (partRetryState) {
@@ -1851,8 +1946,8 @@ export async function recordRedoResult(
     throw new Error(`Failed to update plan ${planId}: no rows returned`)
   }
 
-  // Update global skill mastery timestamps
-  if (result.skillsExercised && result.skillsExercised.length > 0) {
+  // Update global skill mastery timestamps (not for practice-only: no pedagogical effect)
+  if (!practiceOnly && result.skillsExercised && result.skillsExercised.length > 0) {
     const skillResults = result.skillsExercised.map((skillId) => ({
       skillId,
       isCorrect: result.isCorrect,

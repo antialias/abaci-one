@@ -25,6 +25,7 @@ import type {
   ProblemSlot,
   SessionHealth,
   SessionPlan,
+  SlotResult,
 } from './session-plans'
 
 // ============================================================================
@@ -77,12 +78,59 @@ export const MAX_RETRY_EPOCHS = 2
 // ============================================================================
 
 /**
+ * Whether a try counts: everything except a practice-only do-over (a do-over
+ * of a problem whose latest counted try was correct, session architecture
+ * §1.2). Every reader that turns tries into a verdict, a count, an accuracy, a
+ * streak, a timing statistic or mastery evidence reads through this predicate;
+ * only lists of individual tries (attempt history) show practice-only rows.
+ */
+export function isCountedTry(result: Pick<SlotResult, 'practiceOnly'>): boolean {
+  return result.practiceOnly !== true
+}
+
+/** The tries that count (see `isCountedTry`), in recorded order. */
+export function countedTries<T extends Pick<SlotResult, 'practiceOnly'>>(
+  results: readonly T[] | null | undefined
+): T[] {
+  return (results ?? []).filter(isCountedTry)
+}
+
+export interface TryStats {
+  /** Counted tries */
+  completed: number
+  correct: number
+  incorrect: number
+  /** correct / completed, 0 when nothing counted */
+  accuracy: number
+  totalTimeMs: number
+}
+
+/**
+ * Counts, accuracy and time over the tries that count. The one place a
+ * session's numbers are summed, so no view can count a practice-only do-over.
+ */
+export function summarizeTries(
+  results:
+    | readonly Pick<SlotResult, 'practiceOnly' | 'isCorrect' | 'responseTimeMs'>[]
+    | null
+    | undefined
+): TryStats {
+  const counted = countedTries(results)
+  const correct = counted.filter((r) => r.isCorrect).length
+  return {
+    completed: counted.length,
+    correct,
+    incorrect: counted.length - correct,
+    accuracy: counted.length > 0 ? correct / counted.length : 0,
+    totalTimeMs: counted.reduce((sum, r) => sum + (r.responseTimeMs || 0), 0),
+  }
+}
+
+/**
  * Calculate session accuracy from results
  */
 export function getSessionPlanAccuracy(plan: SessionPlan): number {
-  if (plan.results.length === 0) return 0
-  const correct = plan.results.filter((r) => r.isCorrect).length
-  return correct / plan.results.length
+  return summarizeTries(plan.results).accuracy
 }
 
 /**
@@ -112,7 +160,7 @@ export function getTotalProblemCount(plan: SessionPlan): number {
  * Get count of completed problems across all parts
  */
 export function getCompletedProblemCount(plan: SessionPlan): number {
-  return plan.results.length
+  return countedTries(plan.results).length
 }
 
 /**
@@ -141,7 +189,8 @@ export function isSessionComplete(plan: SessionPlan): boolean {
  * Calculate updated health metrics
  */
 export function calculateSessionHealth(plan: SessionPlan, elapsedTimeMs: number): SessionHealth {
-  const results = plan.results
+  // Practice-only do-overs (of problems already answered correctly) are not evidence
+  const results = countedTries(plan.results)
   const completed = results.length
   const expectedCompleted = Math.floor(elapsedTimeMs / 1000 / plan.avgTimePerProblemSeconds)
 
@@ -181,6 +230,19 @@ export function calculateSessionHealth(plan: SessionPlan, elapsedTimeMs: number)
 export function calculateMasteryWeight(isCorrect: boolean, epochNumber: number): number {
   if (!isCorrect) return 0
   return 1.0 / 2 ** epochNumber
+}
+
+/** Same problem: same terms and answer. */
+export function sameProblem(
+  a: Pick<GeneratedProblem, 'terms' | 'answer'> | undefined,
+  b: Pick<GeneratedProblem, 'terms' | 'answer'> | undefined
+): boolean {
+  if (!a || !b || !Array.isArray(a.terms) || !Array.isArray(b.terms)) return false
+  return (
+    a.answer === b.answer &&
+    a.terms.length === b.terms.length &&
+    a.terms.every((t, i) => t === b.terms[i])
+  )
 }
 
 /**
@@ -322,7 +384,10 @@ export function getSlotRetryStatus(
     return { hasBeenAttempted: false, isCorrect: null, attemptCount: 0, finalMasteryWeight: null }
   }
 
-  const latestResult = slotResults[slotResults.length - 1]
+  // The verdict is the latest counted try: a practice-only do-over never changes it
+  const counted = countedTries(slotResults)
+  const verdictPool = counted.length > 0 ? counted : slotResults
+  const latestResult = verdictPool[verdictPool.length - 1]
   return {
     hasBeenAttempted: true,
     isCorrect: latestResult.isCorrect,

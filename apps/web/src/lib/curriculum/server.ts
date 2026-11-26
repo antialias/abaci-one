@@ -7,6 +7,7 @@
  * Use these for SSR prefetching with React Query's HydrationBoundary.
  */
 
+import { countedTries } from '@/db/schema/session-plan-helpers'
 import 'server-only'
 
 import { and, eq, inArray } from 'drizzle-orm'
@@ -181,7 +182,7 @@ async function batchGetActiveSessions(
     result.set(plan.playerId, {
       sessionId: plan.id,
       status: plan.status,
-      completedProblems: results.length,
+      completedProblems: countedTries(results).length,
       totalProblems,
     })
   }

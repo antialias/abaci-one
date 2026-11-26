@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server'
 import { and, eq, inArray } from 'drizzle-orm'
+import { NextResponse } from 'next/server'
 import { db } from '@/db'
-import { sessionPlans, type SessionPart, type SlotResult } from '@/db/schema/session-plans'
+import { countedTries } from '@/db/schema/session-plan-helpers'
+import { type SessionPart, type SlotResult, sessionPlans } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { getUserId } from '@/lib/viewer'
@@ -56,7 +57,7 @@ export const GET = withAuth(async (_request, { params }) => {
     const parts = (activePlan.parts as SessionPart[]) || []
     const results = (activePlan.results as SlotResult[]) || []
     const totalProblems = parts.reduce((sum, part) => sum + part.slots.length, 0)
-    const completedProblems = results.length
+    const completedProblems = countedTries(results).length
 
     return NextResponse.json({
       session: {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useTheme } from '@/contexts/ThemeContext'
+import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SessionPlan } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 
@@ -51,7 +52,7 @@ export function ContinueSessionCard({
   const isDark = resolvedTheme === 'dark'
 
   // Calculate progress
-  const completedProblems = session.results.length
+  const completedProblems = countedTries(session.results).length
   const totalProblems = session.parts.reduce((sum, part) => sum + part.slots.length, 0)
   const progressPercent =
     totalProblems > 0 ? Math.round((completedProblems / totalProblems) * 100) : 0

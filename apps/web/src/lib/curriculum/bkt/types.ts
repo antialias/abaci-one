@@ -23,6 +23,7 @@ export type BktEvidence = Pick<
   | 'source'
   | 'originalSource'
   | 'timingReview'
+  | 'practiceOnly'
 > & {
   /** JSON persistence serializes Date values as ISO strings. */
   timestamp: Date | string

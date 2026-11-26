@@ -91,6 +91,7 @@ export {
   type ApplySlotResultReviewParams,
   applySlotResultReview,
   computeReviewedResult,
+  parseSlotResultReviewAction,
   restoreSessionPlan,
   SET_TIME_MAX_MS,
   SET_TIME_MIN_MS,

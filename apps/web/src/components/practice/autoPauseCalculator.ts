@@ -5,8 +5,9 @@
  * Uses mean + 2*stdDev with clamping between 30s and 5 minutes.
  */
 
-import type { SlotResult } from '@/db/schema/session-plans'
 import type { ProgressiveAssistanceTimingConfig } from '@/constants/helpTiming'
+import { countedTries } from '@/db/schema/session-plan-helpers'
+import type { SlotResult } from '@/db/schema/session-plans'
 import { MAX_RESPONSE_TIME_CAP_MS } from '@/lib/curriculum/timing/constants'
 
 // ============================================================================
@@ -90,7 +91,9 @@ export interface ResponseTimeStats {
 /**
  * Calculate mean and standard deviation of response times
  */
-export function calculateResponseTimeStats(results: SlotResult[]): ResponseTimeStats {
+export function calculateResponseTimeStats(allResults: SlotResult[]): ResponseTimeStats {
+  // Practice-only do-overs are not timing evidence either
+  const results = countedTries(allResults)
   if (results.length === 0) {
     return { mean: 0, stdDev: 0, count: 0 }
   }
@@ -260,7 +263,7 @@ export function calculateNormalizedResponseTimeStats(
   const normalized: number[] = []
   let skippedCount = 0
 
-  for (const r of results) {
+  for (const r of countedTries(results)) {
     const cost = getComplexityCost(r.problem)
     if (cost === null) {
       skippedCount++
