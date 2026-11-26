@@ -113,4 +113,25 @@ describe('applyFlowEvent', () => {
       })
     ).toThrow(InvalidFlowTransitionError)
   })
+
+  it.each(['part_transition', 'break_pending', 'break_active', 'break_results'] as const)(
+    'refuses a first try in %s (no implicit transition since Phase 3c)',
+    (flowState) => {
+      const plan = buildPlan({ flowState, currentPartIndex: 1 })
+      expect(() =>
+        applyFlowEvent(plan, {
+          type: 'TRY_RECORDED',
+          row: {} as never,
+          try: {
+            partIndex: 1,
+            itemId: 's0',
+            kind: 'first',
+            round: 0,
+            practiceOnly: false,
+            isCorrect: true,
+          },
+        })
+      ).toThrow(InvalidFlowTransitionError)
+    }
+  )
 })

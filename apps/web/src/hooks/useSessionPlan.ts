@@ -84,38 +84,75 @@ export class SlotMismatchClientError extends Error {
 }
 
 /**
- * A try's write failed twice (network error or 5xx, then the same on its one
+ * A try was sent while the session's next step is a part transition or a break
+ * (409 `not_practicing`, Phase 3c). Nothing was recorded. `plan` is the
+ * server's plan from the reply; the mutation applies it to the cache, and the
+ * screen renders the transition or break from it. Nothing for the kid to read.
+ */
+export class NotPracticingClientError extends Error {
+  constructor(public readonly plan: SessionPlan) {
+    super(`Session is in ${plan.flowState}, not practicing`)
+    this.name = 'NotPracticingClientError'
+  }
+}
+
+/**
+ * A flow event carried a stale `expectedFlowVersion` (409 `STALE_FLOW_VERSION`):
+ * the server moved on. The mutation has refetched the active plan; the fresh
+ * plan drives the screen. Nothing for the kid to read.
+ */
+export class StaleFlowVersionClientError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'StaleFlowVersionClientError'
+  }
+}
+
+/**
+ * A write failed twice (network error or 5xx, then the same on its one
  * resend). The plan has been refetched; show the kid a plain message, never
- * the technical cause (which goes to the console).
+ * the technical cause (which goes to the console). `contention` is set when the
+ * last failure was 503 `write_contention` (other writers kept winning the row):
+ * the screen resyncs to the refetched plan with no message at all (§3.3).
  */
 export class TryNotSavedError extends Error {
-  constructor(public readonly failure: unknown) {
+  constructor(
+    public readonly failure: unknown,
+    public readonly contention = false
+  ) {
     super(failure instanceof Error ? failure.message : String(failure))
     this.name = 'TryNotSavedError'
   }
 }
 
 /**
- * Send a try's write; on a network error or a 5xx, send the same request once
- * more, immediately (no timer). Safe because the body carries the try's
- * `tryId`: the server records a try id once, so a resend after a lost reply is
- * a no-op. A second failure throws TryNotSavedError. 4xx answers are returned
- * as they are.
+ * Send a write; on a network error or a 5xx, send the same request once more,
+ * immediately (no timer). A second failure throws TryNotSavedError. 4xx answers
+ * are returned as they are.
+ *
+ * Safe for a try because its body carries the `tryId`: the server records a try
+ * id once, so a resend after a lost reply is a no-op. Safe for a flow event
+ * because its body carries `expectedFlowVersion`: if the first send committed,
+ * the resend is stale and is either the no-op of an event that changes nothing
+ * from the fresh state or a 409 `STALE_FLOW_VERSION`, which refetches.
  */
 async function sendTryWrite(send: () => Promise<Response>): Promise<Response> {
   let lastFailure: unknown
+  let contention = false
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const res = await send()
       if (res.status < 500) return res
       const body = await res.json().catch(() => ({}))
       lastFailure = new Error(body.error || `HTTP ${res.status}`)
+      contention = res.status === 503 && body.code === 'write_contention'
     } catch (networkError) {
       lastFailure = networkError
+      contention = false
     }
-    console.warn(`[sessionPlan] try write failed (attempt ${attempt + 1} of 2):`, lastFailure)
+    console.warn(`[sessionPlan] write failed (attempt ${attempt + 1} of 2):`, lastFailure)
   }
-  throw new TryNotSavedError(lastFailure)
+  throw new TryNotSavedError(lastFailure, contention)
 }
 
 /** Throw the client error a failed try write maps to (4xx after sendTryWrite). */
@@ -124,7 +161,25 @@ async function throwTryWriteError(res: Response, fallback: string): Promise<neve
   if (res.status === 409 && error.code === 'SLOT_MISMATCH') {
     throw new SlotMismatchClientError(error.error || 'Answer was for a different problem')
   }
+  if (res.status === 409 && error.code === 'not_practicing' && error.plan) {
+    throw new NotPracticingClientError(error.plan as SessionPlan)
+  }
   throw new Error(error.error || fallback)
+}
+
+/**
+ * Whether a failed try write needs no word to the kid: the screen resyncs to
+ * the server's plan (already applied or refetched by the mutation) and that is
+ * the whole story. A stale answer (409 `SLOT_MISMATCH`), a try while a
+ * transition or break owns the next step (409 `not_practicing`), and a try the
+ * server could not write for contention after its one resend (503).
+ */
+export function isQuietTryWriteFailure(err: unknown): boolean {
+  return (
+    err instanceof SlotMismatchClientError ||
+    err instanceof NotPracticingClientError ||
+    (err instanceof TryNotSavedError && err.contention)
+  )
 }
 
 /**
@@ -266,13 +321,19 @@ async function applySessionFlowEvent({
   event: SessionFlowEvent
   expectedFlowVersion?: number
 }): Promise<SessionPlan> {
-  const res = await api(`curriculum/${playerId}/sessions/plans/${planId}/flow-events`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event, expectedFlowVersion }),
-  })
+  // Resent once on a network error or 5xx; the version token makes that safe
+  const res = await sendTryWrite(() =>
+    api(`curriculum/${playerId}/sessions/plans/${planId}/flow-events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event, expectedFlowVersion }),
+    })
+  )
   if (!res.ok) {
     const error = await res.json().catch(() => ({}))
+    if (res.status === 409 && error.code === 'STALE_FLOW_VERSION') {
+      throw new StaleFlowVersionClientError(error.error || `Stale flow event: ${event.type}`)
+    }
     throw new Error(error.error || `Failed to apply flow event: ${event.type}`)
   }
   const data = await res.json()
@@ -471,6 +532,96 @@ function refetchPlan(queryClient: QueryClient, playerId: string, planId: string)
 }
 
 /**
+ * After a failed try write the screen is ahead of the server. A 409
+ * `not_practicing` carries the server's plan: apply it. Anything else:
+ * refetch. Returned so the mutation settles (and mutateAsync rejects) only once
+ * the cache holds the server's plan; the write queue holds the next answer
+ * until then.
+ */
+function resyncAfterTryWriteError(
+  queryClient: QueryClient,
+  err: Error,
+  playerId: string,
+  planId: string
+) {
+  if (err instanceof NotPracticingClientError) {
+    queryClient.setQueryData(sessionPlanKeys.active(playerId), err.plan)
+    queryClient.setQueryData(sessionPlanKeys.detail(planId), err.plan)
+    return Promise.resolve()
+  }
+  return refetchPlan(queryClient, playerId, planId)
+}
+
+/** Apply a flow event's reply: the server's plan, into both caches. */
+function applyFlowEventPlan(queryClient: QueryClient, plan: SessionPlan, playerId: string) {
+  queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
+  queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+}
+
+/**
+ * The plan as the server holds it now, by id: also once it is no longer the
+ * player's active plan (an adult ended it, say), which the active query would
+ * answer with null. Written into both caches; on failure both are refetched.
+ */
+async function resyncPlanById(queryClient: QueryClient, playerId: string, planId: string) {
+  try {
+    const res = await api(`curriculum/${playerId}/sessions/plans/${planId}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data.plan) {
+        applyFlowEventPlan(queryClient, data.plan as SessionPlan, playerId)
+        return data.plan as SessionPlan
+      }
+    }
+  } catch {
+    // Fall back to the refetch below
+  }
+  await refetchPlan(queryClient, playerId, planId)
+  return null
+}
+
+/** Flow-event failures the kid is not told about: see `onFlowEventError`. */
+const quietFlowEventFailures = new WeakSet<Error>()
+
+/**
+ * A flow-event failure the screen resolved by itself: the fresh plan drives
+ * it, and there is nothing for the kid to read.
+ */
+export function isQuietFlowEventFailure(err: unknown): boolean {
+  return (
+    err instanceof StaleFlowVersionClientError ||
+    (err instanceof Error && quietFlowEventFailures.has(err))
+  )
+}
+
+/**
+ * Any failed flow event: fetch the plan as the server holds it, and that plan
+ * drives the screen (§3.3, Phase 3c, §10 P3c-9). The failure is quiet unless
+ * the fresh plan still shows the kid the step the event was for (`from`): then
+ * it was a real failure the kid can act on (tap again). A stale token, or a
+ * plan that moved on (an adult ended the session during the countdown), is
+ * quiet. Returned so mutateAsync rejects only once the plan is in.
+ */
+async function onFlowEventError(
+  queryClient: QueryClient,
+  what: string,
+  from: readonly SessionPlan['flowState'][],
+  err: Error,
+  playerId: string,
+  planId: string
+) {
+  if (err instanceof StaleFlowVersionClientError) {
+    console.warn(`[sessionPlan] ${what}: stale flow token; resyncing`, err.message)
+  } else {
+    console.error(`Failed to ${what}:`, err.message)
+  }
+  const fresh = await resyncPlanById(queryClient, playerId, planId)
+  if (fresh && (fresh.status !== 'in_progress' || !from.includes(fresh.flowState))) {
+    quietFlowEventFailures.add(err)
+  }
+}
+
+/**
  * Hook: Record a slot result (answer submitted)
  */
 export function useRecordSlotResult() {
@@ -490,13 +641,12 @@ export function useRecordSlotResult() {
       queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
       queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
     },
-    // Any failed write leaves the screen ahead of the server: refetch. Returned so
-    // the mutation settles (and mutateAsync rejects) only once the refetch is in.
+    // Any failed write leaves the screen ahead of the server: resync.
     onError: (err, { playerId, planId }) => {
-      if (!(err instanceof SlotMismatchClientError)) {
+      if (!isQuietTryWriteFailure(err)) {
         console.error('Failed to record slot result:', err.message)
       }
-      return refetchPlan(queryClient, playerId, planId)
+      return resyncAfterTryWriteError(queryClient, err, playerId, planId)
     },
   })
 }
@@ -553,13 +703,16 @@ export function useCompletePartTransition() {
         expectedFlowVersion,
         event: { type: 'PART_TRANSITION_COMPLETED', shouldRunBreak },
       }),
-    onSuccess: (plan, { playerId }) => {
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
-    },
-    onError: (err) => {
-      console.error('Failed to complete part transition:', err.message)
-    },
+    onSuccess: (plan, { playerId }) => applyFlowEventPlan(queryClient, plan, playerId),
+    onError: (err, { playerId, planId }) =>
+      onFlowEventError(
+        queryClient,
+        'complete part transition',
+        ['part_transition'],
+        err,
+        playerId,
+        planId
+      ),
   })
 }
 
@@ -593,13 +746,16 @@ export function useFinishGameBreak() {
           results: breakResults ?? null,
         },
       }),
-    onSuccess: (plan, { playerId }) => {
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
-    },
-    onError: (err) => {
-      console.error('Failed to finish game break:', err.message)
-    },
+    onSuccess: (plan, { playerId }) => applyFlowEventPlan(queryClient, plan, playerId),
+    onError: (err, { playerId, planId }) =>
+      onFlowEventError(
+        queryClient,
+        'finish game break',
+        ['break_pending', 'break_active'],
+        err,
+        playerId,
+        planId
+      ),
   })
 }
 
@@ -627,13 +783,9 @@ export function useStartGameBreak() {
         expectedFlowVersion,
         event: { type: 'BREAK_STARTED', game },
       }),
-    onSuccess: (plan, { playerId }) => {
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
-    },
-    onError: (err) => {
-      console.error('Failed to start game break:', err.message)
-    },
+    onSuccess: (plan, { playerId }) => applyFlowEventPlan(queryClient, plan, playerId),
+    onError: (err, { playerId, planId }) =>
+      onFlowEventError(queryClient, 'start game break', ['break_pending'], err, playerId, planId),
   })
 }
 
@@ -659,13 +811,16 @@ export function useAcknowledgeGameBreakResults() {
         expectedFlowVersion,
         event: { type: 'BREAK_RESULTS_ACKED' },
       }),
-    onSuccess: (plan, { playerId }) => {
-      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
-      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
-    },
-    onError: (err) => {
-      console.error('Failed to acknowledge game break results:', err.message)
-    },
+    onSuccess: (plan, { playerId }) => applyFlowEventPlan(queryClient, plan, playerId),
+    onError: (err, { playerId, planId }) =>
+      onFlowEventError(
+        queryClient,
+        'acknowledge game break results',
+        ['break_results'],
+        err,
+        playerId,
+        planId
+      ),
   })
 }
 
@@ -718,10 +873,10 @@ export function useRecordRedoResult() {
       queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
     },
     onError: (err, { playerId, planId }) => {
-      if (!(err instanceof SlotMismatchClientError)) {
+      if (!isQuietTryWriteFailure(err)) {
         console.error('Failed to record redo result:', err.message)
       }
-      return refetchPlan(queryClient, playerId, planId)
+      return resyncAfterTryWriteError(queryClient, err, playerId, planId)
     },
   })
 }

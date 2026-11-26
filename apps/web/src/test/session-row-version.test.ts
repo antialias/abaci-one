@@ -35,6 +35,7 @@ import {
   applySessionFlowEvent,
   completeSessionPlanEarly,
   getSessionPlan,
+  NotPracticingError,
   type RedoContext,
   recordRedoResult,
   recordSlotResult,
@@ -564,49 +565,91 @@ describe('Phase 3a: row version and the flow machine', () => {
       expect(after.flowVersion).toBe(1)
     })
 
-    it('a try in part_transition with breaks off is accepted and transitions', async () => {
+    // Phase 3c: the client renders the transition from flowState, so a try that
+    // reaches part_transition or a break is stale: 409 not_practicing with the
+    // plan, nothing recorded, no version moved (§1.1)
+    it.each([false, true])(
+      'a try in part_transition is refused with the plan (breaks %s)',
+      async (breaks) => {
+        const planId = await insertPlan(playerId, { breaks, slotsPerPart: 1 })
+        const transition = await answer(planId, true)
+        expect(transition.flowState).toBe('part_transition')
+
+        const refused = await recordSlotResult(planId, submissionFor(transition, true)).catch(
+          (e: unknown) => e
+        )
+        expect(refused).toBeInstanceOf(NotPracticingError)
+        const { plan } = refused as NotPracticingError
+        expect(plan).toMatchObject({
+          id: planId,
+          flowState: 'part_transition',
+          currentPartIndex: 1,
+          flowVersion: transition.flowVersion,
+          rowVersion: transition.rowVersion,
+        })
+        const after = await row(planId)
+        expect(after.results).toHaveLength(1)
+        expect(after.rowVersion).toBe(transition.rowVersion)
+        expect(after.breaks).toEqual([])
+        expect(recordSkillAttemptsWithHelp).toHaveBeenCalledTimes(1)
+
+        // Once the client completes the transition, the same try is taken
+        await applySessionFlowEvent(planId, { type: 'PART_TRANSITION_COMPLETED' })
+        if (breaks) {
+          await applySessionFlowEvent(planId, { type: 'BREAK_FINISHED', reason: 'skipped' })
+        }
+        const taken = await recordSlotResult(planId, submissionFor(await row(planId), true))
+        expect(taken.results).toHaveLength(2)
+        expect(taken.results[1].slotId).toBe('p1s0')
+      }
+    )
+
+    it('a resend of the part-ending try in part_transition is still a no-op', async () => {
       const planId = await insertPlan(playerId, { breaks: false, slotsPerPart: 1 })
-      await answer(planId, true)
-      const after = await answer(planId, true) // reload during the transition: answers
-      expect(after.results).toHaveLength(2)
-      expect(after.results[1].slotId).toBe('p1s0')
-      // p1 finished too: straight into the next transition
-      expect(after).toMatchObject({ flowState: 'part_transition', currentPartIndex: 2 })
-      expect(after.breaks).toEqual([])
+      const plan = await row(planId)
+      const submission = submissionFor(plan, true)
+      const transition = await recordSlotResult(planId, submission)
+      const resent = await recordSlotResult(planId, submission)
+      expect(resent.rowVersion).toBe(transition.rowVersion)
+      expect(resent.results).toHaveLength(1)
     })
 
-    it('a try in part_transition with breaks on is accepted and the break is recorded skipped', async () => {
-      const planId = await insertPlan(playerId, { breaks: true, slotsPerPart: 2 })
-      await answer(planId, true)
+    it('a do-over in part_transition is still recorded aside', async () => {
+      const planId = await insertPlan(playerId, { breaks: false, slotsPerPart: 1 })
       const transition = await answer(planId, true)
       expect(transition.flowState).toBe('part_transition')
-
-      const after = await answer(planId, true)
-      expect(after).toMatchObject({ flowState: 'practicing', currentPartIndex: 1 })
-      expect(after.flowVersion).toBe(transition.flowVersion + 1)
-      expect(after.breaks).toHaveLength(1)
-      expect(after.breaks[0]).toMatchObject({
-        breakIndex: 0,
-        afterPartIndex: 0,
-        reason: 'skipped',
-        durationMs: 0,
-      })
-      // Legacy break columns as before Phase 3a
-      expect(after.breakReason).toBeNull()
-      expect(after.breakStartedAt).toBeNull()
+      const after = await recordRedoResult(planId, ...doOver(transition, 0, 0, true))
+      expect(after.results.at(-1)).toMatchObject({ kind: 'do_over', practiceOnly: true })
+      expect(after).toMatchObject({ flowState: 'part_transition', currentPartIndex: 1 })
     })
 
     it.each(['break_pending', 'break_active', 'break_results'] as const)(
-      'a try during %s is refused (409)',
+      'a try during %s is refused with the plan (409 not_practicing)',
       async (flowState) => {
         const planId = await insertPlan(playerId, { breaks: true, values: { flowState } })
         const plan = await row(planId)
-        await expect(recordSlotResult(planId, submissionFor(plan, true))).rejects.toBeInstanceOf(
-          InvalidFlowTransitionError
+        const refused = await recordSlotResult(planId, submissionFor(plan, true)).catch(
+          (e: unknown) => e
         )
+        expect(refused).toBeInstanceOf(NotPracticingError)
+        expect((refused as NotPracticingError).plan.flowState).toBe(flowState)
         expect((await row(planId)).results).toHaveLength(0)
       }
     )
+
+    it('a try for another item outside practicing is not_practicing too, not a mismatch', async () => {
+      const planId = await insertPlan(playerId, {
+        breaks: true,
+        values: { flowState: 'break_active' },
+      })
+      const plan = await row(planId)
+      const other = {
+        ...submissionFor(plan, true),
+        slotIndex: 1,
+        problem: plan.parts[0].slots[1].problem!,
+      }
+      await expect(recordSlotResult(planId, other)).rejects.toBeInstanceOf(NotPracticingError)
+    })
 
     it('PART_TRANSITION_COMPLETED ignores the client shouldRunBreak', async () => {
       const on = await insertPlan(playerId, {

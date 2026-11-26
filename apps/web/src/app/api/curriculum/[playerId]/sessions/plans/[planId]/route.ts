@@ -32,6 +32,7 @@ import {
 } from '@/lib/curriculum'
 import { WriteContentionError } from '@/lib/curriculum/row-cas'
 import { InvalidFlowTransitionError } from '@/lib/curriculum/session-flow'
+import { NotPracticingError } from '@/lib/curriculum/session-planner'
 import { getUserId } from '@/lib/viewer'
 
 /**
@@ -289,6 +290,19 @@ export const PATCH = withAuth(async (request, { params }) => {
           code: 'INVALID_FLOW_TRANSITION',
           flowState: error.state,
           eventType: error.eventType,
+        },
+        { status: 409 }
+      )
+    }
+    if (error instanceof NotPracticingError) {
+      // A try while a transition or break owns the next step: nothing recorded;
+      // the client applies this plan (Phase 3c)
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: error.code,
+          flowState: error.plan.flowState,
+          plan: serializePlan(error.plan),
         },
         { status: 409 }
       )
