@@ -450,6 +450,11 @@ export default function WorkshopPage() {
             })
             break
 
+          case 'output_reset':
+            // The model is starting its answer over: clear the panel
+            dispatch({ type: 'STREAM_OUTPUT', text: '', append: false })
+            break
+
           case 'output_snapshot':
             // Persisted snapshot of accumulated output — used on replay after page reload
             dispatch({

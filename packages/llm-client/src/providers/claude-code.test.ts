@@ -588,6 +588,30 @@ describe("ClaudeCodeProvider queue", () => {
 		expect(held.runs).toHaveLength(1);
 	});
 
+	it("gives back a slot granted to a request aborted before it resumed", async () => {
+		const controller = new AbortController();
+		// The slot is granted, then the signal fires before the run resumes.
+		class AbortOnGrant extends SlotPool {
+			override async acquire(
+				options: Parameters<SlotPool["acquire"]>[0],
+			): Promise<() => void> {
+				const release = await super.acquire(options);
+				controller.abort();
+				return release;
+			}
+		}
+		const pool = new AbortOnGrant();
+		const held = heldRunner();
+		const provider = new ClaudeCodeProvider(limited(1), held.runner, pool);
+
+		const result = await provider
+			.call({ ...request, signal: controller.signal })
+			.catch((e) => e);
+		expect(result).toBeInstanceOf(LLMAbortedError);
+		expect(held.runs).toHaveLength(0);
+		expect(pool.usage.running).toBe(0);
+	});
+
 	it("ends a running request when its signal aborts", async () => {
 		const pool = new SlotPool();
 		const runner: ClaudeCliRunner = (run) =>
@@ -903,6 +927,27 @@ describe("LLMClient.stream through claude_code", () => {
 			"output_delta",
 			"complete",
 		]);
+	});
+
+	it("keeps the answer when the CLI's last turn streams none", async () => {
+		const fake = fakeRunner([
+			se({ type: "message_start" }),
+			blockStart(0, "tool_use"),
+			delta(0, { type: "input_json_delta", partial_json: '{"title":"ok"}' }),
+			// One more model turn after the answer, with only prose in it
+			se({ type: "message_start" }),
+			blockStart(0, "text"),
+			delta(0, { type: "text_delta", text: "Done." }),
+			resultLine({ structured_output: { title: "ok" } }),
+		]);
+		const events = await collect(
+			withProvider(fake.runner).stream({ prompt: "p", schema }),
+		);
+		expect(events.map((e) => e.type)).not.toContain("output_reset");
+		expect(events.at(-1)).toMatchObject({
+			type: "complete",
+			data: { title: "ok" },
+		});
 	});
 
 	it("gives up with a validation error once retries run out", async () => {

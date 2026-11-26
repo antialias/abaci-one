@@ -427,6 +427,8 @@ export class ClaudeCodeProvider extends BaseProvider {
 				signal,
 			});
 			try {
+				// Aborted while the slot was on its way: give it back unused.
+				if (signal?.aborted) throw new LLMAbortedError(this.name);
 				// The wait for a slot counted against the request's timeout.
 				const remaining = timeoutMs - (Date.now() - queuedAt);
 				if (timeoutMs > 0 && remaining <= 0) {
@@ -760,6 +762,8 @@ class StreamMapper {
 	private reasoningBlocks = 0;
 	private reasoningOpen = false;
 	private outputShown = false;
+	/** A new model turn began after output: void it once that turn answers. */
+	private resetPending = false;
 
 	constructor(private readonly textOutput: boolean) {}
 
@@ -775,9 +779,11 @@ class StreamMapper {
 		if (inner.type === "message_start") {
 			this.blocks.clear();
 			if (this.outputShown) {
-				// The CLI asked the model again: the answer starts over.
+				// The CLI asked the model again. Its answer starts over, but only
+				// if this turn streams one: a closing turn with no output must
+				// not blank the answer already given.
 				this.outputShown = false;
-				return [{ type: "output_reset" }];
+				this.resetPending = true;
 			}
 			return [];
 		}
@@ -796,20 +802,27 @@ class StreamMapper {
 		}
 		if (delta.type === "text_delta") {
 			const text = String(delta.text ?? "");
-			if (this.textOutput) return text ? [this.output(text)] : [];
+			if (this.textOutput) return text ? this.output(text) : [];
 			// Before a structured answer, the model's prose is its working.
 			return this.reasoning(text);
 		}
 		if (delta.type === "input_json_delta" && !this.textOutput) {
 			const json = String(delta.partial_json ?? "");
-			return json ? [this.output(json)] : [];
+			return json ? this.output(json) : [];
 		}
 		return [];
 	}
 
-	private output(text: string): ProviderStreamEvent {
+	private output(text: string): ProviderStreamEvent[] {
 		this.outputShown = true;
-		return { type: "output_delta", text, outputIndex: 0 };
+		const delta: ProviderStreamEvent = {
+			type: "output_delta",
+			text,
+			outputIndex: 0,
+		};
+		if (!this.resetPending) return [delta];
+		this.resetPending = false;
+		return [{ type: "output_reset" }, delta];
 	}
 
 	private reasoning(text: string): ProviderStreamEvent[] {
