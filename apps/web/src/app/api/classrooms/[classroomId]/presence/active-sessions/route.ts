@@ -4,6 +4,8 @@ import { db, schema } from '@/db'
 import { getClassroomPresence, getEnrolledStudents, getTeacherClassroom } from '@/lib/classroom'
 import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
+import { buildSessionReports } from '@/lib/curriculum/session-report-batch'
+import type { Counts, SessionReport } from '@/lib/curriculum/session-report'
 
 /**
  * Active session information returned by this endpoint
@@ -13,7 +15,7 @@ interface ActiveSessionInfo {
   sessionId: string
   /** Player ID */
   playerId: string
-  /** When the session started */
+  /** When the session started (the report's `startedAt`) */
   startedAt: Date
   /** Current part index */
   currentPartIndex: number
@@ -21,12 +23,18 @@ interface ActiveSessionInfo {
   currentSlotIndex: number
   /** Total parts in session */
   totalParts: number
-  /** Total problems in session (sum of all slots) */
+  /** Items planned (the report's `position.progress.total`) */
   totalProblems: number
-  /** Number of completed problems */
+  /** Items done (the report's `position.progress.done`) */
   completedProblems: number
   /** Whether the student is currently present in the classroom */
   isPresent: boolean
+  /** The report's outcome (always `in_progress` here) */
+  outcome: SessionReport['outcome']
+  /** The report's totals: problems, first try, final */
+  totals: Counts
+  /** The report's row version (orders this answer against pushes) */
+  rowVersion: number
 }
 
 /**
@@ -74,31 +82,30 @@ export const GET = withAuth(async (_request, { params }) => {
       ),
     })
 
-    // Map to ActiveSessionInfo
-    const sessions: ActiveSessionInfo[] = activeSessions
-      .filter((session) => session.startedAt)
-      .map((session) => {
-        // Calculate total and completed problems
-        const parts = session.parts
-        const totalProblems = parts.reduce((sum, part) => sum + part.slots.length, 0)
-        let completedProblems = 0
-        for (let i = 0; i < session.currentPartIndex; i++) {
-          completedProblems += parts[i].slots.length
-        }
-        completedProblems += session.currentSlotIndex
-
-        return {
+    // Every number from the session report (Phase 4d); one batched load
+    const started = activeSessions.filter((session) => session.startedAt)
+    const reports = await buildSessionReports(started)
+    const sessions: ActiveSessionInfo[] = started.flatMap((session, i) => {
+      const report = reports[i]
+      if (!report?.position || report.startedAt == null) return []
+      return [
+        {
           sessionId: session.id,
           playerId: session.playerId,
-          startedAt: session.startedAt as Date,
+          startedAt: new Date(report.startedAt),
+          // Structural cursor, for the observer (Phase 5 removes it)
           currentPartIndex: session.currentPartIndex,
           currentSlotIndex: session.currentSlotIndex,
-          totalParts: parts.length,
-          totalProblems,
-          completedProblems,
+          totalParts: session.parts.length,
+          totalProblems: report.position.progress.total,
+          completedProblems: report.position.progress.done,
           isPresent: presentPlayerIds.has(session.playerId),
-        }
-      })
+          outcome: report.outcome,
+          totals: report.totals,
+          rowVersion: report.rowVersion,
+        },
+      ]
+    })
 
     return NextResponse.json({ sessions })
   } catch (error) {

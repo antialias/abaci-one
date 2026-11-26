@@ -294,6 +294,32 @@ export function abandonedSession(): SessionReportFixture {
   }
 }
 
+/**
+ * The ten-problem session live, at the start of part 3 (Phase 4d's active
+ * cards): parts 1 and 2 done with their retries, the break over. Expected:
+ * progress 7/10, problems 7, tries 9, first try 5/7, fixed 2, final 7/7.
+ */
+export function liveTenProblemSession(): SessionReportFixture {
+  const id = 'fx-live'
+  const parts = fixtureParts()
+  const results = tenProblemTries()
+    .slice(0, 9)
+    .map((spec, i) => rowOf(parts, spec, i + 1))
+  return {
+    plan: planOf(id, parts, results, {
+      status: 'in_progress',
+      flowState: 'practicing',
+      currentPartIndex: 2,
+      currentSlotIndex: 0,
+      completedAt: null,
+      rowVersion: 11,
+    }),
+    gameResults: [fixtureBreakGameResult(id)],
+    song: null,
+    now: T0 + 620 * S,
+  }
+}
+
 /** An offline session as `offline-sessions/route.ts` inserts it: slot-less parts, index past the end. */
 export function offlineSession(): SessionReportFixture {
   const parts = fixtureParts().map((p) => ({ ...p, slots: [] }))
@@ -425,5 +451,63 @@ export function offlineWorksheetSession(): SessionReportFixture {
     gameResults: [],
     song: null,
     now: SESSION_REPORT_NOW,
+  }
+}
+
+/**
+ * The ten-problem session with every try's `slotId` stale (Phase 4d): the
+ * rows name slots the parts no longer carry, so item identity must come from
+ * the part's slot and its problem (`resolveItemId`). Same report as the
+ * ten-problem session.
+ */
+export function mismatchedSlotIdSession(): SessionReportFixture {
+  const base = tenProblemSession()
+  const results = base.plan.results.map((r) => ({ ...r, slotId: `stale-${r.slotId}` }))
+  const id = 'fx-mismatched-slot'
+  return {
+    ...base,
+    plan: { ...base.plan, id, results },
+    gameResults: [fixtureBreakGameResult(id)],
+    song: null,
+  }
+}
+
+/** The ten-problem session written without `slotId` on its tries (Phase 4d). */
+export function missingSlotIdSession(): SessionReportFixture {
+  const base = tenProblemSession()
+  const results = base.plan.results.map(({ slotId: _slotId, ...r }) => r as SlotResult)
+  const id = 'fx-missing-slot'
+  return {
+    ...base,
+    plan: { ...base.plan, id, results },
+    gameResults: [fixtureBreakGameResult(id)],
+    song: null,
+  }
+}
+
+/**
+ * The ten-problem session plus one practice-only do-over of its first item,
+ * after the last retry (Phase 4d): a try that counts in tries and active time
+ * but changes no verdict.
+ */
+export function doOverSession(): SessionReportFixture {
+  const base = tenProblemSession()
+  const parts = base.plan.parts
+  const doOver: SlotResult = {
+    ...rowOf(parts, { partIndex: 0, slotIndex: 0, correct: true, at: T0 + 710 * S, ms: 3 * S }, 14),
+    kind: 'do_over',
+    round: 1,
+    practiceOnly: true,
+    masteryWeight: 0,
+    isManualRedo: true,
+  }
+  const results = [...base.plan.results]
+  results.splice(results.length - 1, 0, doOver)
+  const id = 'fx-do-over'
+  return {
+    ...base,
+    plan: { ...base.plan, id, results },
+    gameResults: [fixtureBreakGameResult(id)],
+    song: null,
   }
 }

@@ -5,7 +5,7 @@ import {
   getPaceAssessment,
   getPlayerCurriculum,
   getPracticeStudent,
-  getRecentSessions,
+  getRecentSessionDates,
   getRecentSessionResults,
 } from '@/lib/curriculum/server'
 import { getSessionMode } from '@/lib/curriculum/session-mode'
@@ -56,7 +56,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
     getPracticeStudent(studentId),
     getPlayerCurriculum(studentId),
     getAllSkillMastery(studentId),
-    getRecentSessions(studentId, 200),
+    getRecentSessionDates(studentId, 200), // ids and dates: the skill chart
     getActiveSessionPlan(studentId),
     getRecentSessionResults(studentId, 2000), // For Skills tab BKT analysis
     getSessionMode(studentId),

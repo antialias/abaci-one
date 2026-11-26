@@ -16,9 +16,12 @@ import {
 import type { DisplayRules, RuleMode } from '@/app/create/worksheets/displayRules'
 import { db, schema } from '@/db'
 import { parentChild, worksheetShares } from '@/db/schema'
-import { countedTries, summarizeTries } from '@/db/schema/session-plan-helpers'
 import type { GameBreakSettings } from '@/db/schema/session-plans'
-import { getAllSkillMastery, getRecentSessions } from '@/lib/curriculum/progress-manager'
+import {
+  getAllSkillMastery,
+  getRecentSessionDates,
+  getRecentSessions,
+} from '@/lib/curriculum/progress-manager'
 import {
   abandonSessionPlan,
   approveSessionPlan,
@@ -29,6 +32,8 @@ import {
   getRecentSessionResults,
   startSessionPlan,
 } from '@/lib/curriculum/session-planner'
+import { type SessionReportSummary, summarizeSessionReport } from '@/lib/curriculum/session-report'
+import { buildSessionReports } from '@/lib/curriculum/session-report-batch'
 import { generateShareId, isValidShareId } from '@/lib/generateShareId'
 import {
   createSessionShare,
@@ -119,7 +124,11 @@ export const MCP_TOOLS = [
   {
     name: 'get_practice_sessions',
     description:
-      'Get recent practice session history showing when and how much a student practiced.',
+      'Get recent practice session history showing when and how much a student practiced. ' +
+      'Numbers are the session report (the same as the summary, dashboard and share link): ' +
+      'problems (attempted), tries (every answer, retries included), first-try correct and %, ' +
+      'fixed in retries, final correct and % (after retries), activeMinutes (time spent answering) ' +
+      'vs wallMinutes (start to end, breaks included) and breakMinutes.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -223,7 +232,8 @@ export const MCP_TOOLS = [
   {
     name: 'get_active_session',
     description:
-      'Get the current active practice session for a student, including URLs for practice and observation.',
+      'Get the current active practice session for a student, including URLs for practice and observation. ' +
+      'Progress and counts are the session report (same definitions as get_practice_sessions).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -492,7 +502,8 @@ export async function getStudentOverview(playerId: string) {
   }
 
   const skills = await getAllSkillMastery(playerId)
-  const recentSessions = await getRecentSessions(playerId, 30)
+  // The last session's start, read from the row (no report needed)
+  const recentSessions = await getRecentSessionDates(playerId, 1)
 
   // Count by status
   const strong = skills.filter((s) => s.isPracticing && s.lastPracticedAt).length
@@ -623,6 +634,46 @@ export async function getRecentErrors(
   return errors.slice(0, limit)
 }
 
+/** A ratio as a whole percent; null with nothing attempted */
+function percentOf(ratio: number | null): number | null {
+  return ratio == null ? null : Math.round(ratio * 100)
+}
+
+/** Milliseconds as minutes, one decimal */
+function minutesOf(ms: number): number {
+  return Math.round(ms / 6_000) / 10
+}
+
+/**
+ * A session's numbers for MCP answers: the session report's, named as the
+ * views name them, so an MCP answer and every screen agree (Phase 4d).
+ */
+export function sessionReportNumbers(summary: SessionReportSummary) {
+  const { totals, time } = summary
+  return {
+    outcome: summary.outcome,
+    endedEarly: summary.endedEarly,
+    /** Attempted problems (the accuracy denominator) */
+    problems: totals.problems,
+    plannedProblems: totals.plannedProblems,
+    /** Every answer given, retries and do-overs included */
+    tries: totals.tries,
+    firstTryCorrect: totals.firstTryCorrect,
+    firstTryPercent: percentOf(totals.firstTryAccuracy),
+    fixedInRetries: totals.fixedInRetries,
+    unresolved: totals.unresolved,
+    finalCorrect: totals.finalCorrect,
+    finalPercent: percentOf(totals.finalAccuracy),
+    /** Σ time spent answering */
+    activeMinutes: minutesOf(time.activeMs),
+    /** Start to end, breaks included */
+    wallMinutes: minutesOf(time.wallMs),
+    breakMinutes: minutesOf(time.breakMs),
+    /** True when break time is reconstructed from old records */
+    timeEstimated: time.estimated,
+  }
+}
+
 /**
  * Get practice session history
  */
@@ -635,13 +686,10 @@ export async function getPracticeSessions(playerId: string, days: number = 14) {
   return sessions
     .filter((s) => s.startedAt && s.startedAt >= cutoffDate)
     .map((s) => ({
+      sessionId: s.id,
       date: s.startedAt,
-      completedAt: s.completedAt,
-      // Duration in minutes if completed
-      durationMinutes:
-        s.completedAt && s.startedAt
-          ? Math.round((s.completedAt.getTime() - s.startedAt.getTime()) / 60000)
-          : null,
+      completedAt: s.report.endedAt != null ? new Date(s.report.endedAt) : s.completedAt,
+      ...sessionReportNumbers(s.report),
     }))
 }
 
@@ -800,31 +848,21 @@ export async function getActiveSession(playerId: string) {
 
     return {
       hasActiveSession: false,
-      lastSessionAt: lastSession?.completedAt?.getTime() ?? null,
+      lastSessionAt: lastSession?.report.endedAt ?? lastSession?.completedAt?.getTime() ?? null,
     }
   }
 
   const urls = buildSessionUrls(playerId)
 
-  // Calculate progress
-  const totalProblems = plan.parts.reduce((sum, part) => sum + part.slots.length, 0)
-  const {
-    completed: completedProblems,
-    correct: correctAnswers,
-    accuracy,
-  } = summarizeTries(plan.results)
-
-  // Find current position
-  let currentPart = 1
-  let currentProblem = 1
-  for (const part of plan.parts) {
-    const partResults = countedTries(plan.results).filter((r) => r.partNumber === part.partNumber)
-    if (partResults.length < part.slots.length) {
-      currentPart = part.partNumber
-      currentProblem = partResults.length + 1
-      break
-    }
-  }
+  // Progress and counts: the session report (Phase 4d)
+  const [report] = await buildSessionReports([plan])
+  if (!report) throw new Error(`Session ${plan.id}: report could not be built`)
+  const summary = summarizeSessionReport(report)
+  const position = summary.position
+  const progress = position?.progress ?? { done: 0, total: summary.totals.plannedProblems }
+  const segment = position?.segment ?? null
+  const currentPart =
+    segment?.kind === 'part' ? (plan.parts[segment.partIndex]?.partNumber ?? null) : null
 
   return {
     hasActiveSession: true,
@@ -832,13 +870,14 @@ export async function getActiveSession(playerId: string) {
     status: plan.status,
     practiceUrl: urls.practiceUrl,
     observeUrl: urls.observeUrl,
-    startedAt: plan.startedAt?.getTime() ?? null,
+    startedAt: summary.startedAt,
     progress: {
+      /** 'part' (answering), 'break' (game break) or 'end'; null before the session starts */
+      segment: segment?.kind ?? null,
       currentPart,
-      currentProblem,
-      totalProblems,
-      completedProblems,
-      accuracy: Math.round(accuracy * 100),
+      completedProblems: progress.done,
+      totalProblems: progress.total,
+      ...sessionReportNumbers(summary),
     },
   }
 }

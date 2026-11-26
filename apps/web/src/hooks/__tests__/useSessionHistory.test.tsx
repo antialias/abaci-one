@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import type React from 'react'
-import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { useSessionHistory } from '../useSessionHistory'
-import { sessionHistoryKeys } from '@/lib/queryKeys'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { sessionHistoryKeys, sessionPlanKeys } from '@/lib/queryKeys'
+import { invalidateSessionHistoryOnEnd, useSessionHistory } from '../useSessionHistory'
 
 // ============================================================================
 // Setup
@@ -228,5 +228,22 @@ describe('useSessionHistory', () => {
     expect(result.current.sessions).toEqual([])
     expect(result.current.totalLoaded).toBe(0)
     expect(result.current.hasNextPage).toBe(false)
+  })
+})
+
+describe('invalidateSessionHistoryOnEnd', () => {
+  it("refreshes the player's history and active session when their session ends", () => {
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    invalidateSessionHistoryOnEnd(queryClient, 'player-1', { playerId: 'player-1' })
+    const keys = spy.mock.calls.map(([filters]) => filters?.queryKey)
+    expect(keys).toEqual([sessionHistoryKeys.list('player-1'), sessionPlanKeys.active('player-1')])
+  })
+
+  it("ignores another player's end", () => {
+    const queryClient = new QueryClient()
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    invalidateSessionHistoryOnEnd(queryClient, 'player-1', { playerId: 'player-2' })
+    expect(spy).not.toHaveBeenCalled()
   })
 })

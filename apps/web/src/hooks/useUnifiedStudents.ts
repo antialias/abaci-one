@@ -78,7 +78,8 @@ export function useUnifiedStudents(
           status: child.activeSession.status,
           completedSlots: child.activeSession.completedProblems,
           totalSlots: child.activeSession.totalProblems,
-          startedAt: new Date().toISOString(),
+          // The enrichment carries no start time; never invent one
+          startedAt: null,
         })
       }
     }

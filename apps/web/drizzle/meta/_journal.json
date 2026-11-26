@@ -1030,6 +1030,13 @@
       "when": 1795725769580,
       "tag": "0146_add_session_plans_row_version_breaks_part_states",
       "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "6",
+      "when": 1795735928416,
+      "tag": "0147_add_game_results_session_index",
+      "breakpoints": true
     }
   ]
 }

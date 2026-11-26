@@ -38,9 +38,11 @@ vi.mock('@/db', () => ({
 // Helpers
 // ============================================================================
 
+// One item per slot index: the session report counts items, and an item is
+// its slot (Phase 4d), so tries of different slots carry different ids
 function makeSlotResult(overrides: Partial<SlotResult> = {}): SlotResult {
   return {
-    slotId: 'test-slot-0',
+    slotId: `test-slot-${overrides.slotIndex ?? 0}`,
     partNumber: 1,
     slotIndex: 0,
     problem: { terms: [1, 2], skillIds: ['basic.directAddition'], id: 'p1' } as any,

@@ -9,10 +9,10 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import {
-  getPlayerCurriculum,
   getAllSkillMastery,
   getPaceAssessment,
-  getRecentSessions,
+  getPlayerCurriculum,
+  getRecentSessionDates,
   upsertPlayerCurriculum,
 } from '@/lib/curriculum/progress-manager'
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
@@ -50,7 +50,7 @@ export const GET = withAuth(async (_request, { params }) => {
       await Promise.all([
         getPlayerCurriculum(playerId),
         getAllSkillMastery(playerId),
-        getRecentSessions(playerId, 200),
+        getRecentSessionDates(playerId, 200), // ids and dates only
         getRecentSessionResults(playerId, 2000),
         getPaceAssessment(playerId), // Single producer (#157); embedded so React Query refreshes flags after #158 repairs
       ])

@@ -13,32 +13,24 @@ export interface PracticeSession {
   id: string
   playerId: string
   phaseId: string
+  /** Items attempted (the session report's `totals.problems`, Phase 4d) */
   problemsAttempted: number
+  /** Items right on the first try (the report's `totals.firstTryCorrect`) */
   problemsCorrect: number
-  /** RAW mean response time (ms). Distortion is preserved and shown alongside the clean substats. */
+  /** Active time per try (ms): the report's `time.activeMs` ÷ `totals.tries` */
   averageTimeMs: number | null
-  /** RAW sum of response times (ms). Preserved verbatim; see `cleanTotalTimeMs` for the de-poisoned total. */
+  /** Active time (ms): the report's `time.activeMs` (Σ effective response time) */
   totalTimeMs: number | null
   skillsUsed: string[]
   visualizationMode: boolean
   startedAt: Date
   completedAt: Date | null
-
-  // ---- Timing-integrity display substats (#157; context-free per-session) ----
-
-  /** Count of Tier-1 (auto-quarantined) attempts in this session. */
-  quarantinedTimingCount?: number
   /**
    * Count of flagged attempts in this session that still NEED adult review —
    * resolution-aware (flagged AND not omitted/adjusted/confirmed). Drives the
-   * session-list "review timings" badge so it disappears once every flag is
-   * acted on; `quarantinedTimingCount` stays as the raw informational substat.
+   * session-list "review timings" badge; not a session number.
    */
   unresolvedTimingCount?: number
-  /** Σ effective response time (ms) over non-Tier-1 samples — the de-poisoned total. */
-  cleanTotalTimeMs?: number | null
-  /** Count of samples summed into `cleanTotalTimeMs` (its denominator companion). */
-  timedProblemCount?: number
 }
 
 /**

@@ -18,11 +18,18 @@ import type { SessionPart, SessionStatus, SlotResult } from '@/db/schema/session
 import {
   createEphemeralDatabase,
   createTestStudent,
+  type EphemeralDbResult,
   getCurrentEphemeralDb,
   setCurrentEphemeralDb,
-  type EphemeralDbResult,
 } from '@/test/journey-simulator/EphemeralDatabase'
-import { getRecentSessions } from '../progress-manager'
+import { getRecentSessionDates, getRecentSessions } from '../progress-manager'
+import { buildSessionReports } from '../session-report-batch'
+
+// Pass-through spy: the pin below reads the rows the query handed the builder
+vi.mock('../session-report-batch', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../session-report-batch')>()
+  return { ...actual, buildSessionReports: vi.fn(actual.buildSessionReports) }
+})
 
 vi.mock('@/db', () => ({
   get db() {
@@ -35,9 +42,11 @@ vi.mock('@/db', () => ({
 // Helpers
 // ============================================================================
 
+// One item per slot index: the session report counts items, and an item is
+// its slot (Phase 4d), so tries of different slots carry different ids
 function makeSlotResult(overrides: Partial<SlotResult> = {}): SlotResult {
   return {
-    slotId: 'test-slot-0',
+    slotId: `test-slot-${overrides.slotIndex ?? 0}`,
     partNumber: 1,
     slotIndex: 0,
     problem: { terms: [1, 2], skillIds: ['basic.directAddition'], id: 'p1' } as any,
@@ -287,18 +296,17 @@ describe('getRecentSessions', () => {
     expect(Object.keys(session).sort()).toEqual(
       [
         'averageTimeMs',
-        'cleanTotalTimeMs',
         'completedAt',
         'id',
         'phaseId',
         'playerId',
         'problemsAttempted',
         'problemsCorrect',
-        'quarantinedTimingCount',
+        // The session report's headline numbers (Phase 4d), not its rows
+        'report',
         'unresolvedTimingCount',
         'skillsUsed',
         'startedAt',
-        'timedProblemCount',
         'totalTimeMs',
         'visualizationMode',
       ].sort()
@@ -309,5 +317,39 @@ describe('getRecentSessions', () => {
     // by 30 KB+ and the assertion fires.
     const serialized = JSON.stringify(session)
     expect(serialized.length).toBeLessThan(2_000)
+
+    // The query itself never pulls the full `parts` (#141): what the builder
+    // received is the slim SQL projection. Selecting the full column (or
+    // findMany) hands it the 30 KB blob and this fires.
+    const rows = vi.mocked(buildSessionReports).mock.calls.at(-1)![0]
+    const fat = rows.find((r) => r.id === 'fat')!
+    expect(JSON.stringify(fat.parts).length).toBeLessThan(5_000)
+    expect(fat.parts[0].slots).toHaveLength(100)
+    expect(fat.parts[0].slots.map((slot) => slot.index)).toEqual(
+      Array.from({ length: 100 }, (_, i) => i)
+    )
+  })
+
+  it('getRecentSessionDates: the same sessions, ids and dates only', async () => {
+    await insertSession(ephemeralDb.db, {
+      id: 'a',
+      playerId,
+      completedAt: new Date('2025-01-01T10:00:00Z'),
+      results: [makeSlotResult()],
+    })
+    await insertSession(ephemeralDb.db, {
+      id: 'b',
+      playerId,
+      completedAt: new Date('2025-01-02T10:00:00Z'),
+      results: [makeSlotResult()],
+    })
+    const dates = await getRecentSessionDates(playerId, 10)
+    const full = await getRecentSessions(playerId, 10)
+    expect(dates.map((d) => d.id)).toEqual(full.map((s) => s.id))
+    expect(dates.map((d) => Object.keys(d).sort())).toEqual([
+      ['completedAt', 'id', 'startedAt'],
+      ['completedAt', 'id', 'startedAt'],
+    ])
+    expect(dates.map((d) => d.startedAt.getTime())).toEqual(full.map((s) => s.startedAt.getTime()))
   })
 })

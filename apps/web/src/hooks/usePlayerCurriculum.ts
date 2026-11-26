@@ -39,13 +39,9 @@ export interface SkillMasteryData {
   lastPracticedAt: Date | null
 }
 
+/** A recent session's id and dates (the curriculum API sends no counts, Phase 4d) */
 export interface PracticeSessionData {
   id: string
-  phaseId: string
-  problemsAttempted: number
-  problemsCorrect: number
-  skillsUsed: string[]
-  visualizationMode: boolean
   startedAt: Date
   completedAt: Date | null
 }

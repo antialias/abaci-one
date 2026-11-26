@@ -3,20 +3,28 @@
 /**
  * Hook for infinite-scroll session history
  *
- * Uses React Query's useInfiniteQuery for cursor-based pagination.
+ * Uses React Query's useInfiniteQuery for cursor-based pagination. Rows carry
+ * the session report's numbers (`SessionHistoryEntry`, Phase 4d).
+ *
+ * Kept current by push, not polling: the hook joins the player's room and a
+ * `session-ended` for this player (natural completion included, §10 P4a-4)
+ * invalidates the list, so the session that just ended appears.
  */
 
-import { useInfiniteQuery } from '@tanstack/react-query'
-import type { PracticeSession } from '@/db/schema/practice-sessions'
+import { type QueryClient, useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import type { SessionEndedEvent } from '@/lib/classroom/socket-events'
+import type { SessionHistoryEntry } from '@/lib/curriculum/progress-manager'
 import { api } from '@/lib/queryClient'
-import { sessionHistoryKeys } from '@/lib/queryKeys'
+import { sessionHistoryKeys, sessionPlanKeys } from '@/lib/queryKeys'
+import { createSocket } from '@/lib/socket'
 
 // ============================================================================
 // Types
 // ============================================================================
 
 interface SessionHistoryPage {
-  sessions: PracticeSession[]
+  sessions: SessionHistoryEntry[]
   nextCursor: string | null
   hasMore: boolean
 }
@@ -63,8 +71,40 @@ interface UseSessionHistoryOptions {
   enabled?: boolean
 }
 
+/**
+ * When one of a player's sessions ends: refresh their session history, and
+ * their active session (the dashboard's in-progress card), which would
+ * otherwise keep showing the ended session until a reload.
+ */
+export function invalidateSessionHistoryOnEnd(
+  queryClient: QueryClient,
+  playerId: string,
+  event: Pick<SessionEndedEvent, 'playerId'> | undefined
+): void {
+  if (event?.playerId !== playerId) return
+  void queryClient.invalidateQueries({ queryKey: sessionHistoryKeys.list(playerId) })
+  void queryClient.invalidateQueries({ queryKey: sessionPlanKeys.active(playerId) })
+}
+
 export function useSessionHistory(playerId: string, options: UseSessionHistoryOptions = {}) {
   const { pageSize = 20, enabled = true } = options
+  const queryClient = useQueryClient()
+
+  // Push: the player's room hears `session-ended` on every end
+  useEffect(() => {
+    if (!playerId || !enabled) return
+    const socket = createSocket({ reconnection: true })
+    socket.on('connect', () => {
+      socket.emit('join-player', { playerId })
+    })
+    socket.on('session-ended', (event: SessionEndedEvent) =>
+      invalidateSessionHistoryOnEnd(queryClient, playerId, event)
+    )
+    return () => {
+      socket.emit('leave-player', { playerId })
+      socket.disconnect()
+    }
+  }, [playerId, enabled, queryClient])
 
   const query = useInfiniteQuery({
     queryKey: sessionHistoryKeys.list(playerId),

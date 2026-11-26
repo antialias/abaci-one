@@ -64,7 +64,7 @@ interface SessionSnapshot {
 }
 
 interface SkillProgressChartProps {
-  sessions: PracticeSession[]
+  sessions: Pick<PracticeSession, 'id' | 'completedAt'>[]
   problemHistory: ProblemResultWithContext[]
   allSkillIds: string[]
   currentDistribution: SkillDistribution
@@ -271,7 +271,7 @@ function computeDistributionAtPoint(
  * to ensure the chart's rightmost point matches the legend (which uses today's date).
  */
 function computeSessionSnapshots(
-  sessions: PracticeSession[],
+  sessions: Pick<PracticeSession, 'id' | 'completedAt'>[],
   problemHistory: ProblemResultWithContext[],
   allSkillIds: string[],
   bktOptions: BktComputeOptions,

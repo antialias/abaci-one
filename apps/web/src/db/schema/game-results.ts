@@ -97,6 +97,8 @@ export const gameResults = sqliteTable(
     ),
     /** Index for player history ordered by time */
     playerTimeIdx: index('game_results_player_time_idx').on(table.playerId, table.playedAt),
+    /** Index for a session's break games (the session report's batch load, Phase 4d) */
+    sessionIdx: index('game_results_session_idx').on(table.sessionId),
   })
 )
 

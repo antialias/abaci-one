@@ -15,10 +15,13 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { PracticeSession } from '@/db/schema/practice-sessions'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { useLiveSessionTimeEstimate } from '@/hooks/useLiveSessionTimeEstimate'
 import { useSessionHistory } from '@/hooks/useSessionHistory'
+import { useSessionReport } from '@/hooks/useSessionReport'
+import { useUserId } from '@/hooks/useUserId'
+import type { SessionHistoryEntry } from '@/lib/curriculum/progress-manager'
+import type { SessionReportSummary } from '@/lib/curriculum/session-report'
 import { api } from '@/lib/queryClient'
 import { css } from '../../../styled-system/css'
 import { SessionPhotoGallery } from './SessionPhotoGallery'
@@ -56,6 +59,7 @@ function StatusBadge({
   total?: number
   isDark: boolean
 }) {
+  // `correct` is right on the first try, `total` the problems (session report)
   if (variant === 'in-progress') {
     return (
       <span
@@ -116,7 +120,7 @@ function StatusBadge({
             : 'yellow.700',
       })}
     >
-      {correct}/{total} · {Math.round(accuracy * 100)}%
+      {correct}/{total} first try · {Math.round(accuracy * 100)}%
     </span>
   )
 }
@@ -259,14 +263,20 @@ function SessionHeader({
 // Completed Session Item
 // ============================================================================
 
-function SessionItem({
+/** Minutes for a list row (whole minutes; under a minute shows as "<1") */
+function formatMinutes(ms: number): string {
+  if (ms > 0 && ms < 30_000) return '<1'
+  return String(Math.round(ms / 60_000))
+}
+
+export function SessionItem({
   session,
   studentId,
   isDark,
   photoCount = 0,
   onViewPhotos,
 }: {
-  session: PracticeSession
+  session: SessionHistoryEntry
   studentId: string
   isDark: boolean
   /** Number of photos attached to this session */
@@ -274,23 +284,13 @@ function SessionItem({
   /** Callback when user clicks to view photos */
   onViewPhotos?: () => void
 }) {
-  const accuracy =
-    session.problemsAttempted > 0 ? session.problemsCorrect / session.problemsAttempted : 0
-  const displayDate = new Date(session.completedAt || session.startedAt).toLocaleDateString()
-  const durationMinutes = Math.round((session.totalTimeMs || 0) / 60000)
-  const isOfflineSession = session.problemsAttempted === 0
-
-  // De-poisoned "active" duration (#157): Σ effective time over non-Tier-1 samples.
-  // Shown alongside the raw duration only when the two differ materially — i.e. a
-  // broken/idle timing inflated the raw total — so the timeline makes the
-  // distortion visible without adding noise to clean sessions.
-  const cleanMinutes =
-    session.cleanTotalTimeMs != null ? Math.round(session.cleanTotalTimeMs / 60000) : null
-  const showCleanActive =
-    !isOfflineSession &&
-    cleanMinutes != null &&
-    (session.timedProblemCount ?? 0) > 0 &&
-    Math.abs(cleanMinutes - durationMinutes) >= 1
+  // Every number is the session report's (Phase 4d): problems, first try, wall and active time
+  const { totals, time } = session.report
+  // When it ended: an abandoned session's last activity, not its auto-abandon time
+  const displayDate = new Date(
+    session.report.endedAt ?? session.completedAt ?? session.startedAt
+  ).toLocaleDateString()
+  const isOfflineSession = totals.problems === 0 && totals.tries === 0
 
   return (
     <div
@@ -342,8 +342,8 @@ function SessionItem({
             ) : (
               <StatusBadge
                 variant="completed"
-                correct={session.problemsCorrect}
-                total={session.problemsAttempted}
+                correct={totals.firstTryCorrect}
+                total={totals.problems}
                 isDark={isDark}
               />
             )
@@ -354,14 +354,24 @@ function SessionItem({
           {isOfflineSession ? (
             <StatItem isDark={isDark}>Logged offline</StatItem>
           ) : (
-            <StatItem isDark={isDark}>{durationMinutes} min</StatItem>
-          )}
-          {showCleanActive && (
-            <span data-element="clean-active-duration" data-clean-minutes={cleanMinutes}>
-              <StatItem isDark={isDark} highlight>
-                {cleanMinutes} min active
-              </StatItem>
-            </span>
+            <>
+              <span data-element="wall-duration">
+                <StatItem isDark={isDark}>{formatMinutes(time.wallMs)} min</StatItem>
+              </span>
+              <span data-element="active-duration">
+                <StatItem isDark={isDark} highlight>
+                  {formatMinutes(time.activeMs)} min active
+                </StatItem>
+              </span>
+              {totals.problems > 0 && (
+                <span data-element="final-accuracy">
+                  <StatItem isDark={isDark}>
+                    {totals.finalAccuracy == null ? 0 : Math.round(totals.finalAccuracy * 100)}%
+                    final
+                  </StatItem>
+                </span>
+              )}
+            </>
           )}
         </StatsRow>
       </Link>
@@ -488,6 +498,8 @@ function useIdleTime(lastActivityTime: Date | null): number {
   return idleMs
 }
 
+const NO_RESULTS: SessionPlan['results'] = []
+
 function ActiveSessionItem({
   session,
   isDark,
@@ -497,35 +509,66 @@ function ActiveSessionItem({
   isDark: boolean
   onClick: () => void
 }) {
-  // Use live time estimation hook with WebSocket subscription
+  // The session report, live by push (gated room; the viewer's id is the credential)
+  const { data: viewerId } = useUserId()
+  const { data: report } = useSessionReport(
+    viewerId ? { playerId: session.playerId, planId: session.id, viewerId } : null
+  )
+  return (
+    <ActiveSessionCard
+      session={session}
+      report={report ?? null}
+      isDark={isDark}
+      onClick={onClick}
+    />
+  )
+}
+
+/**
+ * The active card's content from a report. Counts and progress are the
+ * report's (`position.progress`, `totals`); the live socket only supplies the
+ * timing samples behind the remaining-time estimate.
+ */
+export function ActiveSessionCard({
+  session,
+  report,
+  isDark,
+  onClick,
+}: {
+  session: Pick<SessionPlan, 'id' | 'startedAt' | 'createdAt' | 'results'>
+  report: SessionReportSummary | null
+  isDark: boolean
+  onClick: () => void
+}) {
+  // Done of planned: the live position, else (ended, not yet removed) the totals
+  const progress = report
+    ? (report.position?.progress ?? {
+        done: report.totals.problems,
+        total: report.totals.plannedProblems,
+      })
+    : null
   const timeEstimate = useLiveSessionTimeEstimate({
     sessionId: session.id,
-    initialResults: session.results ?? [],
-    initialParts: session.parts ?? [],
+    // Timing samples only; counts come from `progress`
+    initialResults: session.results ?? NO_RESULTS,
     enabled: true,
+    progress,
   })
+  const { estimatedTimeRemainingFormatted, isLive, lastActivityAt } = timeEstimate
+  const completedProblems = progress?.done ?? 0
+  const totalProblems = progress?.total ?? 0
+  const firstTryAccuracy = report?.totals.firstTryAccuracy ?? null
 
-  const {
-    totalProblems,
-    completedProblems,
-    accuracy,
-    estimatedTimeRemainingFormatted,
-    isLive,
-    lastActivityAt,
-  } = timeEstimate
+  // Session start (memoized to avoid new Date objects on every render)
+  const sessionStartTime = useMemo(() => {
+    if (report?.startedAt != null) return new Date(report.startedAt)
+    return session.startedAt ? new Date(session.startedAt) : new Date(session.createdAt)
+  }, [report?.startedAt, session.startedAt, session.createdAt])
 
-  // Get session start time (memoize to avoid creating new Date objects on every render)
-  const sessionStartTime = useMemo(
-    () => (session.startedAt ? new Date(session.startedAt) : new Date(session.createdAt)),
-    [session.startedAt, session.createdAt]
-  )
-
-  // Get last activity time from initial results (memoized)
+  // Last activity from the row's last try (a time, not a count), else the start
   const lastActivityTimeFromResults = useMemo(() => {
-    if (session.results && session.results.length > 0) {
-      return new Date(session.results[session.results.length - 1].timestamp)
-    }
-    return sessionStartTime
+    const results = session.results ?? []
+    return results.length > 0 ? new Date(results[results.length - 1].timestamp) : sessionStartTime
   }, [session.results, sessionStartTime])
 
   // Prefer live data when available, fall back to initial data
@@ -639,7 +682,7 @@ function ActiveSessionItem({
             })}
           >
             {completedProblems}/{totalProblems}
-            {completedProblems > 0 && ` · ${Math.round(accuracy * 100)}%`}
+            {firstTryAccuracy != null && ` · ${Math.round(firstTryAccuracy * 100)}% first try`}
           </span>
         </div>
 

@@ -35,6 +35,13 @@ export interface LiveSessionTimeEstimateOptions {
   initialParts?: SessionPart[]
   /** Whether to enable the WebSocket subscription */
   enabled?: boolean
+  /**
+   * Items done of planned, from the session report (`position.progress`).
+   * When given, the problem counts and the remaining-time estimate use it
+   * instead of counting tries (Phase 4d); the live socket then supplies only
+   * the timing samples.
+   */
+  progress?: { done: number; total: number } | null
 }
 
 export interface LiveSessionTimeEstimateResult extends SessionTimeEstimate {
@@ -55,6 +62,10 @@ export interface LiveSessionTimeEstimateResult extends SessionTimeEstimate {
 // ============================================================================
 // Hook
 // ============================================================================
+
+// Stable defaults: a fresh `[]` per render would re-run the seeding effect forever
+const NO_RESULTS: SlotResult[] = []
+const NO_PARTS: SessionPart[] = []
 
 /**
  * Hook to get real-time session time estimates via WebSocket
@@ -80,9 +91,10 @@ export interface LiveSessionTimeEstimateResult extends SessionTimeEstimate {
  */
 export function useLiveSessionTimeEstimate({
   sessionId,
-  initialResults = [],
-  initialParts = [],
+  initialResults = NO_RESULTS,
+  initialParts = NO_PARTS,
   enabled = true,
+  progress = null,
 }: LiveSessionTimeEstimateOptions): LiveSessionTimeEstimateResult {
   // State for live data
   const [liveResults, setLiveResults] = useState<SlotResult[]>(initialResults)
@@ -197,13 +209,16 @@ export function useLiveSessionTimeEstimate({
   const results = countedTries(liveResults)
   const parts = liveParts
 
-  const totalProblems = parts.reduce((sum, p) => sum + (p.slots?.length ?? 0), 0)
-  const completedProblems = results.length
-  const problemsRemaining = totalProblems - completedProblems
+  const totalProblems = progress
+    ? progress.total
+    : parts.reduce((sum, p) => sum + (p.slots?.length ?? 0), 0)
+  const completedProblems = progress ? progress.done : results.length
+  const problemsRemaining = Math.max(0, totalProblems - completedProblems)
 
   // Calculate correctness stats
   const correctCount = results.filter((r) => r.isCorrect).length
-  const accuracy = completedProblems > 0 ? correctCount / completedProblems : 0
+  // Legacy readers only; report readers take accuracy from `report.totals`
+  const accuracy = results.length > 0 ? correctCount / results.length : 0
 
   const timingStats = calculateTimingStats(results, parts)
   const estimatedTimeRemainingMs = calculateEstimatedTimeRemainingMs(timingStats, problemsRemaining)
