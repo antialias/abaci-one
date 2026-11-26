@@ -86,10 +86,12 @@ export type {
 	ProviderStreamEvent,
 	ReasoningConfig,
 	ReasoningEffort,
+	RequestPriority,
 	StreamEvent,
 	StreamEventComplete,
 	StreamEventError,
 	StreamEventOutputDelta,
+	StreamEventOutputReset,
 	StreamEventReasoning,
 	StreamEventStarted,
 	ValidationFeedback,
@@ -98,6 +100,7 @@ export type {
 // Errors
 export {
 	defaultLogger,
+	LLMAbortedError,
 	LLMApiError,
 	LLMContentFilterError,
 	LLMJsonParseError,

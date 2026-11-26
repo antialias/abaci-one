@@ -89,6 +89,9 @@ export type ReasoningEffort =
   | "high"
   | "xhigh";
 
+/** Queue class for capped providers: see LLMRequest.priority. */
+export type RequestPriority = "interactive" | "background";
+
 /**
  * Request to make an LLM call with type-safe schema validation
  */
@@ -122,6 +125,14 @@ export interface LLMRequest<T extends z.ZodType> {
    * Set to 0 for no timeout (not recommended)
    */
   timeoutMs?: number;
+  /**
+   * Queue class when runs are capped (claude_code): "interactive" (a child is
+   * waiting on the answer) goes ahead of "background" and always has a slot
+   * kept for it. Default: "background".
+   */
+  priority?: RequestPriority;
+  /** Aborting cancels the request, including while it waits for a slot. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -205,6 +216,10 @@ export interface ProviderRequest {
   reasoningEffort?: ReasoningEffort;
   /** Request timeout in milliseconds */
   timeoutMs?: number;
+  /** Queue class (see LLMRequest.priority) */
+  priority?: RequestPriority;
+  /** Aborting cancels the request */
+  signal?: AbortSignal;
 }
 
 /**
@@ -232,6 +247,7 @@ export type ProviderStreamEvent =
   | StreamEventStarted
   | StreamEventReasoning
   | StreamEventOutputDelta
+  | StreamEventOutputReset
   | { type: "result"; response: ProviderResponse };
 
 /**
@@ -377,6 +393,16 @@ export class LLMNetworkError extends Error {
   }
 }
 
+/**
+ * The caller aborted the request (its signal fired). Never retried.
+ */
+export class LLMAbortedError extends Error {
+  constructor(public readonly provider: string) {
+    super(`${provider} request was aborted`);
+    this.name = "LLMAbortedError";
+  }
+}
+
 // ============================================================================
 // Streaming Types
 // ============================================================================
@@ -424,6 +450,14 @@ export interface LLMStreamRequest<T extends z.ZodType> {
    * Set to true to enable, false to disable, or omit to use global setting
    */
   debug?: boolean;
+  /**
+   * Queue class when runs are capped (claude_code): "interactive" (a child is
+   * waiting on the answer) goes ahead of "background" and always has a slot
+   * kept for it. Default: "background".
+   */
+  priority?: RequestPriority;
+  /** Aborting cancels the request, including while it waits for a slot. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -449,6 +483,14 @@ export interface LLMTextStreamRequest {
   maxRetries?: number;
   /** Enable debug logging for this request */
   debug?: boolean;
+  /**
+   * Queue class when runs are capped (claude_code): "interactive" (a child is
+   * waiting on the answer) goes ahead of "background" and always has a slot
+   * kept for it. Default: "background".
+   */
+  priority?: RequestPriority;
+  /** Aborting cancels the request, including while it waits for a slot. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -493,6 +535,15 @@ export interface StreamEventOutputDelta extends StreamEventBase {
 }
 
 /**
+ * The output streamed so far is void: the model is starting its answer again
+ * (a retry after a failed schema check, or the CLI asking the model again).
+ * A consumer accumulating output_delta text should clear it.
+ */
+export interface StreamEventOutputReset extends StreamEventBase {
+  type: "output_reset";
+}
+
+/**
  * Event when an error occurs during streaming
  */
 export interface StreamEventError extends StreamEventBase {
@@ -531,6 +582,7 @@ export type StreamEvent<T> =
   | StreamEventStarted
   | StreamEventReasoning
   | StreamEventOutputDelta
+  | StreamEventOutputReset
   | StreamEventError
   | StreamEventComplete<T>;
 

@@ -4,8 +4,10 @@ import type {
 	ProviderResponse,
 	ProviderStreamEvent,
 	ReasoningEffort,
+	RequestPriority,
 } from "../types";
 import {
+	LLMAbortedError,
 	LLMApiError,
 	LLMJsonParseError,
 	LLMNetworkError,
@@ -48,6 +50,12 @@ import { BaseProvider } from "./base";
  * knows nothing about a proxy class id such as `claude-abaci`, and for a model
  * it does not know it sends no thinking and ignores --effort; the run declares
  * the requested id as a custom model with those capabilities so both apply.
+ *
+ * Queue: at most LLM_CLAUDE_CODE_MAX_CONCURRENCY runs at once, process-wide.
+ * "interactive" requests (a child waiting) go ahead of "background" ones, and
+ * background runs may hold at most limit−1 slots so one is always free for
+ * an interactive request. Time spent waiting counts against the request's
+ * timeout, and aborting its signal takes it out of the queue.
  *
  * Failures: Claude Code retries a refused request by itself, silently, for
  * minutes. The run is read as `stream-json`, which reports each of those
@@ -127,21 +135,120 @@ interface RetryEvent {
 
 // ---- process-wide concurrency cap --------------------------------------
 
-let running = 0;
-const waiting: Array<() => void> = [];
+interface SlotWaiter {
+	priority: RequestPriority;
+	grant: () => void;
+}
 
-async function withSlot<T>(limit: number, fn: () => Promise<T>): Promise<T> {
-	if (running >= limit) {
-		await new Promise<void>((resolve) => waiting.push(resolve));
+/**
+ * Run slots shared by every claude_code request in the process. A freed slot
+ * is handed straight to the next waiter (counted before it resumes), so a
+ * newcomer can never slip in ahead of the queue and exceed the limit.
+ */
+export class SlotPool {
+	private running = 0;
+	private background = 0;
+	private limit = DEFAULT_MAX_CONCURRENCY;
+	private readonly queues: Record<RequestPriority, SlotWaiter[]> = {
+		interactive: [],
+		background: [],
+	};
+
+	/** Runs now holding a slot, and how many of them are background. */
+	get usage(): { running: number; background: number; waiting: number } {
+		return {
+			running: this.running,
+			background: this.background,
+			waiting: this.queues.interactive.length + this.queues.background.length,
+		};
 	}
-	running++;
-	try {
-		return await fn();
-	} finally {
-		running--;
-		waiting.shift()?.();
+
+	/**
+	 * Wait for a slot. Resolves to its release function; rejects with
+	 * LLMAbortedError when `signal` fires, or LLMTimeoutError once `timeoutMs`
+	 * passes, while still waiting.
+	 */
+	acquire(opts: {
+		limit: number;
+		priority: RequestPriority;
+		provider: string;
+		timeoutMs: number;
+		signal?: AbortSignal;
+	}): Promise<() => void> {
+		this.limit = Math.max(1, opts.limit);
+		const { priority, signal } = opts;
+		if (signal?.aborted) {
+			return Promise.reject(new LLMAbortedError(opts.provider));
+		}
+		return new Promise((resolve, reject) => {
+			let timer: ReturnType<typeof setTimeout> | undefined;
+			const leave = () => {
+				const queue = this.queues[priority];
+				const at = queue.indexOf(waiter);
+				if (at !== -1) queue.splice(at, 1);
+				if (timer) clearTimeout(timer);
+				signal?.removeEventListener("abort", onAbort);
+			};
+			const onAbort = () => {
+				leave();
+				reject(new LLMAbortedError(opts.provider));
+			};
+			const waiter: SlotWaiter = {
+				priority,
+				grant: () => {
+					leave();
+					let released = false;
+					resolve(() => {
+						if (released) return;
+						released = true;
+						this.release(priority);
+					});
+				},
+			};
+			this.queues[priority].push(waiter);
+			signal?.addEventListener("abort", onAbort, { once: true });
+			if (opts.timeoutMs > 0) {
+				timer = setTimeout(() => {
+					leave();
+					reject(new LLMTimeoutError(opts.provider, opts.timeoutMs));
+				}, opts.timeoutMs);
+			}
+			this.dispatch();
+		});
+	}
+
+	private release(priority: RequestPriority): void {
+		this.running--;
+		if (priority === "background") this.background--;
+		this.dispatch();
+	}
+
+	/** Background may hold every slot but one (all of them when there is one). */
+	private canTake(priority: RequestPriority): boolean {
+		if (this.running >= this.limit) return false;
+		if (priority === "interactive") return true;
+		return this.background < Math.max(1, this.limit - 1);
+	}
+
+	private dispatch(): void {
+		while (true) {
+			const priority: RequestPriority | undefined =
+				this.queues.interactive.length > 0 && this.canTake("interactive")
+					? "interactive"
+					: this.queues.background.length > 0 && this.canTake("background")
+						? "background"
+						: undefined;
+			if (!priority) return;
+			const waiter = this.queues[priority][0];
+			this.running++;
+			if (priority === "background") this.background++;
+			waiter.grant();
+		}
 	}
 }
+
+/** The one pool every ClaudeCodeProvider in the process shares. */
+export const claudeCodeSlots = new SlotPool();
 
 // ---- the real runner ---------------------------------------------------
 
@@ -187,10 +294,14 @@ export const spawnClaudeCli: ClaudeCliRunner = (run) =>
 			child.kill("SIGTERM");
 			killTimer = setTimeout(() => child.kill("SIGKILL"), KILL_GRACE_MS);
 		};
-		const timer = setTimeout(() => {
-			timedOut = true;
-			end();
-		}, run.timeoutMs);
+		// timeoutMs 0: no limit.
+		const timer =
+			run.timeoutMs > 0
+				? setTimeout(() => {
+						timedOut = true;
+						end();
+					}, run.timeoutMs)
+				: undefined;
 
 		if (run.signal) {
 			const onAbort = () => {
@@ -250,13 +361,16 @@ export const spawnClaudeCli: ClaudeCliRunner = (run) =>
 
 export class ClaudeCodeProvider extends BaseProvider {
 	private readonly runner: ClaudeCliRunner;
+	private readonly slots: SlotPool;
 
 	constructor(
 		config: ProviderConfig,
 		runner: ClaudeCliRunner = spawnClaudeCli,
+		slots: SlotPool = claudeCodeSlots,
 	) {
 		super(config);
 		this.runner = runner;
+		this.slots = slots;
 	}
 
 	async call(request: ProviderRequest): Promise<ProviderResponse> {
@@ -299,41 +413,62 @@ export class ClaudeCodeProvider extends BaseProvider {
 		const mapper = new StreamMapper(request.textOutput === true);
 		const abort = new AbortController();
 
-		const finished = withSlot(limit, () =>
-			this.runner({
-				command: String(opts.cli_path ?? "claude"),
-				args: this.buildArgs(request, model, streaming),
-				stdin,
-				env: this.buildEnv(model),
-				cwd: this.home(),
+		const signal = request.signal;
+		const onCallerAbort = () => abort.abort();
+		signal?.addEventListener("abort", onCallerAbort, { once: true });
+		const queuedAt = Date.now();
+
+		const finished = (async () => {
+			const release = await this.slots.acquire({
+				limit,
+				priority: request.priority ?? "background",
+				provider: this.name,
 				timeoutMs,
-				signal: abort.signal,
-				onLine: (line) => {
-					const event = parseLine(line);
-					if (!event) return undefined;
-					if (event.type === "system" && event.subtype === "api_retry") {
-						retry = {
-							status:
-								typeof event.error_status === "number"
-									? event.error_status
-									: null,
-							error: String(event.error ?? "api_retry"),
-							retryDelayMs:
-								typeof event.retry_delay_ms === "number"
-									? event.retry_delay_ms
-									: undefined,
-						};
-						return "stop";
-					}
-					if (event.type === "result") {
-						result = event as unknown as ResultEvent;
-					} else if (streaming) {
-						for (const mapped of mapper.map(event)) events.push(mapped);
-					}
-					return undefined;
-				},
-			}),
-		).finally(() => events.close());
+				signal,
+			});
+			try {
+				// The wait for a slot counted against the request's timeout.
+				const remaining = timeoutMs - (Date.now() - queuedAt);
+				if (timeoutMs > 0 && remaining <= 0) {
+					throw new LLMTimeoutError(this.name, timeoutMs);
+				}
+				return await this.runner({
+					command: String(opts.cli_path ?? "claude"),
+					args: this.buildArgs(request, model, streaming),
+					stdin,
+					env: this.buildEnv(model),
+					cwd: this.home(),
+					timeoutMs: timeoutMs > 0 ? remaining : 0,
+					signal: abort.signal,
+					onLine: (line) => {
+						const event = parseLine(line);
+						if (!event) return undefined;
+						if (event.type === "system" && event.subtype === "api_retry") {
+							retry = {
+								status:
+									typeof event.error_status === "number"
+										? event.error_status
+										: null,
+								error: String(event.error ?? "api_retry"),
+								retryDelayMs:
+									typeof event.retry_delay_ms === "number"
+										? event.retry_delay_ms
+										: undefined,
+							};
+							return "stop";
+						}
+						if (event.type === "result") {
+							result = event as unknown as ResultEvent;
+						} else if (streaming) {
+							for (const mapped of mapper.map(event)) events.push(mapped);
+						}
+						return undefined;
+					},
+				});
+			} finally {
+				release();
+			}
+		})().finally(() => events.close());
 		// Read below, after the stream drains; never an unhandled rejection.
 		finished.catch(() => {});
 
@@ -344,6 +479,9 @@ export class ClaudeCodeProvider extends BaseProvider {
 			try {
 				run = await finished;
 			} catch (err) {
+				if (err instanceof LLMAbortedError || err instanceof LLMTimeoutError) {
+					throw err;
+				}
 				const e = err as NodeJS.ErrnoException;
 				if (e?.code === "ENOENT") {
 					throw new Error(
@@ -358,6 +496,7 @@ export class ClaudeCodeProvider extends BaseProvider {
 				response: this.toResponse(run, result, retry, timeoutMs, request),
 			};
 		} finally {
+			signal?.removeEventListener("abort", onCallerAbort);
 			abort.abort();
 		}
 	}
@@ -369,6 +508,9 @@ export class ClaudeCodeProvider extends BaseProvider {
 		timeoutMs: number,
 		request: ProviderRequest,
 	): ProviderResponse {
+		if (request.signal?.aborted) {
+			throw new LLMAbortedError(this.name);
+		}
 		if (retry) {
 			if (retry.status === null) {
 				throw new LLMNetworkError(
@@ -405,8 +547,7 @@ export class ClaudeCodeProvider extends BaseProvider {
 		}
 		if (result.is_error) {
 			const text = String(result.result ?? result.subtype ?? "error");
-			const status = /usage limit|rate.?limit|\b429\b/i.test(text) ? 429 : 502;
-			throw new LLMApiError(this.name, status, text.slice(0, 500));
+			throw new LLMApiError(this.name, errorStatus(text), text.slice(0, 500));
 		}
 
 		const content = request.textOutput
@@ -556,6 +697,37 @@ function parseLine(line: string): Record<string, unknown> | null {
 	}
 }
 
+/**
+ * The HTTP status behind a failed run's result text. Claude Code reports an
+ * API refusal as "API Error: <status> …"; a 4xx (an image too large, an
+ * invalid request) is the request's own fault and is not retried.
+ */
+export function errorStatus(text: string): number {
+	const reported = /API Error:?\s*(\d{3})\b/i.exec(text);
+	if (reported) return Number(reported[1]);
+	if (/usage limit|rate.?limit|\b429\b/i.test(text)) return 429;
+	if (/invalid_request|request_too_large|\b(400|413)\b/i.test(text)) return 400;
+	return 502;
+}
+
+/** The image format its first bytes say, whatever the data URL claims. */
+export function sniffImageType(base64: string): string | undefined {
+	let head: string;
+	try {
+		head = atob(base64.slice(0, 16));
+	} catch {
+		return undefined;
+	}
+	const at = (i: number) => head.charCodeAt(i);
+	if (at(0) === 0x89 && head.slice(1, 4) === "PNG") return "image/png";
+	if (at(0) === 0xff && at(1) === 0xd8 && at(2) === 0xff) return "image/jpeg";
+	if (head.startsWith("GIF8")) return "image/gif";
+	if (head.startsWith("RIFF") && head.slice(8, 12) === "WEBP") {
+		return "image/webp";
+	}
+	return undefined;
+}
+
 /** A data URL as an Anthropic base64 image block. */
 function imageBlock(
 	dataUrl: string,
@@ -570,9 +742,11 @@ function imageBlock(
 			"claude_code provider takes images as base64 data URLs (data:<type>;base64,…)",
 		);
 	}
+	// The API checks the declared type against the bytes: trust the bytes.
+	const mediaType = sniffImageType(match[2]) ?? match[1];
 	return {
 		type: "image",
-		source: { type: "base64", media_type: match[1], data: match[2] },
+		source: { type: "base64", media_type: mediaType, data: match[2] },
 	};
 }
 
@@ -585,6 +759,7 @@ class StreamMapper {
 	private readonly blocks = new Map<number, string>();
 	private reasoningBlocks = 0;
 	private reasoningOpen = false;
+	private outputShown = false;
 
 	constructor(private readonly textOutput: boolean) {}
 
@@ -599,6 +774,11 @@ class StreamMapper {
 
 		if (inner.type === "message_start") {
 			this.blocks.clear();
+			if (this.outputShown) {
+				// The CLI asked the model again: the answer starts over.
+				this.outputShown = false;
+				return [{ type: "output_reset" }];
+			}
 			return [];
 		}
 		if (inner.type === "content_block_start") {
@@ -616,15 +796,20 @@ class StreamMapper {
 		}
 		if (delta.type === "text_delta") {
 			const text = String(delta.text ?? "");
-			if (this.textOutput) return text ? [output(text)] : [];
+			if (this.textOutput) return text ? [this.output(text)] : [];
 			// Before a structured answer, the model's prose is its working.
 			return this.reasoning(text);
 		}
 		if (delta.type === "input_json_delta" && !this.textOutput) {
 			const json = String(delta.partial_json ?? "");
-			return json ? [output(json)] : [];
+			return json ? [this.output(json)] : [];
 		}
 		return [];
+	}
+
+	private output(text: string): ProviderStreamEvent {
+		this.outputShown = true;
+		return { type: "output_delta", text, outputIndex: 0 };
 	}
 
 	private reasoning(text: string): ProviderStreamEvent[] {
@@ -644,10 +829,6 @@ class StreamMapper {
 			},
 		];
 	}
-}
-
-function output(text: string): ProviderStreamEvent {
-	return { type: "output_delta", text, outputIndex: 0 };
 }
 
 /** A push queue read with for-await; ends once closed and drained. */

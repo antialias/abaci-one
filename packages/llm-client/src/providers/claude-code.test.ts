@@ -11,6 +11,7 @@ import type {
 	StreamEvent,
 } from "../types";
 import {
+	LLMAbortedError,
 	LLMApiError,
 	LLMJsonParseError,
 	LLMNetworkError,
@@ -21,7 +22,10 @@ import {
 	type ClaudeCliRun,
 	type ClaudeCliRunner,
 	ClaudeCodeProvider,
+	errorStatus,
 	proxyRoot,
+	SlotPool,
+	sniffImageType,
 	spawnClaudeCli,
 } from "./claude-code";
 
@@ -381,23 +385,230 @@ describe("ClaudeCodeProvider", () => {
 		expect(fake.runs[1].args).not.toContain("--effort");
 	});
 
-	it("runs no more than the configured number at once", async () => {
-		let active = 0;
-		let peak = 0;
-		const runner: ClaudeCliRunner = async (run) => {
-			active++;
-			peak = Math.max(peak, active);
-			await new Promise((r) => setTimeout(r, 20));
-			run.onLine(resultLine({ structured_output: { title: "x" } }));
-			active--;
-			return { exitCode: 0, stderr: "", timedOut: false, stopped: false };
+	it("reads an API 4xx result as the request's own fault (not retried)", async () => {
+		const fake = fakeRunner([
+			resultLine({
+				is_error: true,
+				result:
+					'API Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"image exceeds 5 MB maximum"}}',
+			}),
+		]);
+		const err = (await new ClaudeCodeProvider(config, fake.runner)
+			.call(request)
+			.catch((e) => e)) as LLMApiError;
+		expect(err).toBeInstanceOf(LLMApiError);
+		expect(err.statusCode).toBe(400);
+		expect(err.isClientError()).toBe(true);
+	});
+
+	it("labels an image by its bytes, not by its data URL", async () => {
+		const fake = fakeRunner([
+			resultLine({ structured_output: { title: "x" } }),
+		]);
+		const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk";
+		await new ClaudeCodeProvider(config, fake.runner).call({
+			...request,
+			images: [`data:image/jpeg;base64,${png}`],
+		});
+		const message = JSON.parse(fake.runs[0].stdin);
+		expect(message.message.content[0].source.media_type).toBe("image/png");
+	});
+});
+
+describe("errorStatus", () => {
+	it("takes the status Claude Code reports", () => {
+		expect(errorStatus("API Error: 413 request_too_large")).toBe(413);
+		expect(errorStatus("API Error: 529 overloaded")).toBe(529);
+	});
+	it("falls back on the wording", () => {
+		expect(errorStatus("Claude AI usage limit reached")).toBe(429);
+		expect(errorStatus("invalid_request_error: bad image")).toBe(400);
+		expect(errorStatus("something broke")).toBe(502);
+	});
+});
+
+describe("sniffImageType", () => {
+	it("knows png, jpeg, gif and webp", () => {
+		expect(sniffImageType("iVBORw0KGgo=")).toBe("image/png");
+		expect(sniffImageType("/9j/4AAQSkZJRg==")).toBe("image/jpeg");
+		expect(sniffImageType(btoa("GIF89a......"))).toBe("image/gif");
+		expect(sniffImageType(btoa("RIFF\0\0\0\0WEBPVP8 "))).toBe("image/webp");
+		expect(sniffImageType(btoa("plain text here"))).toBeUndefined();
+	});
+});
+
+describe("ClaudeCodeProvider queue", () => {
+	/** A runner whose runs end only when told to. */
+	function heldRunner() {
+		const runs: Array<{ run: ClaudeCliRun; finish: () => void }> = [];
+		let notify: (() => void) | undefined;
+		const runner: ClaudeCliRunner = (run) =>
+			new Promise((resolve) => {
+				runs.push({
+					run,
+					finish: () => {
+						run.onLine(resultLine({ structured_output: { title: "x" } }));
+						resolve({
+							exitCode: 0,
+							stderr: "",
+							timedOut: false,
+							stopped: false,
+						});
+					},
+				});
+				notify?.();
+			});
+		const started = async (n: number) => {
+			while (runs.length < n) {
+				await new Promise<void>((r) => {
+					notify = r;
+				});
+			}
 		};
-		const provider = new ClaudeCodeProvider(
-			{ ...config, options: { ...config.options, max_concurrency: "2" } },
-			runner,
-		);
-		await Promise.all(Array.from({ length: 5 }, () => provider.call(request)));
-		expect(peak).toBe(2);
+		return { runner, runs, started };
+	}
+	const settle = () => new Promise((r) => setTimeout(r, 10));
+	const limited = (limit: number) => ({
+		...config,
+		options: { ...config.options, max_concurrency: String(limit) },
+	});
+
+	it("keeps one slot free for interactive requests", async () => {
+		const pool = new SlotPool();
+		const held = heldRunner();
+		const provider = new ClaudeCodeProvider(limited(3), held.runner, pool);
+
+		const background = Array.from({ length: 4 }, () => provider.call(request));
+		await held.started(2);
+		await settle();
+		expect(held.runs).toHaveLength(2); // background holds limit - 1
+
+		const kid = provider.call({ ...request, priority: "interactive" });
+		await held.started(3);
+		expect(pool.usage).toMatchObject({ running: 3, background: 2 });
+
+		for (const r of held.runs) r.finish();
+		await settle();
+		for (const r of held.runs) r.finish();
+		await Promise.all([...background, kid]);
+		expect(pool.usage).toMatchObject({ running: 0, background: 0, waiting: 0 });
+	});
+
+	it("serves a waiting interactive request before earlier background ones", async () => {
+		const pool = new SlotPool();
+		const held = heldRunner();
+		const provider = new ClaudeCodeProvider(limited(2), held.runner, pool);
+
+		const kid1 = provider.call({
+			...request,
+			priority: "interactive",
+			prompt: "kid 1",
+		});
+		const bg1 = provider.call({ ...request, prompt: "bg 1" });
+		await held.started(2);
+		const bg2 = provider.call({ ...request, prompt: "bg 2" });
+		const kid2 = provider.call({
+			...request,
+			priority: "interactive",
+			prompt: "kid 2",
+		});
+		await settle();
+
+		held.runs[0].finish(); // kid 1 frees a slot: kid 2 gets it, not bg 2
+		await held.started(3);
+		expect(held.runs[2].run.stdin).toContain("kid 2");
+
+		held.runs[1].finish();
+		await held.started(4);
+		expect(held.runs[3].run.stdin).toContain("bg 2");
+		held.runs[2].finish();
+		held.runs[3].finish();
+		await Promise.all([kid1, bg1, bg2, kid2]);
+	});
+
+	it("hands a freed slot to the waiter, never to a newcomer", async () => {
+		const pool = new SlotPool();
+		const take = (priority: "interactive" | "background") =>
+			pool.acquire({ limit: 1, priority, provider: "p", timeoutMs: 0 });
+
+		const releaseA = await take("interactive");
+		const b = take("interactive");
+		releaseA();
+		const c = take("interactive"); // arrives in the gap before b resumes
+		expect(pool.usage).toMatchObject({ running: 1, waiting: 1 });
+		(await b)();
+		(await c)();
+		expect(pool.usage).toMatchObject({ running: 0, waiting: 0 });
+	});
+
+	it("counts the wait for a slot against the request's timeout", async () => {
+		const pool = new SlotPool();
+		const held = heldRunner();
+		const provider = new ClaudeCodeProvider(limited(1), held.runner, pool);
+
+		const first = provider.call({ ...request, priority: "interactive" });
+		await held.started(1);
+		const err = await provider
+			.call({ ...request, priority: "interactive", timeoutMs: 30 })
+			.catch((e) => e);
+		expect(err).toBeInstanceOf(LLMTimeoutError);
+		expect(held.runs).toHaveLength(1); // never spawned
+
+		const late = provider.call({
+			...request,
+			priority: "interactive",
+			timeoutMs: 2_000,
+		});
+		await settle();
+		held.runs[0].finish();
+		await held.started(2);
+		expect(held.runs[1].run.timeoutMs).toBeLessThan(2_000);
+		held.runs[1].finish();
+		await Promise.all([first, late]);
+	});
+
+	it("takes an aborted request out of the queue without running it", async () => {
+		const pool = new SlotPool();
+		const held = heldRunner();
+		const provider = new ClaudeCodeProvider(limited(1), held.runner, pool);
+
+		const first = provider.call({ ...request, priority: "interactive" });
+		await held.started(1);
+		const controller = new AbortController();
+		const queued = provider
+			.call({ ...request, priority: "interactive", signal: controller.signal })
+			.catch((e) => e);
+		await settle();
+		controller.abort();
+		expect(await queued).toBeInstanceOf(LLMAbortedError);
+		expect(pool.usage.waiting).toBe(0);
+
+		held.runs[0].finish();
+		await first;
+		expect(held.runs).toHaveLength(1);
+	});
+
+	it("ends a running request when its signal aborts", async () => {
+		const pool = new SlotPool();
+		const runner: ClaudeCliRunner = (run) =>
+			new Promise((resolve) => {
+				run.signal?.addEventListener("abort", () =>
+					resolve({
+						exitCode: null,
+						stderr: "",
+						timedOut: false,
+						stopped: true,
+					}),
+				);
+			});
+		const controller = new AbortController();
+		const call = new ClaudeCodeProvider(limited(1), runner, pool)
+			.call({ ...request, signal: controller.signal })
+			.catch((e) => e);
+		await settle();
+		controller.abort();
+		expect(await call).toBeInstanceOf(LLMAbortedError);
+		expect(pool.usage.running).toBe(0);
 	});
 });
 
@@ -642,6 +853,56 @@ describe("LLMClient.stream through claude_code", () => {
 		expect(JSON.parse(fake.runs[1].stdin).message.content[0].text).toMatch(
 			/title/,
 		);
+	});
+
+	it("voids the streamed answer before a retry streams a new one", async () => {
+		let call = 0;
+		const runner: ClaudeCliRunner = async (run) => {
+			call++;
+			run.onLine(blockStart(0, "tool_use"));
+			run.onLine(
+				delta(0, {
+					type: "input_json_delta",
+					partial_json: call === 1 ? '{"title":7}' : '{"title":"ok"}',
+				}),
+			);
+			run.onLine(
+				resultLine({
+					structured_output: call === 1 ? { title: 7 } : { title: "ok" },
+				}),
+			);
+			return { exitCode: 0, stderr: "", timedOut: false, stopped: false };
+		};
+		const events = await collect(
+			withProvider(runner).stream({ prompt: "p", schema, maxRetries: 1 }),
+		);
+		expect(events.map((e) => e.type)).toEqual([
+			"output_delta",
+			"output_reset",
+			"output_delta",
+			"complete",
+		]);
+	});
+
+	it("voids the answer when the CLI asks the model again within a run", async () => {
+		const fake = fakeRunner([
+			se({ type: "message_start" }),
+			blockStart(0, "tool_use"),
+			delta(0, { type: "input_json_delta", partial_json: '{"title":7}' }),
+			se({ type: "message_start" }),
+			blockStart(0, "tool_use"),
+			delta(0, { type: "input_json_delta", partial_json: '{"title":"ok"}' }),
+			resultLine({ structured_output: { title: "ok" } }),
+		]);
+		const events = await collect(
+			withProvider(fake.runner).stream({ prompt: "p", schema }),
+		);
+		expect(events.map((e) => e.type)).toEqual([
+			"output_delta",
+			"output_reset",
+			"output_delta",
+			"complete",
+		]);
 	});
 
 	it("gives up with a validation error once retries run out", async () => {

@@ -282,6 +282,8 @@ export class LLMClient {
 			reasoningEffort:
 				request.reasoning?.effort ?? defaultReasoningEffort(model),
 			timeoutMs: request.timeoutMs ?? 300_000,
+			priority: request.priority,
+			signal: request.signal,
 		};
 
 		yield* this.runStream(
@@ -322,6 +324,8 @@ export class LLMClient {
 			model,
 			reasoningEffort: request.reasoningEffort ?? defaultReasoningEffort(model),
 			timeoutMs: request.timeoutMs ?? 120_000,
+			priority: request.priority,
+			signal: request.signal,
 		};
 
 		let sawText = false;
@@ -372,12 +376,18 @@ export class LLMClient {
 	): AsyncGenerator<StreamEvent<D>, void, unknown> {
 		const maxAttempts = maxRetries + 1;
 		let feedback: ValidationFeedback | undefined;
+		let outputShown = false;
 
 		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
 			const providerRequest: ProviderRequest = {
 				...base,
 				validationFeedback: feedback,
 			};
+			if (outputShown) {
+				// The answer starts over: whoever showed the last one clears it.
+				yield { type: "output_reset" };
+				outputShown = false;
+			}
 			let streamed = false;
 			let response: ProviderResponse | undefined;
 			try {
@@ -387,6 +397,8 @@ export class LLMClient {
 							response = event.response;
 						} else {
 							if (event.type !== "started") streamed = true;
+							if (event.type === "output_delta") outputShown = true;
+							if (event.type === "output_reset") outputShown = false;
 							yield event;
 						}
 					}
@@ -578,12 +590,15 @@ export class LLMClient {
 			async (validationFeedback?: ValidationFeedback) => {
 				const providerRequest: ProviderRequest = {
 					prompt: request.prompt,
+					system: request.system,
 					images: request.images,
 					jsonSchema,
 					model,
 					validationFeedback,
 					reasoningEffort,
 					timeoutMs,
+					priority: request.priority,
+					signal: request.signal,
 				};
 
 				return provider.call(providerRequest);

@@ -1,12 +1,13 @@
 import type { LLMProgress, ValidationFeedback } from "./types";
 import {
-  LLMValidationError,
+  LLMAbortedError,
   LLMApiError,
-  LLMTruncationError,
   LLMContentFilterError,
   LLMJsonParseError,
-  LLMTimeoutError,
   LLMNetworkError,
+  LLMTimeoutError,
+  LLMTruncationError,
+  LLMValidationError,
 } from "./types";
 
 /**
@@ -27,6 +28,11 @@ export interface RetryOptions {
  * Check if an error is retryable
  */
 export function isRetryableError(error: unknown): boolean {
+  // The caller gave up: never retry
+  if (error instanceof LLMAbortedError) {
+    return false;
+  }
+
   // Content filter errors are never retryable - the model refused
   if (error instanceof LLMContentFilterError) {
     return false;
@@ -81,7 +87,7 @@ export function getRetryDelay(
   }
 
   // Exponential backoff with jitter
-  const exponentialDelay = baseDelayMs * Math.pow(2, attempt - 1);
+  const exponentialDelay = baseDelayMs * 2 ** (attempt - 1);
   const jitter = Math.random() * 0.1 * exponentialDelay; // 10% jitter
   return Math.min(exponentialDelay + jitter, maxDelayMs);
 }
