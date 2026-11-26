@@ -3,6 +3,11 @@
 import path from 'path'
 import { defineConfig } from 'vitest/config'
 
+// Locally, cap worker threads (vitest's default is cores - 1): 4 threads use about
+// half the memory of 15 for a modest slowdown. VITEST_MAX_THREADS (vitest's own
+// env var) overrides it; CI keeps vitest's default.
+const localMaxThreads = process.env.CI ? undefined : 4
+
 export default defineConfig({
   esbuild: {
     jsxInject: `import React from 'react'`,
@@ -11,8 +16,12 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    ...(localMaxThreads && {
+      poolOptions: { threads: { maxThreads: localMaxThreads, minThreads: 1 } },
+    }),
     exclude: [
       '**/node_modules/**',
+      '**/.next/**',
       '**/e2e/**',
       '**/*.e2e.test.*',
       '**/journey-simulator/**',

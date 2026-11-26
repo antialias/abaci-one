@@ -5,10 +5,18 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
+// NEXT_LIGHT_BUILD=1 (scripts/test-server.sh, local e2e only) trades the parts of
+// a production build a throwaway test server doesn't need for memory: no browser
+// source maps, no type-check pass (agents type-check on their own; it also trips
+// on story files CI never builds), the compiler in a worker that exits before page
+// generation, and two page-generation workers instead of one per core.
+// Production and CI builds never set it.
+const lightBuild = process.env.NEXT_LIGHT_BUILD === '1'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable source maps in production for easier debugging
-  productionBrowserSourceMaps: true,
+  productionBrowserSourceMaps: !lightBuild,
 
   // Generate unique build ID for cache busting
   generateBuildId: async () => {
@@ -70,9 +78,10 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: lightBuild,
   },
   experimental: {
+    ...(lightBuild && { webpackBuildWorker: true, cpus: 2 }),
     optimizePackageImports: [
       // Internal packages
       '@soroban/core',
