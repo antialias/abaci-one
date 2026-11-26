@@ -45,6 +45,14 @@ export const sessionPlanKeys = {
   detail: (planId: string) => [...sessionPlanKeys.all, 'detail', planId] as const,
 }
 
+// Session report query keys (session architecture §4, Phase 4a): one report
+// per session, read by plan id (signed-in viewers) or by share token
+export const sessionReportKeys = {
+  all: ['sessionReport'] as const,
+  plan: (planId: string) => [...sessionReportKeys.all, 'plan', planId] as const,
+  token: (token: string) => [...sessionReportKeys.all, 'token', token] as const,
+}
+
 // Session history query keys (for paginated history)
 export const sessionHistoryKeys = {
   all: ['sessionHistory'] as const,

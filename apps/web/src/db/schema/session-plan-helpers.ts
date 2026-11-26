@@ -99,6 +99,15 @@ export function isCountedTry(result: Pick<SlotResult, 'practiceOnly' | 'voided'>
   return result.practiceOnly !== true && result.voided !== true
 }
 
+/**
+ * Whether an adult excluded the try from mastery (`source: 'teacher-excluded'`,
+ * session-review `exclude`). The session report (§4) still lists it and counts
+ * it in `tries`, but drops it from every accuracy numerator and denominator.
+ */
+export function isExcludedTry(result: Pick<SlotResult, 'source'>): boolean {
+  return result.source === 'teacher-excluded'
+}
+
 /** The tries that count (see `isCountedTry`), in recorded order. */
 export function countedTries<T extends Pick<SlotResult, 'practiceOnly' | 'voided'>>(
   results: readonly T[] | null | undefined

@@ -276,6 +276,32 @@ export function partStatePatch(
 // Breaks (§3.1)
 // ============================================================================
 
+/**
+ * One row per break: the game-results route inserts without a dedupe, so a
+ * double POST (or a re-fired completion) stores the same break twice. A break
+ * is its game and its end time (`played_at` is the report's `endedAt`, P3b-5).
+ * Shared by the song (3b) and the session report (4a).
+ */
+export function distinctBreakResults<
+  T extends {
+    gameName?: string | null
+    playedAt?: Date | string | number | null
+    fullReport?: unknown
+  },
+>(results: readonly T[]): T[] {
+  const seen = new Set<string>()
+  return results.filter((result) => {
+    const report = result.fullReport as { endedAt?: number; gameName?: string } | null | undefined
+    const endedAt =
+      report?.endedAt ?? (result.playedAt ? new Date(result.playedAt).getTime() : null)
+    if (endedAt == null) return true
+    const key = `${result.gameName ?? report?.gameName}|${endedAt}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 /** A `game_results` row of a practice break, as the legacy break path reads it. */
 export interface BreakGameResult {
   id: string
@@ -314,7 +340,11 @@ export function legacyBreaksOf(
       .map((g, breakIndex) => ({
         breakIndex,
         afterPartIndex: null,
-        startedAt: isoOf(g.playedAt),
+        // `played_at` is when the game ended (P3b-5); the start is that less its duration
+        startedAt: isoOf(
+          g.durationMs != null ? new Date(g.playedAt).getTime() - g.durationMs : g.playedAt
+        ),
+        ...(isoOf(g.playedAt) ? { endedAt: isoOf(g.playedAt) as string } : {}),
         game: g.gameName ?? null,
         gameResultId: g.id,
         ...(g.durationMs != null ? { durationMs: g.durationMs } : {}),
@@ -342,4 +372,45 @@ export function legacyBreaksOf(
       estimated: true,
     },
   ]
+}
+
+// ============================================================================
+// Completion (§3.2)
+// ============================================================================
+
+export type SessionOutcome =
+  | 'not_started'
+  | 'in_progress'
+  | 'completed'
+  | 'abandoned'
+  | 'deleted'
+  | 'sentinel'
+
+/**
+ * What became of a session, from `status`, with one legacy repair: a row
+ * `in_progress` with `completedAt` set was abandoned (what
+ * `getActiveSessionPlan` already does). List views show `completed |
+ * abandoned`, live views `in_progress`; `sentinel` and `not_started` never
+ * render as sessions.
+ */
+export function sessionOutcome(plan: Pick<SessionPlan, 'status' | 'completedAt'>): SessionOutcome {
+  switch (plan.status) {
+    case 'in_progress':
+      return plan.completedAt != null ? 'abandoned' : 'in_progress'
+    case 'completed':
+      return 'completed'
+    case 'abandoned':
+      return 'abandoned'
+    case 'deleted':
+      return 'deleted'
+    case 'recency-refresh':
+      return 'sentinel'
+    default:
+      return 'not_started'
+  }
+}
+
+/** Whether the session has ended (completed or abandoned). */
+export function isEndedOutcome(outcome: SessionOutcome): boolean {
+  return outcome === 'completed' || outcome === 'abandoned'
 }

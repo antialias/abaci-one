@@ -9,6 +9,8 @@
  * - session:${sessionId}     - Practice session observation
  */
 
+import type { SessionReport } from '@/lib/curriculum/session-report'
+
 // ============================================================================
 // Enrollment Events (sent to user:${userId} channel)
 // ============================================================================
@@ -303,6 +305,35 @@ export interface SessionEndedEvent {
   playerId: string
   playerName: string
   reason: 'completed' | 'ended_early' | 'abandoned'
+  /**
+   * The row version of the write that ended the session (Phase 4a; absent
+   * from older servers). Sent to the `player:`, `classroom:` and gated
+   * `session-report:` rooms on every end, natural completion included, after
+   * the commit (not to `session:` until 4c, §10 P4a-4).
+   */
+  rowVersion?: number
+  /** How the session ended (Phase 4a; absent from older servers) */
+  outcome?: 'completed' | 'abandoned'
+}
+
+/** Join a session's gated report room (Phase 4a): a viewer with `observe`, or a share token. */
+export interface SubscribeSessionReportRequest {
+  sessionId: string
+  /** Authenticated viewer (checked with `canPerformAction(viewerId, playerId, 'observe')`) */
+  viewerId?: string
+  playerId?: string
+  /** Share-link holder (checked with `validateSessionShare(token, { allowEnded: true })`) */
+  shareToken?: string
+}
+
+/**
+ * The session's report after a committed row write (session architecture §4,
+ * Phase 4a), to `session:${sessionId}`. Reports of one session carry strictly
+ * increasing `rowVersion`s from one server; a client applies one only when its
+ * `rowVersion` is newer than what it holds.
+ */
+export interface SessionReportEvent {
+  report: SessionReport
 }
 
 // ============================================================================
@@ -490,6 +521,9 @@ export interface ClassroomServerToClientEvents {
   // Session status events (classroom channel - for teacher's active sessions view)
   'session-started': (data: SessionStartedEvent) => void
   'session-ended': (data: SessionEndedEvent) => void
+  'session-report': (data: SessionReportEvent) => void
+  'session-report-subscribed': (data: { sessionId: string }) => void
+  'session-report-error': (data: { sessionId: string; error: string }) => void
 
   // Skill tutorial events (classroom channel - for teacher's observation)
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
@@ -516,6 +550,8 @@ export interface ClassroomClientToServerEvents {
   'join-player': (data: { playerId: string }) => void
   'leave-player': (data: { playerId: string }) => void
   'join-session': (data: { sessionId: string }) => void
+  'subscribe-session-report': (data: SubscribeSessionReportRequest) => void
+  'unsubscribe-session-report': (data: { sessionId: string }) => void
   'observe-session': (data: { sessionId: string; observerId: string }) => void
   'stop-observing': (data: { sessionId: string }) => void
 
