@@ -28,6 +28,7 @@ import {
 } from '@/utils/studentGrouping'
 import { type BktEvidence, computeBktFromHistory, getStalenessWarning } from './bkt'
 import { BKT_EVIDENCE_PLAYER_CHUNK_SIZE, batchGetRecentBktEvidence } from './bkt/evidence-query'
+import { plannedItemCount } from './parts/registry'
 import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
 import { getActiveSessionPlan } from './session-planner'
 
@@ -178,7 +179,7 @@ async function batchGetActiveSessions(
     if (result.has(plan.playerId)) continue // first one wins
     const parts = (plan.parts as SessionPart[]) || []
     const results = (plan.results as SlotResult[]) || []
-    const totalProblems = parts.reduce((sum, part) => sum + part.slots.length, 0)
+    const totalProblems = parts.reduce((sum, part) => sum + plannedItemCount(part), 0)
     result.set(plan.playerId, {
       sessionId: plan.id,
       status: plan.status,

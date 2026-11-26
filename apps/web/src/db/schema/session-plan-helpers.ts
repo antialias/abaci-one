@@ -21,12 +21,24 @@ import {
 import type {
   GameBreakSettings,
   GeneratedProblem,
-  PartRetryState,
-  ProblemSlot,
   SessionHealth,
   SessionPlan,
   SlotResult,
 } from './session-plans'
+
+// The arithmetic part kind's plan-level helpers moved to lib/curriculum/parts/
+// (session architecture Phase 2); re-exported here until Phase 5 so existing
+// imports keep working. Both modules are client-safe.
+export { calculateTotalProblemsWithRetries } from '@/lib/curriculum/parts/arithmetic/report'
+export {
+  type CurrentPlanItem,
+  getCurrentProblemInfo,
+  initRetryState,
+  isInRetryEpoch,
+  MAX_RETRY_EPOCHS,
+  needsRetryTransition,
+  resolveCurrentItem,
+} from '@/lib/curriculum/parts/arithmetic/state'
 
 // ============================================================================
 // Constants
@@ -69,9 +81,6 @@ export const DEFAULT_PLAN_CONFIG = {
 }
 
 export type PlanGenerationConfig = typeof DEFAULT_PLAN_CONFIG
-
-/** Maximum number of retry epochs (original + 2 retries = 3 total attempts) */
-export const MAX_RETRY_EPOCHS = 2
 
 // ============================================================================
 // Helper Functions
@@ -246,119 +255,6 @@ export function sameProblem(
 }
 
 /**
- * Check if we're currently in a retry epoch for the given part
- */
-export function isInRetryEpoch(plan: Pick<SessionPlan, 'retryState'>, partIndex: number): boolean {
-  const retryState = plan.retryState?.[partIndex]
-  if (!retryState) return false
-  return retryState.currentEpochItems.length > 0 && retryState.currentEpoch > 0
-}
-
-/** The item the student is on: an original slot, or an item of the running retry round. */
-export interface CurrentPlanItem {
-  partIndex: number
-  slotId: string
-  originalSlotIndex: number
-  /** 0 for the original slot, 1+ for a retry round */
-  epochNumber: number
-  /** Index into the round's currentEpochItems; null for an original slot */
-  retryIndex: number | null
-  problem: GeneratedProblem | undefined
-  purpose: ProblemSlot['purpose']
-}
-
-/**
- * The one place that decides which item the student is on. Retry-round items
- * redeemed by a do-over are skipped. Null when the position has nothing to
- * show: the session is past its last part, or the current retry round has no
- * unredeemed item left.
- *
- * The client shows this (getCurrentProblemInfo) and the server attributes each
- * try to it (recordSlotResult). Never fork it.
- */
-export function resolveCurrentItem(
-  plan: Pick<SessionPlan, 'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState'>
-): CurrentPlanItem | null {
-  const partIndex = plan.currentPartIndex
-  const part = plan.parts[partIndex]
-  if (!part) return null
-
-  const retryState = plan.retryState?.[partIndex]
-  if (retryState && isInRetryEpoch(plan, partIndex)) {
-    const items = retryState.currentEpochItems
-    for (let retryIndex = retryState.currentRetryIndex; retryIndex < items.length; retryIndex++) {
-      const item = items[retryIndex]
-      if (retryState.redeemedSlots?.includes(item.originalSlotIndex)) continue
-      return {
-        partIndex,
-        slotId: item.slotId,
-        originalSlotIndex: item.originalSlotIndex,
-        epochNumber: item.epochNumber,
-        retryIndex,
-        problem: item.problem,
-        purpose: item.originalPurpose,
-      }
-    }
-    return null
-  }
-
-  const slot = part.slots[plan.currentSlotIndex]
-  if (!slot) return null
-  return {
-    partIndex,
-    slotId: slot.slotId,
-    originalSlotIndex: plan.currentSlotIndex,
-    epochNumber: 0,
-    retryIndex: null,
-    problem: slot.problem,
-    purpose: slot.purpose,
-  }
-}
-
-/**
- * Get the current problem to display (either from original slots or retry queue)
- */
-export function getCurrentProblemInfo(plan: SessionPlan): {
-  problem: GeneratedProblem
-  isRetry: boolean
-  epochNumber: number
-  originalSlotIndex: number
-  slotId: string
-  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
-  partNumber: 1 | 2 | 3
-} | null {
-  const current = resolveCurrentItem(plan)
-  if (!current?.problem) return null
-  return {
-    problem: current.problem,
-    isRetry: current.retryIndex !== null,
-    epochNumber: current.epochNumber,
-    originalSlotIndex: current.originalSlotIndex,
-    slotId: current.slotId,
-    purpose: current.purpose,
-    partNumber: plan.parts[current.partIndex].partNumber,
-  }
-}
-
-/**
- * Initialize retry state for a part if not already present
- */
-export function initRetryState(plan: SessionPlan, partIndex: number): PartRetryState {
-  if (!plan.retryState) {
-    plan.retryState = {}
-  }
-  if (!plan.retryState[partIndex]) {
-    plan.retryState[partIndex] = {
-      currentEpoch: 0,
-      pendingRetries: [],
-      currentEpochItems: [],
-      currentRetryIndex: 0,
-    }
-  }
-  return plan.retryState[partIndex]
-}
-
-/**
  * Get retry status for a specific slot (for UI display)
  */
 export function getSlotRetryStatus(
@@ -394,50 +290,4 @@ export function getSlotRetryStatus(
     attemptCount: slotResults.length,
     finalMasteryWeight: latestResult.masteryWeight ?? null,
   }
-}
-
-/**
- * Calculate total problems including pending retries for progress display
- */
-export function calculateTotalProblemsWithRetries(plan: SessionPlan): number {
-  let total = 0
-  for (let partIndex = 0; partIndex < plan.parts.length; partIndex++) {
-    const part = plan.parts[partIndex]
-    total += part.slots.length
-    const retryState = plan.retryState?.[partIndex]
-    if (retryState) {
-      total += retryState.currentEpochItems.length
-      total += retryState.pendingRetries.length
-    }
-  }
-  return total
-}
-
-/**
- * Check if the current part needs retry transition
- */
-export function needsRetryTransition(plan: SessionPlan): boolean {
-  const partIndex = plan.currentPartIndex
-  if (partIndex >= plan.parts.length) return false
-
-  const part = plan.parts[partIndex]
-  const retryState = plan.retryState?.[partIndex]
-
-  if (plan.currentSlotIndex < part.slots.length) return false
-
-  if (retryState && retryState.pendingRetries.length > 0 && retryState.currentEpoch === 0) {
-    return true
-  }
-
-  if (
-    retryState &&
-    retryState.currentEpochItems.length > 0 &&
-    retryState.currentRetryIndex >= retryState.currentEpochItems.length &&
-    retryState.pendingRetries.length > 0 &&
-    retryState.currentEpoch < MAX_RETRY_EPOCHS
-  ) {
-    return true
-  }
-
-  return false
 }
