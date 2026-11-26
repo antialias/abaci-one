@@ -51,6 +51,8 @@ Located in `.claude/` directory:
 - `Z_INDEX_MANAGEMENT.md` - Z-index layering system
 - `DEPLOYMENT.md` - Deployment and CI/CD
 
+Practice session architecture (rework in progress): [findings](./docs/session-architecture/findings.md) and [plan of record](./docs/session-architecture/plan-of-record.md).
+
 ## Project Structure
 
 ```
