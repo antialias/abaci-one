@@ -121,17 +121,44 @@ export interface ShareValidation {
   valid: boolean
   error?: string
   share?: SessionObservationShare
+  /**
+   * Only with `allowEnded`: the share was expired by its session ending
+   * (`revokeSharesForSession`), so it may serve that session's report only
+   * once the session has ended. The caller checks the session and refuses a
+   * live one.
+   */
+  requiresEndedSession?: boolean
+}
+
+export interface ValidateShareOptions {
+  /**
+   * Accept a share expired by its session ending, for reading that ended
+   * session's report (session architecture §4, Phase 4a): completion expires
+   * shares, which would otherwise blank the ended view. A share an adult
+   * revoked (`revoked`) is refused always, and so is one past its own
+   * `expiresAt`.
+   */
+  allowEnded?: boolean
 }
 
 /**
  * Validate a session share token
  * Checks: exists, not expired, not revoked, session still active
  */
-export async function validateSessionShare(token: string): Promise<ShareValidation> {
+export async function validateSessionShare(
+  token: string,
+  options: ValidateShareOptions = {}
+): Promise<ShareValidation> {
   const share = await getSessionShare(token)
 
   if (!share) {
     return { valid: false, error: 'Share link not found' }
+  }
+
+  const pastExpiry = new Date() > share.expiresAt
+
+  if (options.allowEnded && !pastExpiry && share.status === 'expired') {
+    return { valid: true, share, requiresEndedSession: true }
   }
 
   if (share.status === 'revoked') {
@@ -143,7 +170,7 @@ export async function validateSessionShare(token: string): Promise<ShareValidati
   }
 
   // Check time-based expiration
-  if (new Date() > share.expiresAt) {
+  if (pastExpiry) {
     // Mark as expired in database
     await db
       .update(sessionObservationShares)

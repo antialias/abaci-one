@@ -1,0 +1,575 @@
+/**
+ * The session report (session architecture §4, Phase 4a): one set of numbers
+ * for every view of a session (summary, share link, observer, dashboard, MCP,
+ * song). Views stop counting `results` themselves; they read this.
+ *
+ * `buildSessionReport` is pure over `{ plan, tries, gameResults, song, now }`.
+ * The server loads those (`session-report-server.ts`) and pushes the report
+ * after every committed row write; `useSessionReport` reads it.
+ *
+ * Counting goes through the shared predicates only: `isCountedTry` (practice-
+ * only and voided tries never decide a verdict), `isExcludedTry` (an adult's
+ * mastery exclusion), and the tries as `normalizeTries` resolves them (item
+ * identity for legacy rows included). Nothing here re-decides what counts.
+ *
+ * Client-safe: no drizzle, no server imports.
+ */
+
+import { countedTries, isCountedTry, isExcludedTry } from '@/db/schema/session-plan-helpers'
+import {
+  type BreakGameResult,
+  distinctBreakResults,
+  legacyBreaksOf,
+  partStateOf,
+  type SessionOutcome,
+  sessionOutcome,
+  type Try,
+} from '@/db/schema/session-plan-normalize'
+import type { BreakRecord, SessionFlowState, SessionPlan, TryKind } from '@/db/schema/session-plans'
+import { findPartKind, kindIdOf, plannedItemCount } from './parts/registry'
+import { getEffectiveResponseTimeMs } from './timing/effective-time'
+
+// ============================================================================
+// Shape
+// ============================================================================
+
+export interface Counts {
+  /** Items planned (each part's progress total), whether attempted or not */
+  plannedProblems: number
+  /** Attempted items: a first try that is not excluded. The accuracy denominator */
+  problems: number
+  /** Every try that is not voided (practice-only and excluded included) */
+  tries: number
+  firstTryCorrect: number
+  /** firstTryCorrect / problems; null with nothing attempted */
+  firstTryAccuracy: number | null
+  /** First try wrong, final verdict right */
+  fixedInRetries: number
+  /** First try wrong, final verdict wrong (divulged included) */
+  unresolved: number
+  finalCorrect: number
+  /** finalCorrect / problems; null with nothing attempted */
+  finalAccuracy: number | null
+}
+
+export interface PartReportRow extends Counts {
+  partIndex: number
+  partNumber: number
+  /** The part's kind id (absent on old rows = arithmetic) */
+  kind: string
+  /** Arithmetic's presentation type (abacus / visualization / linear), when it has one */
+  type: string | null
+  /** Σ effective response time of the part's tries */
+  activeMs: number
+}
+
+export interface BreakReportRow {
+  breakIndex: number
+  /** The part the break follows; null when it cannot be told */
+  afterPartIndex: number | null
+  game: string | null
+  startedAt: number | null
+  endedAt: number | null
+  durationMs: number | null
+  reason: string | null
+  /** Still running: shown live, never in totals */
+  open: boolean
+  /** Reconstructed from `game_results` or the legacy break columns */
+  estimated: boolean
+}
+
+export interface TryRow {
+  tryId: string
+  itemId: string
+  partIndex: number
+  kind: TryKind
+  round: number
+  isCorrect: boolean
+  practiceOnly: boolean
+  excluded: boolean
+  answer: number
+  /** The try's contribution to active time; null when it has no timing sample */
+  effectiveMs: number | null
+  recordedAt: number | null
+}
+
+export type Segment =
+  | { kind: 'part'; partIndex: number }
+  | { kind: 'break'; breakIndex: number; afterPartIndex: number }
+  | { kind: 'end' }
+
+export interface SessionReportPosition {
+  segment: Segment
+  flowState: SessionFlowState
+  /** The item the kid is expected to answer next, when the part has one */
+  currentItem?: { partIndex: number; itemId: string }
+  /** Items done of planned, summed over parts as their kinds count them */
+  progress: { done: number; total: number }
+}
+
+export type SessionSongStatus = 'none' | 'pending' | 'ready' | 'failed'
+
+export interface SessionReportSong {
+  status: SessionSongStatus
+  songId?: string
+  shareCode?: string
+  /** The row version the lyrics were built from (stamped by the song task; Phase 4e) */
+  snapshotAtRowVersion?: number
+}
+
+export interface SessionReport {
+  rowVersion: number
+  sessionId: string
+  playerId: string
+  outcome: SessionOutcome
+  endedEarly: boolean
+  startedAt: number | null
+  endedAt: number | null
+  time: {
+    /** Σ effective response time of the tries */
+    activeMs: number
+    /** end − start (end: completedAt; last activity when abandoned; now while live) */
+    wallMs: number
+    /** Σ closed breaks */
+    breakMs: number
+    pausedMs: number
+    /** True when any break's time is reconstructed (`game_results`, legacy columns) */
+    estimated: boolean
+  }
+  totals: Counts
+  parts: PartReportRow[]
+  breaks: BreakReportRow[]
+  song: SessionReportSong
+  /** Where the kid is; null unless the session is in progress */
+  position: SessionReportPosition | null
+  tries: TryRow[]
+}
+
+/** The session's song row, as the report reads it. */
+export interface SessionReportSongInput {
+  id: string
+  status: string
+  shareCode?: string | null
+  snapshotAtRowVersion?: number | null
+}
+
+export type ReportPlan = Pick<
+  SessionPlan,
+  | 'id'
+  | 'playerId'
+  | 'status'
+  | 'parts'
+  | 'results'
+  | 'flowState'
+  | 'currentPartIndex'
+  | 'currentSlotIndex'
+  | 'retryState'
+  | 'partStates'
+  | 'breakStartedAt'
+  | 'breakReason'
+  | 'breakSelectedGame'
+  | 'breakResults'
+  | 'adjustments'
+  | 'startedAt'
+  | 'completedAt'
+> & {
+  rowVersion?: number | null
+  pauses?: SessionPlan['pauses'] | null
+}
+
+/** A practice-break `game_results` row (plus its report, for the dedupe). */
+export type ReportGameResult = BreakGameResult & { fullReport?: unknown }
+
+export interface SessionReportInput {
+  plan: ReportPlan
+  /** `readTries(plan)` */
+  tries: readonly Try[]
+  /** The session's `practice-break` game results, any order */
+  gameResults?: readonly ReportGameResult[]
+  /** The session's latest song row, if any */
+  song?: SessionReportSongInput | null
+  /** Epoch ms; the end of a live session's wall time */
+  now: number
+}
+
+// ============================================================================
+// Builder
+// ============================================================================
+
+const BREAK_STATES: ReadonlySet<SessionFlowState> = new Set([
+  'break_pending',
+  'break_active',
+  'break_results',
+])
+
+function msOf(value: Date | string | number | null | undefined): number | null {
+  if (value == null) return null
+  const ms = value instanceof Date ? value.getTime() : new Date(value).getTime()
+  return Number.isNaN(ms) ? null : ms
+}
+
+function ratio(numerator: number, denominator: number): number | null {
+  return denominator > 0 ? numerator / denominator : null
+}
+
+function emptyCounts(plannedProblems: number): Counts {
+  return {
+    plannedProblems,
+    problems: 0,
+    tries: 0,
+    firstTryCorrect: 0,
+    firstTryAccuracy: null,
+    fixedInRetries: 0,
+    unresolved: 0,
+    finalCorrect: 0,
+    finalAccuracy: null,
+  }
+}
+
+function finishCounts(c: Counts): Counts {
+  return {
+    ...c,
+    firstTryAccuracy: ratio(c.firstTryCorrect, c.problems),
+    finalAccuracy: ratio(c.finalCorrect, c.problems),
+  }
+}
+
+function addCounts(a: Counts, b: Counts): Counts {
+  return {
+    plannedProblems: a.plannedProblems + b.plannedProblems,
+    problems: a.problems + b.problems,
+    tries: a.tries + b.tries,
+    firstTryCorrect: a.firstTryCorrect + b.firstTryCorrect,
+    firstTryAccuracy: null,
+    fixedInRetries: a.fixedInRetries + b.fixedInRetries,
+    unresolved: a.unresolved + b.unresolved,
+    finalCorrect: a.finalCorrect + b.finalCorrect,
+    finalAccuracy: null,
+  }
+}
+
+/** Whether a try can carry a verdict: counted (`isCountedTry`) and not excluded. */
+function isVerdictTry(t: Try): boolean {
+  return isCountedTry(t) && !isExcludedTry(t.result)
+}
+
+interface ItemVerdict {
+  partIndex: number
+  attempted: boolean
+  firstCorrect: boolean
+  finalCorrect: boolean
+}
+
+/**
+ * One verdict per item (§4): the first try is the `first` try (else, for odd
+ * legacy rows, the item's earliest counted try); the item is attempted when
+ * that try exists, counts and is not excluded; the final verdict is the
+ * item's last counted, non-excluded try.
+ */
+function itemVerdicts(live: readonly Try[]): ItemVerdict[] {
+  const byItem = new Map<string, Try[]>()
+  for (const t of live) {
+    const group = byItem.get(t.itemId)
+    if (group) group.push(t)
+    else byItem.set(t.itemId, [t])
+  }
+  const verdicts: ItemVerdict[] = []
+  for (const group of byItem.values()) {
+    const first = group.find((t) => t.kind === 'first') ?? countedTries(group)[0]
+    const attempted = !!first && isVerdictTry(first)
+    const weighted = group.filter(isVerdictTry)
+    const final = weighted[weighted.length - 1]
+    verdicts.push({
+      partIndex: (first ?? group[0]).partIndex,
+      attempted,
+      firstCorrect: attempted && first.isCorrect,
+      finalCorrect: attempted && final.isCorrect,
+    })
+  }
+  return verdicts
+}
+
+function countsOf(
+  plannedProblems: number,
+  live: readonly Try[],
+  verdicts: readonly ItemVerdict[]
+): Counts {
+  const c = emptyCounts(plannedProblems)
+  c.tries = live.length
+  for (const v of verdicts) {
+    if (!v.attempted) continue
+    c.problems++
+    if (v.firstCorrect) c.firstTryCorrect++
+    if (v.finalCorrect) c.finalCorrect++
+    if (!v.firstCorrect && v.finalCorrect) c.fixedInRetries++
+    if (!v.firstCorrect && !v.finalCorrect) c.unresolved++
+  }
+  return finishCounts(c)
+}
+
+function effectiveMsOf(t: Try): number | null {
+  return getEffectiveResponseTimeMs(t.result)
+}
+
+/** The kind's progress for one part; 0/0 for a kind this image does not know or a broken part. */
+function partProgress(
+  plan: ReportPlan,
+  partIndex: number,
+  live: readonly Try[]
+): { done: number; total: number } {
+  const part = plan.parts[partIndex]
+  const kind = findPartKind(part)
+  if (!kind) return { done: 0, total: 0 }
+  try {
+    const content = kind.contentOf(part)
+    const state = partStateOf(plan, partIndex)
+    return kind.progress(
+      content,
+      state,
+      live.filter((t) => t.partIndex === partIndex)
+    )
+  } catch {
+    return { done: 0, total: 0 }
+  }
+}
+
+function plannedOf(plan: ReportPlan, partIndex: number): number {
+  try {
+    return plannedItemCount(plan.parts[partIndex])
+  } catch {
+    return 0
+  }
+}
+
+function currentItemOf(plan: ReportPlan): SessionReportPosition['currentItem'] {
+  const partIndex = plan.currentPartIndex
+  const part = plan.parts[partIndex]
+  if (!part) return undefined
+  const kind = findPartKind(part)
+  if (!kind) return undefined
+  try {
+    const item = kind.expectedItem(kind.contentOf(part), partStateOf(plan, partIndex)) as {
+      slotId?: unknown
+      itemId?: unknown
+    } | null
+    const itemId = typeof item?.itemId === 'string' ? item.itemId : item?.slotId
+    return typeof itemId === 'string' ? { partIndex, itemId } : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Breaks by the legacy path (§3.1; §10 P3b-1, P4a-3): one per distinct
+ * `practice-break` game result, else the legacy break columns; plus the break
+ * running now (a break state whose game has not reported yet), as open.
+ */
+function breakRows(
+  plan: ReportPlan,
+  gameResults: readonly ReportGameResult[],
+  live: readonly Try[]
+): BreakReportRow[] {
+  const distinct = distinctBreakResults(gameResults)
+  const records: BreakRecord[] = legacyBreaksOf(plan, distinct)
+  const inBreak = BREAK_STATES.has(plan.flowState)
+  const rows: BreakReportRow[] = records.map((b) => {
+    const startedAt = msOf(b.startedAt)
+    const endedAt = msOf(b.endedAt)
+    const durationMs =
+      b.durationMs ?? (startedAt != null && endedAt != null ? endedAt - startedAt : null)
+    const fromColumns = b.gameResultId === undefined
+    return {
+      breakIndex: b.breakIndex,
+      afterPartIndex: b.afterPartIndex ?? afterPartIndexOf(startedAt, live),
+      game: b.game ?? null,
+      startedAt,
+      endedAt,
+      durationMs: fromColumns && inBreak ? null : durationMs,
+      reason: b.reason ?? null,
+      open: fromColumns && inBreak,
+      estimated: b.estimated === true,
+    }
+  })
+
+  // A break running now whose game has not written a result row yet
+  const breakStart = msOf(plan.breakStartedAt)
+  const reported =
+    breakStart != null &&
+    distinct.some((g) => {
+      const playedAt = msOf(g.playedAt)
+      return playedAt != null && playedAt >= breakStart
+    })
+  if (inBreak && distinct.length > 0 && !reported) {
+    rows.push({
+      breakIndex: rows.length,
+      afterPartIndex: plan.currentPartIndex - 1,
+      game: plan.breakSelectedGame ?? null,
+      startedAt: breakStart,
+      endedAt: null,
+      durationMs: null,
+      reason: null,
+      open: true,
+      estimated: true,
+    })
+  }
+  return rows
+}
+
+/** The part of the last try recorded before `at` (null when none). */
+function afterPartIndexOf(at: number | null, live: readonly Try[]): number | null {
+  if (at == null) return null
+  let partIndex: number | null = null
+  for (const t of live) {
+    const recordedAt = msOf(t.recordedAt)
+    if (recordedAt != null && recordedAt <= at) partIndex = t.partIndex
+  }
+  return partIndex
+}
+
+function segmentOf(plan: ReportPlan, breaks: readonly BreakReportRow[]): Segment {
+  if (BREAK_STATES.has(plan.flowState)) {
+    const open = breaks.find((b) => b.open)
+    return {
+      kind: 'break',
+      breakIndex: open?.breakIndex ?? Math.max(0, breaks.length - 1),
+      afterPartIndex: plan.currentPartIndex - 1,
+    }
+  }
+  if (plan.currentPartIndex >= plan.parts.length) return { kind: 'end' }
+  return { kind: 'part', partIndex: plan.currentPartIndex }
+}
+
+function songOf(song: SessionReportSongInput | null | undefined): SessionReportSong {
+  if (!song) return { status: 'none' }
+  const status: SessionSongStatus =
+    song.status === 'completed' ? 'ready' : song.status === 'failed' ? 'failed' : 'pending'
+  return {
+    status,
+    songId: song.id,
+    ...(song.shareCode ? { shareCode: song.shareCode } : {}),
+    ...(song.snapshotAtRowVersion != null
+      ? { snapshotAtRowVersion: song.snapshotAtRowVersion }
+      : {}),
+  }
+}
+
+export function buildSessionReport(input: SessionReportInput): SessionReport {
+  const { plan, now } = input
+  const parts = plan.parts ?? []
+  const outcome = sessionOutcome(plan)
+  // Voided tries count nowhere, not even in `tries` (§4)
+  const live = input.tries.filter((t) => !t.voided)
+  const verdicts = itemVerdicts(live)
+
+  const partRows: PartReportRow[] = parts.map((part, partIndex) => {
+    const partTries = live.filter((t) => t.partIndex === partIndex)
+    const counts = countsOf(
+      plannedOf(plan, partIndex),
+      partTries,
+      verdicts.filter((v) => v.partIndex === partIndex)
+    )
+    return {
+      partIndex,
+      partNumber: part.partNumber,
+      kind: kindIdOf(part),
+      type: typeof part.type === 'string' ? part.type : null,
+      activeMs: partTries.reduce((sum, t) => sum + (effectiveMsOf(t) ?? 0), 0),
+      ...counts,
+    }
+  })
+  // Tries naming no part (legacy residue) still count in the totals
+  const totals = finishCounts(
+    [
+      ...partRows,
+      countsOf(
+        0,
+        live.filter((t) => t.partIndex < 0 || t.partIndex >= parts.length),
+        verdicts.filter((v) => v.partIndex < 0 || v.partIndex >= parts.length)
+      ),
+    ].reduce<Counts>((sum, row) => addCounts(sum, row), emptyCounts(0))
+  )
+
+  const breaks = breakRows(plan, input.gameResults ?? [], live)
+  const closedBreaks = breaks.filter((b) => !b.open)
+  const breakMs = closedBreaks.reduce((sum, b) => sum + (b.durationMs ?? 0), 0)
+  const pausedMs = (plan.pauses ?? []).reduce((sum, p) => {
+    const from = msOf(p.pausedAt)
+    const to = msOf(p.resumedAt)
+    return from != null && to != null ? sum + Math.max(0, to - from) : sum
+  }, 0)
+
+  const activeMs = live.reduce((sum, t) => sum + (effectiveMsOf(t) ?? 0), 0)
+  const startedAt = msOf(plan.startedAt)
+  const completedAt = msOf(plan.completedAt)
+  let end: number | null
+  if (outcome === 'in_progress') {
+    end = now
+  } else if (outcome === 'abandoned') {
+    // Auto-abandon can land days late: the session ended at its last activity
+    const lastTry = live.reduce<number | null>((max, t) => {
+      const at = msOf(t.recordedAt)
+      return at != null && (max == null || at > max) ? at : max
+    }, null)
+    const lastBreak = closedBreaks.reduce<number | null>(
+      (max, b) => (b.endedAt != null && (max == null || b.endedAt > max) ? b.endedAt : max),
+      null
+    )
+    end = lastTry == null && lastBreak == null ? startedAt : Math.max(lastTry ?? 0, lastBreak ?? 0)
+  } else {
+    end = completedAt
+  }
+  const wallMs = startedAt != null && end != null ? Math.max(0, end - startedAt) : 0
+
+  const position: SessionReportPosition | null =
+    outcome === 'in_progress'
+      ? {
+          segment: segmentOf(plan, breaks),
+          flowState: plan.flowState,
+          currentItem: currentItemOf(plan),
+          progress: parts.reduce(
+            (sum, _part, partIndex) => {
+              const p = partProgress(plan, partIndex, live)
+              return { done: sum.done + p.done, total: sum.total + p.total }
+            },
+            { done: 0, total: 0 }
+          ),
+        }
+      : null
+
+  return {
+    rowVersion: plan.rowVersion ?? 0,
+    sessionId: plan.id,
+    playerId: plan.playerId,
+    outcome,
+    endedEarly: (plan.adjustments ?? []).some((a) => a.type === 'ended_early'),
+    startedAt,
+    // The same instant wall time ends at: `completedAt` when completed, the
+    // last activity when abandoned (so endedAt − startedAt === wallMs)
+    endedAt: outcome === 'completed' || outcome === 'abandoned' ? end : null,
+    time: {
+      activeMs,
+      wallMs,
+      breakMs,
+      pausedMs,
+      estimated: breaks.some((b) => b.estimated),
+    },
+    totals,
+    parts: partRows,
+    breaks,
+    song: songOf(input.song),
+    position,
+    tries: live.map((t) => ({
+      tryId: t.tryId,
+      itemId: t.itemId,
+      partIndex: t.partIndex,
+      kind: t.kind,
+      round: t.round,
+      isCorrect: t.isCorrect,
+      practiceOnly: t.practiceOnly,
+      excluded: isExcludedTry(t.result),
+      answer: t.answer,
+      effectiveMs: effectiveMsOf(t),
+      recordedAt: msOf(t.recordedAt),
+    })),
+  }
+}

@@ -12,8 +12,9 @@
  * `decide` must be a pure function of the row it is given: it runs again on
  * every retry, against the newer row, so an idempotency check inside it (a
  * try id already recorded) sees the winner's write. Side effects (skill
- * attempts, share revocation, socket pushes) belong after the commit, run by
- * the caller only when `committed` is true.
+ * attempts, share revocation) belong after the commit, run by the caller
+ * only when `committed` is true. The session report push is the helper's own
+ * (`afterCommit`), so every writer pushes and none can forget to.
  *
  * Old images (a rolling deploy, a rollback) neither check nor bump
  * `row_version`; see §7 Phase 3a "Rollout window".
@@ -22,6 +23,8 @@
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { NewSessionPlan, SessionPlan } from '@/db/schema/session-plans'
+import { hasSocketIO } from '@/lib/socket-io'
+import { pushSessionReportAfterCommit } from './session-report-server'
 
 export const ROW_CAS_ATTEMPTS = 3
 
@@ -65,6 +68,19 @@ async function loadPlan(planId: string): Promise<SessionPlan | null> {
   return row ?? null
 }
 
+/**
+ * After a committed write, and only then: push the session's report (and
+ * `session-ended` when this write ended it) to its rooms (§4 "Push", Phase
+ * 4a). `before` is the row this attempt read, so the pair is exactly the
+ * transition that committed. Skipped when no socket server runs in this
+ * process; queued synchronously, so in commit order, and never awaited by
+ * the writer.
+ */
+function afterCommit(before: SessionPlan, after: SessionPlan) {
+  if (!hasSocketIO()) return
+  pushSessionReportAfterCommit(before, after)
+}
+
 /** No write; the decision's value with the row as read. */
 export function noWrite<T>(value: T): RowCasDecision<T> {
   return { write: null, value }
@@ -89,7 +105,10 @@ export async function withRowCas<T>(
         and(eq(schema.sessionPlans.id, planId), eq(schema.sessionPlans.rowVersion, readVersion))
       )
       .returning()
-    if (updated) return { plan: updated, value: decision.value, committed: true }
+    if (updated) {
+      afterCommit(plan, updated)
+      return { plan: updated, value: decision.value, committed: true }
+    }
 
     console.warn('[withRowCas] lost a write race; re-reading', { planId, attempt })
   }

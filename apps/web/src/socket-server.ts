@@ -20,6 +20,7 @@ import { getValidator, type GameName } from './lib/arcade/validators'
 import type { GameMove } from './lib/arcade/validation/types'
 import { getGameConfig } from './lib/arcade/game-config-helpers'
 import { canPerformAction, isParentOf } from './lib/classroom'
+import { registerSessionReportJoin } from './lib/curriculum/session-report-access'
 import { incrementShareViewCount, validateSessionShare } from './lib/session-share'
 import {
   getRemoteCameraSession,
@@ -1012,6 +1013,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         console.error('Error joining session channel:', error)
       }
     })
+
+    // Session report: the gated room that receives `session-report` pushes
+    // (Phase 4a; `observe` access or a share token, session-report-access.ts)
+    registerSessionReportJoin(socket)
 
     // Session Stats: Subscribe to session updates (read-only, for time estimates in history list)
     // This is a lightweight alternative to full observation - just receives practice-state events

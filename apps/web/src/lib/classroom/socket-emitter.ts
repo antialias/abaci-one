@@ -10,6 +10,7 @@
  * - player:${playerId}       - Student-specific notifications
  */
 
+import type { SessionReport } from '@/lib/curriculum/session-report'
 import { getSocketIO } from '@/lib/socket-io'
 import type {
   EnrollmentApprovedEvent,
@@ -20,6 +21,7 @@ import type {
   EntryPromptCreatedEvent,
   EntryPromptDeclinedEvent,
   SessionEndedEvent,
+  SessionReportEvent,
   SessionStartedEvent,
   StudentUnenrolledEvent,
 } from './socket-events'
@@ -250,36 +252,6 @@ export async function emitSessionStarted(
 }
 
 /**
- * Emit a session ended event
- *
- * Use when: A student's practice session ends (completed, ended early, or abandoned)
- * while they are present in a classroom.
- */
-export async function emitSessionEnded(
-  payload: SessionEventPayload & {
-    reason: 'completed' | 'ended_early' | 'abandoned'
-  },
-  classroomId: string
-): Promise<void> {
-  const io = await getSocketIO()
-  if (!io) return
-
-  const eventData: SessionEndedEvent = {
-    sessionId: payload.sessionId,
-    playerId: payload.playerId,
-    playerName: payload.playerName,
-    reason: payload.reason,
-  }
-
-  try {
-    io.to(`classroom:${classroomId}`).emit('session-ended', eventData)
-    console.log(`[SocketEmitter] session-ended (${payload.reason}) -> classroom:${classroomId}`)
-  } catch (error) {
-    console.error('[SocketEmitter] Failed to emit session-ended:', error)
-  }
-}
-
-/**
  * Emit a session started event to the player channel
  *
  * Use when: A student starts a practice session.
@@ -304,31 +276,53 @@ export async function emitSessionStartedToPlayer(payload: SessionEventPayload): 
 }
 
 /**
- * Emit a session ended event to the player channel
- *
- * Use when: A student's practice session ends.
- * This notifies parents who are subscribed to their child's player channel.
+ * The gated room that receives a session's reports (Phase 4a). Joined only
+ * through `subscribe-session-report`, which checks the viewer's `observe`
+ * access or a share token (`session-report-access.ts`); unlike `session:<id>`,
+ * which anyone can join today (§10 P4a-9).
  */
-export async function emitSessionEndedToPlayer(
-  payload: SessionEventPayload & {
-    reason: 'completed' | 'ended_early' | 'abandoned'
+export function sessionReportRoom(sessionId: string): string {
+  return `session-report:${sessionId}`
+}
+
+/**
+ * Push a session's report to its gated room (session architecture §4, Phase 4a).
+ *
+ * Called only from the row-write commit path (`session-report-server.ts`),
+ * after the write committed, in commit order per session.
+ */
+export async function emitSessionReport(report: SessionReport): Promise<void> {
+  const io = await getSocketIO()
+  if (!io) return
+  const eventData: SessionReportEvent = { report }
+  try {
+    io.to(sessionReportRoom(report.sessionId)).emit('session-report', eventData)
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit session-report:', error)
   }
+}
+
+/**
+ * Tell parents, the teacher and report subscribers a session ended (Phase
+ * 4a): the player's and classroom's rooms and the gated report room, in one
+ * emit (a socket in several of them hears it once). Not the `session:<id>`
+ * room: the observers there stop on `session-ended` today, so 4c sends it
+ * there together with the ended observer view (§10 P4a-4). Every end goes
+ * through here from the commit path, natural completion included.
+ */
+export async function emitSessionEndedEverywhere(
+  event: SessionEndedEvent,
+  classroomId: string | null
 ): Promise<void> {
   const io = await getSocketIO()
   if (!io) return
-
-  const eventData: SessionEndedEvent = {
-    sessionId: payload.sessionId,
-    playerId: payload.playerId,
-    playerName: payload.playerName,
-    reason: payload.reason,
-  }
-
+  const rooms = [`player:${event.playerId}`, sessionReportRoom(event.sessionId)]
+  if (classroomId) rooms.push(`classroom:${classroomId}`)
   try {
-    io.to(`player:${payload.playerId}`).emit('session-ended', eventData)
-    console.log(`[SocketEmitter] session-ended (${payload.reason}) -> player:${payload.playerId}`)
+    io.to(rooms).emit('session-ended', event)
+    console.log(`[SocketEmitter] session-ended (${event.reason}) -> ${rooms.join(', ')}`)
   } catch (error) {
-    console.error('[SocketEmitter] Failed to emit session-ended to player:', error)
+    console.error('[SocketEmitter] Failed to emit session-ended:', error)
   }
 }
 

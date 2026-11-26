@@ -15,6 +15,7 @@ import {
   getSessionPlanAccuracy,
   getTotalProblemCount,
 } from '@/db/schema/session-plan-helpers'
+import { distinctBreakResults } from '@/db/schema/session-plan-normalize'
 import type {
   GameBreakEndReason,
   GeneratedProblem,
@@ -775,7 +776,7 @@ export function extractSessionStats(
     }
   }
 
-  const fromResults = distinctBreaks(gameBreakResults)
+  const fromResults = distinctBreakResults(gameBreakResults)
     .map(extractGameBreak)
     .filter((gb): gb is SongGameBreak => gb != null)
   const fallback =
@@ -909,25 +910,6 @@ function extractGameBreakFromReport(
     moments,
     ...(report.songContext?.outcome && { outcome: report.songContext.outcome }),
   }
-}
-
-/**
- * One row per break: the results route inserts without a dedupe, so a double
- * POST (or a re-fired completion) stores the same break twice. A break is its
- * game and its end time (`played_at` is the report's `endedAt`).
- */
-function distinctBreaks(results: readonly GameResult[]): GameResult[] {
-  const seen = new Set<string>()
-  return results.filter((result) => {
-    const report = result.fullReport as GameResultsReport | null | undefined
-    const endedAt =
-      report?.endedAt ?? (result.playedAt ? new Date(result.playedAt).getTime() : null)
-    if (endedAt == null) return true
-    const key = `${result.gameName ?? report?.gameName}|${endedAt}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
 }
 
 function extractGameBreak(result?: GameResult | null): SongGameBreak | undefined {

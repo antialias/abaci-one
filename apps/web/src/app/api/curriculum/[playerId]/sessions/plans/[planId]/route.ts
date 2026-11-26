@@ -5,12 +5,7 @@ import { players } from '@/db/schema'
 import type { SessionPlan, SlotResult, SlotResultSubmission } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction, getStudentPresence } from '@/lib/classroom'
-import {
-  emitSessionEnded,
-  emitSessionEndedToPlayer,
-  emitSessionStarted,
-  emitSessionStartedToPlayer,
-} from '@/lib/classroom/socket-emitter'
+import { emitSessionStarted, emitSessionStartedToPlayer } from '@/lib/classroom/socket-emitter'
 import {
   abandonSessionPlan,
   acknowledgeGameBreakResults,
@@ -154,7 +149,7 @@ export const PATCH = withAuth(async (request, { params }) => {
       case 'start':
         plan = await startSessionPlan(planId)
         // Emit session events to player channel (parents) and classroom channel (if present)
-        await emitSessionEvents(playerId, planId, 'start')
+        await emitSessionStartedEvents(playerId, planId)
         break
 
       case 'record':
@@ -188,15 +183,13 @@ export const PATCH = withAuth(async (request, { params }) => {
         break
 
       case 'end_early':
+        // `session-ended` goes out from the commit path (row-cas, Phase 4a)
         plan = await completeSessionPlanEarly(planId, reason)
-        // Emit session events to player channel (parents) and classroom channel (if present)
-        await emitSessionEvents(playerId, planId, 'end_early')
         break
 
       case 'abandon':
+        // `session-ended` goes out from the commit path (row-cas, Phase 4a)
         plan = await abandonSessionPlan(planId)
-        // Emit session events to player channel (parents) and classroom channel (if present)
-        await emitSessionEvents(playerId, planId, 'abandon')
         break
 
       case 'set_remote_camera':
@@ -365,15 +358,14 @@ export const DELETE = withAuth(async (_request, { params }) => {
 })
 
 /**
- * Helper to emit session socket events to both:
+ * Emit the session-started events to both:
  * 1. Player channel (for parent observation) - ALWAYS
  * 2. Classroom channel (for teacher observation) - only if student is present
+ *
+ * Ends are not emitted here: every end (natural completion included) emits
+ * `session-ended` from the row write's commit path (`session-report-server.ts`).
  */
-async function emitSessionEvents(
-  playerId: string,
-  sessionId: string,
-  action: 'start' | 'end_early' | 'abandon'
-): Promise<void> {
+async function emitSessionStartedEvents(playerId: string, sessionId: string): Promise<void> {
   try {
     // Get player name
     const player = await db.query.players.findFirst({
@@ -382,51 +374,33 @@ async function emitSessionEvents(
     const playerName = player?.name ?? 'Unknown'
 
     // Always emit to player channel (for parents)
-    if (action === 'start') {
-      await emitSessionStartedToPlayer({ sessionId, playerId, playerName })
-    } else {
-      const reason = action === 'end_early' ? 'ended_early' : 'abandoned'
-      await emitSessionEndedToPlayer({
-        sessionId,
-        playerId,
-        playerName,
-        reason,
-      })
-    }
+    await emitSessionStartedToPlayer({ sessionId, playerId, playerName })
 
     // Also emit to classroom channel if student is present
     const presence = await getStudentPresence(playerId)
     if (presence) {
-      const classroomId = presence.classroomId
-      if (action === 'start') {
-        await emitSessionStarted({ sessionId, playerId, playerName }, classroomId)
-      } else {
-        const reason = action === 'end_early' ? 'ended_early' : 'abandoned'
-        await emitSessionEnded({ sessionId, playerId, playerName, reason }, classroomId)
-      }
+      await emitSessionStarted({ sessionId, playerId, playerName }, presence.classroomId)
     }
 
     // Fire-and-forget: notify subscribers (web push, email, in-app)
-    if (action === 'start') {
-      const baseUrl =
-        process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://abaci.one'
+    const baseUrl =
+      process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'https://abaci.one'
 
-      import('@/lib/notifications/bootstrap')
-        .then(({ bootstrapChannels }) => bootstrapChannels())
-        .then(() => import('@/lib/notifications/dispatcher'))
-        .then(({ notifySubscribers }) =>
-          notifySubscribers({
-            sessionId,
-            playerId,
-            playerName,
-            playerEmoji: player?.emoji ?? '',
-            observeUrl: `${baseUrl}/practice/${playerId}/observe`,
-          })
-        )
-        .catch((err) => {
-          console.error('[Notifications] Failed to notify subscribers:', err)
+    import('@/lib/notifications/bootstrap')
+      .then(({ bootstrapChannels }) => bootstrapChannels())
+      .then(() => import('@/lib/notifications/dispatcher'))
+      .then(({ notifySubscribers }) =>
+        notifySubscribers({
+          sessionId,
+          playerId,
+          playerName,
+          playerEmoji: player?.emoji ?? '',
+          observeUrl: `${baseUrl}/practice/${playerId}/observe`,
         })
-    }
+      )
+      .catch((err) => {
+        console.error('[Notifications] Failed to notify subscribers:', err)
+      })
   } catch (error) {
     // Don't fail the request if socket emission fails
     console.error('[SessionPlan] Failed to emit session event:', error)
