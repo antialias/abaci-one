@@ -49,7 +49,19 @@ const modelDir = join(destRoot, MODEL_ID)
 
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex')
 
-async function download(url, attempts = 4) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * Exponential backoff with full jitter: before retry n, wait a random time in
+ * [0, BASE * 2^(n-1)], capped. Spreads parallel CI jobs and Docker builds apart
+ * when the Hugging Face CDN is having a moment.
+ */
+const BACKOFF_BASE_MS = 1000
+const BACKOFF_CAP_MS = 30_000
+const backoffDelay = (attempt) =>
+  Math.random() * Math.min(BACKOFF_CAP_MS, BACKOFF_BASE_MS * 2 ** (attempt - 1))
+
+async function download(url, attempts = 6) {
   let lastError
   for (let i = 1; i <= attempts; i++) {
     try {
@@ -58,7 +70,10 @@ async function download(url, attempts = 4) {
       return Buffer.from(await res.arrayBuffer())
     } catch (err) {
       lastError = err
-      console.warn(`  attempt ${i}/${attempts} failed: ${err.message}`)
+      if (i === attempts) break
+      const wait = Math.round(backoffDelay(i))
+      console.warn(`  attempt ${i}/${attempts} failed: ${err.message}; retrying in ${wait} ms`)
+      await sleep(wait)
     }
   }
   throw lastError
