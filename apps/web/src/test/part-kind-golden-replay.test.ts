@@ -18,6 +18,11 @@
  * only stored `masteryWeight` values changed (a wrong try 1/2^round instead of
  * 0, a counted do-over 1/2^round instead of 1.0); every other line is as
  * recorded on `bbc801c48`.
+ *
+ * Until `f613c293c` the `skillAttempts` capture was vacuous (every step read
+ * [], see the mock below); it was re-recorded on that code with only this
+ * test changed, so the `skillAttempts` lines are new and every other line is
+ * as before.
  */
 
 import { eq } from 'drizzle-orm'
@@ -33,7 +38,6 @@ import type {
   SlotResult,
   SlotResultSubmission,
 } from '@/db/schema/session-plans'
-import { recordSkillAttemptsWithHelp } from '@/lib/curriculum/progress-manager'
 import {
   getSessionPlan,
   type RedoContext,
@@ -63,9 +67,17 @@ vi.mock('@/lib/session-share', async (importOriginal) => ({
   revokeSharesForSession: vi.fn(async () => {}),
 }))
 
+// The spy is held here, not imported from the mocked module. progress-manager
+// and session-planner import each other: a test that imports progress-manager
+// first runs this factory's importOriginal, which loads the planner, and the
+// planner binds the real function, so every `skillAttempts` read [] (as they
+// did until this was fixed). Importing only the planner lets it bind the mock.
+const { recordSkillAttemptsWithHelp } = vi.hoisted(() => ({
+  recordSkillAttemptsWithHelp: vi.fn(async () => []),
+}))
 vi.mock('@/lib/curriculum/progress-manager', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/curriculum/progress-manager')>()),
-  recordSkillAttemptsWithHelp: vi.fn(async () => []),
+  recordSkillAttemptsWithHelp,
 }))
 
 const FIXED = new Date('2026-01-01T00:00:00.000Z')
@@ -234,7 +246,7 @@ async function replay(planId: string, steps: [label: string, step: Step][]) {
   const trace: unknown[] = []
   for (const [label, step] of steps) {
     const before = (await getSessionPlan(planId))!
-    vi.mocked(recordSkillAttemptsWithHelp).mockClear()
+    recordSkillAttemptsWithHelp.mockClear()
     vi.mocked(revokeSharesForSession).mockClear()
     let outcome: string
     try {
@@ -247,11 +259,17 @@ async function replay(planId: string, steps: [label: string, step: Step][]) {
     trace.push({
       label,
       outcome,
-      skillAttempts: vi.mocked(recordSkillAttemptsWithHelp).mock.calls.map((c) => c.slice(1)),
+      skillAttempts: recordSkillAttemptsWithHelp.mock.calls.map((c) => (c as unknown[]).slice(1)),
       revoked: vi.mocked(revokeSharesForSession).mock.calls.length,
       row: projectRow(after),
     })
   }
+  // Guard against the capture going vacuous again: every scenario records at
+  // least one counted try, so at least one step must show its skill attempts.
+  expect(
+    trace.some((t) => (t as { skillAttempts: unknown[] }).skillAttempts.length > 0),
+    'no step captured a skill-attempt write: the recordSkillAttemptsWithHelp mock is not the one the planner calls'
+  ).toBe(true)
   return trace
 }
 
