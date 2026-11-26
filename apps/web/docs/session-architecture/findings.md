@@ -24,6 +24,8 @@ Fact base for the session-architecture rework. The decisions, contracts and phas
 
 ### Confirmed bugs (failing tests: `src/test/retry-redo-attribution.test.ts`)
 
+**Fixed 2026-11-26** by GitHub PR #238 (squash `ca166cbb2`); the tests now pass, and `e2e/retry-redo-attribution.spec.ts` covers them in a browser. Kept here as the record of what was wrong.
+
 1. A correct do-over of the current retry item makes the next answer be recorded against the redeemed slot: the stored try has `slotId` = slot 1 but `originalSlotIndex` = 0, and slot 1 is shown again.
 2. When do-overs redeem every remaining retry item, `getCurrentProblemInfo` returns null while the plan stays `in_progress`: the session is stuck.
 3. A duplicate submit with the same `slotId` is recorded twice and skips the next slot.
