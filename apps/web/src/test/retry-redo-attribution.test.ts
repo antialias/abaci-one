@@ -474,7 +474,8 @@ describe('retry and do-over attribution', () => {
       plan = await answerShown(plan, true) // retry of slot 0
       const [a, b, c] = plan.results
       expect(a).toMatchObject({ tryId: tid(1), kind: 'first', round: 0, practiceOnly: false })
-      expect(a).toMatchObject({ partIndex: 0, masteryWeight: 0, epochNumber: 0 })
+      // Phase 1w: a wrong first try weighs 1, like a right one
+      expect(a).toMatchObject({ partIndex: 0, masteryWeight: 1, epochNumber: 0 })
       expect(b.tryId).toMatch(/^[0-9a-f-]{36}$/) // minted server-side
       expect(b).toMatchObject({ kind: 'first', round: 0, masteryWeight: 1 })
       expect(c).toMatchObject({ kind: 'retry', round: 1, masteryWeight: 0.5, epochNumber: 1 })
@@ -570,7 +571,7 @@ describe('retry and do-over attribution', () => {
       })
     })
 
-    it('a correct do-over of a wrong problem weighs 1.0 as on main (round 1) and redeems it', async () => {
+    it('a correct do-over of a wrong problem weighs 1/2^round (round 1: 0.5) and redeems it', async () => {
       let plan = await newPlan(playerId, 3)
       plan = await answerShown(plan, true)
       plan = await answerShown(plan, false) // slot 1 wrong -> pending retry
@@ -581,7 +582,7 @@ describe('retry and do-over attribution', () => {
         kind: 'do_over',
         round: 1,
         practiceOnly: false,
-        masteryWeight: 1,
+        masteryWeight: 0.5,
         isManualRedo: true,
         slotId: plan.parts[0].slots[1].slotId,
         originalSlotIndex: 1,
@@ -600,9 +601,10 @@ describe('retry and do-over attribution', () => {
       plan = await answerShown(plan, true) // slot 1 -> round 1 = [slot 0]
       plan = await answerShown(plan, false) // retry 1 wrong -> round 2 = [slot 0]
       plan = await redo(plan, 0, false)
-      expect(plan.results.at(-1)).toMatchObject({ kind: 'do_over', round: 2, masteryWeight: 0 })
+      // Phase 1w: a counted do-over weighs 1/2^round, right or wrong
+      expect(plan.results.at(-1)).toMatchObject({ kind: 'do_over', round: 2, masteryWeight: 0.25 })
       plan = await redo(plan, 0, true) // round 3 now: three counted tries before it
-      expect(plan.results.at(-1)).toMatchObject({ round: 3, masteryWeight: 1 })
+      expect(plan.results.at(-1)).toMatchObject({ round: 3, masteryWeight: 0.125 })
       expect(plan.results.at(-1)!.practiceOnly).toBe(false)
     })
 

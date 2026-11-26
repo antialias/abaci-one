@@ -13,13 +13,24 @@
  * where every snapshot passed unchanged; the copies were then deleted. Legacy
  * correct-item do-overs keep their stored weight 1.0 (no refold, §1.2), and rows
  * without masteryWeight (worksheet/offline) still read as 1.0.
+ *
+ * Phase 1w is retroactive (§10 P1w-1): every reader weighs a wrong row
+ * 1/2^round re-derived from the row, so the fixture's two wrong rows stored at
+ * 0 (F's wrong first try and its wrong round-1 retry) now count at 1 and 0.5.
+ * That moved only F's pKnown (0.925 -> 0.771) in the BKT and readiness
+ * snapshots below (re-recorded in Phase 1w); its confidence and verdicts, the
+ * A and H entries (no wrong row touches them) and the linear gate (it reads no
+ * weight) are unchanged. Correct rows keep their stored weight, including the
+ * legacy do-overs' 1.0. The last block shows the rule row by row.
  */
 
 import { describe, expect, it } from 'vitest'
+import { calculateMasteryWeight } from '@/db/schema/session-plan-helpers'
 import { computeBktFromHistory } from '@/lib/curriculum/bkt'
 import { deriveLinearGateState } from '@/lib/curriculum/linear-gate'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
+import { weightOfTry } from '@/lib/curriculum/try-weight'
 
 const A = 'basic.directAddition'
 const H = 'basic.heavenBead'
@@ -94,13 +105,13 @@ const rounded = (history: ProblemResultWithContext[]) =>
   }))
 
 describe('BKT parity on legacy rows', () => {
-  it('matches the pre-Phase-1 numbers', () => {
+  it('matches the pre-Phase-1 numbers (F: with its wrong rows counted, Phase 1w)', () => {
     expect(rounded(fixture())).toMatchInlineSnapshot(`
       [
         {
           "confidence": 0.3238833389,
           "opportunities": 7,
-          "pKnown": 0.9247750804,
+          "pKnown": 0.770687675,
           "skillId": "fiveComplements.4=5-1",
           "successCount": 4,
         },
@@ -134,7 +145,7 @@ describe('BKT parity on legacy rows', () => {
     expect(rounded([...history, extra])).toEqual(rounded(history))
   })
 
-  it('readiness matches the pre-Phase-1 verdicts', () => {
+  it('readiness matches the pre-Phase-1 verdicts (F: with its wrong rows counted, Phase 1w)', () => {
     const history = fixture()
     const skills = computeBktFromHistory(history, { applyDecay: false }).skills
     const readiness = assessAllSkillsReadiness(history, skills, new Set([A, H, F]))
@@ -203,7 +214,7 @@ describe('BKT parity on legacy rows', () => {
             "mastery": {
               "confidence": 0.32388333885271514,
               "met": false,
-              "pKnown": 0.924775080403111,
+              "pKnown": 0.7706876750289361,
             },
             "speed": {
               "medianSecondsPerTerm": 2,
@@ -244,5 +255,131 @@ describe('BKT parity on legacy rows', () => {
         },
       }
     `)
+  })
+})
+
+describe('Phase 1w: wrong tries weigh 1/2^round, recorded before it or after (retroactive)', () => {
+  const pKnownOf = (history: ProblemResultWithContext[], skillId: string) =>
+    computeBktFromHistory(history, { applyDecay: false }).skills.find((s) => s.skillId === skillId)!
+      .pKnown
+
+  /** A row recorded from Phase 1w on: stamped by weightOfTry */
+  function stamped(
+    over: Partial<ProblemResultWithContext> & Pick<ProblemResultWithContext, 'kind' | 'round'>
+  ): ProblemResultWithContext {
+    const row = legacy({ sessionId: 'new-1', practiceOnly: false, ...over })
+    return {
+      ...row,
+      masteryWeight: weightOfTry({
+        kind: row.kind!,
+        round: row.round!,
+        isCorrect: row.isCorrect,
+        practiceOnly: false,
+      }),
+    }
+  }
+
+  it('keeps every legacy correct row at its stored weight', () => {
+    // Restamping the fixture's correct first tries and retries with weightOfTry
+    // changes nothing: their stored weight already is 1/2^round
+    const history = fixture()
+    const restampedCorrect = history.map((r) =>
+      r.isCorrect && r.masteryWeight !== undefined && !r.isManualRedo
+        ? {
+            ...r,
+            masteryWeight: weightOfTry({
+              kind: r.isRetry ? 'retry' : 'first',
+              round: r.epochNumber ?? 0,
+              isCorrect: true,
+              practiceOnly: false,
+            }),
+          }
+        : r
+    )
+    expect(rounded(restampedCorrect)).toEqual(rounded(history))
+    for (const r of history) {
+      if (r.isCorrect && !r.isManualRedo && r.masteryWeight !== undefined) {
+        expect(r.masteryWeight).toBe(calculateMasteryWeight(true, r.epochNumber ?? 0))
+      }
+    }
+  })
+
+  it('lets a legacy wrong try stored at 0 lower pKnown, exactly as a newly stamped one', () => {
+    const history = fixture()
+    const before = pKnownOf(history, F)
+    const wrong = stamped({ skillsExercised: [F], isCorrect: false, kind: 'first', round: 0 })
+    expect(wrong.masteryWeight).toBe(1)
+    const afterNew = pKnownOf([...history, wrong], F)
+    expect(afterNew).toBeLessThan(before - 0.05)
+    // Main's row: no Phase 1 stamps, weight 0
+    const legacyWrong = legacy({ skillsExercised: [F], isCorrect: false, masteryWeight: 0 })
+    expect(pKnownOf([...history, { ...legacyWrong, timestamp: wrong.timestamp }], F)).toBe(afterNew)
+  })
+
+  it('weighs a legacy wrong retry by its epoch; a legacy (unstamped) wrong do-over stays 0', () => {
+    const history = fixture()
+    const before = pKnownOf(history, F)
+    const legacyRetry = legacy({
+      skillsExercised: [F],
+      isCorrect: false,
+      isRetry: true,
+      epochNumber: 1,
+      masteryWeight: 0,
+    })
+    n -= 1
+    const legacyDoOver = legacy({
+      skillsExercised: [F],
+      isCorrect: false,
+      isManualRedo: true,
+      epochNumber: 0,
+      masteryWeight: 0,
+    })
+    n -= 1
+    // A legacy wrong first try at the same position weighs 1
+    const full = pKnownOf(
+      [...history, legacy({ skillsExercised: [F], isCorrect: false, masteryWeight: 0 })],
+      F
+    )
+    expect(pKnownOf([...history, legacyRetry], F)).toBeLessThan(before)
+    expect(pKnownOf([...history, legacyRetry], F)).toBeGreaterThan(full)
+    // It may be a redo of an item already answered right: practice-only today, never a slip
+    expect(pKnownOf([...history, legacyDoOver], F)).toBe(before)
+  })
+
+  it('weighs a wrong retry by its round', () => {
+    const history = fixture()
+    const before = pKnownOf(history, F)
+    const r1 = stamped({
+      skillsExercised: [F],
+      isCorrect: false,
+      kind: 'retry',
+      round: 1,
+      isRetry: true,
+      epochNumber: 1,
+    })
+    const first = stamped({ skillsExercised: [F], isCorrect: false, kind: 'first', round: 0 })
+    expect(r1.masteryWeight).toBe(0.5)
+    const afterRetry = pKnownOf([...history, r1], F)
+    expect(afterRetry).toBeLessThan(before)
+    expect(afterRetry).toBeGreaterThan(pKnownOf([...history, first], F))
+  })
+
+  it('weighs a correct do-over of a once-wrong item 1/2^round, not 1.0 (P1-9)', () => {
+    const history = [
+      ...fixture(),
+      stamped({ skillsExercised: [F], isCorrect: false, kind: 'first', round: 0 }),
+    ]
+    const doOver = stamped({
+      skillsExercised: [F],
+      kind: 'do_over',
+      round: 1,
+      isManualRedo: true,
+      epochNumber: 0,
+    })
+    expect(doOver.masteryWeight).toBe(0.5)
+    const withHalf = pKnownOf([...history, doOver], F)
+    const withMainWeight = pKnownOf([...history, { ...doOver, masteryWeight: 1 }], F)
+    expect(withHalf).toBeGreaterThan(pKnownOf(history, F))
+    expect(withHalf).toBeLessThan(withMainWeight)
   })
 })

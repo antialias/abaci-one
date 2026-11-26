@@ -2,7 +2,7 @@ import 'server-only'
 
 import { sql } from 'drizzle-orm'
 import { db } from '@/db'
-import type { SlotResult } from '@/db/schema/session-plans'
+import type { SlotResult, TryKind } from '@/db/schema/session-plans'
 import type { BktMode } from '../parts/kind'
 import { bktModeOf } from '../parts/registry'
 import type { BktEvidence } from './types'
@@ -31,7 +31,11 @@ interface RawProjectedEvidence {
   timingReview?: unknown
   partNumber?: unknown
   kind?: unknown
+  round?: unknown
   practiceOnly?: unknown
+  isRetry?: unknown
+  epochNumber?: unknown
+  isManualRedo?: unknown
 }
 
 interface RawPartType {
@@ -76,6 +80,17 @@ function parseJsonArray(value: string | null): unknown[] {
 
 function optionalNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+/** SQLite's json_extract gives JSON booleans as 1/0 */
+function optionalBoolean(value: unknown): boolean | undefined {
+  if (value === true || value === 1) return true
+  if (value === false || value === 0) return false
+  return undefined
+}
+
+function optionalTryKind(value: unknown): TryKind | undefined {
+  return value === 'first' || value === 'retry' || value === 'do_over' ? value : undefined
 }
 
 function optionalSource(value: unknown): SlotResult['source'] {
@@ -127,6 +142,13 @@ function toBktEvidence(
     responseTimeMs: optionalNumber(raw.responseTimeMs) ?? 0,
     hadHelp: raw.hadHelp === true || raw.hadHelp === 1,
     masteryWeight: optionalNumber(raw.masteryWeight),
+    // What compute-bkt's evidenceWeightOf reads to weigh a wrong row, as the
+    // in-JS history path hands it the whole row (Phase 1w, retroactive)
+    kind: optionalTryKind(raw.kind),
+    round: optionalNumber(raw.round),
+    isRetry: optionalBoolean(raw.isRetry),
+    epochNumber: optionalNumber(raw.epochNumber),
+    isManualRedo: optionalBoolean(raw.isManualRedo),
     source: optionalSource(raw.source),
     originalSource: optionalSource(raw.originalSource),
     timingReview,
@@ -179,7 +201,11 @@ async function getEvidenceChunk(
           'timingReview', json_extract(value, '$.timingReview'),
           'partNumber', json_extract(value, '$.partNumber'),
           'kind', json_extract(value, '$.kind'),
-          'practiceOnly', json_extract(value, '$.practiceOnly')
+          'round', json_extract(value, '$.round'),
+          'practiceOnly', json_extract(value, '$.practiceOnly'),
+          'isRetry', json_extract(value, '$.isRetry'),
+          'epochNumber', json_extract(value, '$.epochNumber'),
+          'isManualRedo', json_extract(value, '$.isManualRedo')
         ))
         FROM json_each(session_plans.results)
       ) AS evidenceJson,

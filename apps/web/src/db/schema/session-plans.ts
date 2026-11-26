@@ -300,12 +300,11 @@ export interface SlotResult {
   epochNumber?: number
 
   /**
-   * Weight applied to mastery/BKT calculation.
-   * Formula: 1.0 / (2 ^ epochNumber) if correct, 0 if wrong
-   * - Epoch 0 correct: 1.0 (100%)
-   * - Epoch 1 correct: 0.5 (50%)
-   * - Epoch 2 correct: 0.25 (25%)
-   * - Any wrong: 0
+   * Weight applied to mastery/BKT calculation, stamped by the server:
+   * `weightOfTry` (try-weight.ts), 1/2^round right or wrong since Phase 1w;
+   * 0 for a practice-only do-over. Rows recorded before Phase 1w hold
+   * 1/2^epochNumber if correct and 0 if wrong; readers weigh every row through
+   * `evidenceWeightOf`, which re-derives a wrong row's weight (§10 P1w-1).
    */
   masteryWeight?: number
 

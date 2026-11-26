@@ -384,12 +384,12 @@ test.describe('retry / do-over attribution', () => {
     server = await getPlan(request, playerId, plan.id)
     const redo = server.results.at(-1)!
     expect(redo).toMatchObject({ isManualRedo: true, slotIndex: 0, isCorrect: true })
-    // A do-over of a once-wrong problem: round 1, weighs 1.0 as on main (1/2^r is Phase 1w)
+    // A do-over of a once-wrong problem: round 1, weighs 1/2^1 (Phase 1w, §10 P1-9)
     expect(redo).toMatchObject({
       kind: 'do_over',
       round: 1,
       practiceOnly: false,
-      masteryWeight: 1,
+      masteryWeight: 0.5,
     })
     expect(server.retryState?.['0']?.redeemedSlots).toContain(0)
 
@@ -691,12 +691,12 @@ test.describe('retry / do-over attribution', () => {
     await doOverCorrectly(page, plan.id, 1)
     let server = await getPlan(request, playerId, plan.id)
     expect(server.results.at(-1)).toMatchObject({ isManualRedo: true, slotIndex: 1 })
-    // Redeemed: round 1 (one counted try before it), weighs 1.0 as on main
+    // Redeemed: round 1 (one counted try before it), weighs 1/2^1 (Phase 1w, §10 P1-9)
     expect(server.results.at(-1)).toMatchObject({
       kind: 'do_over',
       round: 1,
       practiceOnly: false,
-      masteryWeight: 1,
+      masteryWeight: 0.5,
     })
     expect(server.retryState?.['0']?.pendingRetries ?? []).toHaveLength(0)
     expect(server.currentSlotIndex).toBe(2)

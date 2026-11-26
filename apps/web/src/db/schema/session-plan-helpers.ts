@@ -17,6 +17,7 @@ import {
   SESSION_TIMEOUT_HOURS,
   TERM_COUNT_RANGES,
 } from '@/lib/curriculum/config'
+import { evidenceWeightOf } from '@/lib/curriculum/try-weight'
 
 import type {
   GameBreakSettings,
@@ -288,6 +289,7 @@ export function getSlotRetryStatus(
     hasBeenAttempted: true,
     isCorrect: latestResult.isCorrect,
     attemptCount: slotResults.length,
-    finalMasteryWeight: latestResult.masteryWeight ?? null,
+    // The weight BKT reads for it (a wrong row's re-derived, Phase 1w)
+    finalMasteryWeight: evidenceWeightOf(latestResult),
   }
 }
