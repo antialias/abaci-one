@@ -67,6 +67,7 @@ export {
   recordRedoResult,
   recordSlotResult,
   finishGameBreak,
+  SlotResultMismatchError,
   StaleFlowVersionError,
   startSessionPlan,
   updateSessionPlanRemoteCamera,

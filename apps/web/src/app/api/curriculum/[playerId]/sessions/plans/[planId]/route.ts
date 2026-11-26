@@ -24,6 +24,7 @@ import {
   recordSlotResult,
   restoreSessionPlan,
   SessionReviewError,
+  SlotResultMismatchError,
   softDeleteSessionPlan,
   startSessionPlan,
   StaleFlowVersionError,
@@ -283,6 +284,17 @@ export const PATCH = withAuth(async (request, { params }) => {
           code: 'INVALID_FLOW_TRANSITION',
           flowState: error.state,
           eventType: error.eventType,
+        },
+        { status: 409 }
+      )
+    }
+    if (error instanceof SlotResultMismatchError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: 'SLOT_MISMATCH',
+          submittedSlotId: error.submittedSlotId,
+          expectedSlotId: error.expectedSlotId,
         },
         { status: 409 }
       )

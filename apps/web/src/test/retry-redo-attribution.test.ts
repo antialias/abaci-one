@@ -12,12 +12,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
 import type { SessionPlan } from '@/db/schema/session-plans'
-import { DEFAULT_GAME_BREAK_SETTINGS, getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
+import {
+  DEFAULT_GAME_BREAK_SETTINGS,
+  getCurrentProblemInfo,
+} from '@/db/schema/session-plan-helpers'
 import {
   approveSessionPlan,
   generateSessionPlan,
   recordRedoResult,
   recordSlotResult,
+  SlotResultMismatchError,
   startSessionPlan,
 } from '@/lib/curriculum/session-planner'
 import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
@@ -154,5 +158,61 @@ describe('retry and do-over attribution', () => {
     })
     expect(plan.results).toHaveLength(1)
     expect(plan.currentSlotIndex).toBe(1)
+  })
+
+  it('rejects a try for a problem other than the one shown, and records nothing', async () => {
+    let plan = await newPlan(playerId, 3)
+    plan = await answerShown(plan, true) // slot 0
+    const skipped = plan.parts[0].slots[2] // the server expects slot 1
+    await expect(
+      recordSlotResult(plan.id, {
+        slotId: skipped.slotId,
+        slotIndex: 2,
+        problem: skipped.problem!,
+        studentAnswer: skipped.problem!.answer,
+        isCorrect: true,
+        responseTimeMs: 3000,
+        skillsExercised: skipped.problem!.skillsRequired,
+        usedOnScreenAbacus: false,
+        hadHelp: false,
+        incorrectAttempts: 0,
+      })
+    ).rejects.toBeInstanceOf(SlotResultMismatchError)
+
+    const shown = getCurrentProblemInfo(plan)!
+    expect(shown.slotId).toBe(plan.parts[0].slots[1].slotId)
+    plan = await answerShown(plan, true) // the right problem still records
+    expect(plan.results).toHaveLength(2)
+    expect(plan.results.at(-1)!.slotId).toBe(plan.parts[0].slots[1].slotId)
+  })
+
+  it('tells a resubmit of an original try from the retry of the same slot that follows it', async () => {
+    let plan = await newPlan(playerId, 3)
+    plan = await answerShown(plan, true)
+    plan = await answerShown(plan, true)
+    const last = plan.parts[0].slots[2]
+    const tryOf = (epochNumber: number, correct: boolean) => ({
+      slotId: last.slotId,
+      slotIndex: 2,
+      epochNumber,
+      problem: last.problem!,
+      studentAnswer: correct ? last.problem!.answer : last.problem!.answer + 1,
+      isCorrect: correct,
+      responseTimeMs: 3000,
+      skillsExercised: last.problem!.skillsRequired,
+      usedOnScreenAbacus: false,
+      hadHelp: false,
+      incorrectAttempts: 0,
+    })
+    plan = await recordSlotResult(plan.id, tryOf(0, false)) // slot 2 wrong -> retry round = [slot 2]
+    expect(getCurrentProblemInfo(plan)!.slotId).toBe(last.slotId) // same slot, epoch 1
+
+    plan = await recordSlotResult(plan.id, tryOf(0, false)) // resubmit of the original try
+    expect(plan.results).toHaveLength(3)
+
+    plan = await recordSlotResult(plan.id, tryOf(1, true)) // the retry itself
+    expect(plan.results).toHaveLength(4)
+    expect(plan.results.at(-1)!.epochNumber).toBe(1)
+    expect(plan.status).toBe('completed')
   })
 })

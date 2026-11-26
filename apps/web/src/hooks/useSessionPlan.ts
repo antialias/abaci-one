@@ -66,6 +66,17 @@ export class NoEligiblePartsClientError extends Error {
 }
 
 /**
+ * Error thrown when a recorded answer was for a different problem than the one
+ * the server expects next (409 SLOT_MISMATCH): the client's plan is stale.
+ */
+export class SlotMismatchClientError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'SlotMismatchClientError'
+  }
+}
+
+/**
  * Error thrown when the weekly session limit is reached (free tier).
  */
 export class SessionLimitReachedError extends Error {
@@ -187,6 +198,9 @@ async function updateSessionPlan({
   })
   if (!res.ok) {
     const error = await res.json().catch(() => ({}))
+    if (res.status === 409 && error.code === 'SLOT_MISMATCH') {
+      throw new SlotMismatchClientError(error.error || 'Answer was for a different problem')
+    }
     throw new Error(error.error || `Failed to ${action} session plan`)
   }
   const data = await res.json()
@@ -421,8 +435,13 @@ export function useRecordSlotResult() {
       queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
       queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
     },
-    onError: (err) => {
+    onError: (err, { playerId, planId }) => {
       console.error('Failed to record slot result:', err.message)
+      if (err instanceof SlotMismatchClientError) {
+        // Our plan is stale: refetch it so the student sees the server's current problem
+        queryClient.invalidateQueries({ queryKey: sessionPlanKeys.active(playerId) })
+        queryClient.invalidateQueries({ queryKey: sessionPlanKeys.detail(planId) })
+      }
     },
   })
 }

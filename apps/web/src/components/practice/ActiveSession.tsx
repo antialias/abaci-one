@@ -1497,10 +1497,18 @@ export function ActiveSession({
       collectVisionTrainingData(attemptData.problem.answer, attemptData.slotIndex)
     }
 
+    // The slot of the problem actually answered. After an optimistic advance the
+    // plan can still point at the previous problem, so currentProblemInfo can lag;
+    // the server rejects (or ignores as a resubmit) a try named for the wrong slot.
+    const answeredSlotId =
+      plan.parts[attemptData.partIndex]?.slots[attemptData.slotIndex]?.slotId ??
+      currentProblemInfo!.slotId
     // Record the result
     const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
-      slotId: currentProblemInfo!.slotId,
+      slotId: answeredSlotId,
       slotIndex: attemptData.slotIndex,
+      // Tells the server a resubmit from the next try of the same slot (a retry)
+      epochNumber: epochNumberAtSubmit,
       problem: attemptData.problem,
       studentAnswer: answerNum,
       isCorrect,

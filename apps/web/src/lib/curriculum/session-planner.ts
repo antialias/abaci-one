@@ -19,6 +19,7 @@ import { getSkillCategory, type SkillCategoryKey } from '@/constants/skillCatego
 import { db, schema } from '@/db'
 import { appSettings } from '@/db/schema'
 import { isActive, isVisualReady, type PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
+import { resolveCurrentItem } from '@/db/schema/session-plan-helpers'
 import {
   calculateMasteryWeight,
   calculateSessionHealth,
@@ -26,7 +27,6 @@ import {
   DEFAULT_PLAN_CONFIG,
   type GameBreakSettings,
   initRetryState,
-  isInRetryEpoch,
   MAX_RETRY_EPOCHS,
   type NewSessionPlan,
   type PartSummary,
@@ -1330,13 +1330,145 @@ export async function startSessionPlan(planId: string): Promise<SessionPlan> {
 }
 
 /**
- * Record a result for a slot and advance to next
+ * A try was submitted for a different item than the one the server expects
+ * next, and it is not a resubmit of the try just recorded. The client's plan is
+ * stale; the route answers 409 and the client refetches.
+ */
+export class SlotResultMismatchError extends Error {
+  constructor(
+    public readonly submittedSlotId: string | undefined,
+    public readonly expectedSlotId: string | null
+  ) {
+    super(
+      `Answer is for slot ${submittedSlotId ?? '(none)'}, but the current problem is ${expectedSlotId ?? '(none)'}`
+    )
+    this.name = 'SlotResultMismatchError'
+  }
+}
+
+/** Where a part's cursor lands after a step, and whether the session is done. */
+interface SettledPosition {
+  partIndex: number
+  slotIndex: number
+  isComplete: boolean
+}
+
+/**
+ * Settle a cursor that may have nothing left to show in its part: when the
+ * part's original slots are done and the current retry round has no
+ * unredeemed item left, start the next retry round, or move to the next part
+ * (completing the session after the last one). Mutates `retryState`.
+ *
+ * Shared by recordSlotResult (after a try) and recordRedoResult (after a
+ * do-over redeems the remaining retry items).
+ */
+function settlePosition(
+  parts: SessionPlan['parts'],
+  position: { partIndex: number; slotIndex: number },
+  retryState: SessionRetryState
+): SettledPosition {
+  const { partIndex, slotIndex } = position
+  const partRetry = retryState[partIndex]
+  for (;;) {
+    if (
+      resolveCurrentItem({
+        parts,
+        currentPartIndex: partIndex,
+        currentSlotIndex: slotIndex,
+        retryState,
+      })
+    ) {
+      return { partIndex, slotIndex, isComplete: false }
+    }
+    if (
+      !partRetry ||
+      partRetry.pendingRetries.length === 0 ||
+      partRetry.currentEpoch >= MAX_RETRY_EPOCHS
+    ) {
+      break
+    }
+    // Start the next retry round. Slot index stays at the end (original slots done).
+    partRetry.currentEpoch += 1
+    partRetry.currentEpochItems = [...partRetry.pendingRetries]
+    partRetry.pendingRetries = []
+    partRetry.currentRetryIndex = 0
+  }
+
+  // No more retries (all correct, redeemed, or max rounds reached): next part.
+  if (partRetry) {
+    partRetry.currentEpochItems = []
+    partRetry.currentRetryIndex = 0
+    partRetry.pendingRetries = []
+  }
+  const nextPartIndex = partIndex + 1
+  return { partIndex: nextPartIndex, slotIndex: 0, isComplete: nextPartIndex >= parts.length }
+}
+
+/**
+ * The row fields for a settled cursor: position, status, flow state and
+ * completion. One source for recordSlotResult and recordRedoResult so both
+ * produce the same transitions.
+ */
+function settledPositionFields(plan: SessionPlan, next: SettledPosition) {
+  const partTransitioned = next.partIndex > plan.currentPartIndex
+  const hasMoreParts = next.partIndex < plan.parts.length
+  const gameBreakEnabled = (plan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
+  const nextFlowState: SessionFlowState = next.isComplete
+    ? 'completed'
+    : partTransitioned && hasMoreParts && gameBreakEnabled
+      ? 'part_transition'
+      : 'practicing'
+  const flowUpdatedAt = new Date()
+  const flowStateChanged =
+    (plan.flowState ?? 'practicing') !== nextFlowState ||
+    plan.breakStartedAt !== null ||
+    plan.breakResults !== null
+  return {
+    partTransitioned,
+    hasMoreParts,
+    gameBreakEnabled,
+    fields: {
+      currentPartIndex: next.partIndex,
+      currentSlotIndex: next.slotIndex,
+      status: next.isComplete ? ('completed' as const) : ('in_progress' as const),
+      flowState: nextFlowState,
+      flowUpdatedAt: flowStateChanged ? flowUpdatedAt : (plan.flowUpdatedAt ?? flowUpdatedAt),
+      flowVersion: (plan.flowVersion ?? 0) + (flowStateChanged ? 1 : 0),
+      // Clear operational break fields but preserve metadata (breakSelectedGame,
+      // breakReason) — the song generator needs them later in the session.
+      breakStartedAt: null,
+      breakResults: null,
+      completedAt: next.isComplete ? new Date() : null,
+    },
+  }
+}
+
+/** Revoke any active share links once a session completes (non-critical). */
+async function revokeSharesIfComplete(planId: string, isComplete: boolean, caller: string) {
+  if (!isComplete) return
+  try {
+    await revokeSharesForSession(planId)
+  } catch (shareError) {
+    // Non-critical: log and continue (session already completed successfully)
+    console.error(`[${caller}] revokeSharesForSession FAILED:`, shareError)
+  }
+}
+
+/**
+ * Record a result for the current item and advance to the next.
+ *
+ * The try is attributed to the item the student is shown (resolveCurrentItem),
+ * and the submitted `slotId` must name it. `epochNumber`, when sent, is the
+ * client's view of the try; it only tells a resubmit apart from the next try of
+ * the same slot (a retry right after its original). The stored values are the
+ * server's. A resubmit of the try just recorded returns the plan unchanged; any
+ * other mismatch throws SlotResultMismatchError.
  */
 export async function recordSlotResult(
   planId: string,
   result: Omit<
     SlotResult,
-    'timestamp' | 'partNumber' | 'epochNumber' | 'masteryWeight' | 'isRetry' | 'originalSlotIndex'
+    'timestamp' | 'partNumber' | 'masteryWeight' | 'isRetry' | 'originalSlotIndex'
   >
 ): Promise<SessionPlan> {
   const traceStart = Date.now()
@@ -1361,6 +1493,29 @@ export async function recordSlotResult(
 
   if (plan.parts.length === 0) {
     throw new Error(`Plan ${planId} has empty parts array`)
+  }
+
+  // Defensive check: ensure results array exists
+  if (!plan.results || !Array.isArray(plan.results)) {
+    throw new Error(`Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`)
+  }
+
+  // Attribute the try to the item the student is shown. Checked before the
+  // position checks so a resubmit of a session's final answer is still a no-op.
+  const expected = resolveCurrentItem(plan)
+  const isSubmittedTry = (t: { slotId: string; epochNumber?: number }) =>
+    t.slotId === result.slotId &&
+    (result.epochNumber === undefined || (t.epochNumber ?? 0) === result.epochNumber)
+  if (!expected || !isSubmittedTry(expected)) {
+    let lastTry: SlotResult | undefined
+    for (let i = plan.results.length - 1; i >= 0 && !lastTry; i--) {
+      if (!plan.results[i].isManualRedo) lastTry = plan.results[i]
+    }
+    if (lastTry && isSubmittedTry(lastTry)) {
+      console.log('[recordSlotResult] duplicate submit ignored', { planId, slotId: result.slotId })
+      return plan
+    }
+    throw new SlotResultMismatchError(result.slotId, expected?.slotId ?? null)
   }
 
   if (plan.currentPartIndex < 0 || plan.currentPartIndex >= plan.parts.length) {
@@ -1391,27 +1546,13 @@ export async function recordSlotResult(
     )
   }
 
-  // Defensive check: ensure results array exists
-  if (!plan.results || !Array.isArray(plan.results)) {
-    throw new Error(`Plan ${planId} has invalid results: ${typeof plan.results} (expected array)`)
-  }
-
   // Initialize mutable copy of retry state
   const updatedRetryState: SessionRetryState = plan.retryState ? { ...plan.retryState } : {}
   const partIndex = plan.currentPartIndex
 
-  // Determine if we're in a retry epoch or working original slots
-  const inRetryEpoch = isInRetryEpoch(plan, partIndex)
-  let epochNumber = 0
-  let originalSlotIndex = result.slotIndex
-
-  if (inRetryEpoch) {
-    // In retry epoch
-    const retryState = updatedRetryState[partIndex]!
-    const currentRetryItem = retryState.currentEpochItems[retryState.currentRetryIndex]
-    epochNumber = currentRetryItem.epochNumber
-    originalSlotIndex = currentRetryItem.originalSlotIndex
-  }
+  const inRetryEpoch = expected.retryIndex !== null
+  const epochNumber = expected.epochNumber
+  const originalSlotIndex = expected.originalSlotIndex
 
   // Calculate mastery weight based on epoch and correctness
   const masteryWeight = calculateMasteryWeight(result.isCorrect, epochNumber)
@@ -1425,6 +1566,7 @@ export async function recordSlotResult(
 
   const newResult: SlotResult = {
     ...result,
+    slotIndex: originalSlotIndex,
     partNumber: currentPart.partNumber,
     timestamp: new Date(),
     epochNumber,
@@ -1435,133 +1577,47 @@ export async function recordSlotResult(
 
   const updatedResults = [...plan.results, newResult]
 
-  // Handle wrong answers: queue for retry
-  if (!result.isCorrect) {
-    if (inRetryEpoch) {
-      // In retry epoch - queue for next epoch if under max
-      const retryState = updatedRetryState[partIndex]!
-      if (retryState.currentEpoch < MAX_RETRY_EPOCHS) {
-        const currentRetryItem = retryState.currentEpochItems[retryState.currentRetryIndex]
-        retryState.pendingRetries.push({
-          slotId: currentRetryItem.slotId,
-          originalSlotIndex: currentRetryItem.originalSlotIndex,
-          problem: currentRetryItem.problem,
-          epochNumber: retryState.currentEpoch + 1,
-          originalPurpose: currentRetryItem.originalPurpose,
-        })
-      }
-      // If at max epoch, don't re-queue (counted as definitively wrong)
-    } else {
-      // Original attempt wrong - queue for first retry epoch
-      const retryState = initRetryState({ ...plan, retryState: updatedRetryState }, partIndex)
-      updatedRetryState[partIndex] = retryState
-      const slot = currentPart.slots[plan.currentSlotIndex]
-      retryState.pendingRetries.push({
-        slotId: slot.slotId,
-        originalSlotIndex: plan.currentSlotIndex,
-        problem: slot.problem!,
-        epochNumber: 1,
-        originalPurpose: slot.purpose,
-      })
-    }
+  // Handle wrong answers: queue the same problem for the next retry round.
+  // Past the last round it is not re-queued (counted as definitively wrong).
+  if (!result.isCorrect && epochNumber < MAX_RETRY_EPOCHS) {
+    const retryState = initRetryState({ ...plan, retryState: updatedRetryState }, partIndex)
+    retryState.pendingRetries.push({
+      slotId: expected.slotId,
+      originalSlotIndex,
+      problem: expected.problem!,
+      epochNumber: epochNumber + 1,
+      originalPurpose: expected.purpose,
+    })
   }
 
-  // Advance to next problem
-  let nextPartIndex = plan.currentPartIndex
-  let nextSlotIndex = plan.currentSlotIndex
-  let isComplete = false
-
-  if (inRetryEpoch) {
-    // Advance within retry epoch
-    const retryState = updatedRetryState[partIndex]!
-    retryState.currentRetryIndex += 1
-
-    if (retryState.currentRetryIndex >= retryState.currentEpochItems.length) {
-      // Finished current retry epoch
-      if (retryState.pendingRetries.length > 0 && retryState.currentEpoch < MAX_RETRY_EPOCHS) {
-        // Start next retry epoch
-        retryState.currentEpoch += 1
-        retryState.currentEpochItems = [...retryState.pendingRetries]
-        retryState.pendingRetries = []
-        retryState.currentRetryIndex = 0
-      } else {
-        // No more retries (either all correct or max epochs reached)
-        // Clear retry state and advance to next part
-        retryState.currentEpochItems = []
-        retryState.currentRetryIndex = 0
-        retryState.pendingRetries = []
-        nextPartIndex += 1
-        nextSlotIndex = 0
-
-        if (nextPartIndex >= plan.parts.length) {
-          isComplete = true
-        }
-      }
-    }
-  } else {
-    // Advance within original slots
-    nextSlotIndex += 1
-
-    if (nextSlotIndex >= currentPart.slots.length) {
-      // Finished original slots for this part
-      const retryState = updatedRetryState[partIndex]
-
-      if (retryState && retryState.pendingRetries.length > 0) {
-        // Start retry epoch 1
-        retryState.currentEpoch = 1
-        retryState.currentEpochItems = [...retryState.pendingRetries]
-        retryState.pendingRetries = []
-        retryState.currentRetryIndex = 0
-        // Stay on same part, slot index stays at end (indicates original slots done)
-      } else {
-        // No retries needed, advance to next part
-        nextPartIndex += 1
-        nextSlotIndex = 0
-
-        if (nextPartIndex >= plan.parts.length) {
-          isComplete = true
-        }
-      }
-    }
+  // Step past the item just answered, then settle (next round / next part / done)
+  if (expected.retryIndex !== null) {
+    updatedRetryState[partIndex]!.currentRetryIndex = expected.retryIndex + 1
   }
+  const next = settlePosition(
+    plan.parts,
+    { partIndex, slotIndex: plan.currentSlotIndex + (inRetryEpoch ? 0 : 1) },
+    updatedRetryState
+  )
+  const { partIndex: nextPartIndex, slotIndex: nextSlotIndex, isComplete } = next
 
   // Calculate elapsed time since start
   const elapsedMs = plan.startedAt ? Date.now() - plan.startedAt.getTime() : 0
   const updatedHealth = calculateSessionHealth({ ...plan, results: updatedResults }, elapsedMs)
-  const partTransitioned = nextPartIndex > plan.currentPartIndex
-  const hasMoreParts = nextPartIndex < plan.parts.length
-  const gameBreakEnabled = (plan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
+  const { partTransitioned, hasMoreParts, gameBreakEnabled, fields } = settledPositionFields(
+    plan,
+    next
+  )
 
   let dbResult
   try {
-    const nextFlowState: SessionFlowState = isComplete
-      ? 'completed'
-      : partTransitioned && hasMoreParts && gameBreakEnabled
-        ? 'part_transition'
-        : 'practicing'
-    const flowUpdatedAt = new Date()
-    const flowStateChanged =
-      (plan.flowState ?? 'practicing') !== nextFlowState ||
-      plan.breakStartedAt !== null ||
-      plan.breakResults !== null
-    const nextFlowVersion = (plan.flowVersion ?? 0) + (flowStateChanged ? 1 : 0)
     dbResult = await db
       .update(schema.sessionPlans)
       .set({
         results: updatedResults,
-        currentPartIndex: nextPartIndex,
-        currentSlotIndex: nextSlotIndex,
         sessionHealth: updatedHealth,
         retryState: updatedRetryState,
-        status: isComplete ? 'completed' : 'in_progress',
-        flowState: nextFlowState,
-        flowUpdatedAt: flowStateChanged ? flowUpdatedAt : (plan.flowUpdatedAt ?? flowUpdatedAt),
-        flowVersion: nextFlowVersion,
-        // Clear operational break fields but preserve metadata (breakSelectedGame,
-        // breakReason) — the song generator needs them later in the session.
-        breakStartedAt: null,
-        breakResults: null,
-        completedAt: isComplete ? new Date() : null,
+        ...fields,
       })
       .where(eq(schema.sessionPlans.id, planId))
       .returning()
@@ -1599,15 +1655,7 @@ export async function recordSlotResult(
     }
   }
 
-  // Revoke any active share links when session completes
-  if (isComplete) {
-    try {
-      await revokeSharesForSession(planId)
-    } catch (shareError) {
-      // Non-critical: log and continue (session already completed successfully)
-      console.error(`[recordSlotResult] revokeSharesForSession FAILED:`, shareError)
-    }
-  }
+  await revokeSharesIfComplete(planId, isComplete, 'recordSlotResult')
 
   console.log('[GBTRACE][server]', 'record-slot-result-finish', {
     ts: new Date().toISOString(),
@@ -1645,8 +1693,10 @@ export interface RedoContext {
  * Record a result from a manual redo (student tapped a completed problem to redo it).
  *
  * Key differences from recordSlotResult:
- * - Does NOT advance currentPartIndex/currentSlotIndex (session position unchanged)
- * - If original was wrong and redo is correct: removes from retry queue (redeems)
+ * - Does not step the session position past an item
+ * - If original was wrong and redo is correct: removes from retry queue (redeems).
+ *   If that leaves the current retry round with nothing to show, the cursor
+ *   settles exactly as after a try: next round, next part, or completion.
  * - Result is marked with isManualRedo: true
  */
 export async function recordRedoResult(
@@ -1700,6 +1750,7 @@ export async function recordRedoResult(
 
   // Handle retry queue updates if original was wrong and redo is correct
   const updatedRetryState = plan.retryState ? { ...plan.retryState } : {}
+  let settled: ReturnType<typeof settledPositionFields> | null = null
 
   if (!redoContext.originalWasCorrect && result.isCorrect) {
     // Original was wrong, redo is correct - redeem from retry queue
@@ -1718,6 +1769,19 @@ export async function recordRedoResult(
       }
 
       updatedRetryState[redoContext.originalPartIndex] = partRetryState
+
+      // Redeeming the current part's remaining retry items must not strand the
+      // session: settle the cursor the same way recordSlotResult does.
+      if (redoContext.originalPartIndex === plan.currentPartIndex) {
+        const next = settlePosition(
+          plan.parts,
+          { partIndex: plan.currentPartIndex, slotIndex: plan.currentSlotIndex },
+          updatedRetryState
+        )
+        if (next.partIndex !== plan.currentPartIndex) {
+          settled = settledPositionFields(plan, next)
+        }
+      }
     }
   }
 
@@ -1725,13 +1789,14 @@ export async function recordRedoResult(
   const elapsedMs = plan.startedAt ? Date.now() - plan.startedAt.getTime() : 0
   const updatedHealth = calculateSessionHealth({ ...plan, results: updatedResults }, elapsedMs)
 
-  // Update database - note: currentPartIndex/currentSlotIndex are NOT modified
+  // Position and flow fields change only when the redemption settled the cursor
   const [updated] = await db
     .update(schema.sessionPlans)
     .set({
       results: updatedResults,
       sessionHealth: updatedHealth,
       retryState: updatedRetryState,
+      ...settled?.fields,
     })
     .where(eq(schema.sessionPlans.id, planId))
     .returning()
@@ -1758,6 +1823,8 @@ export async function recordRedoResult(
       // Don't throw - redo result was already recorded
     }
   }
+
+  await revokeSharesIfComplete(planId, settled?.fields.status === 'completed', 'recordRedoResult')
 
   return updated
 }
