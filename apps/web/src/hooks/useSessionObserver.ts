@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
-import { countedTries } from '@/db/schema/session-plan-helpers'
 import type {
   SessionFlowState,
   SessionPart,
@@ -14,6 +13,7 @@ import type {
   PartTransitionCompleteEvent,
   PartTransitionEvent,
   PracticeStateEvent,
+  SessionEndedEvent,
   SessionFlowStateEvent,
   SessionPausedEvent,
   SessionResumedEvent,
@@ -98,26 +98,10 @@ export interface ObservedTransitionState {
 }
 
 /**
- * A recorded result from a completed problem during observation
+ * A try as the observer lists it. Built from the session report's tries
+ * (`observedResultsFromReport`), not from the broadcast (Phase 4c).
  */
-export interface ObservedResult {
-  /** Problem number (1-indexed) */
-  problemNumber: number
-  /** The problem terms */
-  terms: number[]
-  /** Correct answer */
-  answer: number
-  /** Student's submitted answer */
-  studentAnswer: string
-  /** Whether correct */
-  isCorrect: boolean
-  /** Purpose of this problem slot */
-  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
-  /** Response time in ms */
-  responseTimeMs: number
-  /** When recorded */
-  recordedAt: number
-}
+export type { ObservedResult } from '@/lib/curriculum/observer-report'
 
 /**
  * Vision frame received from student's abacus camera
@@ -165,10 +149,8 @@ export interface ObservedGameBreakState {
 }
 
 interface UseSessionObserverResult {
-  /** Current observed state (null if not yet received) */
+  /** Current observed state (null if not yet received); kept after the session ends */
   state: ObservedSessionState | null
-  /** Accumulated results from completed problems */
-  results: ObservedResult[]
   /** Current part transition state (null if not in transition) */
   transitionState: ObservedTransitionState | null
   /**
@@ -187,6 +169,12 @@ interface UseSessionObserverResult {
   isObserving: boolean
   /** Error message if connection failed */
   error: string | null
+  /**
+   * The session's end, once the server said so (`session-ended` on the
+   * session room, Phase 4c). The hook then stops listening and keeps what is
+   * on screen; the view shows the ended report.
+   */
+  ended: SessionEndedEvent | null
   /** Stop observing the session */
   stopObserving: () => void
   /** Send a control action to the student's abacus */
@@ -229,7 +217,6 @@ export function useSessionObserver(
   shareToken?: string
 ): UseSessionObserverResult {
   const [state, setState] = useState<ObservedSessionState | null>(null)
-  const [results, setResults] = useState<ObservedResult[]>([])
   const [transitionState, setTransitionState] = useState<ObservedTransitionState | null>(null)
   const [visionFrame, setVisionFrame] = useState<ObservedVisionFrame | null>(null)
   const [observedFlowState, setObservedFlowState] = useState<SessionFlowState | null>(null)
@@ -239,12 +226,9 @@ export function useSessionObserver(
   const [error, setError] = useState<string | null>(null)
   const [dvrBufferInfo, setDvrBufferInfo] = useState<DvrBufferInfo | null>(null)
   const [isLive, setIsLive] = useState(true)
+  const [ended, setEnded] = useState<SessionEndedEvent | null>(null)
 
   const socketRef = useRef<Socket | null>(null)
-  // Track which problem numbers we've already recorded to avoid duplicates
-  const recordedProblemsRef = useRef<Set<number>>(new Set())
-  // Track if we've seeded historical results from slotResults
-  const hasSeededHistoryRef = useRef(false)
 
   const stopObserving = useCallback(() => {
     if (socketRef.current && sessionId) {
@@ -254,15 +238,13 @@ export function useSessionObserver(
       setIsConnected(false)
       setIsObserving(false)
       setState(null)
-      setResults([])
       setTransitionState(null)
       setObservedFlowState(null)
       setBreakState(null)
       setVisionFrame(null)
       setDvrBufferInfo(null)
       setIsLive(true)
-      recordedProblemsRef.current.clear()
-      hasSeededHistoryRef.current = false
+      setEnded(null)
     }
   }, [sessionId])
 
@@ -285,6 +267,7 @@ export function useSessionObserver(
       reconnectionAttempts: 5,
     })
     socketRef.current = socket
+    setEnded(null)
 
     // Handler for when socket connects
     const handleConnect = () => {
@@ -328,6 +311,11 @@ export function useSessionObserver(
       setIsObserving(false)
     })
 
+    // A refused join of a session room (Phase 4c): say so; no retry
+    socket.on('session-room-error', (data: { sessionId: string; error: string }) => {
+      console.warn('[SessionObserver] Session room join refused:', data.sessionId, data.error)
+    })
+
     // Listen for practice state updates from the student
     socket.on('practice-state', (data: PracticeStateEvent) => {
       console.log('[SessionObserver] Received practice-state:', {
@@ -343,71 +331,6 @@ export function useSessionObserver(
       }
       const sessionParts = data.sessionParts as SessionPart[] | undefined
       const slotResults = data.slotResults as SlotResult[] | undefined
-
-      // Seed historical results from slotResults on first event
-      if (!hasSeededHistoryRef.current && slotResults && slotResults.length > 0 && sessionParts) {
-        hasSeededHistoryRef.current = true
-        console.log(
-          '[SessionObserver] Seeding historical results from slotResults:',
-          slotResults.length
-        )
-
-        // Convert slotResults to ObservedResult format
-        const historicalResults: ObservedResult[] = []
-
-        for (const result of countedTries(slotResults)) {
-          // Calculate problem number from part structure
-          let problemNumber = 0
-          for (let p = 0; p < result.partNumber - 1; p++) {
-            problemNumber += sessionParts[p]?.slots.length ?? 0
-          }
-          problemNumber += result.slotIndex + 1
-
-          // Get purpose from the slot definition
-          const slot = sessionParts[result.partNumber - 1]?.slots[result.slotIndex]
-          const purpose = slot?.purpose ?? 'focus'
-
-          // Mark as recorded to avoid duplicates
-          recordedProblemsRef.current.add(problemNumber)
-
-          historicalResults.push({
-            problemNumber,
-            terms: result.problem.terms,
-            answer: result.problem.answer,
-            studentAnswer: String(result.studentAnswer),
-            isCorrect: result.isCorrect,
-            purpose,
-            responseTimeMs: result.responseTimeMs,
-            recordedAt: result.timestamp instanceof Date ? result.timestamp.getTime() : Date.now(),
-          })
-        }
-
-        // Sort by problem number and set results
-        historicalResults.sort((a, b) => a.problemNumber - b.problemNumber)
-        setResults(historicalResults)
-        console.log('[SessionObserver] Seeded', historicalResults.length, 'historical results')
-      }
-
-      // Record result when problem is completed (feedback phase with definite answer)
-      if (
-        data.phase === 'feedback' &&
-        data.isCorrect !== null &&
-        !recordedProblemsRef.current.has(data.currentProblemNumber)
-      ) {
-        recordedProblemsRef.current.add(data.currentProblemNumber)
-        const newResult: ObservedResult = {
-          problemNumber: data.currentProblemNumber,
-          terms: currentProblem.terms,
-          answer: currentProblem.answer,
-          studentAnswer: data.studentAnswer,
-          isCorrect: data.isCorrect,
-          purpose: data.purpose,
-          responseTimeMs: data.timing.elapsed,
-          recordedAt: Date.now(),
-        }
-        setResults((prev) => [...prev, newResult])
-        console.log('[SessionObserver] Recorded result:', newResult)
-      }
 
       setState({
         currentProblem,
@@ -549,10 +472,19 @@ export function useSessionObserver(
       }
     })
 
-    // Listen for session ended event
-    socket.on('session-ended', () => {
-      console.log('[SessionObserver] Session ended')
-      stopObserving()
+    // The session ended (natural completion, end early, abandon; Phase 4c):
+    // stop listening, but keep what is on screen. The view shows the final
+    // report (useSessionReport refetches it on the same event).
+    socket.on('session-ended', (event: SessionEndedEvent) => {
+      if (event?.sessionId !== sessionId) return
+      console.log('[SessionObserver] Session ended:', event.reason)
+      setEnded(event)
+      socket.emit('stop-observing', { sessionId })
+      socket.disconnect()
+      if (socketRef.current === socket) socketRef.current = null
+      setIsConnected(false)
+      setIsObserving(false)
+      setTransitionState(null)
     })
 
     return () => {
@@ -672,7 +604,6 @@ export function useSessionObserver(
 
   return {
     state,
-    results,
     transitionState,
     flowState: observedFlowState,
     breakState,
@@ -680,6 +611,7 @@ export function useSessionObserver(
     isConnected,
     isObserving,
     error,
+    ended,
     stopObserving,
     sendControl,
     sendPause,

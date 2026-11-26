@@ -1,14 +1,21 @@
 'use client'
 
 import Link from 'next/link'
-import { css } from '../../../../styled-system/css'
+import { SessionEndedSummary } from '@/components/classroom/SessionEndedSummary'
 import { SubscribeButton } from '@/components/notifications/SubscribeButton'
 import { SessionSongPlayer } from '@/components/practice/SessionSongPlayer'
+import type { SessionReport } from '@/lib/curriculum/session-report'
+import { css } from '../../../../styled-system/css'
 
 interface SessionEndedClientProps {
   studentName: string
   studentEmoji: string
-  sessionCompleted: boolean
+  /**
+   * The ended session's report (completed, ended early or abandoned; Phase
+   * 4c); null when the session has not started yet. Every number shown here
+   * comes from it.
+   */
+  report: SessionReport | null
   playerId: string
   sessionPlanId: string
   shareToken: string
@@ -21,13 +28,14 @@ interface SessionEndedClientProps {
 export function SessionEndedClient({
   studentName,
   studentEmoji,
-  sessionCompleted,
+  report,
   playerId,
   sessionPlanId,
   shareToken,
   sessionReportUrl,
   userId,
 }: SessionEndedClientProps) {
+  const sessionEnded = report !== null
   return (
     <div
       data-component="session-ended-page"
@@ -39,7 +47,7 @@ export function SessionEndedClient({
       })}
     >
       {/* Banner with link to session report (only shown if user has access) */}
-      {sessionReportUrl && sessionCompleted && (
+      {sessionReportUrl && sessionEnded && (
         <div
           data-element="session-report-banner"
           className={css({
@@ -94,47 +102,57 @@ export function SessionEndedClient({
           textAlign: 'center',
         })}
       >
-        <div
-          className={css({
-            fontSize: '6xl',
-            mb: 4,
-          })}
-        >
-          {sessionCompleted ? '🎉' : '⏳'}
-        </div>
+        {report ? (
+          <div className={css({ mb: 6, w: '100%', display: 'flex', justifyContent: 'center' })}>
+            <SessionEndedSummary
+              report={report}
+              studentName={studentName}
+              studentEmoji={studentEmoji}
+            />
+          </div>
+        ) : (
+          <>
+            <div
+              className={css({
+                fontSize: '6xl',
+                mb: 4,
+              })}
+            >
+              ⏳
+            </div>
 
-        <h1
-          className={css({
-            fontSize: '2xl',
-            fontWeight: 'bold',
-            color: 'text.primary',
-            mb: 2,
-          })}
-        >
-          {sessionCompleted ? 'Practice Session Complete!' : 'Session Not Started'}
-        </h1>
+            <h1
+              className={css({
+                fontSize: '2xl',
+                fontWeight: 'bold',
+                color: 'text.primary',
+                mb: 2,
+              })}
+            >
+              Session Not Started
+            </h1>
 
-        <p
-          className={css({
-            fontSize: 'lg',
-            color: 'text.secondary',
-            mb: 6,
-            maxWidth: '400px',
-          })}
-        >
-          {sessionCompleted
-            ? `${studentEmoji} ${studentName} has finished their practice session.`
-            : `${studentEmoji} ${studentName}'s practice session hasn't started yet.`}
-        </p>
+            <p
+              className={css({
+                fontSize: 'lg',
+                color: 'text.secondary',
+                mb: 6,
+                maxWidth: '400px',
+              })}
+            >
+              {`${studentEmoji} ${studentName}'s practice session hasn't started yet.`}
+            </p>
+          </>
+        )}
 
-        {/* Session song player — shown when session completed */}
-        {sessionCompleted && (
+        {/* Session song player — shown once the session ended */}
+        {sessionEnded && (
           <div data-element="session-song" className={css({ w: '100%', maxW: '480px', mb: 4 })}>
             <SessionSongPlayer playerId={playerId} planId={sessionPlanId} />
           </div>
         )}
 
-        {!sessionReportUrl && sessionCompleted && (
+        {!sessionReportUrl && sessionEnded && (
           <p
             className={css({
               fontSize: 'sm',
@@ -147,7 +165,7 @@ export function SessionEndedClient({
           </p>
         )}
 
-        {!sessionCompleted && (
+        {!sessionEnded && (
           <p
             className={css({
               fontSize: 'sm',
@@ -160,7 +178,7 @@ export function SessionEndedClient({
         )}
 
         {/* Notification subscribe CTA */}
-        {sessionCompleted && (
+        {sessionEnded && (
           <div
             data-element="subscribe-cta"
             className={css({

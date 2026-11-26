@@ -2,20 +2,51 @@
 
 import { useMemo, useState } from 'react'
 import type { ObservedResult } from '@/hooks/useSessionObserver'
+import {
+  firstTriesWrong,
+  formatPercent,
+  reportProgress,
+  wrongFirstTries,
+} from '@/lib/curriculum/observer-report'
+import type { SessionReport } from '@/lib/curriculum/session-report'
 import { css } from '../../../styled-system/css'
 import { formatMs } from './autoPauseCalculator'
 import { CompactLinearProblem } from './CompactProblemDisplay'
 import { getPurposeColors, getPurposeConfig } from './purposeExplanations'
 
 interface LiveResultsPanelProps {
-  /** Accumulated results from the session */
+  /** The session report: every count, progress figure and time shown here */
+  report: SessionReport
+  /** The report's tries joined to their problems (the list only) */
   results: ObservedResult[]
-  /** Total problems in the session */
-  totalProblems: number
   /** Whether dark mode */
   isDark: boolean
   /** Callback to expand to full report view */
   onExpandFullReport?: () => void
+}
+
+/** Practice-only / excluded marks after a try's number (they never count). */
+export function TryMarks({
+  result,
+}: {
+  result: Pick<ObservedResult, 'practiceOnly' | 'excluded'>
+}) {
+  return (
+    <>
+      {result.practiceOnly && (
+        <span data-element="practice-only-mark" title="Practice only: does not count">
+          {' '}
+          (practice)
+        </span>
+      )}
+      {result.excluded && (
+        <span data-element="excluded-mark" title="Excluded by an adult: does not count">
+          {' '}
+          (excluded)
+        </span>
+      )}
+    </>
+  )
 }
 
 /**
@@ -99,6 +130,13 @@ function ObservedResultItem({ result, isDark }: { result: ObservedResult; isDark
             })}
           >
             #{result.problemNumber}
+            {result.isRetry && (
+              <span data-element="retry-mark" title="Do-over">
+                {' '}
+                ↻
+              </span>
+            )}
+            <TryMarks result={result} />
           </span>
 
           {/* Status indicator */}
@@ -314,35 +352,37 @@ function ObservedResultItem({ result, isDark }: { result: ObservedResult; isDark
 /**
  * LiveResultsPanel - Shows real-time accumulated results during session observation
  *
- * Always shows:
- * - Summary stats (progress, accuracy, incorrect count)
+ * Always shows (numbers from the session report, Phase 4c):
+ * - Summary stats (progress, first-try accuracy, wrong first tries)
  * - Problem list (toggle between incorrect only and all)
  * - "Full Report" button to expand to comprehensive view
  */
 export function LiveResultsPanel({
+  report,
   results,
-  totalProblems,
   isDark,
   onExpandFullReport,
 }: LiveResultsPanelProps) {
   const [showAllProblems, setShowAllProblems] = useState(false)
 
-  // Compute stats
-  const stats = useMemo(() => {
-    const correct = results.filter((r) => r.isCorrect).length
-    const incorrect = results.filter((r) => !r.isCorrect).length
-    const completed = results.length
-    const accuracy = completed > 0 ? correct / completed : 0
-    return { correct, incorrect, completed, accuracy }
-  }, [results])
+  // Every number from the report
+  const progress = reportProgress(report)
+  const stats = {
+    completed: progress.done,
+    total: progress.total,
+    accuracy: report.totals.firstTryAccuracy ?? 0,
+    accuracyText: formatPercent(report.totals.firstTryAccuracy),
+    incorrect: firstTriesWrong(report),
+  }
 
-  // Get incorrect results
-  const incorrectResults = useMemo(() => results.filter((r) => !r.isCorrect), [results])
+  // Wrong first tries, by the totals' rule (the badge above is the report's count)
+  const incorrectResults = useMemo(() => wrongFirstTries(results), [results])
 
-  // Compute per-purpose accuracy
+  // First-try accuracy per purpose, over the first tries the totals count
   const purposeStats = useMemo(() => {
     const groups: Record<string, { correct: number; total: number }> = {}
     for (const r of results) {
+      if (!r.isFirstTry) continue
       if (!groups[r.purpose]) groups[r.purpose] = { correct: 0, total: 0 }
       groups[r.purpose].total++
       if (r.isCorrect) groups[r.purpose].correct++
@@ -350,8 +390,8 @@ export function LiveResultsPanel({
     return groups
   }, [results])
 
-  // No results yet - show placeholder
-  if (results.length === 0) {
+  // No tries yet - show placeholder
+  if (report.totals.tries === 0) {
     return (
       <div
         data-component="live-results-panel"
@@ -416,7 +456,7 @@ export function LiveResultsPanel({
               color: isDark ? 'gray.300' : 'gray.600',
             })}
           >
-            {stats.completed}/{totalProblems}
+            {stats.completed}/{stats.total}
           </span>
 
           {/* Accuracy */}
@@ -438,7 +478,7 @@ export function LiveResultsPanel({
                       : 'red.600',
             })}
           >
-            {Math.round(stats.accuracy * 100)}%
+            {stats.accuracyText}
           </span>
 
           {/* Incorrect count badge */}
@@ -562,8 +602,8 @@ export function LiveResultsPanel({
               color: isDark ? 'gray.400' : 'gray.600',
             })}
           >
-            {showAllProblems ? 'All Problems' : 'Incorrect'}
-            {!showAllProblems && stats.incorrect > 0 && ` (${stats.incorrect})`}
+            {showAllProblems ? `All Tries (${results.length})` : 'Incorrect'}
+            {!showAllProblems && incorrectResults.length > 0 && ` (${incorrectResults.length})`}
           </span>
 
           {/* Toggle between incorrect only and all */}
@@ -606,12 +646,8 @@ export function LiveResultsPanel({
               {showAllProblems ? 'No problems completed yet' : 'No incorrect problems yet'}
             </div>
           ) : (
-            (showAllProblems ? results : incorrectResults).map((result, index) => (
-              <ObservedResultItem
-                key={`${result.problemNumber}-${result.recordedAt}-${index}`}
-                result={result}
-                isDark={isDark}
-              />
+            (showAllProblems ? results : incorrectResults).map((result) => (
+              <ObservedResultItem key={result.tryId} result={result} isDark={isDark} />
             ))
           )}
         </div>

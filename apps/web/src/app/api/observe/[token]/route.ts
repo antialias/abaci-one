@@ -1,112 +1,54 @@
 import { NextResponse } from 'next/server'
-import { eq } from 'drizzle-orm'
-import { db } from '@/db'
-import { players, sessionPlans } from '@/db/schema'
 import { withAuth } from '@/lib/auth/withAuth'
-import { validateSessionShare } from '@/lib/session-share'
+import { loadSharedPlan } from '@/lib/curriculum/shared-session-report'
 
 /**
  * GET /api/observe/[token]
  * Validate a share token and return session/player info
  *
  * This endpoint does NOT require authentication - anyone with the token can access it.
+ * Live / ended / not started is the session's outcome (Phase 4c), as the share
+ * page and the token report route decide it: ended (completed, ended early,
+ * abandoned) answers 410, not started 425. It reads the plan row only (no
+ * report build), so a report failure cannot fail it.
  */
 export const GET = withAuth(async (_request, { params }) => {
   const { token } = (await params) as { token: string }
 
   try {
-    // Validate the token
-    const validation = await validateSessionShare(token)
-
-    if (!validation.valid || !validation.share) {
-      return NextResponse.json(
-        {
-          valid: false,
-          error: validation.error || 'Invalid share link',
-        },
-        { status: 404 }
-      )
+    const shared = await loadSharedPlan(token)
+    if (shared.kind !== 'ok') {
+      return NextResponse.json({ valid: false, error: shared.error }, { status: 404 })
     }
 
-    const share = validation.share
-
-    // Get the session
-    const sessions = await db
-      .select()
-      .from(sessionPlans)
-      .where(eq(sessionPlans.id, share.sessionId))
-      .limit(1)
-
-    const session = sessions[0]
-    if (!session) {
+    if (shared.outcome === 'completed' || shared.outcome === 'abandoned') {
       return NextResponse.json(
-        {
-          valid: false,
-          error: 'Session not found',
-        },
-        { status: 404 }
-      )
-    }
-
-    // Check if session is still active
-    if (session.completedAt) {
-      return NextResponse.json(
-        {
-          valid: false,
-          error: 'Session has ended',
-        },
+        { valid: false, error: 'Session has ended' },
         { status: 410 } // Gone
       )
     }
 
-    if (!session.startedAt) {
+    if (shared.outcome === 'not_started') {
       return NextResponse.json(
-        {
-          valid: false,
-          error: 'Session has not started yet',
-        },
+        { valid: false, error: 'Session has not started yet' },
         { status: 425 } // Too Early
       )
     }
 
-    // Get the player info
-    const playerResults = await db
-      .select({
-        id: players.id,
-        name: players.name,
-        emoji: players.emoji,
-        color: players.color,
-      })
-      .from(players)
-      .where(eq(players.id, share.playerId))
-      .limit(1)
-
-    const player = playerResults[0]
+    const { plan, player, share } = shared
     if (!player) {
-      return NextResponse.json(
-        {
-          valid: false,
-          error: 'Player not found',
-        },
-        { status: 404 }
-      )
+      return NextResponse.json({ valid: false, error: 'Player not found' }, { status: 404 })
     }
 
     return NextResponse.json({
       valid: true,
       session: {
-        id: session.id,
-        playerId: session.playerId,
-        startedAt:
-          session.startedAt instanceof Date ? session.startedAt.getTime() : session.startedAt,
+        id: plan.id,
+        playerId: plan.playerId,
+        startedAt: plan.startedAt ? new Date(plan.startedAt).getTime() : null,
       },
-      player: {
-        id: player.id,
-        name: player.name,
-        emoji: player.emoji,
-        color: player.color,
-      },
-      expiresAt: share.expiresAt instanceof Date ? share.expiresAt.getTime() : share.expiresAt,
+      player,
+      expiresAt: share.expiresAt.getTime(),
     })
   } catch (error) {
     console.error('Error validating share token:', error)

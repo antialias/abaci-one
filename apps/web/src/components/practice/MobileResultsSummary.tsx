@@ -1,14 +1,12 @@
 'use client'
 
-import { useMemo } from 'react'
-import type { ObservedResult } from '@/hooks/useSessionObserver'
+import { firstTriesWrong, formatPercent, reportProgress } from '@/lib/curriculum/observer-report'
+import type { SessionReport } from '@/lib/curriculum/session-report'
 import { css } from '../../../styled-system/css'
 
 interface MobileResultsSummaryProps {
-  /** Accumulated results from the session */
-  results: ObservedResult[]
-  /** Total problems in the session */
-  totalProblems: number
+  /** The session report: every number shown here */
+  report: SessionReport
   /** Whether dark mode */
   isDark: boolean
   /** Callback to expand to full report view */
@@ -18,26 +16,22 @@ interface MobileResultsSummaryProps {
 /**
  * Compact results summary for mobile screens
  *
- * Shows progress, accuracy, and incorrect count in a horizontal chip layout.
+ * Shows progress, first-try accuracy and wrong first tries (from the session
+ * report, Phase 4c) in a horizontal chip layout.
  * Tapping expands to full report view.
  */
-export function MobileResultsSummary({
-  results,
-  totalProblems,
-  isDark,
-  onExpand,
-}: MobileResultsSummaryProps) {
-  // Compute stats
-  const stats = useMemo(() => {
-    const correct = results.filter((r) => r.isCorrect).length
-    const incorrect = results.filter((r) => !r.isCorrect).length
-    const completed = results.length
-    const accuracy = completed > 0 ? correct / completed : 0
-    return { correct, incorrect, completed, accuracy }
-  }, [results])
+export function MobileResultsSummary({ report, isDark, onExpand }: MobileResultsSummaryProps) {
+  const progress = reportProgress(report)
+  const stats = {
+    completed: progress.done,
+    total: progress.total,
+    accuracy: report.totals.firstTryAccuracy ?? 0,
+    accuracyText: formatPercent(report.totals.firstTryAccuracy),
+    incorrect: firstTriesWrong(report),
+  }
 
-  // No results yet - show minimal placeholder
-  if (results.length === 0) {
+  // No tries yet - show minimal placeholder
+  if (report.totals.tries === 0) {
     return (
       <div
         data-component="mobile-results-summary"
@@ -87,7 +81,7 @@ export function MobileResultsSummary({
           color: isDark ? 'gray.200' : 'gray.700',
         })}
       >
-        {stats.completed}/{totalProblems}
+        {stats.completed}/{stats.total}
       </span>
 
       {/* Divider */}
@@ -118,7 +112,7 @@ export function MobileResultsSummary({
                   : 'red.600',
         })}
       >
-        {Math.round(stats.accuracy * 100)}%
+        {stats.accuracyText}
       </span>
 
       {/* Incorrect count badge (only if there are incorrect) */}

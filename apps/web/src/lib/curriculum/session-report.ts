@@ -15,7 +15,7 @@
  * Client-safe: no drizzle, no server imports.
  */
 
-import { countedTries, isCountedTry, isExcludedTry } from '@/db/schema/session-plan-helpers'
+import { isCountedTry, isExcludedTry } from '@/db/schema/session-plan-helpers'
 import {
   adjustmentsOf,
   type BreakGameResult,
@@ -254,6 +254,49 @@ function isVerdictTry(t: Try): boolean {
   return isCountedTry(t) && !isExcludedTry(t.result)
 }
 
+/**
+ * An item's first try (§4): its `first` try, else (odd legacy rows) its
+ * earliest counted try. One rule for the totals and for views of `tries`.
+ */
+function firstTryOfItem<T extends { kind: string }>(
+  group: readonly T[],
+  counted: (t: T) => boolean
+): T | undefined {
+  return group.find((t) => t.kind === 'first') ?? group.find(counted)
+}
+
+/** `isVerdictTry` on a report row: counted (not practice-only; voided rows are never listed) and not excluded. */
+export function isVerdictTryRow(row: Pick<TryRow, 'practiceOnly' | 'excluded'>): boolean {
+  return isCountedTry({ practiceOnly: row.practiceOnly }) && !row.excluded
+}
+
+/**
+ * Each item's first-try row in `tries`, by the totals' rule (`firstTryOfItem`):
+ * `first` holds every item's first try, `verdict` those that carry the item's
+ * first-try verdict (the ones `totals.problems` counts). Views that list
+ * first tries use these sets, so their rows agree with the totals.
+ */
+export function firstTryRows(rows: readonly TryRow[]): {
+  first: Set<string>
+  verdict: Set<string>
+} {
+  const byItem = new Map<string, TryRow[]>()
+  for (const r of rows) {
+    const group = byItem.get(r.itemId)
+    if (group) group.push(r)
+    else byItem.set(r.itemId, [r])
+  }
+  const first = new Set<string>()
+  const verdict = new Set<string>()
+  for (const group of byItem.values()) {
+    const row = firstTryOfItem(group, (r) => isCountedTry({ practiceOnly: r.practiceOnly }))
+    if (!row) continue
+    first.add(row.tryId)
+    if (isVerdictTryRow(row)) verdict.add(row.tryId)
+  }
+  return { first, verdict }
+}
+
 interface ItemVerdict {
   partIndex: number
   attempted: boolean
@@ -276,7 +319,7 @@ function itemVerdicts(live: readonly Try[]): ItemVerdict[] {
   }
   const verdicts: ItemVerdict[] = []
   for (const group of byItem.values()) {
-    const first = group.find((t) => t.kind === 'first') ?? countedTries(group)[0]
+    const first = firstTryOfItem(group, isCountedTry)
     const attempted = !!first && isVerdictTry(first)
     const weighted = group.filter(isVerdictTry)
     const final = weighted[weighted.length - 1]

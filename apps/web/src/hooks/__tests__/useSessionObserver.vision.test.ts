@@ -203,7 +203,7 @@ describe('useSessionObserver - vision frame receiving', () => {
 
       expect(result.current).toHaveProperty('visionFrame')
       expect(result.current).toHaveProperty('state')
-      expect(result.current).toHaveProperty('results')
+      expect(result.current).toHaveProperty('ended')
       expect(result.current).toHaveProperty('transitionState')
       expect(result.current).toHaveProperty('isConnected')
       expect(result.current).toHaveProperty('isObserving')

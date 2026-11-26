@@ -324,12 +324,18 @@ describe('Phase 4a: session report push and routes', () => {
       const last = reportsPushed(planId).at(-1)!
       expect(last).toMatchObject({ outcome: 'completed', rowVersion: after.rowVersion })
 
-      // One emit to the player, classroom and gated report rooms (deduped per socket);
-      // nothing named session-ended to `session:<id>`, where observers stop on it (P4a-4)
+      // One emit to the player, classroom, gated report and (Phase 4c) live
+      // session and stats rooms, deduped per socket (P4a-4, P4c-1)
       const ended = calls.filter((c) => c.event === 'session-ended')
       expect(ended).toHaveLength(1)
       expect([...ended[0].rooms].sort()).toEqual(
-        ['classroom:cls-1', `player:${playerId}`, `session-report:${planId}`].sort()
+        [
+          'classroom:cls-1',
+          `player:${playerId}`,
+          `session-report:${planId}`,
+          `session:${planId}`,
+          `session-stats:${planId}`,
+        ].sort()
       )
       expect(ended[0].data).toMatchObject({
         sessionId: planId,
@@ -338,7 +344,10 @@ describe('Phase 4a: session report push and routes', () => {
         outcome: 'completed',
         rowVersion: after.rowVersion,
       })
-      expect(emitted.filter((e) => e.room === `session:${planId}`)).toEqual([])
+      // The live room hears the end only, never a report (reports stay in the gated room)
+      expect(emitted.filter((e) => e.room === `session:${planId}`).map((e) => e.event)).toEqual([
+        'session-ended',
+      ])
       const lastReportAt = calls.findIndex((c) => c.data?.report === last)
       expect(calls.findIndex((c) => c.event === 'session-ended')).toBeGreaterThan(lastReportAt)
     })

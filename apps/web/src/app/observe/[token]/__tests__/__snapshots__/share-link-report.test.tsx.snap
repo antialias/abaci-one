@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`OG card from the session report > ten-problem fixture: the same numbers as the page (text snapshot) 1`] = `"+ = 🐱 Alice Practice session complete 10 + 3 = 13 11 + 4 = 15 70% first try 10/10 problems 3 fixed in retries 12m duration Abaci.One · Learn Soroban Through Play"`;
+
+exports[`share page (ended) from the session report > abandoned fixture: left unfinished, its own totals 1`] = `"⏸️🐱 Alice's session was left unfinished7/10Problems71%First try (5/7)2Fixed in retries100%Final (7/7)10MinutesActive 40s · Breaks 5mIf you have an account with access to this student, you can sign in to view the session report.Go to Home"`;
+
+exports[`share page (ended) from the session report > ten-problem fixture: the acceptance numbers 1`] = `"🎉🐱 Alice finished practicing!10/10Problems70%First try (7/10)3Fixed in retries100%Final (10/10)12MinutesActive 58s · Breaks 5mIf you have an account with access to this student, you can sign in to view the session report.Go to Home"`;

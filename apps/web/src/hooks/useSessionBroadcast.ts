@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
-import { createSocket } from '@/lib/socket'
 import type { BroadcastState } from '@/components/practice'
-import type { SessionPartType } from '@/db/schema/session-plans'
-import type { SessionFlowState } from '@/db/schema/session-plans'
+import type { SessionFlowState, SessionPartType } from '@/db/schema/session-plans'
+import { useUserId } from '@/hooks/useUserId'
 import type {
   AbacusControlEvent,
   ObserverCoPlayLeaveEvent,
@@ -18,6 +17,7 @@ import type {
   SessionResumedEvent,
   VisionFrameEvent,
 } from '@/lib/classroom/socket-events'
+import { createSocket } from '@/lib/socket'
 
 /**
  * Abacus control action received from teacher
@@ -135,6 +135,11 @@ export function useSessionBroadcast(
 ): UseSessionBroadcastResult {
   const socketRef = useRef<Socket | null>(null)
   const isConnectedRef = useRef(false)
+  // The viewer's id: the credential for joining the session room (Phase 4c;
+  // the server checks `observe` on the player, as it does for observers)
+  const { data: viewerId } = useUserId()
+  const viewerIdRef = useRef<string | null | undefined>(viewerId)
+  viewerIdRef.current = viewerId
   // Keep state in a ref so socket event handlers can access current state
   const stateRef = useRef<BroadcastState | null>(null)
   stateRef.current = state
@@ -239,13 +244,30 @@ export function useSessionBroadcast(
       console.log('[SessionBroadcast] Connected, joining session channel:', sessionId)
       isConnectedRef.current = true
       // Join the session channel so we can receive 'observer-joined' events
-      socket.emit('join-session', { sessionId })
+      // (checked by the server; joined below once the viewer id is known)
+      if (viewerIdRef.current) {
+        socket.emit('join-session', { sessionId, viewerId: viewerIdRef.current, playerId })
+      }
       // Broadcast current state immediately so any waiting observers get it
       broadcastFlowState()
       broadcastState()
     }
 
     socket.on('connect', handleConnect)
+
+    // The live room admitted this screen: the server relays its broadcasts
+    // only from now on (Phase 4c), so send the current state again for
+    // observers already waiting
+    socket.on('session-room-joined', (data: { sessionId: string }) => {
+      if (data?.sessionId !== sessionId) return
+      broadcastFlowState()
+      broadcastState()
+    })
+
+    // A refused join of the live room (Phase 4c): say so; no retry
+    socket.on('session-room-error', (data: { sessionId: string; error: string }) => {
+      console.warn('[SessionBroadcast] Session room join refused:', data.sessionId, data.error)
+    })
 
     // IMPORTANT: If socket is already connected (shared Manager), the 'connect' event
     // won't fire. We need to manually trigger the connect logic in this case.
@@ -355,6 +377,13 @@ export function useSessionBroadcast(
       isConnectedRef.current = false
     }
   }, [sessionId, playerId, broadcastState])
+
+  // The viewer id arrived after the socket connected: join the session room now
+  useEffect(() => {
+    const socket = socketRef.current
+    if (!viewerId || !socket || !isConnectedRef.current || !sessionId || !playerId) return
+    socket.emit('join-session', { sessionId, viewerId, playerId })
+  }, [viewerId, sessionId, playerId])
 
   // Broadcast flow state whenever it or break context changes
   useEffect(() => {

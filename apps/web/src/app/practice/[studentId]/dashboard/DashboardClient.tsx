@@ -3506,15 +3506,21 @@ export function DashboardClient({
   // Tab state - sync with URL
   const [activeTab, setActiveTab] = useState<TabId>(initialTab)
 
-  // Session observer state
-  const [isObserving, setIsObserving] = useState(false)
+  // Session observer state: the session being observed, kept while the modal
+  // is open so the ended view stays up after the active session clears (Phase 4c)
+  const [observedSessionId, setObservedSessionId] = useState<string | null>(null)
+  const isObserving = observedSessionId !== null
+  const setIsObserving = useCallback(
+    (open: boolean) => setObservedSessionId(open ? (activeSession?.id ?? null) : null),
+    [activeSession?.id]
+  )
 
   // Handle session observation from PracticeSubNav action menu
   const handleObserveSession = useCallback(
     (sessionId: string) => {
       // We're already on this student's page, just open the observer modal
       if (activeSession?.id === sessionId) {
-        setIsObserving(true)
+        setObservedSessionId(sessionId)
       }
     },
     [activeSession?.id]
@@ -3830,29 +3836,12 @@ export function DashboardClient({
             />
           )}
 
-          {/* Session Observer Modal */}
-          {isObserving && activeSession && (
+          {/* Session Observer Modal: everything it shows comes from the session report */}
+          {observedSessionId && (
             <SessionObserverModal
               isOpen={isObserving}
               onClose={() => setIsObserving(false)}
-              session={{
-                sessionId: activeSession.id,
-                playerId: studentId,
-                startedAt:
-                  typeof activeSession.createdAt === 'string'
-                    ? activeSession.createdAt
-                    : activeSession.createdAt instanceof Date
-                      ? activeSession.createdAt.toISOString()
-                      : new Date().toISOString(),
-                currentPartIndex: activeSession.currentPartIndex ?? 0,
-                currentSlotIndex: activeSession.currentSlotIndex ?? 0,
-                totalParts: activeSession.parts?.length ?? 1,
-                totalProblems:
-                  activeSession.parts?.reduce((sum, p) => sum + p.slots.length, 0) ?? 0,
-                completedProblems: countedTries(activeSession.results).filter(
-                  (r) => r.isCorrect !== null
-                ).length,
-              }}
+              session={{ sessionId: observedSessionId, playerId: studentId }}
               student={{
                 name: player.name,
                 emoji: player.emoji,

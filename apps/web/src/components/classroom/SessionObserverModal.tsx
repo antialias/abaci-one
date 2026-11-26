@@ -17,10 +17,26 @@ import { Z_INDEX } from '@/constants/zIndex'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { ActiveSessionInfo } from '@/hooks/useClassroom'
+import { useObserverCoPlayProfile } from '@/hooks/useObserverCoPlayProfile'
 import { useSessionObserver } from '@/hooks/useSessionObserver'
+import { type SessionReportSource, useSessionReport } from '@/hooks/useSessionReport'
+import {
+  observedResultsFromReport,
+  reportCurrentProblemNumber,
+  reportEnding,
+  reportProgress,
+} from '@/lib/curriculum/observer-report'
+import type { SessionReport } from '@/lib/curriculum/session-report'
 import { api } from '@/lib/queryClient'
+import {
+  getAttemptLabel,
+  getVideoAttemptsForProblem,
+  type VideoAttemptInfo,
+} from '@/lib/utils/attempt-tracking'
 import { css } from '../../../styled-system/css'
 import { AbacusDock } from '../AbacusDock'
+import { ObserverDebugPanel } from '../debug/ObserverDebugPanel'
+import { LinearProblem } from '../practice/LinearProblem'
 import { LiveResultsPanel } from '../practice/LiveResultsPanel'
 import { LiveSessionReportInline } from '../practice/LiveSessionReportModal'
 import { MobileResultsSummary } from '../practice/MobileResultsSummary'
@@ -30,27 +46,40 @@ import { PurposeBadge } from '../practice/PurposeBadge'
 import { SessionPlanOverview } from '../practice/SessionPlanOverview'
 import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
 import { VerticalProblem } from '../practice/VerticalProblem'
-import { LinearProblem } from '../practice/LinearProblem'
 import { ObserverVisionFeed } from '../vision/ObserverVisionFeed'
 import { ProblemVideoPlayer } from '../vision/ProblemVideoPlayer'
-import {
-  type VideoAttemptInfo,
-  getVideoAttemptsForProblem,
-  getAttemptLabel,
-} from '@/lib/utils/attempt-tracking'
-import { ObserverDebugPanel } from '../debug/ObserverDebugPanel'
-import { useObserverCoPlayProfile } from '@/hooks/useObserverCoPlayProfile'
 import { GameBreakSpectatorView } from './GameBreakSpectatorView'
 import { ObserverOnboardingCard } from './ObserverOnboardingCard'
+import { SessionEndedSummary } from './SessionEndedSummary'
 import { SessionShareButton } from './SessionShareButton'
+
+/**
+ * The session an observer watches: its id and player. Everything shown about
+ * it (progress, counts, times, how it ended) comes from the session report
+ * (Phase 4c), not from the caller.
+ */
+export type ObservedSessionRef = Pick<ActiveSessionInfo, 'sessionId' | 'playerId'>
+
+/** "Problem 4 of 10" while live; how it ended once ended; empty until the report loads. */
+export function observerHeaderLine(report: SessionReport | undefined, ended: boolean): string {
+  if (!report) return ended ? 'Session ended' : ''
+  const ending = reportEnding(report)
+  if (ending === 'completed') return 'Session complete'
+  if (ending === 'ended_early') return 'Session ended early'
+  if (ending === 'abandoned') return 'Session left unfinished'
+  if (ended) return 'Session ended'
+  const current = reportCurrentProblemNumber(report)
+  const { total } = reportProgress(report)
+  return current !== null ? `Problem ${current} of ${total}` : ''
+}
 
 interface SessionObserverModalProps {
   /** Whether the modal is open */
   isOpen: boolean
   /** Close the modal */
   onClose: () => void
-  /** Session info from the active sessions list */
-  session: ActiveSessionInfo
+  /** The session to observe */
+  session: ObservedSessionRef
   /** Student info for display */
   student: {
     name: string
@@ -66,7 +95,7 @@ interface SessionObserverModalProps {
 }
 
 interface SessionObserverViewProps {
-  session: ActiveSessionInfo
+  session: ObservedSessionRef
   student: SessionObserverModalProps['student']
   observerId: string
   /** Optional share token for public/guest observation (bypasses user auth) */
@@ -77,6 +106,8 @@ interface SessionObserverViewProps {
   canShare?: boolean
   /** Classroom ID for entry prompts (teachers only) */
   classroomId?: string
+  /** Link to the full session report, shown in the ended view */
+  sessionReportUrl?: string
   onClose?: () => void
   onRequestFullscreen?: () => void
   renderCloseButton?: (button: ReactElement) => ReactElement
@@ -170,6 +201,7 @@ export function SessionObserverView({
   isViewOnly = false,
   canShare = false,
   classroomId,
+  sessionReportUrl,
   onClose,
   onRequestFullscreen,
   renderCloseButton,
@@ -183,7 +215,6 @@ export function SessionObserverView({
   // Subscribe to the session's socket channel
   const {
     state,
-    results,
     transitionState,
     flowState,
     breakState,
@@ -191,6 +222,7 @@ export function SessionObserverView({
     isConnected,
     isObserving,
     error,
+    ended: endedEvent,
     sendControl,
     sendPause,
     sendResume,
@@ -201,6 +233,23 @@ export function SessionObserverView({
     sendCoPlayReady,
     sendCoPlayLeave,
   } = useSessionObserver(session.sessionId, observerId, session.playerId, true, shareToken)
+
+  // The session report (Phase 4c): every count, progress figure and time shown
+  // here, live by push; the share link reads it with its token
+  const reportSource: SessionReportSource | null = shareToken
+    ? { token: shareToken }
+    : observerId
+      ? { playerId: session.playerId, planId: session.sessionId, viewerId: observerId }
+      : null
+  const { data: report } = useSessionReport(reportSource)
+  // The report's tries joined to the problems by item identity (do-overs keep their number)
+  const results = useMemo(
+    () => observedResultsFromReport(report, state?.sessionParts),
+    [report, state?.sessionParts]
+  )
+  // Ended: the server said so on the session room, or the report already shows it
+  const isEnded = endedEvent !== null || reportEnding(report) !== null
+  const headerLine = observerHeaderLine(report, isEnded)
 
   // Co-play readiness: signal observer profile to the session channel
   const { profile: coPlayProfile } = useObserverCoPlayProfile()
@@ -530,8 +579,7 @@ export function SessionObserverView({
                     margin: 0,
                   })}
                 >
-                  Problem {state?.currentProblemNumber ?? session.completedProblems + 1} of{' '}
-                  {state?.totalProblems ?? session.totalProblems}
+                  {headerLine}
                 </Dialog.Description>
               </>
             ) : (
@@ -556,8 +604,7 @@ export function SessionObserverView({
                     margin: 0,
                   })}
                 >
-                  Problem {state?.currentProblemNumber ?? session.completedProblems + 1} of{' '}
-                  {state?.totalProblems ?? session.totalProblems}
+                  {headerLine}
                 </p>
               </>
             )}
@@ -605,7 +652,8 @@ export function SessionObserverView({
       </div>
 
       {/* Session Progress Indicator - same component shown to student */}
-      {state?.sessionParts &&
+      {!isEnded &&
+        state?.sessionParts &&
         state.currentPartIndex !== undefined &&
         state.currentSlotIndex !== undefined && (
           <div
@@ -714,7 +762,7 @@ export function SessionObserverView({
                       color: isDark ? 'gray.400' : 'gray.500',
                     })}
                   >
-                    • Student is on #{state?.currentProblemNumber ?? '—'}
+                    • Student is on #{(report && reportCurrentProblemNumber(report)) ?? '—'}
                   </span>
                 </div>
                 <button
@@ -745,7 +793,8 @@ export function SessionObserverView({
         )}
 
       {/* Session Plan Overview - collapsible summary of the full session structure */}
-      {state?.sessionParts &&
+      {!isEnded &&
+        state?.sessionParts &&
         state.currentPartIndex !== undefined &&
         state.currentSlotIndex !== undefined && (
           <div
@@ -777,8 +826,27 @@ export function SessionObserverView({
           backgroundColor: variant === 'page' ? (isDark ? 'gray.900' : 'white') : undefined,
         })}
       >
+        {/* The ended view (Phase 4c): the final report stays on screen */}
+        {isEnded &&
+          (report && reportEnding(report) ? (
+            <SessionEndedSummary
+              report={report}
+              studentName={student.name}
+              studentEmoji={student.emoji}
+              sessionReportUrl={sessionReportUrl}
+              isDark={isDark}
+            />
+          ) : (
+            <p
+              data-element="session-ended-loading"
+              className={css({ color: isDark ? 'gray.400' : 'gray.500' })}
+            >
+              {student.name}&apos;s session has ended.
+            </p>
+          ))}
+
         {/* Connection status */}
-        {!isConnected && !error && (
+        {!isEnded && !isConnected && !error && (
           <div
             className={css({
               textAlign: 'center',
@@ -954,7 +1022,7 @@ export function SessionObserverView({
           </div>
         )}
 
-        {isObserving && !state && showPractice && !transitionState && (
+        {!isEnded && isObserving && !state && showPractice && !transitionState && (
           <div
             className={css({
               textAlign: 'center',
@@ -971,7 +1039,7 @@ export function SessionObserverView({
         )}
 
         {/* Part transition view - shows when student is between parts */}
-        {transitionState && (
+        {!isEnded && transitionState && (
           <ObserverTransitionView
             previousPartType={transitionState.previousPartType}
             nextPartType={transitionState.nextPartType}
@@ -982,7 +1050,8 @@ export function SessionObserverView({
         )}
 
         {/* Game break view - driven by authoritative flowState */}
-        {isInGameBreak &&
+        {!isEnded &&
+          isInGameBreak &&
           (breakState ? (
             breakState.phase === 'playing' && breakState.gameId ? (
               // Observer (authenticated or guest): render live game spectator view
@@ -1089,7 +1158,7 @@ export function SessionObserverView({
           ))}
 
         {/* Game break results view - student reviewing game results */}
-        {isInBreakResults && (
+        {!isEnded && isInBreakResults && (
           <div
             data-element="game-break-results-overlay"
             className={css({
@@ -1116,7 +1185,7 @@ export function SessionObserverView({
         )}
 
         {/* Past problem video playback - shown when clicking a completed problem in progress indicator */}
-        {state && selectedProblemNumber !== null && !transitionState && (
+        {!isEnded && state && selectedProblemNumber !== null && !transitionState && (
           <ProblemVideoPlayer
             playerId={session.playerId}
             sessionId={session.sessionId}
@@ -1128,7 +1197,8 @@ export function SessionObserverView({
         )}
 
         {/* Main content - either problem view or full report view */}
-        {state &&
+        {!isEnded &&
+          state &&
           !showFullReport &&
           showPractice &&
           !transitionState &&
@@ -1153,12 +1223,14 @@ export function SessionObserverView({
                   flexShrink: 0,
                 })}
               >
-                <LiveResultsPanel
-                  results={results}
-                  totalProblems={state.totalProblems}
-                  isDark={isDark}
-                  onExpandFullReport={() => setShowFullReport(true)}
-                />
+                {report && (
+                  <LiveResultsPanel
+                    report={report}
+                    results={results}
+                    isDark={isDark}
+                    onExpandFullReport={() => setShowFullReport(true)}
+                  />
+                )}
               </div>
 
               {/* Problem area - center */}
@@ -1270,34 +1342,39 @@ export function SessionObserverView({
                     justifyContent: 'center',
                   })}
                 >
-                  <MobileResultsSummary
-                    results={results}
-                    totalProblems={state.totalProblems}
-                    isDark={isDark}
-                    onExpand={() => setShowFullReport(true)}
-                  />
+                  {report && (
+                    <MobileResultsSummary
+                      report={report}
+                      isDark={isDark}
+                      onExpand={() => setShowFullReport(true)}
+                    />
+                  )}
                 </div>
               </div>
             </div>
           )}
 
         {/* Full Report View - inline */}
-        {state && showFullReport && (
+        {!isEnded && report && showFullReport && (
           <LiveSessionReportInline
+            report={report}
             results={results}
-            totalProblems={state.totalProblems}
-            sessionStartTime={state.timing.startedAt}
             isDark={isDark}
             onBack={() => setShowFullReport(false)}
           />
         )}
 
         {/* Observer co-play onboarding — shown during practice, not during breaks or view-only */}
-        {!isViewOnly && !isInGameBreak && !isInBreakResults && !isInTransition && showPractice && (
-          <div className={css({ width: '100%', maxWidth: '500px', mt: 'auto', pt: '0.5rem' })}>
-            <ObserverOnboardingCard isDark={isDark} studentName={student.name} />
-          </div>
-        )}
+        {!isEnded &&
+          !isViewOnly &&
+          !isInGameBreak &&
+          !isInBreakResults &&
+          !isInTransition &&
+          showPractice && (
+            <div className={css({ width: '100%', maxWidth: '500px', mt: 'auto', pt: '0.5rem' })}>
+              <ObserverOnboardingCard isDark={isDark} studentName={student.name} />
+            </div>
+          )}
       </div>
 
       {/* Footer with connection status and controls */}
@@ -1321,7 +1398,13 @@ export function SessionObserverView({
               borderRadius: '50%',
             })}
             style={{
-              backgroundColor: isObserving ? '#10b981' : isConnected ? '#eab308' : '#6b7280',
+              backgroundColor: isEnded
+                ? '#6366f1'
+                : isObserving
+                  ? '#10b981'
+                  : isConnected
+                    ? '#eab308'
+                    : '#6b7280',
             }}
           />
           <span
@@ -1330,12 +1413,18 @@ export function SessionObserverView({
               color: isDark ? 'gray.400' : 'gray.500',
             })}
           >
-            {isObserving ? 'Live' : isConnected ? 'Connected' : 'Disconnected'}
+            {isEnded
+              ? 'Session ended'
+              : isObserving
+                ? 'Live'
+                : isConnected
+                  ? 'Connected'
+                  : 'Disconnected'}
           </span>
         </div>
 
         {/* Teacher controls: pause/resume and dock abaci (hidden for view-only observers) */}
-        {!isViewOnly && (
+        {!isViewOnly && !isEnded && (
           <div
             className={css({
               display: 'flex',

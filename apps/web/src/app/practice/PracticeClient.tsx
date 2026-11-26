@@ -594,15 +594,9 @@ export function PracticeClient({ initialPickerData, viewerId, userId }: Practice
           isOpen={!!observingStudent}
           onClose={() => setObservingStudent(null)}
           session={{
+            // The observer reads progress and counts from the session report
             sessionId: observingStudent.activity.sessionId,
             playerId: observingStudent.id,
-            completedProblems: observingStudent.activity.sessionProgress?.current ?? 0,
-            totalProblems: observingStudent.activity.sessionProgress?.total ?? 0,
-            // These fields are required by the type but not used by the modal
-            startedAt: new Date().toISOString(),
-            currentPartIndex: 0,
-            currentSlotIndex: 0,
-            totalParts: 1,
           }}
           student={{
             name: observingStudent.name,
