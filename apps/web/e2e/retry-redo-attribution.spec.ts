@@ -507,10 +507,19 @@ test.describe('retry / do-over attribution', () => {
     await page.screenshot({ path: `${SHOTS}/s4-summary.png`, fullPage: true })
     const server = await getPlan(request, playerId, plan.id)
     expect(server.status).toBe('completed')
-    const correct = server.results.filter((r) => r.isCorrect).length
-    await expect(page.locator('[data-element="stat-problems"]').first()).toContainText(
-      `${correct}/${server.results.length}`
+    // The summary shows the session report's totals; the report counts the stored tries
+    const reportRes = await request.get(
+      `/api/curriculum/${playerId}/sessions/plans/${plan.id}/report`
     )
+    expect(reportRes.ok()).toBe(true)
+    const { totals } = (await reportRes.json()).report as {
+      totals: { problems: number; tries: number }
+    }
+    expect(totals.tries).toBe(server.results.length)
+    expect(totals.problems).toBe(plan.parts.reduce((n, p) => n + p.slots.length, 0))
+    const problemsStat = page.locator('[data-element="stat-problems"]').first()
+    await expect(problemsStat.locator('[data-value]')).toHaveText(`${totals.problems}`)
+    await expect(problemsStat).toContainText(`${totals.tries} tries`)
     const retryTry = server.results.find((r) => r.partNumber === 1 && r.epochNumber === 1)
     expect(retryTry).toMatchObject({ slotId: plan.parts[0].slots[0].slotId, originalSlotIndex: 0 })
     expect(await toasts(page)).toEqual([])

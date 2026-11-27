@@ -358,3 +358,72 @@ export function reportOf(fixture: SessionReportFixture): SessionReport {
 export function tenProblemSessionReport(): SessionReport {
   return reportOf(tenProblemSession())
 }
+
+/**
+ * The ten-problem session paused in part 3's retry round (Phase 4b, the
+ * paused modal): every first try made (12 tries, part 3's slot 0 awaiting its
+ * retry), so `position.progress` is 10 of 10 while `results` holds 12 rows.
+ */
+export function pausedTenProblemSession(): SessionReportFixture {
+  const id = 'fx-paused'
+  const parts = fixtureParts()
+  const results = tenProblemTries()
+    .slice(0, 12)
+    .map((spec, i) => rowOf(parts, spec, i + 1))
+  const wrong = parts[2].slots[0]
+  return {
+    plan: planOf(id, parts, results, {
+      status: 'in_progress',
+      flowState: 'practicing',
+      currentPartIndex: 2,
+      currentSlotIndex: 3,
+      retryState: {
+        2: {
+          currentEpoch: 1,
+          pendingRetries: [],
+          currentEpochItems: [
+            {
+              slotId: wrong.slotId,
+              originalSlotIndex: 0,
+              problem: wrong.problem!,
+              epochNumber: 1,
+              originalPurpose: 'focus',
+            },
+          ],
+          currentRetryIndex: 0,
+        },
+      },
+      isPaused: true,
+      pausedAt: new Date(T0 + 700 * S),
+      pausedBy: 'kid',
+      pauseReason: 'manual',
+      completedAt: null,
+    }),
+    gameResults: [fixtureBreakGameResult(id)],
+    song: null,
+    now: T0 + 710 * S,
+  }
+}
+
+/** The paused session's report (Phase 4b). */
+export function pausedTenProblemSessionReport(): SessionReport {
+  return reportOf(pausedTenProblemSession())
+}
+
+/**
+ * An offline (worksheet) session with problems (Phase 4b): ten first tries,
+ * 7 right, no timing (`startedAt` null, every `responseTimeMs` 0).
+ */
+export function offlineWorksheetSession(): SessionReportFixture {
+  const id = 'fx-offline-worksheet'
+  const parts = fixtureParts()
+  const results = tenProblemTries()
+    .filter((spec) => (spec.round ?? 0) === 0)
+    .map((spec, i) => rowOf(parts, { ...spec, ms: 0 }, i + 1))
+  return {
+    plan: planOf(id, parts, results, { startedAt: null, completedAt: new Date(T0) }),
+    gameResults: [],
+    song: null,
+    now: SESSION_REPORT_NOW,
+  }
+}

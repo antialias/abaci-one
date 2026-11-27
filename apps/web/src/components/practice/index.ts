@@ -5,7 +5,7 @@
  * - StudentSelector: Choose which student is practicing
  * - ProgressDashboard: Show current progress and actions
  * - ActiveSession: Solve problems during practice
- * - SessionSummary: Results after completing session
+ * - SessionHero: Results after completing session (from the session report)
  */
 
 export type {
@@ -86,7 +86,6 @@ export type { ScrollspySection, ScrollspyNavProps } from './ScrollspyNav'
 export { ScrollspyNav } from './ScrollspyNav'
 export type { SessionHeroProps } from './SessionHero'
 export { SessionHero } from './SessionHero'
-export { SessionSummary } from './SessionSummary'
 export type { SkillsPanelProps } from './SkillsPanel'
 export { SkillsPanel } from './SkillsPanel'
 export type { ProblemsToReviewPanelProps } from './ProblemsToReviewPanel'

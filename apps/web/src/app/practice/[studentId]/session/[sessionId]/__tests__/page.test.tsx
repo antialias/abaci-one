@@ -15,6 +15,13 @@ vi.mock('@/lib/curriculum/server', () => ({
   getRecentSessionResults: async () => [],
   getPaceAssessment: async () => ({ avgSecondsPerProblem: 5 }),
 }))
+const loadSessionReport = vi.fn(async (plan: { id: string }) => ({
+  sessionId: plan.id,
+  rowVersion: 3,
+}))
+vi.mock('@/lib/curriculum/session-report-server', () => ({
+  loadSessionReport: (plan: { id: string }) => loadSessionReport(plan),
+}))
 vi.mock('next/navigation', () => ({
   notFound: () => {
     throw new Error('notFound')
@@ -28,7 +35,12 @@ async function render() {
   const el = await SessionPage({
     params: Promise.resolve({ studentId: 'kid-1', sessionId: 'plan-1' }),
   })
-  return el.props as { songEnabled?: boolean; session: { id: string } }
+  return el.props as {
+    songEnabled?: boolean
+    session: { id: string }
+    initialReport?: { sessionId: string }
+    viewerId?: string
+  }
 }
 
 describe('past session page', () => {
@@ -42,6 +54,9 @@ describe('past session page', () => {
     getEffectiveTierForStudent.mockResolvedValue({ tier: 'family' })
     const props = await render()
     expect(props.session.id).toBe('plan-1')
+    // The report renders first (Phase 4b); the viewer joins its push room
+    expect(props.initialReport?.sessionId).toBe('plan-1')
+    expect(props.viewerId).toBe('viewer-1')
     expect(props.songEnabled).toBe(true)
     expect(isEnabled).toHaveBeenCalledWith('session-song.enabled')
     expect(getEffectiveTierForStudent).toHaveBeenCalledWith('kid-1', 'viewer-1')
@@ -55,5 +70,15 @@ describe('past session page', () => {
     isEnabled.mockResolvedValue(true)
     getEffectiveTierForStudent.mockResolvedValue({ tier: 'free' })
     expect((await render()).songEnabled).toBe(false)
+  })
+
+  it('renders when the report fails to build (the live hook fills in)', async () => {
+    isEnabled.mockResolvedValue(false)
+    getEffectiveTierForStudent.mockResolvedValue({ tier: 'free' })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    loadSessionReport.mockRejectedValueOnce(new Error('boom'))
+    const props = await render()
+    expect(props.session.id).toBe('plan-1')
+    expect(props.initialReport).toBeNull()
   })
 })

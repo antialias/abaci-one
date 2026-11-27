@@ -6,6 +6,7 @@ import {
   getRecentSessionResults,
   getSessionPlan,
 } from '@/lib/curriculum/server'
+import { loadSessionReport } from '@/lib/curriculum/session-report-server'
 import { isEnabled } from '@/lib/feature-flags'
 import { getEffectiveTierForStudent } from '@/lib/subscription'
 import { getUserId } from '@/lib/viewer'
@@ -13,6 +14,11 @@ import { SummaryClient } from '../../summary/SummaryClient'
 
 // Disable caching for this page - session data should be fresh
 export const dynamic = 'force-dynamic'
+
+function reportFailed(error: unknown): null {
+  console.error('Error building session report:', error)
+  return null
+}
 
 interface SessionPageProps {
   params: Promise<{ studentId: string; sessionId: string }>
@@ -60,9 +66,12 @@ export default async function SessionPage({ params }: SessionPageProps) {
 
   // Same gate as the latest-session summary page: a past session shows its song
   // (and the family's "make my song now" card) too.
-  const [songFlagEnabled, tierResult] = await Promise.all([
+  // The report renders first; the client keeps it fresh (Phase 4b)
+  const [songFlagEnabled, tierResult, initialReport] = await Promise.all([
     isEnabled('session-song.enabled'),
     getEffectiveTierForStudent(studentId, viewerId),
+    // A report that fails to build renders as null: the client's live report fills in
+    loadSessionReport(session).catch(reportFailed),
   ])
   const songEnabled = songFlagEnabled && tierResult.tier === 'family'
 
@@ -71,6 +80,8 @@ export default async function SessionPage({ params }: SessionPageProps) {
       studentId={studentId}
       player={player}
       session={session}
+      initialReport={initialReport}
+      viewerId={viewerId}
       avgSecondsPerProblem={avgSecondsPerProblem}
       paceAssessment={paceAssessment}
       problemHistory={problemHistory}

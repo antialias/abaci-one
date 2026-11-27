@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`SessionPausedModal progress from the session report > shows position.progress of the paused ten-problem session 1`] = `"Progress10 of 10 done! | 📝 Linear Math"`;
