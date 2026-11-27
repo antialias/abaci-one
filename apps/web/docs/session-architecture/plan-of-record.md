@@ -1,5 +1,15 @@
 # Session architecture: plan of record (2026-11-26, rev. 4: owner decisions)
 
+> **Status, 2026-11-27: Phases 1–6 are built and live on prod.** The six legacy `session_plans` columns were dropped by migration 0149 (PR #270), applied on prod 2026-11-27 by the PreSync Job; the prod smoke run after it passed 11/11, a full practice session with a game break included. The DB copy taken just before the drop is `/var/lib/sqld/pre-6b2.sql` on the libsql volume (`scripts/prod-dump.sh`); the rollback floor is 6b-2a (#269).
+>
+> **Still open, each a §10 row:**
+> - P6b1-12b: delete `results/[resultIndex]` and the client's index fallback, once PR #271 has been live for a full release.
+> - P6b1-16: remove the derived legacy wire fields, at least one release after 6b-2.
+> - P6b1-13: the `practice-state` socket's legacy fields (P5b-2).
+> - The teacher-only room (Phase 4d), which waits on server-verified socket identity.
+>
+> `record_redo` is not on this list: it stays as the do-over action (P6b1-12).
+
 Companion to [findings.md](./findings.md), which holds the owner's decisions and the fact base. This document settles the target model, the contracts and the phases. Paths are under `apps/web/src/`; `L/` means the ledger checkout (`~/projects/soroban-abacus-flashcards-practice/apps/web/src/`). Every code claim was re-read in the worktree at `6423f579b`. Section 10 records the adversarial review and what changed.
 
 **Hard predecessor of Phase 1 (MERGED 2026-11-26 as PR #238, `ca166cbb2`):** `fix/retry-redo-attribution`, commits `0f99ab38b` + `f0c2e03ac` + `ea0dcf180` + the e2e spec. Its final rule: a try is attributed by problem content + `slotIndex` (+ round when sent); the submitted `slotId` is ignored for matching and the item's own `slotId` is stored; a resubmit is a no-op only on an exact match with the last non-redo try; everything else is 409 `SLOT_MISMATCH`. Names Phase 1 builds on: `resolveCurrentItem(plan)` in `session-plan-helpers.ts` (used by `getCurrentProblemInfo` and `recordSlotResult`); `settlePosition` / `settledPositionFields` in `session-planner.ts` (the shared advance step, also run by `recordRedoResult` when a redemption empties the current retry round); `SlotResultMismatchError` → route 409 `SLOT_MISMATCH`, on which the client refetches; the client sends the answered slot's id plus `epochNumber`; Nothing else about that PR is assumed.
