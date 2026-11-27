@@ -2,6 +2,7 @@ import 'server-only'
 
 import { sql } from 'drizzle-orm'
 import { db } from '@/db'
+import { legacyTryFieldsOfProjection } from '@/db/schema/legacy-try-fields'
 import type { SlotResult, TryKind } from '@/db/schema/session-plans'
 import type { BktMode } from '../parts/kind'
 import { bktModeOf } from '../parts/registry'
@@ -33,9 +34,8 @@ interface RawProjectedEvidence {
   kind?: unknown
   round?: unknown
   practiceOnly?: unknown
-  isRetry?: unknown
-  epochNumber?: unknown
-  isManualRedo?: unknown
+  /** The legacy try fields, read only through `legacyTryFieldsOfProjection` */
+  [legacyField: string]: unknown
   voided?: unknown
 }
 
@@ -81,13 +81,6 @@ function parseJsonArray(value: string | null): unknown[] {
 
 function optionalNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
-}
-
-/** SQLite's json_extract gives JSON booleans as 1/0 */
-function optionalBoolean(value: unknown): boolean | undefined {
-  if (value === true || value === 1) return true
-  if (value === false || value === 0) return false
-  return undefined
 }
 
 function optionalTryKind(value: unknown): TryKind | undefined {
@@ -146,12 +139,13 @@ function toBktEvidence(
     hadHelp: raw.hadHelp === true || raw.hadHelp === 1,
     masteryWeight: optionalNumber(raw.masteryWeight),
     // What compute-bkt's evidenceWeightOf reads to weigh a wrong row, as the
-    // in-JS history path hands it the whole row (Phase 1w, retroactive)
+    // in-JS history path hands it the whole row (Phase 1w, retroactive): the
+    // stamps, and for a legacy row its legacy fields, which only the
+    // normalizer reads (Phase 6a). Practice-only is the stamp above, never
+    // the normalizer's derived flag (§1.2).
     kind: optionalTryKind(raw.kind),
     round: optionalNumber(raw.round),
-    isRetry: optionalBoolean(raw.isRetry),
-    epochNumber: optionalNumber(raw.epochNumber),
-    isManualRedo: optionalBoolean(raw.isManualRedo),
+    ...legacyTryFieldsOfProjection(raw),
     source: optionalSource(raw.source),
     originalSource: optionalSource(raw.originalSource),
     timingReview,

@@ -17,6 +17,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { itemSlotIndexOfRow, tryKindOfRow, tryRoundOfRow } from '@/db/schema/legacy-try-fields'
 import { isCountedTry, MAX_RETRY_EPOCHS } from '@/db/schema/session-plan-helpers'
 import type { ProblemSlot, SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
@@ -212,9 +213,8 @@ function getSlotResult(
  */
 function getAttemptCount(results: SlotResult[], partNumber: number, slotIndex: number): number {
   // Count all results for this slot (including retries and manual redos)
-  return results.filter(
-    (r) => r.partNumber === partNumber && (r.originalSlotIndex ?? r.slotIndex) === slotIndex
-  ).length
+  return results.filter((r) => r.partNumber === partNumber && itemSlotIndexOfRow(r) === slotIndex)
+    .length
 }
 
 /**
@@ -227,10 +227,11 @@ function wasAnswerDivulged(results: SlotResult[], partNumber: number, slotIndex:
   return results.some(
     (r) =>
       r.partNumber === partNumber &&
-      (r.originalSlotIndex ?? r.slotIndex) === slotIndex &&
+      itemSlotIndexOfRow(r) === slotIndex &&
       !r.isCorrect &&
-      !r.isManualRedo &&
-      (r.epochNumber ?? 0) >= MAX_RETRY_EPOCHS
+      // a wrong try of the last retry round (a do-over is never a retry)
+      tryKindOfRow(r) === 'retry' &&
+      tryRoundOfRow(r) >= MAX_RETRY_EPOCHS
   )
 }
 

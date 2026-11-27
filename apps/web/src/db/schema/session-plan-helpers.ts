@@ -18,6 +18,7 @@ import {
   TERM_COUNT_RANGES,
 } from '@/lib/curriculum/config'
 import { evidenceWeightOf } from '@/lib/curriculum/try-weight'
+import { itemSlotIndexOfRow } from './legacy-try-fields'
 
 import type {
   GameBreakSettings,
@@ -284,7 +285,7 @@ export function getSlotRetryStatus(
   }
 
   const slotResults = plan.results.filter(
-    (r) => r.partNumber === partNumber && (r.originalSlotIndex ?? r.slotIndex) === slotIndex
+    (r) => r.partNumber === partNumber && itemSlotIndexOfRow(r) === slotIndex
   )
 
   if (slotResults.length === 0) {

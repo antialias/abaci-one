@@ -16,6 +16,7 @@ import {
   expectedArithmeticItem,
 } from '@/lib/curriculum/parts/arithmetic/state'
 import { kindIdOf, partKindOf } from '@/lib/curriculum/parts/registry'
+import { itemSlotIndexOfRow, tryKindOfRow, tryRoundOfRow } from './legacy-try-fields'
 import { sameProblem } from './session-plan-helpers'
 import type {
   BreakRecord,
@@ -108,7 +109,7 @@ export function findTryIndex(
  * `slotId`, and rows without one get `legacy-item:<partNumber>:<slotIndex>`.
  */
 export function resolveItemId(result: SlotResult, parts: readonly SessionPart[]): string {
-  const slotIndex = result.originalSlotIndex ?? result.slotIndex
+  const slotIndex = itemSlotIndexOfRow(result)
   const part = parts.find((p) => p.partNumber === result.partNumber)
   const slot = Array.isArray(part?.slots) ? part.slots[slotIndex] : undefined
   if (slot?.slotId && sameProblem(slot.problem, result.problem)) return slot.slotId
@@ -131,9 +132,10 @@ export function doOverStamp(
 
 /**
  * Normalize one row given the normalized tries before it. Stamped fields win;
- * legacy rows derive them: kind from `isManualRedo`/`isRetry`, round from
- * `epochNumber` (do-overs: `doOverStamp`), and a second `first` try of an item
- * (legacy duplicate submit) becomes a derived practice-only do-over.
+ * legacy rows derive them from the legacy fields (`tryKindOfRow`,
+ * `tryRoundOfRow` in legacy-try-fields.ts; do-overs: `doOverStamp`), and a
+ * second `first` try of an item (legacy duplicate submit) becomes a derived
+ * practice-only do-over.
  */
 export function normalizeTry(
   result: SlotResult,
@@ -150,21 +152,17 @@ export function normalizeTry(
   let practiceOnlyDerived: boolean
   if (result.kind) {
     kind = result.kind
-    round = result.round ?? (kind === 'first' ? 0 : (result.epochNumber ?? 0))
+    round = tryRoundOfRow(result)
     practiceOnlyDerived = result.practiceOnly === true
   } else {
-    kind = result.isManualRedo
-      ? 'do_over'
-      : result.isRetry === true || (result.epochNumber ?? 0) > 0
-        ? 'retry'
-        : 'first'
+    kind = tryKindOfRow(result)
     if (kind === 'first' && ofItem.some((t) => t.kind === 'first')) kind = 'do_over'
     if (kind === 'do_over') {
       const stamp = doOverStamp(ofItem)
       round = stamp.round
       practiceOnlyDerived = stamp.practiceOnly
     } else {
-      round = result.epochNumber ?? 0
+      round = tryRoundOfRow(result)
       practiceOnlyDerived = false
     }
   }

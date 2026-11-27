@@ -712,3 +712,109 @@ describe('SessionProgressIndicator - linear index', () => {
     expect(slot3).toBeInTheDocument()
   })
 })
+
+// ============================================================================
+// Legacy try fields (Phase 6a): the dots read a try's kind and round through
+// the normalizer, so rows written without the legacy fields read the same
+// ============================================================================
+
+describe('SessionProgressIndicator - rows without legacy fields', () => {
+  const parts = [
+    createPart({
+      partNumber: 1,
+      slots: [createSlot({ index: 0 }), createSlot({ index: 1 }), createSlot({ index: 2 })],
+    }),
+  ]
+
+  /** Slot 0 wrong through its last retry round (the answer was shown); slot 1 wrong, then a do-over */
+  function writtenResults(): SlotResult[] {
+    const wrong = { isCorrect: false, studentAnswer: 0 }
+    return [
+      createResult({
+        slotIndex: 0,
+        kind: 'first',
+        round: 0,
+        isRetry: false,
+        epochNumber: 0,
+        originalSlotIndex: 0,
+        ...wrong,
+      }),
+      createResult({
+        slotIndex: 1,
+        kind: 'first',
+        round: 0,
+        isRetry: false,
+        epochNumber: 0,
+        originalSlotIndex: 1,
+        ...wrong,
+      }),
+      createResult({
+        slotIndex: 0,
+        kind: 'retry',
+        round: 1,
+        isRetry: true,
+        epochNumber: 1,
+        originalSlotIndex: 0,
+        ...wrong,
+      }),
+      createResult({
+        slotIndex: 0,
+        kind: 'retry',
+        round: 2,
+        isRetry: true,
+        epochNumber: 2,
+        originalSlotIndex: 0,
+        ...wrong,
+      }),
+      createResult({
+        slotIndex: 1,
+        kind: 'do_over',
+        round: 2,
+        isManualRedo: true,
+        isRetry: false,
+        epochNumber: 0,
+        originalSlotIndex: 1,
+        ...wrong,
+      }),
+    ]
+  }
+
+  function strip(r: SlotResult): SlotResult {
+    const { isRetry: _r, epochNumber: _e, isManualRedo: _m, originalSlotIndex: _o, ...rest } = r
+    return rest as SlotResult
+  }
+
+  function dots(results: SlotResult[]) {
+    const onRedoProblem = vi.fn()
+    const { unmount } = render(
+      <SessionProgressIndicator
+        parts={parts}
+        results={results}
+        currentPartIndex={0}
+        currentSlotIndex={2}
+        isBrowseMode={false}
+        isDark={false}
+        onRedoProblem={onRedoProblem}
+      />
+    )
+    const read = [0, 1].map((i) => {
+      const el = document.querySelector(`[data-linear-index="${i}"]`) as HTMLElement
+      fireEvent.click(el)
+      return {
+        attempts: el.getAttribute('data-attempt-count'),
+        status: el.getAttribute('data-status'),
+      }
+    })
+    const redone = onRedoProblem.mock.calls.map(([target]) => target.linearIndex)
+    unmount()
+    return { read, redone }
+  }
+
+  it('blocks the do-over of a slot whose answer was shown, with or without the fields', () => {
+    const withFields = dots(writtenResults())
+    // slot 0's answer was shown (wrong in round 2): only slot 1 takes a do-over
+    expect(withFields.redone).toEqual([1])
+    expect(withFields.read.map((r) => r.attempts)).toEqual(['3', '2'])
+    expect(dots(writtenResults().map(strip))).toEqual(withFields)
+  })
+})

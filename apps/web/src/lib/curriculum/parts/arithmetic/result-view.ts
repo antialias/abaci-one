@@ -16,6 +16,7 @@
  * Client-safe: no drizzle, no server imports.
  */
 
+import { itemSlotIndexOfRow } from '@/db/schema/legacy-try-fields'
 import { tryIdOf } from '@/db/schema/session-plan-normalize'
 import type { ProblemSlot, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import type { PracticeStateEvent } from '@/lib/classroom/socket-events'
@@ -158,7 +159,7 @@ export function arithmeticItemCells(
   for (const row of rows) {
     const joined = stored.get(row.tryId)
     if (joined) {
-      const place = `${row.partIndex}:${joined.result.originalSlotIndex ?? joined.result.slotIndex}`
+      const place = `${row.partIndex}:${itemSlotIndexOfRow(joined.result)}`
       if (!byPlace.has(place)) byPlace.set(place, row.itemId)
     }
     const t: ArithmeticItemTry = {
