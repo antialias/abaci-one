@@ -124,6 +124,10 @@ jobs:
         with:
           path: _pages/
 
+      # The coverage page is a convenience. A Pages hiccup ("No artifacts named
+      # github-pages") must not fail this workflow: Build and Deploy runs only
+      # when it succeeds, so a flake here silently skipped production deploys.
       - name: Deploy to GitHub Pages
         if: always()
+        continue-on-error: true
         uses: actions/deploy-pages@v4
