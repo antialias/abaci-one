@@ -55,6 +55,13 @@ variable "auth_secret" {
   sensitive   = true
 }
 
+variable "auth_secret_previous" {
+  description = "The AUTH_SECRET in force before the last rotation. Guest tokens signed with it stay valid (and are re-issued); NextAuth sessions do not use it. Empty = no previous secret. Clear it 30 days after a rotation. If the old secret was disclosed, setting it means anyone holding it can forge a guest whose sid they know (sids go only to their owner) until it is cleared, and a re-issued forgery lasts 30 days more; leave it empty to cut guests off instead."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "openai_api_key" {
   description = "OpenAI API key for LLM features (flowchart generation, etc.)"
   type        = string

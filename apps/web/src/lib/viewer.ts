@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm'
-import type { Session } from 'next-auth'
 import { cookies, headers } from 'next/headers'
+import type { Session } from 'next-auth'
 import { auth } from '@/auth'
 import { db, schema } from '@/db'
-import { GUEST_COOKIE_NAME, verifyGuestToken } from './guest-token'
+import { GUEST_COOKIE_NAME, GUEST_TOKEN_HEADER, verifyGuestToken } from './guest-token'
 
 /**
  * Unified viewer utility for server components
@@ -30,17 +30,25 @@ export async function getViewer(): Promise<
     return { kind: 'user', session }
   }
 
-  // Check for guest ID in header (set by middleware)
+  // Guest identity comes only from a verified token: the one the middleware
+  // forwarded on page requests (a new guest has no cookie yet), else the
+  // cookie (API routes, where the middleware doesn't run). Never a bare id a
+  // client could set.
   t = performance.now()
   const headerStore = await headers()
-  const headerGuestId = headerStore.get('x-guest-id')
+  const headerToken = headerStore.get(GUEST_TOKEN_HEADER)
   const headersTime = performance.now() - t
 
-  if (headerGuestId) {
-    console.log(
-      `[PERF] getViewer (guest-header): ${(performance.now() - start).toFixed(1)}ms | auth=${authTime.toFixed(1)}ms, headers=${headersTime.toFixed(1)}ms`
-    )
-    return { kind: 'guest', guestId: headerGuestId }
+  if (headerToken) {
+    try {
+      const { sid } = await verifyGuestToken(headerToken)
+      console.log(
+        `[PERF] getViewer (guest-header): ${(performance.now() - start).toFixed(1)}ms | auth=${authTime.toFixed(1)}ms, headers=${headersTime.toFixed(1)}ms`
+      )
+      return { kind: 'guest', guestId: sid }
+    } catch {
+      // Not a token we signed: fall through to the cookie.
+    }
   }
 
   // Fallback: check for guest cookie

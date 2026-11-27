@@ -1,6 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { createGuestToken, GUEST_COOKIE_NAME } from './lib/guest-token'
-import { defaultLocale, LOCALE_COOKIE_NAME, locales, type Locale } from './i18n/routing'
+import { defaultLocale, LOCALE_COOKIE_NAME, type Locale, locales } from './i18n/routing'
+import {
+  createGuestToken,
+  GUEST_COOKIE_NAME,
+  GUEST_TOKEN_HEADER,
+  verifyGuestToken,
+} from './lib/guest-token'
 
 /**
  * NextAuth session cookie names
@@ -20,6 +25,12 @@ export async function middleware(request: NextRequest) {
 
   // Create mutable headers to pass to server components
   const requestHeaders = new Headers(request.headers)
+
+  // Guest identity reaches server code only through headers this middleware
+  // writes. Drop any a client sent; `x-guest-id` is the old bare-id header,
+  // which nothing reads any more.
+  requestHeaders.delete('x-guest-id')
+  requestHeaders.delete(GUEST_TOKEN_HEADER)
 
   // Detect locale from cookie or Accept-Language header
   let locale = request.cookies.get(LOCALE_COOKIE_NAME)?.value as Locale | undefined
@@ -63,28 +74,40 @@ export async function middleware(request: NextRequest) {
   }
 
   // Guest cookie handling: skip for authenticated users
-  let existing = request.cookies.get(GUEST_COOKIE_NAME)?.value
-  let guestId: string | null = null
+  const existing = request.cookies.get(GUEST_COOKIE_NAME)?.value
+  // The signed guest token for this request, and whether the browser needs it
+  // (a new guest, or one whose token was signed with the previous secret).
+  let guestToken: string | null = null
+  let issueGuestCookie = false
   let clearGuestCookie = false
 
   let verifyTime = 0
   if (!hasAuthSession) {
-    // No auth session — handle guest cookie as before
+    let sid: string | null = null
     if (existing) {
       try {
         const t = performance.now()
-        const { verifyGuestToken } = await import('./lib/guest-token')
         const verified = await verifyGuestToken(existing)
         verifyTime = performance.now() - t
-        guestId = verified.sid
+        sid = verified.sid
+        if (verified.stale) {
+          // Signed with AUTH_SECRET_PREVIOUS: same guest, fresh signature.
+          issueGuestCookie = true
+        } else {
+          guestToken = existing
+        }
       } catch {
-        existing = undefined
+        sid = null
       }
     }
 
-    if (!existing) {
-      const sid = crypto.randomUUID()
-      guestId = sid
+    if (!sid) {
+      sid = crypto.randomUUID()
+      issueGuestCookie = true
+    }
+
+    if (issueGuestCookie) {
+      guestToken = await createGuestToken(sid)
     }
   } else {
     // Authenticated user — clear stale guest cookie if present
@@ -93,9 +116,9 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Pass guest ID to route handlers via request header
-  if (guestId) {
-    requestHeaders.set('x-guest-id', guestId)
+  // Pass the signed guest token to server components via request header
+  if (guestToken) {
+    requestHeaders.set(GUEST_TOKEN_HEADER, guestToken)
   }
 
   const total = performance.now() - start
@@ -126,12 +149,11 @@ export async function middleware(request: NextRequest) {
     })
   }
 
-  // Set guest cookie if it was new (unauthenticated visitors only)
-  if (!hasAuthSession && !existing && guestId) {
-    const token = await createGuestToken(guestId)
+  // Set guest cookie if it was new or re-signed (unauthenticated visitors only)
+  if (issueGuestCookie && guestToken) {
     response.cookies.set({
       name: GUEST_COOKIE_NAME,
-      value: token,
+      value: guestToken,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

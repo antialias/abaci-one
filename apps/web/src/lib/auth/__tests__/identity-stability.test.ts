@@ -52,10 +52,12 @@ vi.mock('@/auth', () => ({
   auth: (...args: any[]) => mockAuth(...args),
 }))
 
-// Mock guest-token
+// Mock guest-token: the guest token the middleware forwards (mockHeadersGet)
+// stands in for a signed one and "verifies" to itself as the sid.
 vi.mock('@/lib/guest-token', () => ({
   GUEST_COOKIE_NAME: 'guest',
-  verifyGuestToken: vi.fn(),
+  GUEST_TOKEN_HEADER: 'x-guest-token',
+  verifyGuestToken: vi.fn(async (token: string) => ({ sid: token, stale: false })),
 }))
 
 function uniqueGuestId(prefix: string) {
