@@ -14,6 +14,7 @@ resource "kubernetes_secret" "app_env" {
 
   data = {
     AUTH_SECRET                    = var.auth_secret
+    AUTH_SECRET_PREVIOUS           = var.auth_secret_previous
     AUTH_GOOGLE_ID                 = var.auth_google_id
     AUTH_GOOGLE_SECRET             = var.auth_google_secret
     EMAIL_SERVER                   = var.email_server

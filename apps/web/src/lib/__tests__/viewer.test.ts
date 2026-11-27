@@ -31,6 +31,7 @@ vi.mock('@/auth', () => ({
 const mockVerifyGuestToken = vi.fn()
 vi.mock('../guest-token', () => ({
   GUEST_COOKIE_NAME: 'guest',
+  GUEST_TOKEN_HEADER: 'x-guest-token',
   verifyGuestToken: (...args: any[]) => mockVerifyGuestToken(...args),
 }))
 
@@ -69,6 +70,8 @@ describe('viewer', () => {
     mockAuth.mockResolvedValue(null)
     mockHeadersGet.mockReturnValue(null)
     mockCookiesGet.mockReturnValue(undefined)
+    // A forwarded guest token "verifies" to itself as the sid.
+    mockVerifyGuestToken.mockImplementation(async (token: string) => ({ sid: token }))
     mockFindFirst.mockResolvedValue(undefined)
     mockInsertReturning.mockResolvedValue([])
   })
@@ -91,18 +94,35 @@ describe('viewer', () => {
       }
     })
 
-    it('returns guest kind when x-guest-id header is present', async () => {
+    it('returns guest kind from the verified middleware-forwarded token', async () => {
       const { getViewer } = await import('../viewer')
 
       mockAuth.mockResolvedValue(null)
-      mockHeadersGet.mockReturnValue('guest-abc-123')
+      mockHeadersGet.mockImplementation((name: string) =>
+        name === 'x-guest-token' ? 'signed-forwarded-token' : null
+      )
+      mockVerifyGuestToken.mockResolvedValue({ sid: 'guest-abc-123' })
 
       const viewer = await getViewer()
 
+      expect(mockVerifyGuestToken).toHaveBeenCalledWith('signed-forwarded-token')
       expect(viewer.kind).toBe('guest')
       if (viewer.kind === 'guest') {
         expect(viewer.guestId).toBe('guest-abc-123')
       }
+    })
+
+    it('does not trust a bare x-guest-id header', async () => {
+      const { getViewer } = await import('../viewer')
+
+      mockAuth.mockResolvedValue(null)
+      mockHeadersGet.mockImplementation((name: string) =>
+        name === 'x-guest-id' ? 'attacker-chosen' : null
+      )
+
+      const viewer = await getViewer()
+
+      expect(viewer.kind).toBe('unknown')
     })
 
     it('returns guest kind from cookie when header is not present', async () => {
@@ -162,7 +182,7 @@ describe('viewer', () => {
       expect(viewer.kind).toBe('user')
     })
 
-    it('prefers guest header over cookie', async () => {
+    it('prefers the forwarded guest token over the cookie', async () => {
       const { getViewer } = await import('../viewer')
 
       mockAuth.mockResolvedValue(null)
@@ -176,7 +196,7 @@ describe('viewer', () => {
         expect(viewer.guestId).toBe('guest-from-header')
       }
       // Should NOT have tried to verify the cookie
-      expect(mockVerifyGuestToken).not.toHaveBeenCalled()
+      expect(mockVerifyGuestToken).not.toHaveBeenCalledWith('cookie-token')
     })
   })
 

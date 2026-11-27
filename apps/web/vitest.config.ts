@@ -16,6 +16,9 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
+    // next-auth's ESM imports `next/server` without an extension, which Node's
+    // loader can't resolve; let Vite transform it so tests can load src/auth.ts.
+    server: { deps: { inline: ['next-auth'] } },
     ...(localMaxThreads && {
       poolOptions: { threads: { maxThreads: localMaxThreads, minThreads: 1 } },
     }),

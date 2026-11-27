@@ -4,8 +4,7 @@
  *
  * 1. A signed-in user: their user id.
  * 2. A guest: the `sid` in the signed guest cookie (verifyGuestToken). The
- *    middleware that sets `x-guest-id` doesn't run on /api, and a client can
- *    send that header itself, so it isn't used.
+ *    middleware doesn't run on /api, so no header is trusted here.
  * 3. Otherwise: the client address as the proxy in front of the pod saw it.
  *
  * Prod: NAS Traefik → k3s Traefik → pod. k3s Traefik trusts no forwarded

@@ -11,16 +11,28 @@
  * The HKDF salt is the cookie name, so the derived key differs per environment.
  */
 
-import { test as setup } from '@playwright/test'
 import { hkdfSync } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { test as setup } from '@playwright/test'
 import { EncryptJWT } from 'jose'
 
 const STORAGE_STATE_PATH = resolve(__dirname, '.auth/admin.json')
 
-/** Production AUTH_SECRET (from k8s secret app-env in abaci namespace) */
-const PROD_AUTH_SECRET = 'hh5xTZLHrs0euq3l6e30fJsBHVhAkX2ROWfQ0dBDpiI='
+/**
+ * Production AUTH_SECRET comes from the environment, never from source.
+ * Set E2E_PROD_AUTH_SECRET when running the suite against an https baseURL.
+ */
+function getProdAuthSecret(): string {
+  const value = process.env.E2E_PROD_AUTH_SECRET
+  if (!value) {
+    throw new Error(
+      'E2E_PROD_AUTH_SECRET is not set. Running e2e against production needs the ' +
+        'production AUTH_SECRET in that env var; it is not stored in the repo.'
+    )
+  }
+  return value
+}
 
 /** Admin user IDs differ between local dev DB and production DB */
 const LOCAL_ADMIN_USER_ID = 'g1c8pkb2fa4qiv5qc46m4js9'
@@ -84,7 +96,7 @@ setup('forge admin JWT and save storage state', async ({ browser }) => {
   const url = new URL(baseURL)
   const isSecure = url.protocol === 'https:'
 
-  const secret = isSecure ? PROD_AUTH_SECRET : getLocalAuthSecret()
+  const secret = isSecure ? getProdAuthSecret() : getLocalAuthSecret()
   const cookieName = isSecure ? '__Secure-authjs.session-token' : 'authjs.session-token'
   const userId = isSecure ? PROD_ADMIN_USER_ID : LOCAL_ADMIN_USER_ID
   const token = await mintAdminJWT(secret, cookieName, userId)
