@@ -24,19 +24,14 @@ import {
 
 const player = { name: 'Fixture', emoji: '🌟' } as unknown as Player
 
-/** The song's breaks, as `session-song.ts` calls the extractor (rows + the plan's legacy columns). */
+/** The song's breaks, as `session-song.ts` calls the extractor (the plan and its game results). */
 function songBreaks(fixture: SessionReportFixture) {
   const { plan } = fixture
   const stats = extractSessionStats(
     plan,
     player,
     [],
-    fixture.gameResults as unknown as GameResult[],
-    {
-      breakSelectedGame: plan.breakSelectedGame,
-      breakReason: plan.breakReason,
-      breakResults: plan.breakResults,
-    }
+    fixture.gameResults as unknown as GameResult[]
   )
   return stats.gameBreaks ?? []
 }

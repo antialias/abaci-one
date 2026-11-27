@@ -1,5 +1,5 @@
-import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import { getCurrentProblemInfo } from '@/lib/curriculum/parts/arithmetic/state'
 
 /** The problem a submit slides to next. */
 export type TransitionTarget = {

@@ -3,9 +3,10 @@
  * rounds, and how a try moves it (session architecture §1.2, Phase 2).
  *
  * A part's state is its `part_states` entry (Phase 3a on). Its legacy
- * encoding, the plan's `currentSlotIndex` plus `retryState[partIndex]`, is
- * still written by every writer and read only for a part without an entry
- * (`legacyArithmeticStateOf`, Phase 6b-0); the writers drop it in 6b-1.
+ * encoding, the plan's `current_slot_index` plus `retry_state[partIndex]`, is
+ * neither written nor read since Phase 6b-1 (§10 P6b1-3): a part without an
+ * entry reads the state its place in the session implies
+ * (`unenteredArithmeticStateOf`).
  *
  * Moved here from `db/schema/session-plan-helpers.ts`, which re-exports the
  * plan-level helpers until Phase 5. Every function here is pure; the moved
@@ -28,7 +29,7 @@ export const MAX_RETRY_EPOCHS = 2
 /** An arithmetic part's content: its slots. */
 export type ArithmeticContent = ProblemSlot[]
 
-/** An arithmetic part's cursor (legacy encoding: `currentSlotIndex` + `retryState[i]`). */
+/** An arithmetic part's cursor (its `part_states` entry). */
 export interface ArithmeticState {
   /** Index of the next original slot; parked at `slots.length` during retry rounds */
   slotIndex: number
@@ -60,18 +61,14 @@ function isRoundRunning(retry: PartRetryState | undefined): retry is PartRetrySt
 }
 
 /** The plan fields an arithmetic part's state is read from. */
-export type ArithmeticStateSource = Pick<
-  SessionPlan,
-  'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState'
-> &
+export type ArithmeticStateSource = Pick<SessionPlan, 'parts' | 'currentPartIndex'> &
   Partial<Pick<SessionPlan, 'partStates'>>
 
 /**
- * An arithmetic part's state: its `part_states` entry, else (a row written
- * before Phase 3a, or a part no try has moved since) the legacy decode. An
- * entry is trusted as it stands (Phase 6b-0 removed the P5a-8 stale check:
- * the stale sessions it guarded were closed by migration 0148). An entry that
- * is not an object reads as absent.
+ * An arithmetic part's state: its `part_states` entry, trusted as it stands
+ * (Phase 6b-0 removed the P5a-8 stale check: the stale sessions it guarded
+ * were closed by migration 0148), else `unenteredArithmeticStateOf`. An entry
+ * that is not an object reads as absent.
  */
 export function arithmeticPartStateOf(
   plan: ArithmeticStateSource,
@@ -82,23 +79,32 @@ export function arithmeticPartStateOf(
     const entry: unknown = (states as Record<string, unknown>)[String(partIndex)]
     if (entry && typeof entry === 'object' && !Array.isArray(entry)) return entry as ArithmeticState
   }
-  return legacyArithmeticStateOf(plan, partIndex)
+  return unenteredArithmeticStateOf(plan, partIndex)
 }
 
 /**
- * The legacy decode, for a part without a `part_states` entry: the current
- * part's cursor is `currentSlotIndex` + `retryState[i]`; a part before it is
- * finished (cursor parked at its end), a part after it not started. The only
- * reader of those two columns; it goes with them in Phase 6b-2.
+ * The state of a part without a `part_states` entry, from its place in the
+ * session alone (Phase 6b-1, §10 P6b1-3): a part before the cursor is
+ * finished (cursor parked at its end), the cursor's part and a part after it
+ * not started. No column is read.
+ *
+ * Until 6b-1 the cursor's part decoded `current_slot_index` +
+ * `retry_state[i]`, and a finished part kept `retry_state[i]`. On every row a
+ * live session can have, that is this: the cursor moves into a part with its
+ * entry written (6b-1), or with the legacy cursor reset to 0 and no retry
+ * state for the new part (6b-0 and before, 3a on); a finished part's retry
+ * state is settled (no round running, nothing queued). The rows where it
+ * differs are finished sessions from before 3a (0148 closed the open ones),
+ * and no view of a finished session reads a part's state (the report has no
+ * position; trying is refused): `session-phase6b1-pre3a-parity.test.ts`.
  */
-export function legacyArithmeticStateOf(
-  plan: Pick<SessionPlan, 'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState'>,
+export function unenteredArithmeticStateOf(
+  plan: Pick<SessionPlan, 'parts' | 'currentPartIndex'>,
   partIndex: number
 ): ArithmeticState {
-  if (partIndex === plan.currentPartIndex) return arithmeticStateOf(plan, partIndex)
   return {
     slotIndex: partIndex < plan.currentPartIndex ? (plan.parts[partIndex]?.slots?.length ?? 0) : 0,
-    retry: plan.retryState?.[partIndex],
+    retry: undefined,
   }
 }
 
@@ -107,14 +113,6 @@ export function legacyArithmeticStateOf(
  */
 export function isInRetryEpoch(plan: ArithmeticStateSource, partIndex: number): boolean {
   return isRoundRunning(arithmeticPartStateOf(plan, partIndex).retry)
-}
-
-/** The current part's state, decoded from the plan's legacy position columns (`legacyArithmeticStateOf`). */
-export function arithmeticStateOf(
-  plan: Pick<SessionPlan, 'currentSlotIndex' | 'retryState'>,
-  partIndex: number
-): ArithmeticState {
-  return { slotIndex: plan.currentSlotIndex, retry: plan.retryState?.[partIndex] }
 }
 
 /**
@@ -196,19 +194,6 @@ export function getCurrentProblemInfo(plan: SessionPlan): {
     purpose: current.purpose,
     partNumber: plan.parts[current.partIndex].partNumber,
   }
-}
-
-/**
- * Initialize retry state for a part if not already present
- */
-export function initRetryState(plan: SessionPlan, partIndex: number): PartRetryState {
-  if (!plan.retryState) {
-    plan.retryState = {}
-  }
-  if (!plan.retryState[partIndex]) {
-    plan.retryState[partIndex] = emptyRetryState()
-  }
-  return plan.retryState[partIndex]
 }
 
 function emptyRetryState(): PartRetryState {

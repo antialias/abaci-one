@@ -87,7 +87,15 @@ async function insertPlan(
   status: 'in_progress' | 'completed',
   createdAt: Date,
   results: SlotResult[],
-  legacyBreak: Partial<typeof schema.sessionPlans.$inferInsert> = {}
+  {
+    breakSelectedGame,
+    breakReason,
+    ...row
+  }: Partial<typeof schema.sessionPlans.$inferInsert> & {
+    /** legacy break columns, out of the schema since 6b-1: written with SQL */
+    breakSelectedGame?: string
+    breakReason?: string
+  } = {}
 ) {
   await eph.db.insert(schema.sessionPlans).values({
     id,
@@ -103,8 +111,13 @@ async function insertPlan(
     // string "[]", which the session report (Phase 4e reads it) cannot read
     adjustments: [],
     createdAt,
-    ...legacyBreak,
+    ...row,
   })
+  if (breakSelectedGame !== undefined || breakReason !== undefined) {
+    eph.sqlite
+      .prepare('UPDATE session_plans SET break_selected_game = ?, break_reason = ? WHERE id = ?')
+      .run(breakSelectedGame ?? null, breakReason ?? null, id)
+  }
 }
 
 function report(gameDisplayName: string, headline: string, endedAt?: Date): GameResultsReport {

@@ -262,7 +262,6 @@ export async function createTestStudent(
           masteredSkillIds: profile.practicingSkills,
           status: 'completed',
           currentPartIndex: 1,
-          currentSlotIndex: 0,
           sessionHealth: {
             overall: 'good',
             accuracy: 0.6,

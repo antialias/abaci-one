@@ -30,12 +30,23 @@
  * breaks on, the break is skipped), and `breakStartedAt` is masked (a skipped
  * break stamps the wall clock). Results, positions, retry state, health,
  * skill-attempt writes and revocations of every existing step are unchanged.
+ *
+ * Phase 6b-1 (§10 P6b1-8) re-recorded it. The row projection lost the six
+ * legacy columns (`currentSlotIndex`, `retryState`, `breakStartedAt`,
+ * `breakReason`, `breakSelectedGame`, `breakResults`: out of the schema, no
+ * longer written) and gained `partStates` and `breaks`, which carry the same
+ * position and breaks (written since 3a). Stored tries lost `epochNumber`,
+ * `isRetry`, `isManualRedo` and `originalSlotIndex` (no longer written;
+ * `kind`, `round` and `slotIndex` say the same). `partStates` gains the next
+ * part's `{ slotIndex: 0 }` on the try that ends a part (the move-on entry).
+ * A try that clears a skipped break's leftover legacy fields no longer bumps
+ * `flowVersion` or moves `flowUpdatedAt` (P5a-3 (2), P6b-5). Every other
+ * line is as before.
  */
 
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
-import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
 import type {
   GeneratedProblem,
   ProblemSlot,
@@ -45,6 +56,7 @@ import type {
   SlotResult,
   SlotResultSubmission,
 } from '@/db/schema/session-plans'
+import { getCurrentProblemInfo } from '@/lib/curriculum/parts/arithmetic/state'
 import {
   applySessionFlowEvent,
   getSessionPlan,
@@ -153,7 +165,6 @@ async function insertPlan(
       flowUpdatedAt: FIXED,
       flowVersion: 0,
       currentPartIndex: 0,
-      currentSlotIndex: 0,
       results: [],
       createdAt: FIXED,
       approvedAt: FIXED,
@@ -233,13 +244,15 @@ function projectRow(row: SessionPlan) {
     flowVersion: row.flowVersion,
     flowUpdatedAtMoved: row.flowUpdatedAt.getTime() !== FIXED.getTime(),
     currentPartIndex: row.currentPartIndex,
-    currentSlotIndex: row.currentSlotIndex,
-    retryState: row.retryState,
-    // Wall clock when a step opens a break (the client's transition step, 3c)
-    breakStartedAt: row.breakStartedAt ? '<set>' : null,
-    breakResults: row.breakResults,
-    breakReason: row.breakReason,
-    breakSelectedGame: row.breakSelectedGame,
+    // Position and breaks as the row holds them since 6b-1 (the six legacy
+    // columns are out of the schema); a break's times are the wall clock
+    partStates: row.partStates,
+    breaks: row.breaks.map((b) => ({
+      ...b,
+      startedAt: b.startedAt ? '<set>' : null,
+      ...(b.endedAt !== undefined ? { endedAt: '<set>' } : {}),
+      ...(b.durationMs !== undefined ? { durationMs: '<set>' } : {}),
+    })),
     completedAt: row.completedAt ? '<set>' : null,
     sessionHealth: row.sessionHealth,
     results: row.results.map(maskResult),

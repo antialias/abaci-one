@@ -5,11 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { flushSync } from 'react-dom'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import {
-  getCurrentProblemInfo,
-  MAX_RETRY_EPOCHS,
-  sameProblem,
-} from '@/db/schema/session-plan-helpers'
+import { sameProblem } from '@/db/schema/session-plan-helpers'
 import type {
   ProblemSlot,
   SessionHealth,
@@ -26,6 +22,7 @@ import {
   arithmeticSlotOfProblem,
   type OnScreenItem,
 } from '@/lib/curriculum/parts/arithmetic/session-view'
+import { getCurrentProblemInfo, MAX_RETRY_EPOCHS } from '@/lib/curriculum/parts/arithmetic/state'
 import { applyResponseTimeGuard } from '@/lib/curriculum/timing/response-time-guard'
 import { css } from '../../../styled-system/css'
 import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'

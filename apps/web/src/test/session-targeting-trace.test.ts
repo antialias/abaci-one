@@ -9,8 +9,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
-import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
 import type { SessionPlan } from '@/db/schema/session-plans'
+import { getCurrentProblemInfo } from '@/lib/curriculum/parts/arithmetic/state'
 import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
 import {
   approveSessionPlan,

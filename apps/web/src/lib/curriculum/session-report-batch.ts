@@ -84,8 +84,6 @@ export const reportRowColumns = () => ({
   results: schema.sessionPlans.results,
   flowState: schema.sessionPlans.flowState,
   currentPartIndex: schema.sessionPlans.currentPartIndex,
-  currentSlotIndex: schema.sessionPlans.currentSlotIndex,
-  retryState: schema.sessionPlans.retryState,
   partStates: schema.sessionPlans.partStates,
   flowUpdatedAt: schema.sessionPlans.flowUpdatedAt,
   adjustments: schema.sessionPlans.adjustments,

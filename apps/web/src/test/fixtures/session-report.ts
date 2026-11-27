@@ -200,15 +200,9 @@ function planOf(
     flowUpdatedAt: new Date(T0 + 720 * S),
     flowVersion: 9,
     currentPartIndex: parts.length,
-    currentSlotIndex: 0,
-    breakStartedAt: null,
-    breakReason: null,
-    breakSelectedGame: null,
-    breakResults: null,
     sessionHealth: null,
     adjustments: [],
     results,
-    retryState: {},
     rowVersion: 14,
     breaks: [],
     partStates: {},
@@ -312,7 +306,6 @@ export function liveTenProblemSession(): SessionReportFixture {
       status: 'in_progress',
       flowState: 'practicing',
       currentPartIndex: 2,
-      currentSlotIndex: 0,
       completedAt: null,
       rowVersion: 11,
     }),
@@ -339,7 +332,7 @@ export function liveMidPartOneSession(): SessionReportFixture {
       status: 'in_progress',
       flowState: 'practicing',
       currentPartIndex: 0,
-      currentSlotIndex: 3,
+      partStates: { 0: { slotIndex: 3 } },
       completedAt: null,
       rowVersion: 4,
     }),
@@ -431,21 +424,23 @@ export function pausedTenProblemSession(): SessionReportFixture {
       status: 'in_progress',
       flowState: 'practicing',
       currentPartIndex: 2,
-      currentSlotIndex: 3,
-      retryState: {
+      partStates: {
         2: {
-          currentEpoch: 1,
-          pendingRetries: [],
-          currentEpochItems: [
-            {
-              slotId: wrong.slotId,
-              originalSlotIndex: 0,
-              problem: wrong.problem!,
-              epochNumber: 1,
-              originalPurpose: 'focus',
-            },
-          ],
-          currentRetryIndex: 0,
+          slotIndex: 3,
+          retry: {
+            currentEpoch: 1,
+            pendingRetries: [],
+            currentEpochItems: [
+              {
+                slotId: wrong.slotId,
+                originalSlotIndex: 0,
+                problem: wrong.problem!,
+                epochNumber: 1,
+                originalPurpose: 'focus',
+              },
+            ],
+            currentRetryIndex: 0,
+          },
         },
       },
       isPaused: true,
@@ -625,8 +620,6 @@ export function skippedAndTimedOutBreaksSession(): SessionReportFixture {
         closedBreak(0, 0, 180, 480, { reason: 'timeout', game: 'memory-quiz' }),
         closedBreak(1, 1, 605, 625, { reason: 'skipped', game: 'matching' }),
       ],
-      breakReason: 'skipped',
-      breakSelectedGame: 'matching',
     },
     gameResults: [],
     song: null,
@@ -673,8 +666,6 @@ export function playedAndSkippedBreaksSession(): SessionReportFixture {
         }),
         closedBreak(1, 1, 605, 610, { reason: 'skipped', game: null }),
       ],
-      breakReason: 'skipped',
-      breakSelectedGame: null,
     },
     gameResults: [
       {
@@ -726,8 +717,6 @@ export function straddleBreaksSession(): SessionReportFixture {
       ...base.plan,
       id,
       breaks: [closedBreak(0, 1, 605, 625, { reason: 'skipped', game: 'matching' })],
-      breakReason: 'skipped',
-      breakSelectedGame: 'matching',
     },
     gameResults: [
       {

@@ -13,9 +13,9 @@
  * 6. Calculates final metrics comparing BKT to ground truth
  */
 
-// These imports will use the mocked database
-import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
 import { computeBktFromHistory } from '@/lib/curriculum/bkt'
+// These imports will use the mocked database
+import { getCurrentProblemInfo } from '@/lib/curriculum/parts/arithmetic/state'
 import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
 import {
   approveSessionPlan,

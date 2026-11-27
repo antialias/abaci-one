@@ -160,7 +160,6 @@ describe('migration 0148: close stale sessions from before Phase 3a', () => {
         aTry(1, lastMs),
         aTry(2, '2026-11-20T15:05:12.400Z', false),
       ],
-      currentSlotIndex: 3,
     })
     await insertShare('share-stale', 'stale-tries')
 
@@ -175,7 +174,6 @@ describe('migration 0148: close stale sessions from before Phase 3a', () => {
       breaks: [],
       completedAt: sec('2026-11-20T15:09:30.750Z'),
       // nothing else moves
-      currentSlotIndex: 3,
       startedAt: STARTED,
     })
     expect(row.flowUpdatedAt.getTime()).toBeGreaterThan(CUTOFF.getTime())

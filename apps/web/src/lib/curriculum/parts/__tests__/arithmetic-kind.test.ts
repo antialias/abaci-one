@@ -77,23 +77,24 @@ describe('registry', () => {
   })
 })
 
-describe('moved helpers keep their old import paths (until Phase 5)', () => {
-  it('session-plan-helpers re-exports the arithmetic state helpers', () => {
-    expect(helpers.resolveCurrentItem).toBe(state.resolveCurrentItem)
-    expect(helpers.getCurrentProblemInfo).toBe(state.getCurrentProblemInfo)
-    expect(helpers.isInRetryEpoch).toBe(state.isInRetryEpoch)
-    expect(helpers.initRetryState).toBe(state.initRetryState)
-    expect(helpers.needsRetryTransition).toBe(state.needsRetryTransition)
-    expect(helpers.MAX_RETRY_EPOCHS).toBe(state.MAX_RETRY_EPOCHS)
-  })
-
-  it('calculateTotalProblemsWithRetries', () => {
-    expect(helpers.calculateTotalProblemsWithRetries).toBe(report.calculateTotalProblemsWithRetries)
-    expect(schemaReexports.calculateTotalProblemsWithRetries).toBe(
-      report.calculateTotalProblemsWithRetries
-    )
-    expect(schemaReexports.getCurrentProblemInfo).toBe(state.getCurrentProblemInfo)
-    expect(schemaReexports.MAX_RETRY_EPOCHS).toBe(2)
+describe('the Phase 2 re-export shims are gone (Phase 6b-1)', () => {
+  it('the arithmetic helpers are imported from parts/arithmetic only', () => {
+    for (const name of [
+      'resolveCurrentItem',
+      'getCurrentProblemInfo',
+      'isInRetryEpoch',
+      'needsRetryTransition',
+      'MAX_RETRY_EPOCHS',
+      'calculateTotalProblemsWithRetries',
+      'initRetryState',
+    ]) {
+      expect(helpers).not.toHaveProperty(name)
+      expect(schemaReexports).not.toHaveProperty(name)
+    }
+    expect(state.MAX_RETRY_EPOCHS).toBe(2)
+    expect(typeof report.calculateTotalProblemsWithRetries).toBe('function')
+    // initRetryState wrote the legacy retry_state; it is deleted with the write
+    expect(state).not.toHaveProperty('initRetryState')
   })
 })
 

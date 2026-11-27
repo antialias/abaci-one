@@ -164,8 +164,6 @@ export type ReportPlan = Pick<
   | 'results'
   | 'flowState'
   | 'currentPartIndex'
-  | 'currentSlotIndex'
-  | 'retryState'
   | 'partStates'
   | 'adjustments'
   | 'startedAt'

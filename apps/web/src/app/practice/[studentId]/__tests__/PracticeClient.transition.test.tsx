@@ -167,9 +167,7 @@ function plan(over: Partial<SessionPlan>): SessionPlan {
     flowVersion: 1,
     parts: [part(1, 'abacus'), part(2, 'linear')],
     currentPartIndex: 0,
-    currentSlotIndex: 0,
     results: [],
-    retryState: null,
     partStates: null,
     gameBreakSettings: null,
     sessionHealth: null,
@@ -292,7 +290,7 @@ describe('PracticeClient — HUD counts from the report', () => {
         progress: { done: 9, total: 30 },
       },
     } as SessionReport
-    renderPage({ ...fixture.plan, currentPartIndex: 1, currentSlotIndex: 0 })
+    renderPage({ ...fixture.plan, currentPartIndex: 1 })
     const hud = h.hud as SessionHudData
     expect(hud.progress).toEqual({ done: 9, total: 30 })
     expect(hud.laterPartItems).toBe(20)

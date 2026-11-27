@@ -27,15 +27,9 @@ function buildPlan(overrides: Partial<SessionPlan> = {}): SessionPlan {
     flowUpdatedAt: new Date('2026-01-01T00:00:00.000Z'),
     flowVersion: 0,
     currentPartIndex: 0,
-    currentSlotIndex: 0,
-    breakStartedAt: null,
-    breakReason: null,
-    breakSelectedGame: null,
-    breakResults: null,
     sessionHealth: null,
     adjustments: [],
     results: [],
-    retryState: null,
     rowVersion: 0,
     breaks: [],
     partStates: {},
@@ -54,6 +48,25 @@ function buildPlan(overrides: Partial<SessionPlan> = {}): SessionPlan {
     deletedBy: null,
     ...overrides,
   }
+}
+
+/**
+ * The legacy columns as a row may still hold them until 6b-2 drops them (not
+ * in the schema since 6b-1; nothing reads them, the cases below pin that).
+ */
+const LEGACY_COLUMN_NAMES = [
+  'currentSlotIndex',
+  'retryState',
+  'breakStartedAt',
+  'breakReason',
+  'breakSelectedGame',
+  'breakResults',
+] as const
+function legacy(columns: Partial<Record<(typeof LEGACY_COLUMN_NAMES)[number], unknown>>) {
+  return columns as Partial<SessionPlan>
+}
+function expectNoLegacyWrite(patch: object) {
+  for (const name of LEGACY_COLUMN_NAMES) expect(patch).not.toHaveProperty(name)
 }
 
 describe('applyFlowEvent', () => {
@@ -84,15 +97,16 @@ describe('applyFlowEvent', () => {
     })
     const started = applyFlowEvent(pendingPlan, { type: 'BREAK_STARTED', game: 'type-racer-jr' })
     expect(started.patch.flowState).toBe('break_active')
-    expect(started.patch.breakSelectedGame).toBe('type-racer-jr')
+    expect(started.patch.breaks?.[0].game).toBe('type-racer-jr')
+    expectNoLegacyWrite(completed.patch)
+    expectNoLegacyWrite(started.patch)
   })
 
   it('is idempotent for repeated BREAK_FINISHED', () => {
     const finishedPlan = buildPlan({
       flowState: 'break_results',
       flowVersion: 7,
-      breakReason: 'gameFinished',
-      breakResults: { score: 123 } as never,
+      ...legacy({ breakReason: 'gameFinished', breakResults: { score: 123 } }),
       breaks: [
         {
           breakIndex: 0,
@@ -160,7 +174,7 @@ describe('applyFlowEvent reads breaks (Phase 5a)', () => {
       const plan = buildPlan({
         flowState: 'break_active',
         currentPartIndex: 1,
-        breakSelectedGame: 'memory-quiz',
+        ...legacy({ breakSelectedGame: 'memory-quiz' }),
         breaks: [{ breakIndex: 0, afterPartIndex: 0, startedAt: STARTED, game: 'type-racer-jr' }],
       })
       // The open record already has this game: a repeat
@@ -171,21 +185,22 @@ describe('applyFlowEvent reads breaks (Phase 5a)', () => {
       const changed = applyFlowEvent(plan, { type: 'BREAK_STARTED', game: 'memory-quiz' })
       expect(changed.changed).toBe(true)
       expect(changed.patch.breaks?.[0].game).toBe('memory-quiz')
-      expect(changed.patch.breakSelectedGame).toBe('memory-quiz') // legacy still written
+      expectNoLegacyWrite(changed.patch) // 6b-1: the legacy column is not written
     })
 
     it('does not read breakSelectedGame when the row has no open record (6b-0)', () => {
       const plan = buildPlan({
         flowState: 'break_active',
         currentPartIndex: 1,
-        breakSelectedGame: 'memory-quiz',
+        ...legacy({ breakSelectedGame: 'memory-quiz' }),
         breaks: [],
       })
       // Until 6b-0 the legacy column made this a repeat; now the running game
       // is unknown, so the same game is written again (harmless)
       const again = applyFlowEvent(plan, { type: 'BREAK_STARTED', game: 'memory-quiz' })
       expect(again.changed).toBe(true)
-      expect(again.patch).toMatchObject({ breakSelectedGame: 'memory-quiz', breaks: [] })
+      expect(again.patch).toMatchObject({ breaks: [] })
+      expectNoLegacyWrite(again.patch)
       // A row with no game anywhere repeats as before
       expect(
         applyFlowEvent(buildPlan({ flowState: 'break_active', breaks: [] }), {
@@ -202,7 +217,6 @@ describe('applyFlowEvent reads breaks (Phase 5a)', () => {
       const plan = buildPlan({
         flowState: 'practicing',
         currentPartIndex: 1,
-        breakReason: null,
         breaks: [
           {
             breakIndex: 0,
@@ -227,7 +241,7 @@ describe('applyFlowEvent reads breaks (Phase 5a)', () => {
       const plan = buildPlan({
         flowState: 'practicing',
         currentPartIndex: 1,
-        breakReason: 'skipped',
+        ...legacy({ breakReason: 'skipped' }),
         breaks: [],
       })
       // Until 6b-0 breakReason made this a landed repeat
@@ -240,8 +254,7 @@ describe('applyFlowEvent reads breaks (Phase 5a)', () => {
       const plan = buildPlan({
         flowState: 'break_results',
         currentPartIndex: 1,
-        breakReason: 'gameFinished',
-        breakResults: { score: 1 } as never,
+        ...legacy({ breakReason: 'gameFinished', breakResults: { score: 1 } }),
         breaks: [
           {
             breakIndex: 0,
@@ -279,8 +292,7 @@ describe('applyFlowEvent reads breaks (Phase 5a)', () => {
       const plan = buildPlan({
         flowState: 'practicing',
         currentPartIndex: 1,
-        breakReason: 'skipped',
-        breakSelectedGame: 'memory-quiz',
+        ...legacy({ breakReason: 'skipped', breakSelectedGame: 'memory-quiz' }),
         breaks: [{ ...finished, reason: 'gameFinished' }],
       })
       expect(applyFlowEvent(plan, { type: 'BREAK_RESULTS_ACKED' }).changed).toBe(false)
@@ -304,9 +316,12 @@ describe('applyFlowEvent reads breaks (Phase 5a)', () => {
       ).toBe(false)
       // Until 6b-0 a skipped break in the legacy columns refused the ack
       expect(
-        applyFlowEvent(buildPlan({ flowState: 'practicing', breakReason: 'skipped', breaks: [] }), {
-          type: 'BREAK_RESULTS_ACKED',
-        }).changed
+        applyFlowEvent(
+          buildPlan({ flowState: 'practicing', ...legacy({ breakReason: 'skipped' }), breaks: [] }),
+          {
+            type: 'BREAK_RESULTS_ACKED',
+          }
+        ).changed
       ).toBe(false)
     })
   })
@@ -314,23 +329,23 @@ describe('applyFlowEvent reads breaks (Phase 5a)', () => {
 
 /**
  * Phase 6b-0 (§10 P6b-3): a pending break starts when the flow entered
- * `break_pending` (`flowUpdatedAt`), not at the legacy `breakStartedAt`, which
- * 6b-1 stops writing. The legacy write is unchanged.
+ * `break_pending` (`flowUpdatedAt`), not at the legacy `breakStartedAt`,
+ * which 6b-1 no longer writes.
  */
 describe('the pending break’s start (Phase 6b-0)', () => {
   const ENTERED = new Date('2026-01-01T00:05:00.000Z')
   const LEGACY = new Date('2026-01-01T00:04:00.000Z')
 
-  it('BREAK_STARTED opens the record at flowUpdatedAt; the legacy column is written as before', () => {
+  it('BREAK_STARTED opens the record at flowUpdatedAt; the legacy column is neither read nor written (6b-1)', () => {
     const plan = buildPlan({
       flowState: 'break_pending',
       flowUpdatedAt: ENTERED,
       currentPartIndex: 1,
-      breakStartedAt: LEGACY,
+      ...legacy({ breakStartedAt: LEGACY }),
     })
     const started = applyFlowEvent(plan, { type: 'BREAK_STARTED', game: 'memory-quiz' })
     expect(started.patch.breaks?.[0].startedAt).toBe(ENTERED.toISOString())
-    expect(started.patch.breakStartedAt).toBe(LEGACY)
+    expectNoLegacyWrite(started.patch)
   })
 
   it('a row in 6b-1 shape (no breakStartedAt) opens the record at the same instant', () => {
@@ -348,7 +363,7 @@ describe('the pending break’s start (Phase 6b-0)', () => {
       flowState: 'break_pending',
       flowUpdatedAt: ENTERED,
       currentPartIndex: 1,
-      breakStartedAt: LEGACY,
+      ...legacy({ breakStartedAt: LEGACY }),
     })
     const skipped = applyFlowEvent(plan, { type: 'BREAK_FINISHED', reason: 'skipped' })
     expect(skipped.patch.breaks?.[0]).toMatchObject({
@@ -356,5 +371,68 @@ describe('the pending break’s start (Phase 6b-0)', () => {
       reason: 'skipped',
       game: null,
     })
+  })
+})
+
+/**
+ * Phase 6b-1 (§10 P6b1-1, P6b1-5): a recorded try writes no legacy column,
+ * no longer bumps `flowVersion` for clearing leftover legacy break fields, and
+ * writes the next part's initial entry when it moves the cursor on.
+ */
+describe('TRY_RECORDED writes only the new columns (Phase 6b-1)', () => {
+  const slot = (p: number, s: number) => ({
+    slotId: `p${p}s${s}`,
+    index: s,
+    purpose: 'focus' as const,
+    constraints: {},
+    problem: { terms: [p + 1, s + 1], answer: p + s + 2, skillsRequired: [] },
+  })
+  const parts = [0, 1].map((p) => ({
+    kind: 'arithmetic' as const,
+    partNumber: (p + 1) as 1 | 2,
+    type: 'abacus' as const,
+    format: 'vertical' as const,
+    useAbacus: true,
+    slots: [slot(p, 0), slot(p, 1)],
+    estimatedMinutes: 1,
+  })) as SessionPlan['parts']
+  const tryOf = (partIndex: number, itemId: string) => ({
+    type: 'TRY_RECORDED' as const,
+    row: { tryId: itemId } as never,
+    try: {
+      partIndex,
+      itemId,
+      kind: 'first' as const,
+      round: 0,
+      practiceOnly: false,
+      isCorrect: true,
+    },
+  })
+
+  it('a try in the part, after a skipped break left legacy fields set: no flowVersion bump', () => {
+    const plan = buildPlan({
+      parts,
+      currentPartIndex: 1,
+      flowVersion: 6,
+      partStates: { '0': { slotIndex: 2 }, '1': { slotIndex: 0 } },
+      ...legacy({ breakStartedAt: new Date('2026-01-01T00:04:00.000Z'), breakResults: null }),
+    })
+    const applied = applyFlowEvent(plan, tryOf(1, 'p1s0'))
+    // Until 6b-1 clearing the leftover breakStartedAt bumped it to 7 (§10 P5a-3 (2))
+    expect(applied.patch.flowVersion).toBe(6)
+    expect(applied.patch.flowUpdatedAt).toBe(plan.flowUpdatedAt)
+    expect(applied.patch.partStates).toEqual({ '0': { slotIndex: 2 }, '1': { slotIndex: 1 } })
+    expectNoLegacyWrite(applied.patch)
+  })
+
+  it('the try that ends a part writes the next part’s initial entry', () => {
+    const plan = buildPlan({ parts, partStates: { '0': { slotIndex: 1 } } })
+    const applied = applyFlowEvent(plan, tryOf(0, 'p0s1'))
+    expect(applied.patch).toMatchObject({ currentPartIndex: 1, flowState: 'part_transition' })
+    expect(applied.patch.partStates).toEqual({
+      '0': { slotIndex: 2, retry: undefined },
+      '1': { slotIndex: 0, retry: undefined },
+    })
+    expectNoLegacyWrite(applied.patch)
   })
 })

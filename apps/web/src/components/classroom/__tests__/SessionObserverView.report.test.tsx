@@ -124,7 +124,7 @@ function liveReport(): SessionReport {
       flowState: 'practicing',
       completedAt: null,
       currentPartIndex: 2,
-      currentSlotIndex: 1,
+      partStates: { 2: { slotIndex: 1 } },
       results: fx.plan.results.slice(0, 10),
     },
   })

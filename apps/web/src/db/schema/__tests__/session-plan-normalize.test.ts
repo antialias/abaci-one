@@ -1,18 +1,21 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { unenteredArithmeticStateOf } from '@/lib/curriculum/parts/arithmetic/state'
 import {
   adjustmentsOf,
   currentItemOf,
   doOverStamp,
   findTryIndex,
-  legacyPartStateOf,
   legacyTryId,
+  legacyWireFieldsOf,
   mintTryId,
   normalizeTries,
   type PartStateSource,
   partStateOf,
+  partStatesPatch,
   resolveItemId,
 } from '../session-plan-normalize'
 import type {
+  BreakRecord,
   GeneratedProblem,
   PartRetryState,
   ProblemSlot,
@@ -282,12 +285,11 @@ describe('adjustmentsOf', () => {
 })
 
 /**
- * Phase 5a: a part's state is read from `part_states`, with the legacy cursor
- * (`currentSlotIndex` + `retryState`) as the fallback for a part the row has
- * no entry for. Where the two disagree the entry is stale and the legacy
- * columns win (P5a-8).
+ * A part's state is its `part_states` entry, trusted as it stands (6b-0,
+ * §10 P6b-2). Since 6b-1 a part without one reads the state its place in the
+ * session implies, and no legacy column (§10 P6b1-3).
  */
-describe('part states (Phase 5a)', () => {
+describe('part states (Phase 6b-1)', () => {
   const round1 = (slotIndex: number): PartRetryState => ({
     currentEpoch: 1,
     pendingRetries: [],
@@ -305,74 +307,145 @@ describe('part states (Phase 5a)', () => {
   const plan = (over: Partial<PartStateSource>): PartStateSource => ({
     parts,
     currentPartIndex: 0,
-    currentSlotIndex: 0,
-    retryState: null,
     partStates: {},
     ...over,
   })
 
-  it('reads part_states where it agrees with the legacy columns', () => {
-    // The current part: same cursor and retry state, the entry is read
+  it('reads the entry as it stands', () => {
     const entry = { slotIndex: 3, retry: round1(1) }
-    const p = plan({
-      currentSlotIndex: 3,
-      retryState: { 0: round1(1) },
-      partStates: { '0': entry },
-    })
+    const p = plan({ partStates: { '0': entry } })
     expect(partStateOf(p, 0)).toBe(entry)
-    // An earlier part: legacy stores only its retry state; the entry's matches
+    expect(currentItemOf(p)).toMatchObject({ slotId: 's1', epochNumber: 1, retryIndex: 0 })
     const earlier = plan({
       currentPartIndex: 1,
-      retryState: { 0: round1(0) },
-      partStates: { '0': { retry: round1(0), slotIndex: 3 } },
+      partStates: { '0': { slotIndex: 3, retry: round1(1) } },
     })
-    expect(partStateOf(earlier, 0)).toEqual({ slotIndex: 3, retry: round1(0) })
+    expect(partStateOf(earlier, 0)).toEqual({ slotIndex: 3, retry: round1(1) })
   })
 
-  it('trusts the entry where the legacy columns disagree, without a warning (6b-0, §10 P6b-2)', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    try {
-      // The cursor: the entry says s2, the legacy columns say s1 (6b-1 leaves
-      // them stale). Until 6b-0 the legacy columns won here (§10 P5a-8).
-      const p = {
-        ...plan({ currentSlotIndex: 1, partStates: { '0': { slotIndex: 2 } } }),
-        id: 'pl-1',
-      }
-      expect(partStateOf(p, 0)).toEqual({ slotIndex: 2 })
-      expect(currentItemOf(p)).toMatchObject({ partIndex: 0, slotId: 's2', epochNumber: 0 })
-
-      // An earlier part's retry state
-      const earlier = {
-        ...plan({
-          currentPartIndex: 1,
-          retryState: { 0: round1(0) },
-          partStates: { '0': { slotIndex: 3, retry: round1(1) } },
-        }),
-        id: 'pl-2',
-      }
-      expect(partStateOf(earlier, 0)).toEqual({ slotIndex: 3, retry: round1(1) })
-      expect(legacyPartStateOf(earlier, 0)).toEqual({ slotIndex: 3, retry: round1(0) })
-      expect(warn).not.toHaveBeenCalled()
-    } finally {
-      warn.mockRestore()
-    }
-  })
-
-  it('reads the legacy cursor for a part without an entry', () => {
-    const p = plan({ currentSlotIndex: 3, retryState: { 0: round1(1) } })
-    expect(partStateOf(p, 0)).toEqual({ slotIndex: 3, retry: round1(1) })
-    expect(currentItemOf(p)).toMatchObject({ slotId: 's1', epochNumber: 1, retryIndex: 0 })
-    // the next part: not started
+  it('a part without an entry: finished before the cursor, not started at or after it, no column read', () => {
+    // The legacy columns a pre-3a pod left (6b-0 decoded them here) are ignored
+    const legacy = { currentSlotIndex: 2, retryState: { 0: round1(0), 1: round1(1) } }
+    const p = { ...plan({ currentPartIndex: 1 }), ...legacy } as PartStateSource
+    expect(partStateOf(p, 0)).toEqual({ slotIndex: 3, retry: undefined })
     expect(partStateOf(p, 1)).toEqual({ slotIndex: 0, retry: undefined })
+    expect(currentItemOf(p)).toMatchObject({ partIndex: 1, slotId: 't0', epochNumber: 0 })
     // an entry for another part does not stand in for this one
-    const other = plan({ currentSlotIndex: 1, partStates: { '1': { slotIndex: 1 } } })
-    expect(partStateOf(other, 0)).toEqual({ slotIndex: 1, retry: undefined })
+    const other = plan({ partStates: { '1': { slotIndex: 1 } } })
+    expect(partStateOf(other, 0)).toEqual({ slotIndex: 0, retry: undefined })
     // a row whose part_states did not decode to an object reads as having none
-    const odd = plan({ currentSlotIndex: 2, partStates: '{}' as never })
-    expect(partStateOf(odd, 0)).toEqual({ slotIndex: 2, retry: undefined })
+    const odd = plan({ partStates: '{}' as never })
+    expect(partStateOf(odd, 0)).toEqual({ slotIndex: 0, retry: undefined })
+  })
+
+  it("a try that moves the cursor on writes the next part's initial entry (§10 P6b-1 (1))", () => {
+    const p = plan({ partStates: { '0': { slotIndex: 2 } } })
+    // the try that ends part 0
+    expect(partStatesPatch(p, 0, { slotIndex: 3, retry: undefined }, 1)).toEqual({
+      partStates: {
+        '0': { slotIndex: 3, retry: undefined },
+        '1': { slotIndex: 0, retry: undefined },
+      },
+    })
+    // a try that stays in the part, and one aside that changed nothing, write no other entry
+    expect(partStatesPatch(p, 0, { slotIndex: 3 }, 0)).toEqual({
+      partStates: { '0': { slotIndex: 3 } },
+    })
+    expect(partStatesPatch(p, 0, undefined, 0)).toEqual({ partStates: { '0': { slotIndex: 2 } } })
+    // past the last part (completion) there is no part to enter
+    const last = plan({ currentPartIndex: 2, partStates: { '2': { slotIndex: 2 } } })
+    expect(partStatesPatch(last, 2, { slotIndex: 3 }, 3)).toEqual({
+      partStates: { '2': { slotIndex: 3 } },
+    })
   })
 
   it('has no current item past the last part', () => {
     expect(currentItemOf(plan({ currentPartIndex: 2 }))).toBeNull()
+  })
+
+  it('unenteredArithmeticStateOf: parked at the end before the cursor, at the start from it on', () => {
+    const at = (currentPartIndex: number, partIndex: number) =>
+      unenteredArithmeticStateOf({ parts, currentPartIndex }, partIndex)
+    expect(at(0, 0)).toEqual({ slotIndex: 0, retry: undefined })
+    expect(at(0, 1)).toEqual({ slotIndex: 0, retry: undefined })
+    expect(at(1, 0)).toEqual({ slotIndex: 3, retry: undefined })
+    expect(at(1, 1)).toEqual({ slotIndex: 0, retry: undefined })
+    // past the last part every part is finished
+    expect(at(2, 0)).toEqual({ slotIndex: 3, retry: undefined })
+    expect(at(2, 1)).toEqual({ slotIndex: 1, retry: undefined })
+    // a part the plan does not have has no slots
+    expect(at(3, 2)).toEqual({ slotIndex: 0, retry: undefined })
+  })
+})
+
+describe('legacyWireFieldsOf: the legacy fields old bundles read (§10 P6b1-16)', () => {
+  const retry: PartRetryState = {
+    currentEpoch: 1,
+    pendingRetries: [],
+    currentEpochItems: [
+      {
+        slotId: 's1',
+        originalSlotIndex: 1,
+        problem: P[1],
+        epochNumber: 1,
+        originalPurpose: 'focus',
+      },
+    ],
+    currentRetryIndex: 0,
+  }
+  const settled: PartRetryState = { ...retry, currentEpochItems: [] }
+  const T = '2026-12-01T15:00:00.000Z'
+  const results = { gameName: 'memory-quiz' } as never
+  const wire = (over: Record<string, unknown>) =>
+    legacyWireFieldsOf({
+      parts,
+      currentPartIndex: 0,
+      partStates: {},
+      flowState: 'practicing',
+      flowUpdatedAt: new Date(T),
+      breaks: [],
+      ...over,
+    } as never)
+
+  it("the current part's cursor and every part's retry state, in the legacy encoding", () => {
+    // before the first try: no entry, cursor at the start, no retry state
+    expect(wire({})).toMatchObject({ currentSlotIndex: 0, retryState: {} })
+    // in a retry round: cursor parked at the end
+    expect(wire({ partStates: { '0': { slotIndex: 3, retry } } })).toMatchObject({
+      currentSlotIndex: 3,
+      retryState: { 0: retry },
+    })
+    // moved on: the new part's cursor, the finished part's retry state kept
+    expect(
+      wire({
+        currentPartIndex: 1,
+        partStates: { '0': { slotIndex: 3, retry: settled }, '1': { slotIndex: 0 } },
+      })
+    ).toMatchObject({ currentSlotIndex: 0, retryState: { 0: settled } })
+    // past the last part: 0, as move-on wrote it
+    expect(
+      wire({ currentPartIndex: 2, partStates: { '0': { slotIndex: 3 }, '1': { slotIndex: 1 } } })
+    ).toMatchObject({ currentSlotIndex: 0, retryState: {} })
+  })
+
+  it('the break the kid is in: its start in a break state, its results in break_results', () => {
+    const open: BreakRecord = { breakIndex: 0, startedAt: T, game: 'memory-quiz' } as BreakRecord
+    const closed = { ...open, endedAt: T, results } as BreakRecord
+    const ms = new Date(T).getTime()
+    expect(wire({})).toMatchObject({ breakStartedAt: null, breakResults: null })
+    expect(wire({ flowState: 'break_pending' })).toMatchObject({
+      breakStartedAt: ms,
+      breakResults: null,
+    })
+    expect(wire({ flowState: 'break_active', breaks: [open] })).toMatchObject({
+      breakStartedAt: ms,
+      breakResults: null,
+    })
+    expect(wire({ flowState: 'break_results', breaks: [closed] })).toMatchObject({
+      breakStartedAt: ms,
+      breakResults: results,
+    })
+    // after the results screen, nothing
+    expect(wire({ breaks: [closed] })).toMatchObject({ breakStartedAt: null, breakResults: null })
   })
 })
