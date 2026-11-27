@@ -430,7 +430,13 @@ export function FlaggedAttemptCard({ playerId, attempt }: FlaggedAttemptCardProp
   const actionError =
     reviewMutation.error ?? confirmMutation.error ?? unconfirmMutation.error ?? null
 
-  const target = { playerId, planId: attempt.sessionId, resultIndex: attempt.resultIndex }
+  // `resultIndex` is the address an older server understands: it sent no `tryId` (D9, §10 P6b1-12a)
+  const target = {
+    playerId,
+    planId: attempt.sessionId,
+    tryId: attempt.tryId,
+    resultIndex: attempt.resultIndex,
+  }
 
   function runAction(action: SlotResultReviewAction) {
     reviewMutation.mutate({ ...target, action })

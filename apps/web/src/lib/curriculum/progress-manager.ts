@@ -10,6 +10,7 @@ import type { NewPlayerSkillMastery, PlayerSkillMastery } from '@/db/schema/play
 import { isActive, type PracticeLevel } from '@/db/schema/player-skill-mastery'
 import type { PracticeSession } from '@/db/schema/practice-sessions'
 import { countedTries, isCountedTry, summarizeTries } from '@/db/schema/session-plan-helpers'
+import { tryIdOf } from '@/db/schema/session-plan-normalize'
 import type { SlotResult } from '@/db/schema/session-plans'
 import {
   isTutorialSatisfied,
@@ -728,7 +729,7 @@ export async function getTimingReviewData(playerId: string): Promise<TimingRevie
   for (const session of windowSessions) {
     const completedAt = session.completedAt ? session.completedAt.toISOString() : null
     session.results.forEach((result, resultIndex) => {
-      // resultIndex stays the raw array index (the review route addresses it)
+      // resultIndex stays the raw array index (open tabs on older bundles address it, D9)
       if (!isCountedTry(result)) return
       const classification = classifyAttemptTiming(result, childStats)
 
@@ -766,6 +767,7 @@ export async function getTimingReviewData(playerId: string): Promise<TimingRevie
       flagged.push({
         sessionId: session.id,
         completedAt,
+        tryId: tryIdOf(result, resultIndex, session.id),
         resultIndex,
         tier: displayTier,
         reason: displayReason,

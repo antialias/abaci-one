@@ -269,7 +269,7 @@ function SessionGroupCard({
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.75rem' })}>
         {group.attempts.map((attempt) => (
           <FlaggedAttemptCard
-            key={`${attempt.sessionId}-${attempt.resultIndex}`}
+            key={attempt.tryId ?? `${attempt.sessionId}:${attempt.resultIndex}`}
             playerId={studentId}
             attempt={attempt}
           />

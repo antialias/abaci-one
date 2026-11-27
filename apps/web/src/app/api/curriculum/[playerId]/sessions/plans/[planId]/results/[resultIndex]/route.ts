@@ -5,7 +5,8 @@ import { reviewTry } from '../../reviewTry'
 /**
  * PATCH /api/curriculum/[playerId]/sessions/plans/[planId]/results/[resultIndex]
  * Review/repair a specific attempt in a session plan (#158), by its position in
- * `results`. Kept until Phase 6; `tries/[tryId]` is the addressing to use.
+ * `results`. No client of this image calls it (they use `tries/[tryId]`, §10
+ * P6b1-12a); kept for open tabs on older bundles (D9), deleted in P6b1-12b.
  *
  * Actions:
  * - mark_correct: change an incorrect result to correct (teacher-corrected)

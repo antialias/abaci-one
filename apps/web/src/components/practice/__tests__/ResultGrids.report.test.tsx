@@ -8,6 +8,7 @@
 
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { findTryIndex, tryIdOf } from '@/db/schema/session-plan-normalize'
 import {
   type ArithmeticItemStatus,
   arithmeticItemCells,
@@ -117,7 +118,14 @@ describe('arithmetic result cells: the report decides every verdict', () => {
           expect(t.resultIndex).toBeGreaterThanOrEqual(0)
           expect(t.result).toBe(fixture.plan.results[t.resultIndex])
         }
-        expect(attemptHistoryOf(cell)).toHaveLength(cell.tries.length)
+        const history = attemptHistoryOf(cell)
+        expect(history).toHaveLength(cell.tries.length)
+        // the id the review edits address (`tries/[tryId]`, §10 P6b1-12a): the
+        // stored one, else the legacy positional id, which the route resolves
+        for (const { result, globalIndex, tryId } of history) {
+          expect(tryId).toBe(tryIdOf(result, globalIndex, fixture.plan.id))
+          expect(findTryIndex(fixture.plan.id, fixture.plan.results, tryId)).toBe(globalIndex)
+        }
       }
       expect(cells.every((c) => c.shown !== null)).toBe(true)
     }

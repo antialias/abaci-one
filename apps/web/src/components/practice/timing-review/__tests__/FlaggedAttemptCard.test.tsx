@@ -44,6 +44,8 @@ const legacyResult: SerializedSlotResult = {
 const legacyAttempt: FlaggedAttempt = {
   sessionId: 'session-1',
   completedAt: '2026-05-28T10:05:00.000Z',
+  // a row from before Phase 1 has no stored id: the server sends its positional one
+  tryId: 'legacy:session-1:0',
   resultIndex: 0,
   tier: 'tier1',
   reason: 'legacy-implausible',
@@ -76,14 +78,14 @@ describe('FlaggedAttemptCard — legacy 8h01m litmus', () => {
     )
   })
 
-  it('omit-from-timing calls the results PATCH with scope=timing', async () => {
+  it('omit-from-timing calls the tries PATCH with scope=timing', async () => {
     render(<FlaggedAttemptCard playerId="player-1" attempt={legacyAttempt} />, { wrapper })
 
     fireEvent.click(screen.getByRole('button', { name: /Ignore this time/i }))
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/0',
+      '/api/curriculum/player-1/sessions/plans/session-1/tries/legacy%3Asession-1%3A0',
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ action: 'exclude', scope: 'timing' }),
@@ -91,14 +93,14 @@ describe('FlaggedAttemptCard — legacy 8h01m litmus', () => {
     )
   })
 
-  it('omit-from-mastery calls the results PATCH with scope=mastery', async () => {
+  it('omit-from-mastery calls the tries PATCH with scope=mastery', async () => {
     render(<FlaggedAttemptCard playerId="player-1" attempt={legacyAttempt} />, { wrapper })
 
     fireEvent.click(screen.getByRole('button', { name: /Doesn.t count/i }))
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/0',
+      '/api/curriculum/player-1/sessions/plans/session-1/tries/legacy%3Asession-1%3A0',
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ action: 'exclude', scope: 'mastery' }),
@@ -127,7 +129,7 @@ describe('FlaggedAttemptCard — set exact time', () => {
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/0',
+      '/api/curriculum/player-1/sessions/plans/session-1/tries/legacy%3Asession-1%3A0',
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ action: 'set_time', adjustedResponseTimeMs: 12_000 }),
@@ -201,7 +203,7 @@ describe('FlaggedAttemptCard — confirm timing is real', () => {
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/0',
+      '/api/curriculum/player-1/sessions/plans/session-1/tries/legacy%3Asession-1%3A0',
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ action: 'confirm_timing' }),
@@ -232,7 +234,7 @@ describe('FlaggedAttemptCard — confirm timing is real', () => {
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/0',
+      '/api/curriculum/player-1/sessions/plans/session-1/tries/legacy%3Asession-1%3A0',
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ action: 'unconfirm_timing' }),
@@ -280,7 +282,7 @@ describe('FlaggedAttemptCard — idle-capped attempt with a raw span', () => {
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/0',
+      '/api/curriculum/player-1/sessions/plans/session-1/tries/legacy%3Asession-1%3A0',
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ action: 'set_time', adjustedResponseTimeMs: 28_894_000 }),

@@ -36,10 +36,12 @@ export function browseCells(
   return arithmeticItemCells(plan, report).flat()
 }
 
-/** A cell's tries as the attempt history lists them: stored tries with their index (review edits). */
+/** A cell's tries as the attempt history lists them: stored tries with their index and id (review edits address the id). */
 export function attemptHistoryOf(cell: ArithmeticItemCell): ResultWithGlobalIndex[] {
   return cell.tries.flatMap((t) =>
-    t.result && t.resultIndex >= 0 ? [{ result: t.result, globalIndex: t.resultIndex }] : []
+    t.result && t.resultIndex >= 0
+      ? [{ result: t.result, globalIndex: t.resultIndex, tryId: t.row.tryId }]
+      : []
   )
 }
 
