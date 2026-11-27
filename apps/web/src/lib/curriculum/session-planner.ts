@@ -18,6 +18,12 @@ import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { getSkillCategory, type SkillCategoryKey } from '@/constants/skillCategories'
 import { db, schema } from '@/db'
 import { appSettings } from '@/db/schema'
+import {
+  itemSlotIndexOfRow,
+  retryRoundOfRow,
+  tryKindOfRow,
+  tryRoundOfRow,
+} from '@/db/schema/legacy-try-fields'
 import { isActive, isVisualReady, type PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
 import { isCountedTry, sameProblem } from '@/db/schema/session-plan-helpers'
 import {
@@ -89,6 +95,7 @@ import {
 } from './linear-gate'
 import { explainLinearReadiness } from './linear-readiness'
 import { resolveEnabledPartTypes } from './part-gating'
+import { arithmeticCursorSlotIndex } from './parts/arithmetic/session-view'
 import { isPartPlayable, partKindOf } from './parts/registry'
 import { generateProblemFromConstraints } from './problem-generator'
 import {
@@ -1550,15 +1557,19 @@ export async function recordSlotResult(
     const isExpectedItem =
       !!expected && isSubmittedTry({ ...expected, slotIndex: expected.originalSlotIndex })
     if (!isExpectedItem) {
-      const lastTry = [...plan.results].reverse().find((r) => !r.isManualRedo)
+      // The stored row's kind, round and item position come from the
+      // normalizer (`legacy-try-fields.ts`), so a row without the legacy try
+      // fields (Phase 6b-1) reads the same (§10 P6b-6)
+      const lastTry = [...plan.results].reverse().find((r) => tryKindOfRow(r) !== 'do_over')
       const lastTryPartNumber = lastTry?.partNumber
       if (
         result.tryId === undefined &&
         lastTry &&
         isSubmittedTry({
-          ...lastTry,
           partIndex: plan.parts.findIndex((p) => p.partNumber === lastTryPartNumber),
-          slotIndex: lastTry.originalSlotIndex ?? lastTry.slotIndex,
+          slotIndex: itemSlotIndexOfRow(lastTry),
+          epochNumber: retryRoundOfRow(lastTry),
+          problem: lastTry.problem,
         }) &&
         lastTry.studentAnswer === result.studentAnswer
       ) {
@@ -1604,7 +1615,7 @@ export async function recordSlotResult(
       planId,
       playerId: plan.playerId,
       currentPartIndex: plan.currentPartIndex,
-      currentSlotIndex: plan.currentSlotIndex,
+      currentSlotIndex: arithmeticCursorSlotIndex(plan),
       currentPartNumber: currentPart.partNumber,
       currentPartType: currentPart.type,
       submittedSlotIndex: result.slotIndex,
@@ -1657,7 +1668,7 @@ export async function recordSlotResult(
       }),
       value: {
         previousPartIndex: plan.currentPartIndex,
-        previousSlotIndex: plan.currentSlotIndex,
+        previousSlotIndex: arithmeticCursorSlotIndex(plan),
         inRetryEpoch,
       },
     }
@@ -1697,7 +1708,7 @@ export async function recordSlotResult(
     previousPartIndex: outcome.previousPartIndex,
     previousSlotIndex: outcome.previousSlotIndex,
     nextPartIndex: updated.currentPartIndex,
-    nextSlotIndex: updated.currentSlotIndex,
+    nextSlotIndex: arithmeticCursorSlotIndex(updated),
     partTransitioned: updated.currentPartIndex > outcome.previousPartIndex,
     flowState: updated.flowState,
     inRetryEpoch: outcome.inRetryEpoch,
@@ -1826,14 +1837,17 @@ export async function recordRedoResult(
     }
     const priorTries = tries.filter((t) => t.itemId === slot.slotId)
 
-    // Reject redo if the answer was already divulged (student exhausted all retries wrong)
+    // Reject redo if the answer was already divulged (student exhausted all
+    // retries wrong). Rows read through the normalizer (§10 P6b-6).
     const answerWasDivulged = (plan.results || []).some(
       (r) =>
         r.partNumber === part.partNumber &&
-        (r.originalSlotIndex ?? r.slotIndex) === slotIndex &&
+        itemSlotIndexOfRow(r) === slotIndex &&
         !r.isCorrect &&
-        !r.isManualRedo &&
-        (r.epochNumber ?? 0) >= MAX_RETRY_EPOCHS
+        // a wrong try of the last retry round (a do-over is never a retry);
+        // the dots' copy reads the same (`SessionProgressIndicator`)
+        tryKindOfRow(r) === 'retry' &&
+        tryRoundOfRow(r) >= MAX_RETRY_EPOCHS
     )
     if (answerWasDivulged) {
       throw new Error(

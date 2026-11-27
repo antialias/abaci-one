@@ -2,9 +2,10 @@
  * Arithmetic part state: the cursor through a part's slots and its retry
  * rounds, and how a try moves it (session architecture §1.2, Phase 2).
  *
- * The state is the legacy encoding itself (§1.1): the plan's
- * `currentSlotIndex` plus `retryState[partIndex]`. Position is still written
- * to those columns; Phase 3a adds `part_states`.
+ * A part's state is its `part_states` entry (Phase 3a on). Its legacy
+ * encoding, the plan's `currentSlotIndex` plus `retryState[partIndex]`, is
+ * still written by every writer and read only for a part without an entry
+ * (`legacyArithmeticStateOf`, Phase 6b-0); the writers drop it in 6b-1.
  *
  * Moved here from `db/schema/session-plan-helpers.ts`, which re-exports the
  * plan-level helpers until Phase 5. Every function here is pure; the moved
@@ -58,14 +59,57 @@ function isRoundRunning(retry: PartRetryState | undefined): retry is PartRetrySt
   return retry.currentEpochItems.length > 0 && retry.currentEpoch > 0
 }
 
+/** The plan fields an arithmetic part's state is read from. */
+export type ArithmeticStateSource = Pick<
+  SessionPlan,
+  'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState'
+> &
+  Partial<Pick<SessionPlan, 'partStates'>>
+
+/**
+ * An arithmetic part's state: its `part_states` entry, else (a row written
+ * before Phase 3a, or a part no try has moved since) the legacy decode. An
+ * entry is trusted as it stands (Phase 6b-0 removed the P5a-8 stale check:
+ * the stale sessions it guarded were closed by migration 0148). An entry that
+ * is not an object reads as absent.
+ */
+export function arithmeticPartStateOf(
+  plan: ArithmeticStateSource,
+  partIndex: number
+): ArithmeticState {
+  const states: unknown = plan.partStates
+  if (states && typeof states === 'object' && !Array.isArray(states)) {
+    const entry: unknown = (states as Record<string, unknown>)[String(partIndex)]
+    if (entry && typeof entry === 'object' && !Array.isArray(entry)) return entry as ArithmeticState
+  }
+  return legacyArithmeticStateOf(plan, partIndex)
+}
+
+/**
+ * The legacy decode, for a part without a `part_states` entry: the current
+ * part's cursor is `currentSlotIndex` + `retryState[i]`; a part before it is
+ * finished (cursor parked at its end), a part after it not started. The only
+ * reader of those two columns; it goes with them in Phase 6b-2.
+ */
+export function legacyArithmeticStateOf(
+  plan: Pick<SessionPlan, 'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState'>,
+  partIndex: number
+): ArithmeticState {
+  if (partIndex === plan.currentPartIndex) return arithmeticStateOf(plan, partIndex)
+  return {
+    slotIndex: partIndex < plan.currentPartIndex ? (plan.parts[partIndex]?.slots?.length ?? 0) : 0,
+    retry: plan.retryState?.[partIndex],
+  }
+}
+
 /**
  * Check if we're currently in a retry epoch for the given part
  */
-export function isInRetryEpoch(plan: Pick<SessionPlan, 'retryState'>, partIndex: number): boolean {
-  return isRoundRunning(plan.retryState?.[partIndex])
+export function isInRetryEpoch(plan: ArithmeticStateSource, partIndex: number): boolean {
+  return isRoundRunning(arithmeticPartStateOf(plan, partIndex).retry)
 }
 
-/** A part's state, decoded from the plan's legacy position columns. */
+/** The current part's state, decoded from the plan's legacy position columns (`legacyArithmeticStateOf`). */
 export function arithmeticStateOf(
   plan: Pick<SessionPlan, 'currentSlotIndex' | 'retryState'>,
   partIndex: number
@@ -118,15 +162,14 @@ export function expectedArithmeticItem(
  * session is past its last part, or the current part has nothing to show.
  *
  * The client shows this (getCurrentProblemInfo) and the server attributes each
- * try to it (recordSlotResult). Never fork it.
+ * try to the same decision through `currentItemOf` (recordSlotResult); both
+ * read the part's state through `arithmeticPartStateOf`. Never fork it.
  */
-export function resolveCurrentItem(
-  plan: Pick<SessionPlan, 'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState'>
-): CurrentPlanItem | null {
+export function resolveCurrentItem(plan: ArithmeticStateSource): CurrentPlanItem | null {
   const partIndex = plan.currentPartIndex
   const part = plan.parts[partIndex]
   if (!part) return null
-  const item = expectedArithmeticItem(part.slots, arithmeticStateOf(plan, partIndex))
+  const item = expectedArithmeticItem(part.slots, arithmeticPartStateOf(plan, partIndex))
   return item ? { partIndex, ...item } : null
 }
 
@@ -185,9 +228,10 @@ export function needsRetryTransition(plan: SessionPlan): boolean {
   if (partIndex >= plan.parts.length) return false
 
   const part = plan.parts[partIndex]
-  const retryState = plan.retryState?.[partIndex]
+  const state = arithmeticPartStateOf(plan, partIndex)
+  const retryState = state.retry
 
-  if (plan.currentSlotIndex < part.slots.length) return false
+  if (state.slotIndex < part.slots.length) return false
 
   if (retryState && retryState.pendingRetries.length > 0 && retryState.currentEpoch === 0) {
     return true

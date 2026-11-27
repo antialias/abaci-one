@@ -25,6 +25,7 @@ import {
   startSessionPlan,
   updateSessionPlanRemoteCamera,
 } from '@/lib/curriculum'
+import { arithmeticCursorSlotIndex } from '@/lib/curriculum/parts/arithmetic/session-view'
 import { WriteContentionError } from '@/lib/curriculum/row-cas'
 import { InvalidFlowTransitionError } from '@/lib/curriculum/session-flow'
 import { MalformedDoOverError, NotPracticingError } from '@/lib/curriculum/session-planner'
@@ -43,6 +44,7 @@ function serializePlan(plan: SessionPlan) {
     completedAt: plan.completedAt instanceof Date ? plan.completedAt.getTime() : plan.completedAt,
     flowUpdatedAt:
       plan.flowUpdatedAt instanceof Date ? plan.flowUpdatedAt.getTime() : plan.flowUpdatedAt,
+    // Wire pass-through for bundles from before Phase 6b-0, which read it (D9)
     breakStartedAt:
       plan.breakStartedAt instanceof Date ? plan.breakStartedAt.getTime() : plan.breakStartedAt,
     deletedAt: plan.deletedAt instanceof Date ? plan.deletedAt.getTime() : plan.deletedAt,
@@ -252,7 +254,7 @@ export const PATCH = withAuth(async (request, { params }) => {
         action,
         durationMs: Date.now() - actionStart,
         updatedPartIndex: plan.currentPartIndex,
-        updatedSlotIndex: plan.currentSlotIndex,
+        updatedSlotIndex: arithmeticCursorSlotIndex(plan),
         updatedStatus: plan.status,
         completedAt: plan.completedAt ? String(plan.completedAt) : null,
       })
@@ -267,8 +269,7 @@ export const PATCH = withAuth(async (request, { params }) => {
         planId,
         action,
         updatedFlowState: plan.flowState ?? null,
-        updatedBreakStartedAt: plan.breakStartedAt ? String(plan.breakStartedAt) : null,
-        updatedBreakReason: plan.breakReason ?? null,
+        updatedFlowUpdatedAt: plan.flowUpdatedAt ? String(plan.flowUpdatedAt) : null,
       })
     }
     return NextResponse.json({ plan: serializePlan(plan) })

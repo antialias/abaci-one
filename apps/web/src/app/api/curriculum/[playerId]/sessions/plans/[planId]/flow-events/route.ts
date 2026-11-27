@@ -16,6 +16,7 @@ function serializePlan(plan: SessionPlan) {
     completedAt: plan.completedAt instanceof Date ? plan.completedAt.getTime() : plan.completedAt,
     flowUpdatedAt:
       plan.flowUpdatedAt instanceof Date ? plan.flowUpdatedAt.getTime() : plan.flowUpdatedAt,
+    // Wire pass-through for bundles from before Phase 6b-0, which read it (D9)
     breakStartedAt:
       plan.breakStartedAt instanceof Date ? plan.breakStartedAt.getTime() : plan.breakStartedAt,
   }

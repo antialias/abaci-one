@@ -13,13 +13,14 @@
  *
  * Expand/contract (D5): the patch writes the new columns (`breaks`,
  * `partStates`) and the legacy ones (`break_*`, `currentSlotIndex`,
- * `retryState`) exactly as the code before Phase 3a did. Since Phase 5 the
- * machine reads the new ones (`partStateOf`, `runningBreakGame`,
- * `lastBreakOutcome`), falling back to the legacy ones for a row written
- * before them. What only the legacy columns hold still comes from them: a
- * pending break's start (its record is appended at BREAK_STARTED) and whether
- * a try's clearing of `breakStartedAt`/`breakResults` bumps `flowVersion`
- * (§10 P5a-3).
+ * `retryState`) exactly as the code before Phase 3a did. Since Phase 6b-0 the
+ * machine reads only the new ones (`partStateOf`, whose legacy decode is left
+ * for a part without an entry; `runningBreakGame`, `lastBreakOutcome`); a
+ * pending break's start is `flowUpdatedAt` (§10 P6b-3). The legacy columns
+ * are read only to compute their own writes, which stay exactly as they were
+ * until 6b-1 drops them: `legacyBreakStartedAtWrite`, and
+ * `clearsLegacyBreakFields`, whether a try's clearing of
+ * `breakStartedAt`/`breakResults` bumps `flowVersion` (§10 P5a-3 (2), P6b-5).
  */
 
 import { isCountedTry } from '@/db/schema/session-plan-helpers'
@@ -134,21 +135,20 @@ function breaksOf(plan: SessionPlan): BreakRecord[] {
 }
 
 /**
- * The game of the break running now: the open record's (Phase 5), else, for a
- * row without one (a break opened before Phase 3a), `breakSelectedGame`.
+ * The game of the break running now: the open record's (Phase 5); none when
+ * no record is open (a break opened before Phase 3a; Phase 6b-0 stopped
+ * reading `breakSelectedGame` for it).
  */
 function runningBreakGame(plan: SessionPlan): string | null {
   const breaks = breaksOf(plan)
   const open = openBreakIndex(breaks)
-  if (open >= 0) return breaks[open].game ?? null
-  return plan.breakSelectedGame ?? null
+  return open >= 0 ? (breaks[open].game ?? null) : null
 }
 
 /**
  * How the latest break ended: the last record's reason and results (Phase 5;
- * an open record has neither). A row whose `breaks` is empty (written before
- * Phase 3a, or with no break yet) reads the legacy columns, which hold the
- * latest break's until a transition or an ack clears them.
+ * an open record has neither); none for a row without a record (no break
+ * since Phase 3a; Phase 6b-0 stopped reading the legacy columns for it).
  */
 function lastBreakOutcome(plan: SessionPlan): {
   reason: GameBreakEndReason | null
@@ -156,8 +156,39 @@ function lastBreakOutcome(plan: SessionPlan): {
 } {
   const breaks = breaksOf(plan)
   const last = breaks[breaks.length - 1]
-  if (!last) return { reason: plan.breakReason ?? null, results: plan.breakResults ?? null }
+  if (!last) return { reason: null, results: null }
   return { reason: last.reason ?? null, results: last.results ?? null }
+}
+
+/**
+ * When the pending break started: when the flow entered `break_pending`
+ * (`flowUpdatedAt`, §10 P6b-3). Every writer from 3a on stamped the same
+ * instant as `breakStartedAt`, which 6b-1 stops writing.
+ */
+function pendingBreakStart(plan: SessionPlan, now: Date): Date {
+  const at = plan.flowUpdatedAt
+  if (at == null) return now
+  const date = at instanceof Date ? at : new Date(at)
+  return Number.isNaN(date.getTime()) ? now : date
+}
+
+/**
+ * The legacy `breakStartedAt` write when a break opens, exactly as before
+ * (Phase 6b-0 keeps every legacy write; 6b-1 drops it). Nothing reads the
+ * column back.
+ */
+function legacyBreakStartedAtWrite(plan: SessionPlan, now: Date): Date {
+  return plan.breakStartedAt ?? now
+}
+
+/**
+ * Whether a try's patch clears operational legacy break fields left set
+ * (after a skipped or timed-out break), which counts as a flow change and
+ * bumps `flowVersion` (§10 P5a-3 (2)). Reads the legacy write itself; kept so
+ * the golden replay is unchanged, and goes with the write in 6b-1 (§10 P6b-5).
+ */
+function clearsLegacyBreakFields(plan: SessionPlan): boolean {
+  return plan.breakStartedAt !== null || plan.breakResults !== null
 }
 
 /** Index of the open break (started, not ended), or -1. */
@@ -256,7 +287,7 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
 
       return commit({
         flowState: 'break_pending',
-        breakStartedAt: plan.breakStartedAt ?? now,
+        breakStartedAt: legacyBreakStartedAtWrite(plan, now),
         breakReason: null,
         breakSelectedGame: null,
         breakResults: null,
@@ -288,10 +319,10 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
         )
       }
 
-      const startedAt = plan.breakStartedAt ?? now
+      const startedAt = pendingBreakStart(plan, now)
       return commit({
         flowState: 'break_active',
-        breakStartedAt: startedAt,
+        breakStartedAt: legacyBreakStartedAtWrite(plan, now),
         breakSelectedGame: selectedGame,
         breaks: [
           ...breaks,
@@ -335,8 +366,8 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
           : {
               breakIndex: breaks.length,
               afterPartIndex: plan.currentPartIndex - 1,
-              startedAt: (plan.breakStartedAt ?? now).toISOString(),
-              game: plan.breakSelectedGame ?? null,
+              startedAt: pendingBreakStart(plan, now).toISOString(),
+              game: null,
             }
       const closed: BreakRecord = {
         ...record,
@@ -358,15 +389,12 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
 
     case 'BREAK_RESULTS_ACKED': {
       // Already acked: practicing, and the latest break, if any, ended with
-      // results (a break skipped or timed out has none to ack). Rows without
-      // `breaks` read it from the legacy columns, which the ack cleared.
+      // results (a break skipped or timed out has none to ack). A row with no
+      // record has had no break since Phase 3a (6b-0 stopped reading the
+      // legacy columns for one before it).
       const alreadyApplied =
         current === 'practicing' &&
-        (breaksOf(plan).length > 0
-          ? lastBreakOutcome(plan).reason === 'gameFinished'
-          : plan.breakReason === null &&
-            (plan.breakSelectedGame ?? null) === null &&
-            plan.breakResults == null)
+        (breaksOf(plan).length === 0 || lastBreakOutcome(plan).reason === 'gameFinished')
       if (alreadyApplied) return noChange()
 
       if (current !== 'break_results') {
@@ -560,8 +588,7 @@ function applyTryRecorded(
       : partTransitioned
         ? 'part_transition'
         : 'practicing'
-    const flowStateChanged =
-      current !== nextFlowState || plan.breakStartedAt !== null || plan.breakResults !== null
+    const flowStateChanged = current !== nextFlowState || clearsLegacyBreakFields(plan)
     Object.assign(patch, {
       currentPartIndex: nextPartIndex,
       status: isComplete ? 'completed' : 'in_progress',

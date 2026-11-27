@@ -17,6 +17,7 @@ import {
   SESSION_TIMEOUT_HOURS,
   TERM_COUNT_RANGES,
 } from '@/lib/curriculum/config'
+import { arithmeticPartStateOf } from '@/lib/curriculum/parts/arithmetic/state'
 import { evidenceWeightOf } from '@/lib/curriculum/try-weight'
 import { itemSlotIndexOfRow } from './legacy-try-fields'
 
@@ -167,7 +168,7 @@ export function getCurrentPart(plan: SessionPlan) {
 export function getNextSlot(plan: SessionPlan) {
   const currentPart = getCurrentPart(plan)
   if (!currentPart) return undefined
-  return currentPart.slots[plan.currentSlotIndex]
+  return currentPart.slots[arithmeticPartStateOf(plan, plan.currentPartIndex).slotIndex]
 }
 
 /**
@@ -190,7 +191,7 @@ export function getCompletedProblemCount(plan: SessionPlan): number {
 export function isPartComplete(plan: SessionPlan): boolean {
   const currentPart = getCurrentPart(plan)
   if (!currentPart) return true
-  return plan.currentSlotIndex >= currentPart.slots.length
+  return arithmeticPartStateOf(plan, plan.currentPartIndex).slotIndex >= currentPart.slots.length
 }
 
 /**
@@ -201,7 +202,7 @@ export function isSessionComplete(plan: SessionPlan): boolean {
   if (plan.currentPartIndex >= plan.parts.length) return true
   if (plan.currentPartIndex === plan.parts.length - 1) {
     const lastPart = plan.parts[plan.currentPartIndex]
-    return plan.currentSlotIndex >= lastPart.slots.length
+    return arithmeticPartStateOf(plan, plan.currentPartIndex).slotIndex >= lastPart.slots.length
   }
   return false
 }

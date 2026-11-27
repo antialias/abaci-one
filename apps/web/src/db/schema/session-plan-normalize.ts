@@ -9,11 +9,13 @@
  * Drizzle-free (only `import type` from schema files): client-safe.
  */
 
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import {
   type ArithmeticState,
-  arithmeticStateOf,
+  arithmeticPartStateOf,
   type CurrentPlanItem,
   expectedArithmeticItem,
+  legacyArithmeticStateOf,
 } from '@/lib/curriculum/parts/arithmetic/state'
 import { kindIdOf, partKindOf } from '@/lib/curriculum/parts/registry'
 import { itemSlotIndexOfRow, tryKindOfRow, tryRoundOfRow } from './legacy-try-fields'
@@ -222,107 +224,45 @@ function storedPartStateOf(plan: PartStateSource, partIndex: number): unknown {
   return (states as Record<string, unknown>)[String(partIndex)] ?? undefined
 }
 
-/** JSON with sorted keys and undefined members dropped: equality as the column stores it. */
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
-  if (value && typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>)
-      .filter(([, v]) => v !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`
-  }
-  return JSON.stringify(value ?? null)
-}
-
 /**
- * Whether an arithmetic part's stored entry disagrees with the legacy columns
- * on what they can express: the current part's cursor and retry state; another
- * part's retry state (its slot index is not stored, only inferred).
- */
-function contradictsLegacy(
-  plan: PartStateSource,
-  partIndex: number,
-  stored: unknown,
-  legacy: ArithmeticState
-): boolean {
-  const entry = stored as Partial<ArithmeticState> | null
-  if (!entry || typeof entry !== 'object') return true
-  if (partIndex === plan.currentPartIndex && entry.slotIndex !== legacy.slotIndex) return true
-  return canonicalJson(entry.retry) !== canonicalJson(legacy.retry)
-}
-
-const warnedStaleParts = new Set<string>()
-
-function warnStalePart(plan: PartStateSource, partIndex: number): void {
-  const key = `${plan.id ?? '?'}:${partIndex}`
-  if (warnedStaleParts.has(key)) return
-  if (warnedStaleParts.size >= 500) warnedStaleParts.clear()
-  warnedStaleParts.add(key)
-  console.warn(
-    '[partStateOf] part_states entry disagrees with the legacy columns; reading legacy',
-    {
-      planId: plan.id,
-      partIndex,
-    }
-  )
-}
-
-/**
- * A part's state (its kind's cursor): its `part_states` entry (Phase 5). A
- * part without one (a row written before Phase 3a, or a part no try has moved
- * since) falls back to `legacyPartStateOf`, which is how Phase 3a read every
- * part.
+ * A part's state (its kind's cursor): its `part_states` entry, trusted as it
+ * stands (Phase 6b-0). A part without one (a row written before Phase 3a, or
+ * a part no try has moved since) falls back to the legacy decode
+ * (`legacyPartStateOf`), the only reader of the legacy position columns.
  *
- * Until Phase 6 an arithmetic entry that disagrees with the legacy columns is
- * stale, and the legacy decode wins (with a warning, once per plan and part).
- * Every writer from 3a on writes both from one state under the row CAS
- * (`partStatePatch`), so a disagreement can only come from an image before 3a,
- * which writes the legacy columns alone and without the CAS: its write was the
- * last, alongside `results`. Trusting the entry there would expect an item the
- * client (which shows the legacy item) never sends: 409 after 409, no heal.
- * The next try rewrites the entry from the legacy state, which heals it.
- * Phase 6 deletes this check with the legacy decode (§10 P5a-8).
+ * Until 6b-0 an arithmetic entry that disagreed with the legacy columns was
+ * taken as stale and the legacy decode won (P5a-8). That guarded rows last
+ * written by an image before 3a; migration 0148 closed the stale ones, and
+ * from 6b-1 on the legacy columns are no longer written, so they cannot be
+ * the judge (§10 P6b-2).
  */
 export function partStateOf(plan: PartStateSource, partIndex: number): unknown {
-  const stored = storedPartStateOf(plan, partIndex)
-  if (stored === undefined) return legacyPartStateOf(plan, partIndex)
-  if (kindIdOf(plan.parts[partIndex]) !== 'arithmetic') return stored
-  const legacy = legacyPartStateOf(plan, partIndex) as ArithmeticState
-  if (contradictsLegacy(plan, partIndex, stored, legacy)) {
-    warnStalePart(plan, partIndex)
-    return legacy
-  }
-  return stored
+  if (kindIdOf(plan.parts[partIndex]) === 'arithmetic')
+    return arithmeticPartStateOf(plan, partIndex)
+  return storedPartStateOf(plan, partIndex) ?? legacyPartStateOf(plan, partIndex)
 }
 
 /**
  * A part's state as Phase 3a read it. Arithmetic parts decode the legacy
- * columns, which every image writes: the current part's cursor is
+ * columns (`legacyArithmeticStateOf`): the current part's cursor is
  * `currentSlotIndex` + `retryState[i]`; a part before it is finished (cursor
  * parked at its end), a part after it not started. Other kinds read
- * `partStates[i]`, else their initial state. The fallback of `partStateOf`;
- * goes with the legacy columns in Phase 6.
+ * `partStates[i]`, else their initial state. The fallback of `partStateOf`
+ * for a part without an entry; goes with the legacy columns in Phase 6b-2.
  */
 export function legacyPartStateOf(plan: PartStateSource, partIndex: number): unknown {
   const part = plan.parts[partIndex]
-  if (kindIdOf(part) === 'arithmetic') {
-    if (partIndex === plan.currentPartIndex) return arithmeticStateOf(plan, partIndex)
-    const state: ArithmeticState = {
-      slotIndex: partIndex < plan.currentPartIndex ? (part.slots?.length ?? 0) : 0,
-      retry: plan.retryState?.[partIndex],
-    }
-    return state
-  }
+  if (kindIdOf(part) === 'arithmetic') return legacyArithmeticStateOf(plan, partIndex)
   const kind = partKindOf(part)
   return storedPartStateOf(plan, partIndex) ?? kind.initialState(kind.contentOf(part))
 }
 
 /**
  * The item the student is on in the plan's current arithmetic part, from that
- * part's state (`partStateOf`: `part_states`, the legacy cursor for a row
- * without it or with a stale entry): what a first or retry
- * try must answer (`recordSlotResult`). The same decision as
- * `resolveCurrentItem`, which the client still feeds from the legacy columns.
+ * part's state (`partStateOf`: its `part_states` entry, the legacy cursor for
+ * a part without one): what a first or retry try must answer
+ * (`recordSlotResult`). The same decision, from the same state, as
+ * `resolveCurrentItem`, which the client shows (`getCurrentProblemInfo`).
  * Null past the last part, when the part has nothing to show, or when the
  * current part is not arithmetic.
  */
@@ -421,60 +361,73 @@ function isoOf(value: Date | string | number | null | undefined): string | null 
 
 /**
  * A session's breaks by the legacy path (§3.1): one estimated record per
- * `practice-break` game result (in played order), else the four legacy break
- * columns as at most one break. The session report and the song still read
- * this; their move to `plan.breaks` is outside Phase 5a's files (§10 P5a-4).
+ * `practice-break` game result, in played order. The session report and the
+ * song read this for a row with no `breaks` records (`sessionBreaksOf`).
+ * Until Phase 6b-0 a row without game results also read the four legacy break
+ * columns as at most one break; 6b-0 stopped reading them (§10 P6b-4): the
+ * break the kid is in comes from `currentBreakOf`.
  */
-export function legacyBreaksOf(
-  plan: Pick<
-    SessionPlan,
-    | 'breakStartedAt'
-    | 'breakReason'
-    | 'breakSelectedGame'
-    | 'breakResults'
-    | 'flowState'
-    | 'currentPartIndex'
-  >,
-  gameResults: readonly BreakGameResult[] = []
-): BreakRecord[] {
-  if (gameResults.length > 0) {
-    return [...gameResults]
-      .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime())
-      .map((g, breakIndex) => ({
-        breakIndex,
-        afterPartIndex: null,
-        // `played_at` is when the game ended (P3b-5); the start is that less its duration
-        startedAt: isoOf(
-          g.durationMs != null ? new Date(g.playedAt).getTime() - g.durationMs : g.playedAt
-        ),
-        ...(isoOf(g.playedAt) ? { endedAt: isoOf(g.playedAt) as string } : {}),
-        game: g.gameName ?? null,
-        gameResultId: g.id,
-        ...(g.durationMs != null ? { durationMs: g.durationMs } : {}),
-        estimated: true,
-      }))
-  }
-  const hasBreak =
-    plan.breakStartedAt != null ||
-    plan.breakReason != null ||
-    plan.breakSelectedGame != null ||
-    plan.breakResults != null
-  if (!hasBreak) return []
-  const open =
-    plan.flowState === 'break_pending' ||
-    plan.flowState === 'break_active' ||
-    plan.flowState === 'break_results'
-  return [
-    {
-      breakIndex: 0,
-      afterPartIndex: open ? plan.currentPartIndex - 1 : null,
-      startedAt: isoOf(plan.breakStartedAt),
-      ...(plan.breakReason ? { reason: plan.breakReason } : {}),
-      game: plan.breakSelectedGame ?? null,
-      results: plan.breakResults ?? null,
+export function legacyBreaksOf(gameResults: readonly BreakGameResult[] = []): BreakRecord[] {
+  return [...gameResults]
+    .sort((a, b) => new Date(a.playedAt).getTime() - new Date(b.playedAt).getTime())
+    .map((g, breakIndex) => ({
+      breakIndex,
+      afterPartIndex: null,
+      // `played_at` is when the game ended (P3b-5); the start is that less its duration
+      startedAt: isoOf(
+        g.durationMs != null ? new Date(g.playedAt).getTime() - g.durationMs : g.playedAt
+      ),
+      ...(isoOf(g.playedAt) ? { endedAt: isoOf(g.playedAt) as string } : {}),
+      game: g.gameName ?? null,
+      gameResultId: g.id,
+      ...(g.durationMs != null ? { durationMs: g.durationMs } : {}),
       estimated: true,
-    },
-  ]
+    }))
+}
+
+/** The plan fields the break the kid is in is read from. */
+export type CurrentBreakSource = Pick<SessionPlan, 'flowState'> & {
+  flowUpdatedAt?: Date | string | number | null
+  breaks?: readonly BreakRecord[] | null
+}
+
+/** The break the kid is in: when it started, its game, and the results it ended with. */
+export interface CurrentBreak {
+  startedAt: Date | string | number | null
+  game: string | null
+  results: GameResultsReport | null
+}
+
+/**
+ * The break the kid is in, from the new columns only (Phase 6b-0); null
+ * outside the break states.
+ *
+ * - `break_pending`: the break has no record yet (BREAK_STARTED, or a skip
+ *   before it starts, appends it; §10 P5a-3). It started when the flow
+ *   entered `break_pending`, which is `flowUpdatedAt` (§10 P6b-3): the same
+ *   instant every writer from 3a on stamped as `breakStartedAt`.
+ * - `break_active`: the open record.
+ * - `break_results`: the last record, closed with the game's results.
+ *
+ * A break state with no record to read (a break an image before 3a opened)
+ * reads `flowUpdatedAt`, with no game or results.
+ */
+export function currentBreakOf(plan: CurrentBreakSource): CurrentBreak | null {
+  const state = plan.flowState
+  if (state !== 'break_pending' && state !== 'break_active' && state !== 'break_results') {
+    return null
+  }
+  const pending: CurrentBreak = {
+    startedAt: plan.flowUpdatedAt ?? null,
+    game: null,
+    results: null,
+  }
+  if (state === 'break_pending') return pending
+  const breaks = Array.isArray(plan.breaks) ? plan.breaks : []
+  const last = breaks[breaks.length - 1]
+  if (!last) return pending
+  if (state === 'break_active' && last.endedAt !== undefined) return pending
+  return { startedAt: last.startedAt, game: last.game ?? null, results: last.results ?? null }
 }
 
 // ============================================================================

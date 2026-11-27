@@ -1,6 +1,6 @@
 /**
  * Tests for extractSessionStats — focused on game break extraction
- * (both full GameResult and plan-level fallback for skipped/timeout breaks).
+ * (a full GameResult, and the machine's break record for skipped/timeout breaks).
  */
 
 import { describe, expect, it } from 'vitest'
@@ -63,7 +63,7 @@ describe('extractSessionStats — game break', () => {
     expect(stats.gameBreaks![0].highlights).toEqual(['Pairs Found: 8/10', 'Time: 1:23'])
   })
 
-  it('prefers full GameResult over plan fallback when both exist', () => {
+  it('reads a played break from its game result even when the legacy break columns name another', () => {
     const gameResult = {
       accuracy: 0.9,
       fullReport: {
@@ -72,25 +72,44 @@ describe('extractSessionStats — game break', () => {
         customStats: [],
       },
     } as unknown as GameResult
+    const plan = {
+      ...minimalPlan,
+      breakSelectedGame: 'number-bonds',
+      breakReason: 'skipped',
+    } as unknown as SessionPlan
 
-    const fallback = {
-      breakSelectedGame: 'memory-match',
-      breakReason: 'gameFinished' as const,
-    }
+    const stats = extractSessionStats(plan, minimalPlayer, [], [gameResult])
 
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [gameResult], fallback)
-
-    expect(stats.gameBreaks![0].gameName).toBe('Memory Match')
-    expect(stats.gameBreaks![0].headline).toBe('Perfect!')
+    expect(stats.gameBreaks?.map((gb) => [gb.gameName, gb.headline])).toEqual([
+      ['Memory Match', 'Perfect!'],
+    ])
   })
 
-  it('uses plan fallback when there is no game result (skipped break)', () => {
-    const fallback = {
-      breakSelectedGame: 'matching-pairs',
-      breakReason: 'skipped' as const,
-    }
+  /** A plan whose machine list holds one closed break (Phase 3a on). */
+  function planWithBreak(game: string | null, reason: 'skipped' | 'timeout' | null) {
+    return {
+      ...minimalPlan,
+      breaks: [
+        {
+          breakIndex: 0,
+          afterPartIndex: 0,
+          startedAt: '2026-01-01T00:00:00.000Z',
+          endedAt: '2026-01-01T00:01:00.000Z',
+          game,
+          reason,
+          results: null,
+        },
+      ],
+    } as unknown as SessionPlan
+  }
 
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [], fallback)
+  it('names a skipped break from its record', () => {
+    const stats = extractSessionStats(
+      planWithBreak('matching-pairs', 'skipped'),
+      minimalPlayer,
+      [],
+      []
+    )
 
     expect(stats.gameBreaks).toHaveLength(1)
     expect(stats.gameBreaks![0].gameName).toBe('matching-pairs')
@@ -99,58 +118,41 @@ describe('extractSessionStats — game break', () => {
     expect(stats.gameBreaks![0].accuracy).toBeUndefined()
   })
 
-  it('uses plan fallback when there is no game result (timeout break)', () => {
-    const fallback = {
-      breakSelectedGame: 'number-bonds',
-      breakReason: 'timeout' as const,
-    }
-
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [], fallback)
+  it('names a timed-out break from its record', () => {
+    const stats = extractSessionStats(
+      planWithBreak('number-bonds', 'timeout'),
+      minimalPlayer,
+      [],
+      []
+    )
 
     expect(stats.gameBreaks).toHaveLength(1)
     expect(stats.gameBreaks![0].gameName).toBe('number-bonds')
     expect(stats.gameBreaks![0].headline).toBe('Played number-bonds (timed out)')
   })
 
-  it('uses plan fallback when GameResult has no fullReport', () => {
-    const gameResult = {
-      accuracy: null,
-      fullReport: null,
-    } as unknown as GameResult
-
-    const fallback = {
-      breakSelectedGame: 'memory-match',
-      breakReason: 'skipped' as const,
-    }
-
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [gameResult], fallback)
-
-    expect(stats.gameBreaks).toHaveLength(1)
-    expect(stats.gameBreaks![0].gameName).toBe('memory-match')
-    expect(stats.gameBreaks![0].headline).toBe('Played memory-match (ended early)')
-  })
-
-  it('returns no gameBreaks when fallback has null breakSelectedGame', () => {
-    const fallback = {
-      breakSelectedGame: null,
-      breakReason: 'skipped' as const,
-    }
-
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [], fallback)
+  it('leaves out a break whose kid never chose a game', () => {
+    const stats = extractSessionStats(planWithBreak(null, 'skipped'), minimalPlayer, [], [])
 
     expect(stats.gameBreaks).toBeUndefined()
   })
 
-  it('handles fallback with null breakReason gracefully', () => {
-    const fallback = {
-      breakSelectedGame: 'some-game',
-      breakReason: null,
-    }
-
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [], fallback)
+  it('names a break with no reason as played', () => {
+    const stats = extractSessionStats(planWithBreak('some-game', null), minimalPlayer, [], [])
 
     expect(stats.gameBreaks).toHaveLength(1)
     expect(stats.gameBreaks![0].headline).toBe('Played some-game (played)')
+  })
+
+  it('does not read the legacy break columns for a row without records or results (Phase 6b-0, §10 P6b-4)', () => {
+    const plan = {
+      ...minimalPlan,
+      breakSelectedGame: 'matching-pairs',
+      breakReason: 'skipped',
+      breakResults: { gameName: 'matching-pairs', endedAt: 1 },
+    } as unknown as SessionPlan
+
+    expect(extractSessionStats(plan, minimalPlayer, [], []).gameBreaks).toBeUndefined()
   })
 
   it('includes song-specific game break details when a game reports them', () => {
@@ -189,9 +191,7 @@ describe('extractSessionStats — game break', () => {
       accuracy: 95,
       fullReport: { gameDisplayName: 'Type Racer Jr.', headline: 'Fast fingers!', customStats: [] },
     } as unknown as GameResult
-    const fallback = { breakSelectedGame: 'type-racer', breakReason: 'gameFinished' as const }
-
-    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [memory, racer], fallback)
+    const stats = extractSessionStats(minimalPlan, minimalPlayer, [], [memory, racer])
 
     expect(stats.gameBreaks?.map((gb) => [gb.gameName, gb.headline, gb.accuracy])).toEqual([
       ['Memory Match', 'Great memory!', 80],

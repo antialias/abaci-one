@@ -243,7 +243,8 @@ export async function buildSongPromptInput(
 
   // The session's game results: a played break's facts. The breaks themselves
   // are `plan.breaks` (played, skipped or timed out; Phase 5c), else, for a row
-  // written before it, these rows (§3.1 legacy path). The smart trigger fires in
+  // written before it, these rows (§3.1 legacy path; the legacy break columns
+  // are not read since Phase 6b-0, §10 P6b-4). The smart trigger fires in
   // the last practice part, so every break's result is persisted by then.
   const gameBreakResults = await db
     .select()
@@ -256,11 +257,7 @@ export async function buildSongPromptInput(
     )
     .orderBy(asc(schema.gameResults.playedAt), asc(schema.gameResults.id))
 
-  const stats = extractSessionStats(plan as never, player, recentSessions, gameBreakResults, {
-    breakSelectedGame: plan.breakSelectedGame ?? null,
-    breakReason: plan.breakReason ?? null,
-    breakResults: plan.breakResults ?? null,
-  })
+  const stats = extractSessionStats(plan as never, player, recentSessions, gameBreakResults)
   return {
     playerName: player.name,
     disabled: false,

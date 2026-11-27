@@ -788,11 +788,10 @@ interface RecentSessionSummary {
   accuracy: number
 }
 
-/** Fallback break info from the session plan (when no gameResults record exists; one break at most) */
-interface PlanBreakFallback {
-  breakSelectedGame: string | null
-  breakReason: GameBreakEndReason | null
-  breakResults?: GameResultsReport | null
+/** A break's game and how it ended, when no game result row tells more */
+interface BreakGameAndReason {
+  game: string | null
+  reason: GameBreakEndReason | null
 }
 
 /**
@@ -806,14 +805,12 @@ interface PlanBreakFallback {
  * @param recentSessions - The kid's latest completed sessions, newest first, for the trend
  * @param gameBreakResults - The session's `practice-break` game results, in `played_at` order (a
  *   played break's facts; the breaks themselves come from `plan.breaks` when it has any)
- * @param planBreakFallback - Legacy break columns, used only for a plan without `breaks` when no result yields a break
  */
 export function extractSessionStats(
   sessionPlan: SessionPlan,
   player: Player,
   recentSessions: RecentSessionSummary[],
-  gameBreakResults: readonly GameResult[] = [],
-  planBreakFallback?: PlanBreakFallback
+  gameBreakResults: readonly GameResult[] = []
 ): ExtractedSessionStats {
   // Practice-only do-overs (problems already answered correctly, done again)
   // count toward nothing the song says: accuracy, streaks, moments, comebacks.
@@ -855,7 +852,7 @@ export function extractSessionStats(
     }
   }
 
-  const gameBreaks = songGameBreaksOf(sessionPlan, gameBreakResults, planBreakFallback)
+  const gameBreaks = songGameBreaksOf(sessionPlan, gameBreakResults)
   const practiceDrama = buildPracticeDrama(plan, bestCorrectStreak, gameBreaks)
   const attemptStats = getCurrentSessionAttemptStats(plan)
   const age = computeAge(player.birthday)
@@ -993,13 +990,12 @@ function extractGameBreak(result?: GameResult | null): SongGameBreak | undefined
  * a game has nothing to sing and is left out, as before); a played one takes
  * its facts from its game's result row (the same report, matched by game and
  * end time), else from the report the break stored. A row written before
- * `breaks` existed reads the legacy path exactly as before: one break per
- * distinct game result, else the legacy columns as at most one.
+ * `breaks` existed reads the legacy path: one break per distinct game result
+ * (until Phase 6b-0, else the legacy break columns as at most one; §10 P6b-4).
  */
 function songGameBreaksOf(
   plan: SessionPlan,
-  gameBreakResults: readonly GameResult[],
-  planBreakFallback: PlanBreakFallback | undefined
+  gameBreakResults: readonly GameResult[]
 ): SongGameBreak[] {
   const distinct = distinctBreakResults(gameBreakResults)
   const { source, records } = sessionBreaksOf(plan, distinct)
@@ -1008,11 +1004,7 @@ function songGameBreaksOf(
       .map((record) => songBreakOfRecord(record, distinct))
       .filter((gb): gb is SongGameBreak => gb != null)
   }
-  const fromResults = distinct.map(extractGameBreak).filter((gb): gb is SongGameBreak => gb != null)
-  const fallback =
-    extractGameBreakFromReport(planBreakFallback?.breakResults ?? null) ??
-    extractGameBreakFallback(planBreakFallback)
-  return fromResults.length > 0 ? fromResults : fallback ? [fallback] : []
+  return distinct.map(extractGameBreak).filter((gb): gb is SongGameBreak => gb != null)
 }
 
 function songBreakOfRecord(
@@ -1033,10 +1025,7 @@ function songBreakOfRecord(
     })
     return (row && extractGameBreak(row)) ?? extractGameBreakFromReport(report)
   }
-  return extractGameBreakFallback({
-    breakSelectedGame: record.game ?? null,
-    breakReason: record.reason ?? null,
-  })
+  return extractGameBreakFallback({ game: record.game ?? null, reason: record.reason ?? null })
 }
 
 const BREAK_REASON_LABELS: Record<GameBreakEndReason, string> = {
@@ -1045,11 +1034,11 @@ const BREAK_REASON_LABELS: Record<GameBreakEndReason, string> = {
   gameFinished: 'completed',
 }
 
-function extractGameBreakFallback(fallback?: PlanBreakFallback): SongGameBreak | undefined {
-  if (!fallback?.breakSelectedGame) return undefined
+function extractGameBreakFallback(fallback: BreakGameAndReason): SongGameBreak | undefined {
+  if (!fallback.game) return undefined
 
-  const gameName = fallback.breakSelectedGame
-  const reasonLabel = fallback.breakReason ? BREAK_REASON_LABELS[fallback.breakReason] : 'played'
+  const gameName = fallback.game
+  const reasonLabel = fallback.reason ? BREAK_REASON_LABELS[fallback.reason] : 'played'
 
   return {
     gameName,

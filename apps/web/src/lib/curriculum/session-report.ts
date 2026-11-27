@@ -19,6 +19,7 @@ import { isCountedTry, isExcludedTry } from '@/db/schema/session-plan-helpers'
 import {
   adjustmentsOf,
   type BreakGameResult,
+  currentBreakOf,
   distinctBreakResults,
   legacyBreaksOf,
   partStateOf,
@@ -166,14 +167,12 @@ export type ReportPlan = Pick<
   | 'currentSlotIndex'
   | 'retryState'
   | 'partStates'
-  | 'breakStartedAt'
-  | 'breakReason'
-  | 'breakSelectedGame'
-  | 'breakResults'
   | 'adjustments'
   | 'startedAt'
   | 'completedAt'
 > & {
+  /** When the flow last changed state: the start of a pending break (§10 P6b-3) */
+  flowUpdatedAt?: SessionPlan['flowUpdatedAt'] | string | number | null
   rowVersion?: number | null
   pauses?: SessionPlan['pauses'] | null
   /** The machine's break list (Phase 3a on); absent or empty on older rows */
@@ -412,9 +411,9 @@ export type BreakSource = 'breaks' | 'legacy'
  * A session's breaks (§3.1; Phase 5c, §10 P5a-4): the machine's list,
  * `plan.breaks`, when it holds any (every break from Phase 3a on: played,
  * skipped or timed out, open or closed); else the legacy path for rows written
- * before it: one per distinct `practice-break` game result, else the four
- * legacy columns as at most one (`legacyBreaksOf`). The report and the song
- * both read this, so they name the same breaks.
+ * before it: one per distinct `practice-break` game result (`legacyBreaksOf`;
+ * Phase 6b-0 stopped reading the legacy break columns, §10 P6b-4). The report
+ * and the song both read this, so they name the same breaks.
  *
  * A session that straddles Phase 3a's deploy (§10 P5c-7) has `breaks` records
  * only for its later breaks: its earlier ones are the game result rows played
@@ -422,21 +421,12 @@ export type BreakSource = 'breaks' | 'legacy'
  * (by id, or by its game's report) is never listed twice.
  */
 export function sessionBreaksOf(
-  plan: Pick<
-    ReportPlan,
-    | 'breaks'
-    | 'breakStartedAt'
-    | 'breakReason'
-    | 'breakSelectedGame'
-    | 'breakResults'
-    | 'flowState'
-    | 'currentPartIndex'
-  >,
+  plan: Pick<ReportPlan, 'breaks'>,
   gameResults: readonly ReportGameResult[]
 ): { source: BreakSource; records: BreakRecord[] } {
   const records = Array.isArray(plan.breaks) ? plan.breaks : []
   const distinct = distinctBreakResults(gameResults)
-  if (records.length === 0) return { source: 'legacy', records: legacyBreaksOf(plan, distinct) }
+  if (records.length === 0) return { source: 'legacy', records: legacyBreaksOf(distinct) }
   const firstStart = msOf(records[0].startedAt)
   const earlier =
     firstStart == null
@@ -446,7 +436,7 @@ export function sessionBreaksOf(
           return playedAt != null && playedAt < firstStart && !records.some((r) => names(r, g))
         })
   if (earlier.length === 0) return { source: 'breaks', records }
-  const before = legacyBreaksOf(plan, earlier)
+  const before = legacyBreaksOf(earlier)
   return {
     source: 'breaks',
     records: [...before, ...records].map((r, breakIndex) => ({ ...r, breakIndex })),
@@ -470,9 +460,10 @@ function names(record: BreakRecord, row: ReportGameResult): boolean {
  * when it has no record yet. From `breaks`, a record is open while it has no
  * end and the session is in a break state; the break of `break_pending` gets
  * its record only when it starts or is skipped (§10 P5a-3), so it shows as an
- * open row from the legacy `breakStartedAt`. From the legacy path (§10 P3b-1,
- * P4a-3), as before Phase 5: a column break is open while in a break state,
- * and a game result row closes a break.
+ * open row from `currentBreakOf` (its start is `flowUpdatedAt`, §10 P6b-3).
+ * From the legacy path (§10 P3b-1, P4a-3): a game result row closes a break,
+ * and in a break state the break running now, not yet reported by a result
+ * row, is an open row.
  */
 function breakRows(
   plan: ReportPlan,
@@ -557,11 +548,12 @@ function machineBreakRows(
     (plan.flowState === 'break_pending' || plan.flowState === 'break_active') &&
     !rows.some((r) => r.open)
   if (pending) {
+    const running = currentBreakOf(plan)
     rows.push({
       breakIndex: rows.length,
       afterPartIndex: plan.currentPartIndex - 1,
-      game: plan.breakSelectedGame ?? null,
-      startedAt: msOf(plan.breakStartedAt),
+      game: running?.game ?? null,
+      startedAt: msOf(running?.startedAt),
       endedAt: null,
       durationMs: null,
       reason: null,
@@ -572,7 +564,14 @@ function machineBreakRows(
   return { rows, closedByAbandon }
 }
 
-/** Break rows by the legacy path, exactly as before Phase 5 (§10 P3b-1, P4a-3). */
+/**
+ * Break rows by the legacy path (§10 P3b-1, P4a-3): one closed row per game
+ * result row, and, in a break state, the break running now while no result
+ * row reports it. Until Phase 6b-0 that running break came from the legacy
+ * break columns (a column record when no result row existed, else an added
+ * row); it now comes from `currentBreakOf`, the same row on every row 3a or
+ * later wrote (§10 P6b-4).
+ */
 function legacyBreakRows(
   plan: ReportPlan,
   records: readonly BreakRecord[],
@@ -585,33 +584,33 @@ function legacyBreakRows(
     const endedAt = msOf(b.endedAt)
     const durationMs =
       b.durationMs ?? (startedAt != null && endedAt != null ? endedAt - startedAt : null)
-    const fromColumns = b.gameResultId === undefined
     return {
       breakIndex: b.breakIndex,
       afterPartIndex: b.afterPartIndex ?? afterPartIndexOf(startedAt, live),
       game: b.game ?? null,
       startedAt,
       endedAt,
-      durationMs: fromColumns && inBreak ? null : durationMs,
+      durationMs,
       reason: b.reason ?? null,
-      open: fromColumns && inBreak,
+      open: false,
       estimated: b.estimated === true,
     }
   })
 
   // A break running now whose game has not written a result row yet
-  const breakStart = msOf(plan.breakStartedAt)
+  const running = inBreak ? currentBreakOf(plan) : null
+  const breakStart = msOf(running?.startedAt)
   const reported =
     breakStart != null &&
     distinct.some((g) => {
       const playedAt = msOf(g.playedAt)
       return playedAt != null && playedAt >= breakStart
     })
-  if (inBreak && distinct.length > 0 && !reported) {
+  if (running && !reported) {
     rows.push({
       breakIndex: rows.length,
       afterPartIndex: plan.currentPartIndex - 1,
-      game: plan.breakSelectedGame ?? null,
+      game: running.game,
       startedAt: breakStart,
       endedAt: null,
       durationMs: null,

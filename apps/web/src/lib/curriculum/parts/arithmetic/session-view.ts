@@ -11,7 +11,8 @@
  * ask this module.
  *
  * The cursor is read through `partStateOf`, so it follows the server's read
- * of `part_states` (Phase 5a) with the legacy columns as the fallback.
+ * of `part_states` (Phase 5a), with the legacy decode only for a part
+ * without an entry (Phase 6b-0).
  *
  * Client-safe: no drizzle, no server imports.
  */
@@ -28,7 +29,7 @@ import type {
 import type { ObserverPosition, PracticeItemRef } from '@/lib/classroom/socket-events'
 import type { ArithmeticState } from './state'
 
-/** The plan fields this module reads (`id` names the plan in `partStateOf`'s stale-entry warning). */
+/** The plan fields this module reads (the legacy cursor columns only through `partStateOf`'s legacy decode). */
 export type ArithmeticViewPlan = Pick<
   SessionPlan,
   'id' | 'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState' | 'partStates' | 'results'
@@ -91,6 +92,15 @@ export function arithmeticLinearIndex(
   let index = 0
   for (let i = 0; i < partIndex && i < parts.length; i++) index += slotsOf(parts[i]).length
   return index + slotIndex
+}
+
+/**
+ * The original slot cursor of the plan's current part (through `partStateOf`):
+ * what the legacy `currentSlotIndex` column held, for the structural readers
+ * that still name it (the classroom's active sessions, trace logs).
+ */
+export function arithmeticCursorSlotIndex(plan: ArithmeticViewPlan): number {
+  return cursorOf(plan, plan.currentPartIndex)
 }
 
 /** The dots' index of the plan's cursor: the "current" dot, and "Back to #N" from a do-over. */

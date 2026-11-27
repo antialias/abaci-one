@@ -329,18 +329,17 @@ describe('part states (Phase 5a)', () => {
     expect(partStateOf(earlier, 0)).toEqual({ slotIndex: 3, retry: round1(0) })
   })
 
-  it('reads the legacy columns, and warns once, where a stale entry disagrees (§10 P5a-8)', () => {
+  it('trusts the entry where the legacy columns disagree, without a warning (6b-0, §10 P6b-2)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
-      // The cursor: the entry says s2, the legacy columns (written last) say s1
+      // The cursor: the entry says s2, the legacy columns say s1 (6b-1 leaves
+      // them stale). Until 6b-0 the legacy columns won here (§10 P5a-8).
       const p = {
         ...plan({ currentSlotIndex: 1, partStates: { '0': { slotIndex: 2 } } }),
         id: 'pl-1',
       }
-      expect(partStateOf(p, 0)).toEqual({ slotIndex: 1, retry: undefined })
-      expect(currentItemOf(p)).toMatchObject({ partIndex: 0, slotId: 's1', epochNumber: 0 })
-      expect(warn).toHaveBeenCalledTimes(1)
-      expect(warn.mock.calls[0][1]).toEqual({ planId: 'pl-1', partIndex: 0 })
+      expect(partStateOf(p, 0)).toEqual({ slotIndex: 2 })
+      expect(currentItemOf(p)).toMatchObject({ partIndex: 0, slotId: 's2', epochNumber: 0 })
 
       // An earlier part's retry state
       const earlier = {
@@ -351,9 +350,9 @@ describe('part states (Phase 5a)', () => {
         }),
         id: 'pl-2',
       }
-      expect(partStateOf(earlier, 0)).toEqual(legacyPartStateOf(earlier, 0))
-      expect(partStateOf(earlier, 0)).toEqual({ slotIndex: 3, retry: round1(0) })
-      expect(warn).toHaveBeenCalledTimes(2) // once per plan and part
+      expect(partStateOf(earlier, 0)).toEqual({ slotIndex: 3, retry: round1(1) })
+      expect(legacyPartStateOf(earlier, 0)).toEqual({ slotIndex: 3, retry: round1(0) })
+      expect(warn).not.toHaveBeenCalled()
     } finally {
       warn.mockRestore()
     }
