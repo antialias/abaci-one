@@ -3,10 +3,13 @@
 import { animated, useSpring } from '@react-spring/web'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { getProgressiveAssistanceTiming, shouldUseDebugTiming } from '@/constants/helpTiming'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { getCurrentProblemInfo, MAX_RETRY_EPOCHS } from '@/db/schema/session-plan-helpers'
+import {
+  getCurrentProblemInfo,
+  MAX_RETRY_EPOCHS,
+  sameProblem,
+} from '@/db/schema/session-plan-helpers'
 import type {
   ProblemSlot,
   SessionHealth,
@@ -15,11 +18,18 @@ import type {
   SlotResult,
   SlotResultSubmission,
 } from '@/db/schema/session-plans'
+import {
+  arithmeticCursorLinearIndex,
+  arithmeticRetryRoundSize,
+  arithmeticSlotAt,
+  arithmeticSlotOf,
+  arithmeticSlotOfProblem,
+  type OnScreenItem,
+} from '@/lib/curriculum/parts/arithmetic/session-view'
 import { applyResponseTimeGuard } from '@/lib/curriculum/timing/response-time-guard'
 import { css } from '../../../styled-system/css'
 import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'
-import { calculateComplexityScaledThresholds, getComplexityCost } from './autoPauseCalculator'
-import { BrowseModeView, getLinearIndex } from './BrowseModeView'
+import { BrowseModeView } from './BrowseModeView'
 import { extractTargetSkillName, PurposeBadge } from './PurposeBadge'
 import { RetryTransitionScreen } from './RetryTransitionScreen'
 import { SessionPausedModal } from './SessionPausedModal'
@@ -114,18 +124,18 @@ export interface BroadcastState {
   purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
   /** Complexity data for tooltip display */
   complexity?: BroadcastComplexity
-  /** Current problem number (1-indexed for display) */
-  currentProblemNumber: number
-  /** Total problems in the session */
-  totalProblems: number
-  /** Session structure for progress indicator */
-  sessionParts?: SessionPart[]
-  /** Current part index for progress indicator */
-  currentPartIndex?: number
-  /** Current slot index within the part */
-  currentSlotIndex?: number
-  /** Accumulated results for progress indicator */
-  slotResults?: SlotResult[]
+  /**
+   * The item on screen: the problem's own part and item, whether it is a
+   * do-over, and its retry round. Position and counts are not here (Phase
+   * 5b): the page takes them from the server's plan and the report.
+   */
+  item: BroadcastItem
+}
+
+/** The item on screen, as `BroadcastState` names it. */
+export interface BroadcastItem extends OnScreenItem {
+  /** Retry round of the problem on screen (0 = original; a do-over is 0) */
+  round: number
 }
 
 type SubmitAdvanceDestination = 'next-problem-same-lane' | 'state-handoff'
@@ -140,7 +150,7 @@ type SubmitMode = 'practice' | 'redo'
 function answeredProblemIdentity(plan: SessionPlan, attempt: AttemptInput) {
   return {
     tryId: attempt.tryId,
-    slotId: plan.parts[attempt.partIndex]?.slots[attempt.slotIndex]?.slotId ?? '',
+    slotId: arithmeticSlotAt(plan.parts, attempt.partIndex, attempt.slotIndex)?.slotId ?? '',
     slotIndex: attempt.slotIndex,
     epochNumber: attempt.epochNumber ?? 0,
   }
@@ -154,6 +164,75 @@ type SubmitAdvanceResolution = {
 
 function getSubmitAdvanceIntent(destination: SubmitAdvanceDestination): SubmitAdvanceIntent {
   return destination === 'next-problem-same-lane' ? 'slide-to-next-problem' : 'clear-to-loading'
+}
+
+/**
+ * A do-over the kid chose by tapping a dot: the item, by its id (Phase 5b).
+ * Where the session goes after it is the server's plan, never a remembered
+ * position.
+ */
+export interface ActiveRedo {
+  isActive: boolean
+  /** Part of the item being redone */
+  partIndex: number
+  /** The item being redone (today its slot id) */
+  itemId: string
+  /** The dots' index of the item (its number on screen is `linearIndex + 1`) */
+  linearIndex: number
+  /** The latest result of the item when it was tapped */
+  originalResult: SlotResult
+}
+
+/** What a do-over write sends (`record_redo`). */
+export interface RecordRedoParams {
+  playerId: string
+  planId: string
+  result: Omit<SlotResult, 'timestamp' | 'partNumber'>
+  redoContext: {
+    /** The item redone (Phase 5b); the server also reads `result.slotId` */
+    itemId: string
+    /** Legacy position of the item, which servers up to Phase 5 match by */
+    originalPartIndex: number
+    originalSlotIndex: number
+    /** Read only by servers from before Phase 1 */
+    originalWasCorrect: boolean
+  }
+}
+
+/**
+ * The do-over write for a tapped item: the result names the item
+ * (`slotId = itemId`) and `redoContext.itemId` names it to a server from Phase
+ * 5a on; the item's slot index rides beside it for servers before that (the
+ * indices must agree with the id).
+ */
+export function doOverWriteOf({
+  playerId,
+  planId,
+  redo,
+  slotIndex,
+  result,
+  originalWasCorrect,
+}: {
+  playerId: string
+  planId: string
+  redo: Pick<ActiveRedo, 'partIndex' | 'itemId'>
+  /** The item's slot index, read off the item by the kind's view */
+  slotIndex: number
+  result: Omit<SlotResult, 'timestamp' | 'partNumber'>
+  originalWasCorrect: boolean
+}): RecordRedoParams {
+  return {
+    playerId,
+    planId,
+    result: { ...result, slotId: redo.itemId, slotIndex, originalSlotIndex: slotIndex },
+    redoContext: {
+      itemId: redo.itemId,
+      originalPartIndex: redo.partIndex,
+      originalSlotIndex: slotIndex,
+      // For servers from before Phase 1; a current server derives it
+      originalWasCorrect,
+    },
+  }
 }
 
 interface ActiveSessionProps {
@@ -170,8 +249,6 @@ interface ActiveSessionProps {
   onPause?: (pauseInfo: PauseInfo) => void
   /** Called when session is resumed - for external HUD updates */
   onResume?: () => void
-  /** Called when session completes */
-  onComplete: () => void
   /** Called with timing data when it changes (for external timing display) */
   onTimingUpdate?: (timing: AttemptTimingData | null) => void
   /** Called with broadcast state when it changes (for session observation) */
@@ -199,24 +276,9 @@ interface ActiveSessionProps {
   /** Called after manual pause has been handled (to clear the state) */
   onManualPauseHandled?: () => void
   /** Redo state - when set, show a redo problem instead of current session problem */
-  redoState?: {
-    isActive: boolean
-    linearIndex: number
-    originalPartIndex: number
-    originalSlotIndex: number
-    originalResult: SlotResult
-  } | null
+  redoState?: ActiveRedo | null
   /** Called to record a redo result (separate from onAnswer since it doesn't advance position) */
-  onRecordRedo?: (params: {
-    playerId: string
-    planId: string
-    result: Omit<SlotResult, 'timestamp' | 'partNumber'>
-    redoContext: {
-      originalPartIndex: number
-      originalSlotIndex: number
-      originalWasCorrect: boolean
-    }
-  }) => Promise<SessionPlan | null>
+  onRecordRedo?: (params: RecordRedoParams) => Promise<SessionPlan | null>
   /** Called when the redo is complete or cancelled */
   onRedoComplete?: () => void
   /** Called to cancel the redo without recording */
@@ -286,7 +348,6 @@ export function ActiveSession({
   onEndEarly,
   onPause,
   onResume,
-  onComplete,
   onTimingUpdate,
   onBroadcastStateChange,
   isBrowseMode: isBrowseModeProp = false,
@@ -443,14 +504,14 @@ export function ActiveSession({
   const activeProblem = useMemo(() => {
     // Redo mode takes priority - user clicked on a problem to redo
     if (redoState?.isActive) {
-      const redoPart = plan.parts[redoState.originalPartIndex]
-      const redoProblem = (redoPart?.slots[redoState.originalSlotIndex] as ProblemSlot)?.problem
-      if (redoProblem) {
+      const redo = arithmeticSlotOf(plan.parts[redoState.partIndex], redoState.itemId)
+      const redoProblem = redo?.slot.problem
+      if (redo && redoProblem) {
         return {
           problem: redoProblem,
-          slotIndex: redoState.originalSlotIndex,
-          partIndex: redoState.originalPartIndex,
-          key: `redo-${redoState.linearIndex}`,
+          slotIndex: redo.slotIndex,
+          partIndex: redoState.partIndex,
+          key: `redo-${redoState.partIndex}-${redoState.itemId}`,
         }
       }
     }
@@ -576,37 +637,6 @@ export function ActiveSession({
     onAutoPause: handleAutoPause,
   })
 
-  // Debug: log complexity costs and thresholds for all problems
-  // Skips the initial render before historical data loads to avoid a misleading defaults-only table.
-  useEffect(() => {
-    if (!historicalResults) return // still loading — skip
-    if (typeof window === 'undefined') return
-    try {
-      if (localStorage.getItem('helpDebugTiming') !== 'true') return
-    } catch {
-      return
-    }
-
-    const timing = getProgressiveAssistanceTiming(shouldUseDebugTiming())
-    const rows = plan.parts.flatMap((part, pi) =>
-      part.slots.map((slot, si) => {
-        const cost = getComplexityCost(slot.problem ?? null)
-        const t = calculateComplexityScaledThresholds(thresholdResults, timing, cost)
-        return {
-          part: pi + 1,
-          slot: si + 1,
-          terms: slot.problem?.terms?.join(', ') ?? '?',
-          cost: cost ?? '(none)',
-          encourage: `${(t.encouragementMs / 1000).toFixed(1)}s`,
-          helpOffer: `${(t.helpOfferMs / 1000).toFixed(1)}s`,
-          autoPause: `${(t.autoPauseMs / 1000).toFixed(1)}s`,
-        }
-      })
-    )
-    void rows // thresholds computed for autopause timing
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [historicalResults])
-
   // Sync assistance machine with interaction phase transitions
   const prevPhaseRef = useRef(phase.phase)
   useEffect(() => {
@@ -652,19 +682,13 @@ export function ActiveSession({
 
   // Audio disabled for practice sessions (use abacus / visualize)
 
-  // Calculate total progress across all parts (needed for broadcast state)
-  const totalProblems = useMemo(() => {
-    return plan.parts.reduce((sum, part) => sum + part.slots.length, 0)
-  }, [plan.parts])
-
-  const completedProblems = useMemo(() => {
-    let count = 0
-    for (let i = 0; i < plan.currentPartIndex; i++) {
-      count += plan.parts[i].slots.length
-    }
-    count += plan.currentSlotIndex
-    return count
-  }, [plan.parts, plan.currentPartIndex, plan.currentSlotIndex])
+  // The item last broadcast as on screen: the problem sliding off during a
+  // transition is that item, with its own round and do-over flag (the redo
+  // state may already be cleared by then)
+  const lastBroadcastItemRef = useRef<{
+    item: BroadcastItem
+    problem: { terms: number[]; answer: number }
+  } | null>(null)
 
   // Notify parent of broadcast state changes for session observation
   useEffect(() => {
@@ -689,39 +713,38 @@ export function ActiveSession({
       }
     }
 
-    // Get current slot's purpose from plan
-    const currentPart = plan.parts[plan.currentPartIndex]
-    const slot = currentPart?.slots[plan.currentSlotIndex]
-    const purpose = slot?.purpose ?? 'focus'
+    const doOver = redoState?.isActive ?? false
 
-    // During transitioning, we show the outgoing (completed) problem, not the incoming one
-    // But we use the PREVIOUS slot's purpose since we're still showing feedback for it
+    // During transitioning, we show the outgoing (answered) problem, not the incoming one
     if (phase.phase === 'transitioning' && outgoingAttempt) {
-      // During transition, use the previous slot's purpose and complexity
-      const prevSlotIndex = plan.currentSlotIndex > 0 ? plan.currentSlotIndex - 1 : 0
-      const prevSlot = currentPart?.slots[prevSlotIndex]
-      const prevPurpose = prevSlot?.purpose ?? purpose
-
+      const shown = lastBroadcastItemRef.current
+      const outgoingItem =
+        shown &&
+        shown.item.partIndex === outgoingAttempt.partIndex &&
+        sameProblem(shown.problem, outgoingAttempt.problem)
+          ? shown.item
+          : null
+      const outgoingSlot = outgoingItem
+        ? arithmeticSlotOf(plan.parts[outgoingItem.partIndex], outgoingItem.itemId)?.slot
+        : arithmeticSlotOfProblem(plan.parts, outgoingAttempt.partIndex, outgoingAttempt.problem)
       onBroadcastStateChange({
         currentProblem: {
           terms: outgoingAttempt.problem.terms,
           answer: outgoingAttempt.problem.answer,
         },
-        slotId: prevSlot?.slotId ?? slot?.slotId ?? '',
+        slotId: outgoingSlot?.slotId ?? '',
         phase: 'feedback',
         studentAnswer: outgoingAttempt.userAnswer,
         isCorrect: outgoingAttempt.result === 'correct',
         startedAt: attempt?.startTime ?? Date.now(),
-        purpose: prevPurpose,
-        complexity: extractComplexity(prevSlot),
-        currentProblemNumber: completedProblems + 1,
-        totalProblems,
-        // Session structure for progress indicator
-        sessionParts: plan.parts,
-        // Use redo indices when in redo mode so observer sees correct active problem
-        currentPartIndex: redoState?.isActive ? redoState.originalPartIndex : plan.currentPartIndex,
-        currentSlotIndex: redoState?.isActive ? redoState.originalSlotIndex : plan.currentSlotIndex,
-        slotResults: plan.results,
+        purpose: outgoingSlot?.purpose ?? 'focus',
+        complexity: extractComplexity(outgoingSlot),
+        item: outgoingItem ?? {
+          partIndex: outgoingAttempt.partIndex,
+          itemId: outgoingSlot?.slotId ?? '',
+          doOver,
+          round: 0,
+        },
       })
       return
     }
@@ -730,6 +753,10 @@ export function ActiveSession({
       onBroadcastStateChange(null)
       return
     }
+
+    // The slot of the problem on screen (its own part and slot: a retry's
+    // original slot, a do-over's slot), not the plan's cursor
+    const slot = arithmeticSlotAt(plan.parts, attempt.partIndex, attempt.slotIndex)
 
     // Map internal phase to broadcast phase
     let broadcastPhase: 'problem' | 'feedback' | 'tutorial'
@@ -748,26 +775,26 @@ export function ActiveSession({
       isCorrect = phase.result === 'correct'
     }
 
+    const item: BroadcastItem = {
+      partIndex: attempt.partIndex,
+      itemId: slot?.slotId ?? '',
+      doOver,
+      round: attempt.epochNumber ?? 0,
+    }
+    lastBroadcastItemRef.current = { item, problem: attempt.problem }
     onBroadcastStateChange({
       currentProblem: {
         terms: attempt.problem.terms,
         answer: attempt.problem.answer,
       },
-      slotId: currentProblemInfo?.slotId ?? slot?.slotId ?? '',
+      slotId: slot?.slotId ?? '',
       phase: broadcastPhase,
       studentAnswer: attempt.userAnswer,
       isCorrect,
       startedAt: attempt.startTime,
-      purpose,
+      purpose: slot?.purpose ?? 'focus',
       complexity: extractComplexity(slot),
-      currentProblemNumber: completedProblems + 1,
-      totalProblems,
-      // Session structure for progress indicator
-      sessionParts: plan.parts,
-      // Use redo indices when in redo mode so observer sees correct active problem
-      currentPartIndex: redoState?.isActive ? redoState.originalPartIndex : plan.currentPartIndex,
-      currentSlotIndex: redoState?.isActive ? redoState.originalSlotIndex : plan.currentSlotIndex,
-      slotResults: plan.results,
+      item,
     })
   }, [
     onBroadcastStateChange,
@@ -775,18 +802,13 @@ export function ActiveSession({
     attempt?.problem?.answer,
     attempt?.userAnswer,
     attempt?.startTime,
+    attempt?.partIndex,
+    attempt?.slotIndex,
+    attempt?.epochNumber,
     phase,
     outgoingAttempt,
     plan.parts,
-    plan.currentPartIndex,
-    plan.currentSlotIndex,
-    plan.results,
-    completedProblems,
-    totalProblems,
     redoState?.isActive,
-    redoState?.originalPartIndex,
-    redoState?.originalSlotIndex,
-    currentProblemInfo?.slotId,
   ])
 
   // Handle teacher abacus control events
@@ -952,9 +974,8 @@ export function ActiveSession({
   )
 
   // Compute current practice position as a linear index
-  const currentPracticeLinearIndex = useMemo(() => {
-    return getLinearIndex(plan.parts, plan.currentPartIndex, plan.currentSlotIndex)
-  }, [plan.parts, plan.currentPartIndex, plan.currentSlotIndex])
+  // (the dots' coordinate, from the server's plan through the kind's view)
+  const currentPracticeLinearIndex = useMemo(() => arithmeticCursorLinearIndex(plan), [plan])
 
   // When entering browse mode, initialize browseIndex to current problem
   const prevBrowseModeProp = useRef(isBrowseModeProp)
@@ -1072,13 +1093,11 @@ export function ActiveSession({
   }
   const showOnScreenKeypad = hasPhysicalKeyboard === false || keypadWasShownRef.current
 
-  // Get current part and slot from plan (accounting for retry epochs)
-  const parts = plan.parts
+  // Current part from the plan; the item on it from getCurrentProblemInfo,
+  // which handles both original slots and retry epochs
   const currentPartIndex = plan.currentPartIndex
-  const currentSlotIndex = plan.currentSlotIndex
-  const currentPart = parts[currentPartIndex] as SessionPart | undefined
-  // Use getCurrentProblemInfo which handles both original slots and retry epochs
-  const regularSlot = currentProblemInfo
+  const currentPart = plan.parts[currentPartIndex] as SessionPart | undefined
+  const regularSlot: ProblemSlot | undefined = currentProblemInfo
     ? {
         slotId: currentProblemInfo.slotId,
         index: currentProblemInfo.originalSlotIndex,
@@ -1086,17 +1105,19 @@ export function ActiveSession({
         problem: currentProblemInfo.problem,
         constraints: {},
       }
-    : (currentPart?.slots[currentSlotIndex] as ProblemSlot | undefined)
+    : undefined
   const sessionHealth = plan.sessionHealth as SessionHealth | null
 
-  // Redo mode: get the redo problem slot if in redo mode
+  // Redo mode: the item being redone, by its id
   const isInRedoMode = redoState?.isActive ?? false
-  const redoSlot = useMemo(() => {
-    if (!redoState?.isActive) return null
-    const redoPart = parts[redoState.originalPartIndex]
-    if (!redoPart) return null
-    return redoPart.slots[redoState.originalSlotIndex] as ProblemSlot | undefined
-  }, [redoState, parts])
+  const redoItem = useMemo(
+    () =>
+      redoState?.isActive
+        ? arithmeticSlotOf(plan.parts[redoState.partIndex], redoState.itemId)
+        : null,
+    [redoState, plan.parts]
+  )
+  const redoSlot = redoItem?.slot ?? null
 
   // Use redo slot when in redo mode, otherwise regular slot
   const currentSlot = isInRedoMode && redoSlot ? redoSlot : regularSlot
@@ -1111,12 +1132,9 @@ export function ActiveSession({
   const inRetryEpoch = currentProblemInfo?.isRetry ?? false
   const retryEpochNumber = currentProblemInfo?.epochNumber ?? 0
 
-  // Check for session completion
-  useEffect(() => {
-    if (currentPartIndex >= parts.length) {
-      onComplete()
-    }
-  }, [currentPartIndex, parts.length, onComplete])
+  // Session completion is the page's: it leaves for the summary when the
+  // server's plan has ended (Phase 5b removed this screen's own check of the
+  // part index running past the last part)
 
   // Detect retry epoch transitions and show retry transition screen
   useEffect(() => {
@@ -1125,9 +1143,8 @@ export function ActiveSession({
 
     // If we just entered a new retry epoch (epoch increased from 0 to 1, or 1 to 2)
     if (currentEpoch > prevEpoch && currentEpoch > 0 && currentProblemInfo) {
-      // Get the count of problems in this retry epoch
-      const retryState = plan.retryState?.[plan.currentPartIndex]
-      const problemCount = retryState?.currentEpochItems?.length ?? 0
+      // Get the count of problems in this retry epoch (the kind's view of the part)
+      const problemCount = arithmeticRetryRoundSize(plan, plan.currentPartIndex)
 
       if (problemCount > 0) {
         setRetryTransitionData({
@@ -1139,7 +1156,7 @@ export function ActiveSession({
     }
 
     prevEpochRef.current = currentEpoch
-  }, [retryEpochNumber, currentProblemInfo, plan.retryState, plan.currentPartIndex])
+  }, [retryEpochNumber, currentProblemInfo, plan])
 
   // Handle retry transition screen completion
   const handleRetryTransitionComplete = useCallback(() => {
@@ -1248,9 +1265,8 @@ export function ActiveSession({
     }): TransitionTarget | null => {
       // Original lane progression can be derived synchronously from part slots.
       if (submittedEpochNumber === 0) {
-        const submittedPart = plan.parts[submittedPartIndex]
-        const nextSlot = submittedPart?.slots[submittedSlotIndex + 1]
-        if (submittedPart && nextSlot?.problem) {
+        const nextSlot = arithmeticSlotAt(plan.parts, submittedPartIndex, submittedSlotIndex + 1)
+        if (nextSlot?.problem) {
           return {
             problem: nextSlot.problem,
             slotIndex: submittedSlotIndex + 1,
@@ -1478,29 +1494,20 @@ export function ActiveSession({
       // Every do-over is recorded. The server stamps its round and weight; a
       // do-over of a problem already answered correctly is practice-only
       // (weight 0, no effect on mastery, the score or the dot).
-      if (onRecordRedo) {
-        const redoSlotId =
-          plan.parts[redoState.originalPartIndex]?.slots[redoState.originalSlotIndex]?.slotId
-        const redoResult: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
-          ...result,
-          // Override slotId + slotIndex with the original slot from the redo
-          slotId: redoSlotId,
-          slotIndex: redoState.originalSlotIndex,
-          originalSlotIndex: redoState.originalSlotIndex,
-        }
-        // Use the special redo mutation. It can move the session on (a redeemed
-        // retry round), so the return target comes from its answer below.
-        const redoPlan = await onRecordRedo({
-          playerId: student.id,
-          planId: plan.id,
-          result: redoResult,
-          redoContext: {
-            originalPartIndex: redoState.originalPartIndex,
-            originalSlotIndex: redoState.originalSlotIndex,
-            // For servers from before Phase 1; a current server derives it
+      if (onRecordRedo && redoItem) {
+        // The do-over names its item (Phase 5b). Use the special redo
+        // mutation. It can move the session on (a redeemed retry round), so
+        // the return target comes from its answer below.
+        const redoPlan = await onRecordRedo(
+          doOverWriteOf({
+            playerId: student.id,
+            planId: plan.id,
+            redo: redoState,
+            slotIndex: redoItem.slotIndex,
+            result,
             originalWasCorrect: redoOriginalWasCorrect,
-          },
-        })
+          })
+        )
         redoOutcome = { recorded: true, plan: redoPlan }
       }
 
@@ -1509,8 +1516,11 @@ export function ActiveSession({
       // Optimistic submit: for epoch 0 mid-part, advance immediately without
       // waiting for the server. The mutation queue in PracticeClient serializes
       // the actual server writes.
-      const nextSlotExists =
-        !!plan.parts[attemptData.partIndex]?.slots[attemptData.slotIndex + 1]?.problem
+      const nextSlotExists = !!arithmeticSlotAt(
+        plan.parts,
+        attemptData.partIndex,
+        attemptData.slotIndex + 1
+      )?.problem
       const canAdvanceOptimistically = epochNumberAtSubmit === 0 && nextSlotExists
 
       const submission: SlotResultSubmission = { ...result, partIndex: attemptData.partIndex }
@@ -1562,6 +1572,7 @@ export function ActiveSession({
     collectVisionTrainingData,
     isInRedoMode,
     redoState,
+    redoItem,
     redoOriginalWasCorrect,
     onRedoComplete,
     assistance.onWrongAnswer,
@@ -1914,7 +1925,7 @@ export function ActiveSession({
                   },
                 })}
               >
-                ← Back to #{completedProblems + 1}
+                ← Back to #{currentPracticeLinearIndex + 1}
               </button>
             </div>
           )}
@@ -2343,8 +2354,8 @@ export function ActiveSession({
       {debug && attempt?.problem && (
         <DebugOverlay
           correctAnswer={attempt.problem.answer}
-          partIndex={currentPartIndex}
-          slotIndex={currentSlotIndex}
+          partIndex={attempt.partIndex}
+          slotIndex={attempt.slotIndex}
           partType={currentPart?.type ?? 'abacus'}
           purpose={currentSlot?.purpose ?? 'focus'}
           onSubmitCorrect={() => debugSubmit(attempt.problem.answer)}
@@ -2358,8 +2369,8 @@ export function ActiveSession({
           problem={currentSlot.problem}
           slot={currentSlot}
           part={currentPart}
-          partIndex={currentPartIndex}
-          slotIndex={currentSlotIndex}
+          partIndex={attempt.partIndex}
+          slotIndex={attempt.slotIndex}
           userInput={attempt.userAnswer}
           phaseName={phase.phase}
         />

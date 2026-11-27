@@ -385,7 +385,13 @@ describe('SessionProgressIndicator - redo mode', () => {
     const completedSlot = document.querySelector('[data-status="incorrect"]') as HTMLElement
     expect(completedSlot).toBeInTheDocument()
     fireEvent.click(completedSlot)
-    expect(onRedoProblem).toHaveBeenCalledWith(0, results[0])
+    // The dot names its item, so the page never decodes the dots' index (Phase 5b)
+    expect(onRedoProblem).toHaveBeenCalledWith({
+      linearIndex: 0,
+      partIndex: 0,
+      itemId: parts[0].slots[0].slotId,
+      originalResult: results[0],
+    })
   })
 
   it('calls onCancelRedo when clicking current slot during redo', () => {

@@ -25,6 +25,18 @@ import { formatMs } from './autoPauseCalculator'
 import { extractTargetSkillName } from './PurposeBadge'
 import { getPurposeColors, getPurposeConfig } from './purposeExplanations'
 
+/**
+ * A completed problem the kid tapped to redo: the item, by its id, with its
+ * part and its index in the dots (Phase 5b: the page no longer decodes the
+ * dots' index into a part and slot).
+ */
+export interface RedoTarget {
+  linearIndex: number
+  partIndex: number
+  itemId: string
+  originalResult: SlotResult
+}
+
 export interface SessionProgressIndicatorProps {
   /** Session parts with their slots */
   parts: SessionPart[]
@@ -39,7 +51,7 @@ export interface SessionProgressIndicatorProps {
   /** Callback when clicking a problem in browse mode */
   onNavigate?: (linearIndex: number) => void
   /** Callback when clicking a completed problem to redo it */
-  onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  onRedoProblem?: (target: RedoTarget) => void
   /** Callback when clicking the current position during redo to return to it */
   onCancelRedo?: () => void
   /** Linear index of the problem currently being redone (shows pulsing highlight) */
@@ -327,7 +339,7 @@ function CollapsedSection({
   isDark: boolean
   isBrowseMode: boolean
   onNavigate?: (linearIndex: number) => void
-  onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  onRedoProblem?: (target: RedoTarget) => void
   onCancelRedo?: () => void
   redoLinearIndex?: number
   observerViewingIndex?: number
@@ -444,7 +456,7 @@ function ExpandedSection({
   isDark: boolean
   isBrowseMode: boolean
   onNavigate?: (linearIndex: number) => void
-  onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  onRedoProblem?: (target: RedoTarget) => void
   onCancelRedo?: () => void
   redoLinearIndex?: number
   observerViewingIndex?: number
@@ -515,7 +527,7 @@ function ExpandedSection({
           } else if (isClickableToReturn) {
             onCancelRedo!()
           } else if (isClickableForRedo && result) {
-            onRedoProblem!(linearIndex, result)
+            onRedoProblem!({ linearIndex, partIndex, itemId: slot.slotId, originalResult: result })
           }
         }
 

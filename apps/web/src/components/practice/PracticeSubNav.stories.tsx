@@ -5,8 +5,8 @@ import { ThemeProvider } from '@/contexts/ThemeContext'
 import type { ProblemSlot, SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
 import {
-  PracticeSubNav,
   type GameBreakHudData,
+  PracticeSubNav,
   type SessionHudData,
   type TimingData,
 } from './PracticeSubNav'
@@ -234,12 +234,19 @@ function createSessionHud(config: {
     currentPart: {
       type: config.partType,
       partNumber,
-      totalSlots: 5,
     },
-    currentSlotIndex: config.completedProblems % 5,
     results,
-    completedProblems: config.completedProblems,
-    totalProblems: config.totalProblems,
+    // The report's counts (Phase 5b)
+    progress: { done: config.completedProblems, total: config.totalProblems },
+    laterPartItems: parts
+      .slice(currentPartIndex + 1)
+      .reduce((sum, part) => sum + part.slots.length, 0),
+    dots: {
+      parts,
+      results,
+      currentPartIndex,
+      currentSlotIndex: config.completedProblems % 5,
+    },
     sessionHealth: config.health,
     timing: config.timing,
     isBrowseMode: config.isBrowseMode ?? false,

@@ -320,6 +320,33 @@ export function liveTenProblemSession(): SessionReportFixture {
   }
 }
 
+/**
+ * The ten-problem session live in part 1 (Phase 5b, the kid's HUD): three
+ * first tries made (slot 1 wrong, its retry still to come), the cursor on
+ * part 1's last slot. Expected: progress 3/10, the later parts plan 3 + 3, so
+ * 7 left and 1 until the break.
+ */
+export function liveMidPartOneSession(): SessionReportFixture {
+  const id = 'fx-live-p1'
+  const parts = fixtureParts()
+  const results = tenProblemTries()
+    .slice(0, 3)
+    .map((spec, i) => rowOf(parts, spec, i + 1))
+  return {
+    plan: planOf(id, parts, results, {
+      status: 'in_progress',
+      flowState: 'practicing',
+      currentPartIndex: 0,
+      currentSlotIndex: 3,
+      completedAt: null,
+      rowVersion: 4,
+    }),
+    gameResults: [],
+    song: null,
+    now: T0 + 100 * S,
+  }
+}
+
 /** An offline session as `offline-sessions/route.ts` inserts it: slot-less parts, index past the end. */
 export function offlineSession(): SessionReportFixture {
   const parts = fixtureParts().map((p) => ({ ...p, slots: [] }))
