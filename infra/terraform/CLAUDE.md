@@ -39,6 +39,10 @@ Or exec into an app pod and use sqlite3 tools if needed for debugging.
 
 NEVER use `mcp__sqlite__read_query` or similar when you need production data.
 
+### Copy the production database before a risky change
+
+`./scripts/prod-dump.sh [name]` (from the repo root) writes a consistent SQL dump to `/var/lib/sqld/<name>.sql` on the libsql pod's volume, while the app keeps running. A finished dump ends with `COMMIT;`. libsql-server refuses `VACUUM INTO`, which is why the script uses the server's `/dump`. The volume is the k3s node's root disk, not a 10Gi PVC: check `kubectl exec -n abaci deploy/libsql -- df -h /var/lib/sqld` first. To restore, build a database from the dump with `sqlite3`, then swap it in with libsql scaled to 0.
+
 ## Kubernetes Access
 
 kubeconfig location: `~/.kube/k3s-config`
