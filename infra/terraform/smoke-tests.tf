@@ -14,8 +14,14 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
   }
 
   spec {
-    schedule                      = "0 8 * * *" # Daily at 2:00 AM Central (UTC-6 = 08:00 UTC)
-    concurrency_policy            = "Forbid"       # Don't run if previous job still running
+    # Daily at 08:00 in the node's time zone, Central (14:00 UTC in winter).
+    schedule = "0 8 * * *"
+    # Tonight's run replaces any run still going, so a stuck run never holds
+    # up the nights after it. With Forbid, a run whose pod waited for CPU held
+    # the Job open for 16 days in November 2026 and every night was skipped.
+    # A good run takes 3-4 minutes; the schedule is the only limit, and
+    # KubeJobNotCompleted reports a run still going after 12 hours.
+    concurrency_policy            = "Replace"
     successful_jobs_history_limit = 3
     failed_jobs_history_limit     = 3
 
@@ -27,16 +33,10 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
       }
 
       spec {
-        # Retry once on failure
-        backoff_limit = 1
-
-        # A run, retry included, gets an hour: good runs take 3-4 min and the
-        # slowest took 32 (30 days to 2026-11-27). Without a limit, a run whose
-        # pod sat Pending (no CPU left to schedule it) held the Job open for 16
-        # days, and concurrency_policy Forbid skipped every night after it.
-        # Past the hour the Job fails, the next night starts fresh, and
-        # KubeJobFailed says once that a night was missed.
-        active_deadline_seconds = 3600
+        # No second run of the whole suite: Playwright already retries each
+        # failing test twice (the image sets CI=true), so by the time the
+        # runner exits non-zero the failure is real, and KubeJobFailed says so.
+        backoff_limit = 0
 
         # Clean up completed/failed jobs after 1 hour
         ttl_seconds_after_finished = 3600
