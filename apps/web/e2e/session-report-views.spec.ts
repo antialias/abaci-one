@@ -11,6 +11,9 @@
  *
  *   PORT=3021 npx @playwright/test test e2e/session-report-views.spec.ts
  */
+
+import path from 'node:path'
+import { type Client, createClient } from '@libsql/client'
 import {
   type APIRequestContext,
   type BrowserContext,
@@ -408,13 +411,107 @@ async function expectHistoryRow(dashboard: Page, report: Report, want: Expected)
   await expect(row.locator('[data-element="session-header"]')).toContainText(date)
 }
 
+// ---------------------------------------------------------------------------
+// Song rows (Phase 4e): songs cannot be generated here, so they are written
+// straight into the test server's database
+// ---------------------------------------------------------------------------
+
+/** The test server's database (`DATABASE_URL=file:./data/sqlite.db`, relative to apps/web). */
+const songDb = () => createClient({ url: `file:${path.resolve(__dirname, '../data/sqlite.db')}` })
+
+/** A song's stored input, with numbers that are deliberately not the session's. */
+const STORED_SONG_INPUT = {
+  player: { name: 'Fast', emoji: '⚡', age: 9 },
+  currentSession: {
+    accuracy: 0.5,
+    problemsDone: 7,
+    problemsTotal: 20,
+    bestCorrectStreak: 5,
+    skillsPracticed: ['basic.directAddition'],
+  },
+  practiceDrama: { storyAngle: 'the comeback', arcs: ['Streak: 5 correct answers in a row.'] },
+}
+
+const SONG_OUTPUT = {
+  title: 'e2e 4e song',
+  plan: {
+    positive_global_styles: ['kids pop'],
+    negative_global_styles: [],
+    sections: [
+      {
+        section_name: 'Verse 1',
+        lines: ['Bead by bead, we count it through'],
+        positive_local_styles: [],
+        negative_local_styles: [],
+        duration_ms: 15000,
+      },
+    ],
+  },
+}
+
+type Visibility = { showAccuracy: boolean }
+
+/** Inserts a completed song for a session and one share per entry; returns the share codes. */
+async function insertSongWithShares(
+  db: Client,
+  ids: { songId: string; planId: string; playerId: string },
+  shares: { code: string; visibility: Visibility; status: 'active' | 'revoked' }[]
+) {
+  const { rows } = await db.execute({
+    sql: 'SELECT parent_user_id FROM parent_child WHERE child_player_id = ? LIMIT 1',
+    args: [ids.playerId],
+  })
+  const adminId = String(rows[0]?.parent_user_id ?? '')
+  expect(adminId).not.toBe('')
+  const now = Math.floor(Date.now() / 1000)
+  await db.execute({
+    sql: `INSERT INTO session_songs (id, session_plan_id, player_id, status, prompt_input, llm_output, created_at, completed_at)
+          VALUES (?, ?, ?, 'completed', ?, ?, ?, ?)`,
+    args: [
+      ids.songId,
+      ids.planId,
+      ids.playerId,
+      JSON.stringify(STORED_SONG_INPUT),
+      JSON.stringify(SONG_OUTPUT),
+      now,
+      now,
+    ],
+  })
+  for (const s of shares) {
+    await db.execute({
+      sql: `INSERT INTO song_shares (id, song_id, player_id, created_by, visibility, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        s.code,
+        ids.songId,
+        ids.playerId,
+        adminId,
+        JSON.stringify({
+          showAge: false,
+          showProblemDetail: false,
+          showStreakSkills: false,
+          autoPlay: false,
+          ...s.visibility,
+        }),
+        s.status,
+        now,
+      ],
+    })
+  }
+}
+
+async function deleteSong(db: Client, songId: string) {
+  await db.execute({ sql: 'DELETE FROM song_shares WHERE song_id = ?', args: [songId] })
+  await db.execute({ sql: 'DELETE FROM session_songs WHERE id = ?', args: [songId] })
+}
+
 const noAuth = { storageState: { cookies: [], origins: [] } }
 
 // ---------------------------------------------------------------------------
 // Scenario
 // ---------------------------------------------------------------------------
 
-test.describe('session report views (Phases 4c, 4d)', () => {
+test.describe('session report views (Phases 4c-4e)', () => {
   test.setTimeout(300_000)
 
   let playerId = ''
@@ -622,5 +719,115 @@ test.describe('session report views (Phases 4c, 4d)', () => {
       .locator('[data-element="session-history-item"]')
       .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-session-id')))
     expect(ids.slice(0, 2)).toEqual([b.id, a.id])
+  })
+
+  test.describe('song share page (Phase 4e)', () => {
+    let db: Client
+    let songId = ''
+    test.beforeAll(() => {
+      db = songDb()
+    })
+    test.afterAll(async () => {
+      if (songId) await deleteSong(db, songId)
+      db.close()
+    })
+
+    test('the song share page shows the live report, gated by showAccuracy', async ({
+      page,
+      browser,
+      request,
+    }) => {
+      playerId = await seedStudent(request)
+      const plan = await startSession(request, playerId)
+      const planned = plan.parts[0].slots.length
+      expect(planned).toBeGreaterThanOrEqual(4)
+      console.log(`[4e views] player ${playerId} plan ${plan.id}`)
+
+      // Slot 0 wrong then fixed by a do-over, slots 1 and 2 right; an adult ends it
+      await instrument(page)
+      await page.goto(`/practice/${playerId}`)
+      await answer(page, plan.id, false)
+      await doOverCorrectly(page, plan.id, 0)
+      await answer(page, plan.id, true)
+      await answer(page, plan.id, true)
+      const end = await request.patch(`/api/curriculum/${playerId}/sessions/plans/${plan.id}`, {
+        data: { action: 'end_early', reason: 'e2e: song share' },
+      })
+      expect(end.ok(), await end.text()).toBeTruthy()
+      const want: Expected = {
+        problems: 3,
+        tries: 4,
+        firstTryCorrect: 2,
+        fixed: 1,
+        finalCorrect: 3,
+      }
+      const report = await planReport(request, playerId, plan.id)
+      expectCounts(report, want, planned)
+
+      // The song's stored numbers (50%, 7/20) are not the session's (67%, 3/planned)
+      const firstTry = pct(want.firstTryCorrect, want.problems)
+      const problems = `${want.problems}/${planned}`
+      expect(firstTry).toBe('67%')
+      expect(pct(report.totals.firstTryCorrect, report.totals.problems)).toBe(firstTry)
+      expect(`${report.totals.problems}/${report.totals.plannedProblems}`).toBe(problems)
+      const stored = STORED_SONG_INPUT.currentSession
+      const storedFirstTry = `${Math.round(stored.accuracy * 100)}%`
+      const storedProblems = `${stored.problemsDone}/${stored.problemsTotal}`
+      expect(storedFirstTry).not.toBe(firstTry)
+      expect(storedProblems).not.toBe(problems)
+
+      const tag = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+      songId = `e2e-4e-song-${tag}`
+      const codes = {
+        shown: `e2e4e-on-${tag}`,
+        hidden: `e2e4e-off-${tag}`,
+        revoked: `e2e4e-rv-${tag}`,
+      }
+      await insertSongWithShares(db, { songId, planId: plan.id, playerId }, [
+        { code: codes.shown, visibility: { showAccuracy: true }, status: 'active' },
+        { code: codes.hidden, visibility: { showAccuracy: false }, status: 'active' },
+        { code: codes.revoked, visibility: { showAccuracy: true }, status: 'revoked' },
+      ])
+
+      const visitor = await browser.newContext(noAuth)
+      try {
+        const song = await visitor.newPage()
+        const tiles = song.locator('[data-component="trophy-tile"]')
+
+        // showAccuracy on: the live report's first try and problems, not the stored ones
+        let res = await song.goto(`/song/${codes.shown}`)
+        expect(res?.status()).toBe(200)
+        await expect(song.locator('[data-component="shared-song-page"]')).toBeVisible()
+        const firstTryTile = tiles.filter({ hasText: 'First try' })
+        const problemsTile = tiles.filter({ hasText: 'Problems' })
+        await expect(firstTryTile).toHaveAttribute('data-tone', 'emerald')
+        await expect(firstTryTile).toContainText(firstTry)
+        await expect(problemsTile).toHaveAttribute('data-tone', 'sky')
+        await expect(problemsTile).toContainText(problems)
+        await expect(firstTryTile).not.toContainText(storedFirstTry)
+        await expect(problemsTile).not.toContainText(storedProblems)
+        await song.screenshot({ path: `${SHOTS}/song-share-accuracy.png`, fullPage: true })
+
+        // showAccuracy off: no session numbers at all
+        res = await song.goto(`/song/${codes.hidden}`)
+        expect(res?.status()).toBe(200)
+        await expect(song.locator('[data-component="shared-song-page"]')).toBeVisible()
+        await expect(tiles.filter({ hasText: 'First try' })).toHaveCount(0)
+        await expect(tiles.filter({ hasText: 'Problems' })).toHaveCount(0)
+        for (const text of [firstTry, problems, storedFirstTry, storedProblems]) {
+          await expect(song.locator('[data-component="shared-song-page"]')).not.toContainText(text)
+        }
+        await song.screenshot({ path: `${SHOTS}/song-share-hidden.png`, fullPage: true })
+
+        // A revoked code and a made-up one show no song
+        for (const code of [codes.revoked, `e2e4e-bogus-${tag}`]) {
+          res = await song.goto(`/song/${code}`)
+          expect(res?.status()).toBe(404)
+          await expect(song.locator('[data-component="shared-song-page"]')).toHaveCount(0)
+        }
+      } finally {
+        await visitor.close()
+      }
+    })
   })
 })

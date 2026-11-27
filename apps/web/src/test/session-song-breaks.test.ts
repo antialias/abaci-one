@@ -8,7 +8,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
-import type { SessionSummary, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPart, SessionSummary, SlotResult } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { buildSongPromptInput, readyPromptInput } from '@/lib/tasks/session-song'
 import {
@@ -45,11 +45,41 @@ afterEach(() => {
   eph.cleanup()
 })
 
+/** `total` first tries of a one-part session, the first `correct` right (pre-Phase-1 rows) */
 function tries(correct: number, total: number): SlotResult[] {
-  return Array.from(
-    { length: total },
-    (_, i) => ({ isCorrect: i < correct, responseTimeMs: 3000 }) as SlotResult
-  )
+  return Array.from({ length: total }, (_, i) => {
+    const problem = { terms: [i + 1, 1], answer: i + 2, skillsRequired: [] }
+    return {
+      partNumber: 1,
+      slotIndex: i,
+      problem,
+      studentAnswer: i < correct ? problem.answer : problem.answer + 1,
+      isCorrect: i < correct,
+      responseTimeMs: 3000,
+      epochNumber: 0,
+    } as unknown as SlotResult
+  })
+}
+
+/** The one part the tries above answer, one slot per try */
+function partsFor(results: SlotResult[]): SessionPart[] {
+  return [
+    {
+      kind: 'arithmetic',
+      partNumber: 1,
+      type: 'abacus',
+      format: 'vertical',
+      useAbacus: true,
+      estimatedMinutes: 3,
+      slots: results.map((r, index) => ({
+        slotId: `s${index}`,
+        index,
+        purpose: 'focus',
+        constraints: {},
+        problem: r.problem,
+      })),
+    } as SessionPart,
+  ]
 }
 
 async function insertPlan(
@@ -65,10 +95,13 @@ async function insertPlan(
     targetDurationMinutes: 10,
     estimatedProblemCount: results.length,
     avgTimePerProblemSeconds: 5,
-    parts: [],
+    parts: partsFor(results),
     summary: {} as SessionSummary,
     status,
     results,
+    // Written explicitly: drizzle stores a json column's omitted default as the
+    // string "[]", which the session report (Phase 4e reads it) cannot read
+    adjustments: [],
     createdAt,
     ...legacyBreak,
   })

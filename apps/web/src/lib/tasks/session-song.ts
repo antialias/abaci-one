@@ -15,8 +15,6 @@ import { mkdir, writeFile } from 'fs/promises'
 import { dirname, join } from 'path'
 import { db, schema } from '@/db'
 import type { PlayerSessionPreferencesConfig } from '@/db/schema/player-session-preferences'
-import { summarizeTries } from '@/db/schema/session-plan-helpers'
-import type { SlotResult } from '@/db/schema/session-plans'
 import type {
   SessionSong,
   SessionSongLLMOutput,
@@ -25,6 +23,7 @@ import type {
 } from '@/db/schema/session-songs'
 import { AiFeature } from '@/lib/ai-usage/features'
 import { recordElevenLabsUsage } from '@/lib/ai-usage/helpers'
+import { loadSessionReport } from '@/lib/curriculum/session-report-server'
 import { getFlag } from '@/lib/feature-flags'
 import { atomicWriteSong } from '@/lib/kid-songs/atomicWriteSong'
 import { ringKidSongsDoorbell } from '@/lib/kid-songs/doorbell'
@@ -41,7 +40,11 @@ import {
   SongCompositionValidationError,
   type SongPlanValidationPolicy,
 } from '../session-song/composition-plan-validation'
-import { extractSessionStats, type SongPromptInput } from '../session-song/extract-session-stats'
+import {
+  extractSessionStats,
+  type SongPromptInput,
+  songPromptInputOf,
+} from '../session-song/extract-session-stats'
 import {
   generateSongPrompt,
   type SongCompositionOutput,
@@ -215,9 +218,26 @@ export async function buildSongPromptInput(
     .orderBy(desc(schema.sessionPlans.createdAt))
     .limit(10)
 
-  const recentSessions = recentPlans.map((p) => ({
-    accuracy: summarizeTries((p as { results: SlotResult[] | null }).results).accuracy,
-  }))
+  // The facts the song states come from the session report (Phase 4e), this
+  // session's and, for the trend, each recent session's first-try accuracy, so
+  // the writer compares like with like. A session with nothing attempted has no
+  // accuracy and is left out of the trend, as is one whose report cannot be
+  // built (a history row must not cost the kid the song).
+  const report = await loadSessionReport(plan)
+  const recentReports = await Promise.all(
+    recentPlans.map((p) =>
+      p.id === plan.id
+        ? report
+        : loadSessionReport(p).catch((error) => {
+            console.error('[session-song] recent session report not built', p.id, error)
+            return null
+          })
+    )
+  )
+  const recentSessions = recentReports
+    .map((r) => r?.totals.firstTryAccuracy ?? null)
+    .filter((accuracy): accuracy is number => accuracy != null)
+    .map((accuracy) => ({ accuracy }))
 
   const recentSongs = await getRecentSongSummaries(input.playerId)
 
@@ -243,7 +263,7 @@ export async function buildSongPromptInput(
   return {
     playerName: player.name,
     disabled: false,
-    promptInput: { ...stats, recentSongs },
+    promptInput: songPromptInputOf(stats, report, recentSongs),
     genrePreference: rawGenre,
   }
 }
@@ -262,7 +282,7 @@ async function emitSongReady(input: SessionSongInput, songId: string) {
   }
 }
 
-async function emitSongPhase(planId: string, status: SessionSongStatus) {
+async function emitSongPhase(planId: string, songId: string, status: SessionSongStatus) {
   try {
     const io = await getSocketIO()
     if (io) {
@@ -270,6 +290,35 @@ async function emitSongPhase(planId: string, status: SessionSongStatus) {
     }
   } catch {
     // Socket.IO not available — best effort
+  }
+  await announceSongStatus(planId, songId, status)
+}
+
+/**
+ * The song's status as the session report states it (`songOf` in
+ * `session-report.ts`), for the row statuses that change it: a new or retried
+ * song is pending, then ready or failed. The working steps in between
+ * (`prompt_generating`, `generating`) are still pending, so they announce nothing.
+ */
+const REPORT_SONG_STATUS: Partial<Record<SessionSongStatus, 'pending' | 'ready' | 'failed'>> = {
+  pending: 'pending',
+  completed: 'ready',
+  failed: 'failed',
+}
+
+/**
+ * Tell the session's report subscribers the song's status changed (§10
+ * P4a-7, P4e). Song rows are not session row writes, so no report is pushed
+ * for them; `useSessionReport` refetches on this event.
+ */
+async function announceSongStatus(planId: string, songId: string, status: SessionSongStatus) {
+  const reportStatus = REPORT_SONG_STATUS[status]
+  if (!reportStatus) return
+  try {
+    const { emitSessionSongStatus } = await import('@/lib/classroom/socket-emitter')
+    await emitSessionSongStatus({ sessionId: planId, songId, status: reportStatus })
+  } catch (error) {
+    console.error('[session-song] song status not announced', { planId, songId, error })
   }
 }
 
@@ -292,7 +341,7 @@ async function setSongStatus(
     .update(schema.sessionSongs)
     .set({ status, ...extra })
     .where(eq(schema.sessionSongs.id, songId))
-  await emitSongPhase(planId, status)
+  await emitSongPhase(planId, songId, status)
 }
 
 async function generateAndSaveMusic({
@@ -474,7 +523,7 @@ export async function startSessionSongGeneration(
     .returning()
 
   const songId = songRecord.id
-  await emitSongPhase(input.sessionPlanId, 'pending')
+  await emitSongPhase(input.sessionPlanId, songId, 'pending')
 
   const inputWithUser = { ...input, _userId: userId }
   const taskId = await createTask<SessionSongInput, SessionSongOutput, SessionSongEvent>(

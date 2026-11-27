@@ -555,6 +555,10 @@ function collectAllowedNumbers(input: SongPromptInput): Set<number> {
     input.currentSession.problemsTotal,
     input.currentSession.bestCorrectStreak,
     input.currentSession.durationMinutes,
+    // The report's facts the prompt states since Phase 4e
+    input.currentSession.firstTryCorrect,
+    input.currentSession.fixedInRetries,
+    input.currentSession.activeMinutes,
     input.currentSession.totalIncorrectAttempts,
     input.currentSession.helpMoments,
     input.currentSession.retryMoments,

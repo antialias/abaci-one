@@ -9,12 +9,7 @@
 import { PRACTICE_TYPES } from '@/constants/practiceTypes'
 import type { GameResult } from '@/db/schema/game-results'
 import type { Player } from '@/db/schema/players'
-import {
-  countedTries,
-  getCompletedProblemCount,
-  getSessionPlanAccuracy,
-  getTotalProblemCount,
-} from '@/db/schema/session-plan-helpers'
+import { countedTries } from '@/db/schema/session-plan-helpers'
 import { distinctBreakResults } from '@/db/schema/session-plan-normalize'
 import type {
   GameBreakEndReason,
@@ -25,6 +20,7 @@ import type {
   SlotResult,
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
+import type { SessionReport } from '@/lib/curriculum/session-report'
 import { getSkillDisplayName } from '@/utils/skillSearch'
 
 // ============================================================================
@@ -78,13 +74,29 @@ export interface SongPromptInput {
     age?: number
   }
   currentSession: {
+    /**
+     * Since Phase 4e: the session report's first-try accuracy (first try right
+     * of problems attempted). Inputs stored before 4e: accuracy over counted tries.
+     */
     accuracy: number
+    /** Since 4e: problems attempted (report). Before 4e: counted tries, retries included */
     problemsDone: number
+    /** Problems planned */
     problemsTotal: number
+    /** Since 4e (report): first tries right */
+    firstTryCorrect?: number
+    /** Since 4e (report): first try wrong, fixed in a retry */
+    fixedInRetries?: number
+    /** Since 4e (report): minutes spent answering (Σ effective response time), breaks excluded */
+    activeMinutes?: number
+    /**
+     * @deprecated The planned length, which inputs stored before Phase 4e
+     * carry. Never written since; read it only as "planned minutes".
+     */
+    durationMinutes?: number
     skillsPracticed: string[]
     bestCorrectStreak: number
     partTypes: string[]
-    durationMinutes: number
     helpUsed: boolean
     totalIncorrectAttempts: number
     helpMoments: number
@@ -115,6 +127,66 @@ export interface SongPromptInput {
    * Never written; read only through `gameBreaksOf`.
    */
   gameBreak?: SongGameBreak
+  /**
+   * The session report the facts were read from (Phase 4e): its `rowVersion`
+   * when the song task snapshotted it. Absent on inputs stored before 4e.
+   */
+  reportSnapshot?: { rowVersion: number }
+}
+
+/** The session facts a song states, which come from the session report (Phase 4e). */
+export type SongReportFactKey =
+  | 'accuracy'
+  | 'problemsDone'
+  | 'problemsTotal'
+  | 'firstTryCorrect'
+  | 'fixedInRetries'
+  | 'activeMinutes'
+
+/** `extractSessionStats`' output: the song input without the report's facts. */
+export type ExtractedSessionStats = Omit<SongPromptInput, 'currentSession'> & {
+  currentSession: Omit<SongPromptInput['currentSession'], SongReportFactKey | 'durationMinutes'>
+}
+
+/** Active time in whole minutes; a session with any active time says at least 1 */
+export function activeMinutesOf(activeMs: number): number {
+  if (!(activeMs > 0)) return 0
+  return Math.max(1, Math.round(activeMs / 60_000))
+}
+
+/**
+ * The session facts a song states, from the report: problems attempted of
+ * planned, first try right, fixed in retries, first-try accuracy, active minutes.
+ */
+export function songFactsOf(
+  report: Pick<SessionReport, 'totals' | 'time'>
+): Pick<SongPromptInput['currentSession'], SongReportFactKey> {
+  const { totals, time } = report
+  return {
+    accuracy: totals.firstTryAccuracy ?? 0,
+    problemsDone: totals.problems,
+    problemsTotal: totals.plannedProblems,
+    firstTryCorrect: totals.firstTryCorrect,
+    fixedInRetries: totals.fixedInRetries,
+    activeMinutes: activeMinutesOf(time.activeMs),
+  }
+}
+
+/**
+ * The song's input: the story material `extractSessionStats` reads from the
+ * tries, plus the session facts from the report the task snapshotted.
+ */
+export function songPromptInputOf(
+  stats: ExtractedSessionStats,
+  report: Pick<SessionReport, 'totals' | 'time' | 'rowVersion'>,
+  recentSongs?: RecentSongSummary[]
+): SongPromptInput {
+  return {
+    ...stats,
+    currentSession: { ...stats.currentSession, ...songFactsOf(report) },
+    ...(recentSongs && { recentSongs }),
+    reportSnapshot: { rowVersion: report.rowVersion },
+  }
 }
 
 export interface SongGameBreak {
@@ -706,6 +778,7 @@ function getCurrentSessionAttemptStats(plan: SessionPlan) {
 // ============================================================================
 
 interface RecentSessionSummary {
+  /** The session's first-try accuracy (its report), as the current session's */
   accuracy: number
 }
 
@@ -717,7 +790,10 @@ interface PlanBreakFallback {
 }
 
 /**
- * Extract statistics from a session plan and player for use in song generation.
+ * Extract the story material of a session for song generation: skills, streak,
+ * moments, arcs, breaks and the trend. The session facts the song states
+ * (problems, accuracy, fixed, minutes) are not here: they come from the
+ * session report (`songPromptInputOf`, Phase 4e).
  *
  * @param plan - The current session plan (may be in-progress or completed)
  * @param player - The player profile
@@ -731,16 +807,13 @@ export function extractSessionStats(
   recentSessions: RecentSessionSummary[],
   gameBreakResults: readonly GameResult[] = [],
   planBreakFallback?: PlanBreakFallback
-): SongPromptInput {
+): ExtractedSessionStats {
   // Practice-only do-overs (problems already answered correctly, done again)
   // count toward nothing the song says: accuracy, streaks, moments, comebacks.
   const plan: SessionPlan = {
     ...sessionPlan,
     results: countedTries(sessionPlan.results),
   }
-  const accuracy = getSessionPlanAccuracy(plan)
-  const problemsDone = getCompletedProblemCount(plan)
-  const problemsTotal = getTotalProblemCount(plan)
   const bestCorrectStreak = getBestCorrectStreak(plan.results)
 
   const partTypeIds = [...new Set(plan.parts.map((p) => p.type))]
@@ -754,7 +827,6 @@ export function extractSessionStats(
   }
 
   const helpUsed = plan.results.some((r) => r.hadHelp)
-  const durationMinutes = plan.targetDurationMinutes ?? 10
 
   const recentCount = recentSessions.length
   let averageAccuracy = 0
@@ -794,13 +866,9 @@ export function extractSessionStats(
       ...(age != null && { age }),
     },
     currentSession: {
-      accuracy,
-      problemsDone,
-      problemsTotal,
       skillsPracticed: [...skillNames],
       bestCorrectStreak,
       partTypes: partTypeLabels,
-      durationMinutes,
       helpUsed,
       ...attemptStats,
     },

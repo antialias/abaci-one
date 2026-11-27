@@ -235,7 +235,7 @@ export default async function SharedSongPage({ params }: Props) {
                   tone="emerald"
                   glyph="✓"
                   value={`${stats.accuracyPct}%`}
-                  label="Accuracy"
+                  label="First try"
                 />
               )}
               {stats.problemsDone != null && stats.problemsTotal != null && (

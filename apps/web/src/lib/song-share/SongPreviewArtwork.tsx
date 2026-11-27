@@ -313,7 +313,7 @@ export function SongPreviewArtwork({ payload, displayFont }: SongPreviewArtworkP
                   {stats.accuracyPct}%
                 </div>
                 <div style={{ fontSize: '13px', color: '#9ca3af', display: 'flex', marginTop: 4 }}>
-                  accuracy
+                  first try
                 </div>
               </div>
             )}
