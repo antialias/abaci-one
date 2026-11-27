@@ -171,15 +171,36 @@ Get practice session history.
 
 Returns:
 
+Every number is the session report's (the same numbers the app's summary
+shows), labelled:
+
 ```json
 [
   {
+    "sessionId": "clxyz123",
     "date": "2026-01-15T10:30:00Z",
     "completedAt": "2026-01-15T10:42:00Z",
-    "durationMinutes": 12
+    "outcome": "completed",
+    "endedEarly": false,
+    "problems": 10,
+    "plannedProblems": 10,
+    "tries": 13,
+    "firstTryCorrect": 7,
+    "firstTryPercent": 70,
+    "fixedInRetries": 3,
+    "unresolved": 0,
+    "finalCorrect": 10,
+    "finalPercent": 100,
+    "activeMinutes": 1,
+    "wallMinutes": 12,
+    "breakMinutes": 5,
+    "timeEstimated": false
   }
 ]
 ```
+
+`completedAt` is when the session ended (an abandoned session: its last
+activity, not when it was auto-abandoned).
 
 ### `get_recommended_focus`
 
@@ -322,14 +343,26 @@ Returns (when session exists):
   "observeUrl": "https://abaci.one/practice/abc123/observe",
   "startedAt": 1736956200000,
   "progress": {
+    "segment": "part",
     "currentPart": 2,
-    "currentProblem": 8,
-    "totalProblems": 45,
     "completedProblems": 23,
-    "accuracy": 91
+    "totalProblems": 45,
+    "outcome": "in_progress",
+    "problems": 23,
+    "tries": 26,
+    "firstTryCorrect": 20,
+    "firstTryPercent": 87,
+    "finalCorrect": 23,
+    "finalPercent": 100,
+    "activeMinutes": 2.4,
+    "wallMinutes": 9.5,
+    "...": "the other report numbers, as get_practice_sessions"
   }
 }
 ```
+
+`completedProblems` / `totalProblems` are the report's position (items done
+of items planned), not a count of tries.
 
 Returns (when no session):
 

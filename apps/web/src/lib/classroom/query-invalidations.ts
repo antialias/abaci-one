@@ -116,6 +116,10 @@ export function invalidateForEvent(
         queryClient.invalidateQueries({
           queryKey: classroomKeys.enrollments(classroomId),
         })
+        // The teacher's active-session cards (Phase 4d: no poll behind them)
+        queryClient.invalidateQueries({
+          queryKey: classroomKeys.activeSessions(classroomId),
+        })
         queryClient.invalidateQueries({
           queryKey: classroomKeys.awaitingParentApproval(classroomId),
         })
@@ -146,6 +150,10 @@ export function invalidateForEvent(
         queryClient.invalidateQueries({
           queryKey: classroomKeys.enrollments(classroomId),
         })
+        // The teacher's active-session cards (Phase 4d: no poll behind them)
+        queryClient.invalidateQueries({
+          queryKey: classroomKeys.activeSessions(classroomId),
+        })
         queryClient.invalidateQueries({
           queryKey: classroomKeys.presence(classroomId),
         })
@@ -172,6 +180,10 @@ export function invalidateForEvent(
         queryClient.invalidateQueries({
           queryKey: classroomKeys.presence(classroomId),
         })
+        // The teacher's active-session cards (Phase 4d: no poll behind them)
+        queryClient.invalidateQueries({
+          queryKey: classroomKeys.activeSessions(classroomId),
+        })
       }
       // Student/parent sees updated presence
       if (playerId) {
@@ -187,6 +199,10 @@ export function invalidateForEvent(
       if (classroomId) {
         queryClient.invalidateQueries({
           queryKey: classroomKeys.presence(classroomId),
+        })
+        // The teacher's active-session cards (Phase 4d: no poll behind them)
+        queryClient.invalidateQueries({
+          queryKey: classroomKeys.activeSessions(classroomId),
         })
       }
       // Student/parent sees updated presence
@@ -270,6 +286,7 @@ export function getInvalidationKeys(
     case 'enrollmentCompleted':
       if (classroomId) {
         keys.push(classroomKeys.enrollments(classroomId))
+        keys.push(classroomKeys.activeSessions(classroomId))
         keys.push(classroomKeys.awaitingParentApproval(classroomId))
         keys.push(classroomKeys.pendingRequests(classroomId))
       }
@@ -284,6 +301,7 @@ export function getInvalidationKeys(
     case 'studentUnenrolled':
       if (classroomId) {
         keys.push(classroomKeys.enrollments(classroomId))
+        keys.push(classroomKeys.activeSessions(classroomId))
         keys.push(classroomKeys.presence(classroomId))
       }
       if (playerId) {
@@ -297,6 +315,7 @@ export function getInvalidationKeys(
     case 'studentEntered':
       if (classroomId) {
         keys.push(classroomKeys.presence(classroomId))
+        keys.push(classroomKeys.activeSessions(classroomId))
       }
       if (playerId) {
         keys.push(playerKeys.presence(playerId))
@@ -307,6 +326,7 @@ export function getInvalidationKeys(
     case 'studentLeft':
       if (classroomId) {
         keys.push(classroomKeys.presence(classroomId))
+        keys.push(classroomKeys.activeSessions(classroomId))
       }
       if (playerId) {
         keys.push(playerKeys.presence(playerId))

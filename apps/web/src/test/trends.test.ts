@@ -32,10 +32,12 @@ import { calculateSessionTrends } from '@/lib/curriculum/trends'
 // Helpers
 // =============================================================================
 
+// Each result its own item (slot): trends count the session report's problems
+let nextSlotIndex = 0
 function makeSlotResult(overrides: Partial<SlotResult> = {}): SlotResult {
   return {
     partNumber: 1,
-    slotIndex: 0,
+    slotIndex: nextSlotIndex++,
     problem: { terms: [1, 2], answer: 3, skillsRequired: [] },
     studentAnswer: 3,
     isCorrect: true,

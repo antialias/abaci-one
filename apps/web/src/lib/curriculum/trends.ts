@@ -2,10 +2,13 @@
  * Session Trend Calculations
  *
  * Calculates historical trends from session data for display in the session summary.
+ * Problems and accuracy are the session report's (§4, Phase 4d): attempted
+ * problems, and right on the first try over them.
  */
 
-import { summarizeTries } from '@/db/schema/session-plan-helpers'
-import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPlan } from '@/db/schema/session-plans'
+import { readTriesSync } from './read-tries'
+import { buildSessionReport, type Counts } from './session-report'
 
 export interface SessionTrends {
   /** Comparison to last session */
@@ -26,18 +29,20 @@ export interface SessionTrends {
   currentStreak: number
 }
 
-/**
- * Calculate accuracy from a session's results
- */
-function getSessionAccuracy(session: SessionPlan): number {
-  return summarizeTries(session.results as SlotResult[] | null).accuracy
+/** A session's report totals */
+function totalsOf(session: SessionPlan): Counts {
+  return buildSessionReport({ plan: session, tries: readTriesSync(session), now: Date.now() })
+    .totals
 }
 
-/**
- * Get problem count from a session
- */
+/** First-try accuracy of a session (0 with nothing attempted) */
+function getSessionAccuracy(session: SessionPlan): number {
+  return totalsOf(session).firstTryAccuracy ?? 0
+}
+
+/** Attempted problems of a session */
 function getSessionProblemCount(session: SessionPlan): number {
-  return summarizeTries(session.results as SlotResult[] | null).completed
+  return totalsOf(session).problems
 }
 
 /**
@@ -139,18 +144,12 @@ export function calculateSessionTrends(
   // This week stats (last 7 days)
   const weekSessions = allSessions.filter((s) => isSessionWithinDays(s, 7))
   const weekProblems = weekSessions.reduce((sum, s) => sum + getSessionProblemCount(s), 0)
-  const weekCorrect = weekSessions.reduce(
-    (sum, s) => sum + summarizeTries(s.results as SlotResult[] | null).correct,
-    0
-  )
+  const weekCorrect = weekSessions.reduce((sum, s) => sum + totalsOf(s).firstTryCorrect, 0)
   const weekAccuracy = weekProblems > 0 ? weekCorrect / weekProblems : 0
 
   // All-time stats
   const totalProblems = allSessions.reduce((sum, s) => sum + getSessionProblemCount(s), 0)
-  const totalCorrect = allSessions.reduce(
-    (sum, s) => sum + summarizeTries(s.results as SlotResult[] | null).correct,
-    0
-  )
+  const totalCorrect = allSessions.reduce((sum, s) => sum + totalsOf(s).firstTryCorrect, 0)
   const avgAccuracy = totalProblems > 0 ? totalCorrect / totalProblems : 0
 
   // Streak

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Classroom, EnrollmentRequest, Player, User } from '@/db/schema'
 import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
+import type { Counts, SessionReport } from '@/lib/curriculum/session-report'
 import { api } from '@/lib/queryClient'
 import { classroomKeys, playerKeys } from '@/lib/queryKeys'
 
@@ -627,20 +628,26 @@ export interface ActiveSessionInfo {
   sessionId: string
   /** Player ID */
   playerId: string
-  /** When the session started */
-  startedAt: string
+  /** When the session started (null: approved, not started yet) */
+  startedAt: string | null
   /** Current part index */
   currentPartIndex: number
   /** Current slot index within the part */
   currentSlotIndex: number
   /** Total parts in session */
   totalParts: number
-  /** Total problems in session */
+  /** Items planned (the session report's `position.progress.total`) */
   totalProblems: number
-  /** Number of completed problems */
+  /** Items done (the session report's `position.progress.done`) */
   completedProblems: number
   /** Whether the student is currently present in the classroom */
   isPresent?: boolean
+  /** The session report's outcome (absent where a caller builds this from a row) */
+  outcome?: SessionReport['outcome']
+  /** The session report's totals: problems, first try, final */
+  totals?: Counts
+  /** The session report's row version */
+  rowVersion?: number
 }
 
 /**

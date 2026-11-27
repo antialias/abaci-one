@@ -39,7 +39,6 @@ import {
   type PracticeLevel,
 } from '@/db/schema/player-skill-mastery'
 import type { Player } from '@/db/schema/players'
-import type { PracticeSession } from '@/db/schema/practice-sessions'
 import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { useEnrolledClassrooms, useMyClassroom } from '@/hooks/useClassroom'
@@ -64,6 +63,7 @@ import {
   isBktConfident,
   ROTATION_MULTIPLIERS,
 } from '@/lib/curriculum/config'
+import type { SessionDates } from '@/lib/curriculum/progress-manager'
 import type { PaceAssessment, ProblemResultWithContext } from '@/lib/curriculum/server'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import { computeSkillChanges } from '@/lib/curriculum/skill-changes'
@@ -123,7 +123,7 @@ interface DashboardClientProps {
   player: Player
   curriculum: PlayerCurriculum | null
   skills: PlayerSkillMastery[]
-  recentSessions: PracticeSession[]
+  recentSessions: SessionDates[]
   activeSession: SessionPlan | null
   currentPracticingSkillIds: string[]
   problemHistory: ProblemResultWithContext[]
@@ -1905,7 +1905,7 @@ function SkillsTab({
 }: {
   skills: PlayerSkillMastery[]
   problemHistory: ProblemResultWithContext[]
-  recentSessions: PracticeSession[]
+  recentSessions: SessionDates[]
   isDark: boolean
   onManageSkills: () => void
   studentId: string

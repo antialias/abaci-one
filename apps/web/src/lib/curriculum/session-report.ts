@@ -617,3 +617,42 @@ export function buildSessionReport(input: SessionReportInput): SessionReport {
     })),
   }
 }
+
+// ============================================================================
+// Summary projection (lists, active cards, MCP; Phase 4d)
+// ============================================================================
+
+/**
+ * The report's headline numbers, without the per-part, per-break and per-try
+ * rows: what a list row, an active card or an MCP answer shows. A projection
+ * of a built report, never a second count, so a list and the summary of the
+ * same session cannot disagree.
+ */
+export type SessionReportSummary = Pick<
+  SessionReport,
+  | 'rowVersion'
+  | 'sessionId'
+  | 'playerId'
+  | 'outcome'
+  | 'endedEarly'
+  | 'startedAt'
+  | 'endedAt'
+  | 'time'
+  | 'totals'
+  | 'position'
+>
+
+export function summarizeSessionReport(report: SessionReport): SessionReportSummary {
+  return {
+    rowVersion: report.rowVersion,
+    sessionId: report.sessionId,
+    playerId: report.playerId,
+    outcome: report.outcome,
+    endedEarly: report.endedEarly,
+    startedAt: report.startedAt,
+    endedAt: report.endedAt,
+    time: report.time,
+    totals: report.totals,
+    position: report.position,
+  }
+}

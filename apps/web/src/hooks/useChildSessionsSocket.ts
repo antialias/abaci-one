@@ -5,6 +5,7 @@ import type { Socket } from 'socket.io-client'
 import { createSocket } from '@/lib/socket'
 import { api } from '@/lib/queryClient'
 import type { SessionStartedEvent, SessionEndedEvent } from '@/lib/classroom/socket-events'
+import type { Counts } from '@/lib/curriculum/session-report'
 
 /**
  * Active session information for a child
@@ -14,12 +15,14 @@ export interface ChildActiveSession {
   planId: string
   /** Session status */
   status: string
-  /** Number of completed problems */
+  /** Items done (the session report's `position.progress.done`) */
   completedSlots: number
-  /** Total number of problems */
+  /** Items planned (the session report's `position.progress.total`) */
   totalSlots: number
-  /** When the session started (ISO string) */
-  startedAt: string
+  /** When the session started (ISO string); null when not started or not known */
+  startedAt: string | null
+  /** The session report's totals, when the API sent them */
+  totals?: Counts
 }
 
 /**
@@ -61,13 +64,14 @@ export function useChildSessionsSocket(
       const data = await res.json()
       if (!data.session) return null
 
-      // Convert API response to ChildActiveSession format
+      // Convert API response (the session report's numbers) to ChildActiveSession format
       return {
         planId: data.session.sessionId,
         status: data.session.status,
         completedSlots: data.session.completedProblems,
         totalSlots: data.session.totalProblems,
-        startedAt: new Date().toISOString(), // API doesn't return startedAt, use now as fallback
+        startedAt: data.session.startedAt ?? null,
+        ...(data.session.totals ? { totals: data.session.totals } : {}),
       }
     } catch (error) {
       console.error(`[ChildSessionsSocket] Failed to fetch session for ${playerId}:`, error)
@@ -163,11 +167,14 @@ export function useChildSessionsSocket(
       })
     })
 
-    // Handle session ended
+    // Handle session ended (every end, natural completion included): drop the card
     socket.on('session-ended', (data: SessionEndedEvent) => {
       console.log('[ChildSessionsSocket] Session ended:', data.playerName, 'reason:', data.reason)
 
       setSessions((prev) => {
+        const held = prev.get(data.playerId)
+        // A late end of an older session must not remove the card of a newer one
+        if (!held || (data.sessionId && held.planId !== data.sessionId)) return prev
         const next = new Map(prev)
         next.delete(data.playerId)
         return next

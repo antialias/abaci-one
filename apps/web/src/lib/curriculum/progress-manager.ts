@@ -3,7 +3,7 @@
  * Handles CRUD operations for student curriculum progress and skill mastery
  */
 
-import { and, desc, eq, inArray, lt, ne, or } from 'drizzle-orm'
+import { and, desc, eq, inArray, lt, ne, or, type SQL } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { NewPlayerCurriculum, PlayerCurriculum } from '@/db/schema/player-curriculum'
 import type { NewPlayerSkillMastery, PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
@@ -18,6 +18,12 @@ import {
 } from '@/db/schema/skill-tutorial-progress'
 import { DEFAULT_SECONDS_PER_PROBLEM } from '@/lib/curriculum/config'
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
+import {
+  type SessionReport,
+  type SessionReportSummary,
+  summarizeSessionReport,
+} from '@/lib/curriculum/session-report'
+import { buildSessionReports, reportRowColumns } from '@/lib/curriculum/session-report-batch'
 import {
   type AttemptTimingReason,
   classifyAttemptTiming,
@@ -523,74 +529,66 @@ export async function calculateMasteryPercent(
 // PRACTICE SESSION OPERATIONS
 // ============================================================================
 
-/** Narrow session_plans projection every session transform reads (#141-safe). */
-interface RawSessionRow {
-  id: string
-  playerId: string
-  results: SlotResult[]
-  startedAt: Date | null
-  createdAt: Date
-  completedAt: Date | null
+/**
+ * A dashboard list row: the legacy `PracticeSession` fields, now filled from
+ * the session report (§4, Phase 4d), plus the report's headline numbers.
+ */
+export interface SessionHistoryEntry extends PracticeSession {
+  report: SessionReportSummary
+}
+
+type ReportRow = Awaited<ReturnType<typeof selectReportRows>>[number]
+
+/** Ended sessions' report rows (slim `parts`, #141-safe), newest first. */
+function selectReportRows(where: SQL | undefined, limit: number) {
+  return db
+    .select({ ...reportRowColumns(), createdAt: schema.sessionPlans.createdAt })
+    .from(schema.sessionPlans)
+    .where(where)
+    .orderBy(desc(schema.sessionPlans.completedAt))
+    .limit(limit)
 }
 
 /**
- * Transform a raw session_plans row into the dashboard `PracticeSession` shape.
+ * Transform a session_plans row and its report into the dashboard row.
  *
  * Single source of truth shared by `getRecentSessions` and
- * `getPaginatedSessions` (previously duplicated). `totalTimeMs`/`averageTimeMs`
- * stay RAW (distortion preserved and shown alongside); the clean substats
- * (`quarantinedTimingCount`/`cleanTotalTimeMs`/`timedProblemCount`) are derived
- * via the shared timing helpers with Tier-1 samples excluded.
+ * `getPaginatedSessions`. Every number comes from the report:
+ * `problemsAttempted` = problems (attempted items), `problemsCorrect` = right
+ * on the first try, `totalTimeMs` = active time (Σ effective response time),
+ * `averageTimeMs` = active time per try. The timing-review badge count
+ * (`unresolvedTimingCount`) is not a session number and stays as it was.
  */
-function toPracticeSession(session: RawSessionRow): PracticeSession {
+function toPracticeSession(session: ReportRow, report: SessionReport): SessionHistoryEntry {
   // Practice-only do-overs count nowhere (not attempted, not timed)
   const results = countedTries(session.results)
-
-  const problemsAttempted = results.length
-  const problemsCorrect = results.filter((r) => r.isCorrect).length
-  // RAW totals — semantics deliberately unchanged.
-  const totalTimeMs = results.reduce((sum, r) => sum + (r.responseTimeMs || 0), 0)
-  const averageTimeMs = problemsAttempted > 0 ? Math.round(totalTimeMs / problemsAttempted) : null
   const skillsUsed = [...new Set(results.flatMap((r) => r.skillsExercised || []))]
-
-  // De-poisoned substats: exclude Tier-1, sum effective non-Tier-1 samples.
-  let quarantinedTimingCount = 0
-  let cleanTotalTimeMs = 0
-  let timedProblemCount = 0
-  for (const result of results) {
-    if (classifyAttemptTiming(result).tier === 'tier1') {
-      quarantinedTimingCount++
-      continue
-    }
-    const effective = getEffectiveResponseTimeMs(result)
-    if (effective != null) {
-      cleanTotalTimeMs += effective
-      timedProblemCount++
-    }
-  }
-  // Resolution-aware "needs review" count for the session-list badge: flagged
-  // AND not yet omitted/adjusted/confirmed. Context-free (no child stats), so it
-  // surfaces Tier-1 flags — the same read-time signal `quarantinedTimingCount`
-  // uses — but disappears as each flag is resolved.
-  const unresolvedTimingCount = countUnresolvedFlagged(results)
-
+  const { totals, time } = report
   return {
     id: session.id,
     playerId: session.playerId,
     phaseId: 'session', // session_plans don't have phaseId
-    problemsAttempted,
-    problemsCorrect,
-    averageTimeMs,
-    totalTimeMs,
+    problemsAttempted: totals.problems,
+    problemsCorrect: totals.firstTryCorrect,
+    averageTimeMs: totals.tries > 0 ? Math.round(time.activeMs / totals.tries) : null,
+    totalTimeMs: time.activeMs,
     skillsUsed,
     visualizationMode: false, // Not tracked in session_plans
     startedAt: session.startedAt || session.createdAt,
     completedAt: session.completedAt,
-    quarantinedTimingCount,
-    unresolvedTimingCount,
-    cleanTotalTimeMs,
-    timedProblemCount,
+    // Resolution-aware "needs review" count for the session-list badge
+    unresolvedTimingCount: countUnresolvedFlagged(results),
+    report: summarizeSessionReport(report),
   }
+}
+
+async function toPracticeSessions(rows: ReportRow[]): Promise<SessionHistoryEntry[]> {
+  const reports = await buildSessionReports(rows)
+  // A row whose report cannot be built is skipped (logged by the batch)
+  return rows.flatMap((row, i) => {
+    const report = reports[i]
+    return report ? [toPracticeSession(row, report)] : []
+  })
 }
 
 /** Sessions the pace window pools attempts over (matches getRecentSessions). */
@@ -810,19 +808,35 @@ export async function getTimingReviewData(playerId: string): Promise<TimingRevie
 export async function getRecentSessions(
   playerId: string,
   limit: number = 10
-): Promise<PracticeSession[]> {
-  // Query completed/abandoned sessions from session_plans.
-  //
-  // IMPORTANT: We explicitly project only the columns the transform below reads.
-  // A previous version used `db.query.sessionPlans.findMany(...)` which selects
-  // every column — including `parts` (10–50 KB of problem-generation traces per
-  // row) — and blew libsql's response size cap on heavy users (issue #141).
-  // Same pattern used by batchGetRecentSessionResults in session-planner.ts.
-  const sessions = await db
+): Promise<SessionHistoryEntry[]> {
+  // Completed/abandoned sessions. The projection never selects the full
+  // `parts` column (10–50 KB of generation traces per row blew libsql's
+  // response cap on heavy users, #141): `reportRowColumns` slims it in SQL.
+  const sessions = await selectReportRows(
+    and(
+      eq(schema.sessionPlans.playerId, playerId),
+      inArray(schema.sessionPlans.status, ['completed', 'abandoned'])
+    ),
+    limit
+  )
+  return toPracticeSessions(sessions)
+}
+
+/** A finished session's id and dates: all the skill chart and "last practiced" read. */
+export type SessionDates = Pick<PracticeSession, 'id' | 'startedAt' | 'completedAt'>
+
+/**
+ * The same sessions as `getRecentSessions`, ids and dates only: no report, no
+ * JSON columns (Phase 4d). For callers that read only when sessions happened
+ * (the dashboard's skill chart, the curriculum API, the MCP overview).
+ */
+export async function getRecentSessionDates(
+  playerId: string,
+  limit: number = 10
+): Promise<SessionDates[]> {
+  const rows = await db
     .select({
       id: schema.sessionPlans.id,
-      playerId: schema.sessionPlans.playerId,
-      results: schema.sessionPlans.results,
       startedAt: schema.sessionPlans.startedAt,
       createdAt: schema.sessionPlans.createdAt,
       completedAt: schema.sessionPlans.completedAt,
@@ -836,16 +850,18 @@ export async function getRecentSessions(
     )
     .orderBy(desc(schema.sessionPlans.completedAt))
     .limit(limit)
-
-  // Transform session_plans data into PracticeSession format (shared transform).
-  return sessions.map(toPracticeSession)
+  return rows.map((row) => ({
+    id: row.id,
+    startedAt: row.startedAt || row.createdAt,
+    completedAt: row.completedAt,
+  }))
 }
 
 /**
  * Response type for paginated sessions
  */
 export interface PaginatedSessionsResponse {
-  sessions: PracticeSession[]
+  sessions: SessionHistoryEntry[]
   nextCursor: string | null
   hasMore: boolean
 }
@@ -896,21 +912,8 @@ export async function getPaginatedSessions(
     )
   }
 
-  // Query one extra to check if there are more.
-  // Narrow projection — see getRecentSessions above for context (#141).
-  const sessions = await db
-    .select({
-      id: schema.sessionPlans.id,
-      playerId: schema.sessionPlans.playerId,
-      results: schema.sessionPlans.results,
-      startedAt: schema.sessionPlans.startedAt,
-      createdAt: schema.sessionPlans.createdAt,
-      completedAt: schema.sessionPlans.completedAt,
-    })
-    .from(schema.sessionPlans)
-    .where(and(...conditions))
-    .orderBy(desc(schema.sessionPlans.completedAt))
-    .limit(limit + 1)
+  // Query one extra to check if there are more (slim projection, #141).
+  const sessions = await selectReportRows(and(...conditions), limit + 1)
 
   console.log(`[getPaginatedSessions] Raw query returned ${sessions.length} sessions`)
 
@@ -920,7 +923,7 @@ export async function getPaginatedSessions(
   console.log(`[getPaginatedSessions] Final: ${resultSessions.length} sessions, hasMore=${hasMore}`)
 
   // Transform to PracticeSession format (shared transform).
-  const practiceSessionsResult = resultSessions.map(toPracticeSession)
+  const practiceSessionsResult = await toPracticeSessions(resultSessions)
 
   // Next cursor is the last session's ID
   const nextCursor =
@@ -947,7 +950,7 @@ export interface PlayerProgressSummary {
   practicingSkillCount: number
   /** Percentage of skills being practiced */
   practicingPercent: number
-  recentSessions: PracticeSession[]
+  recentSessions: SessionHistoryEntry[]
   recentSkills: PlayerSkillMastery[]
   /** @deprecated Use practicingSkillCount instead */
   masteredSkills: number

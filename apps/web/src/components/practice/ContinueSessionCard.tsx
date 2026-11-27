@@ -1,8 +1,8 @@
 'use client'
 
 import { useTheme } from '@/contexts/ThemeContext'
-import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SessionPlan } from '@/db/schema/session-plans'
+import type { SessionReportSummary } from '@/lib/curriculum/session-report'
 import { css } from '../../../styled-system/css'
 
 function getPartTypeLabel(type: SessionPart['type']): string {
@@ -32,6 +32,8 @@ export interface ContinueSessionCardProps {
   studentEmoji: string
   studentColor: string
   session: SessionPlan
+  /** The session's report (`useSessionReport`): progress comes from it */
+  report: SessionReportSummary
   onContinue: () => void
   onStartFresh: () => void
 }
@@ -45,15 +47,16 @@ export function ContinueSessionCard({
   studentEmoji,
   studentColor,
   session,
+  report,
   onContinue,
   onStartFresh,
 }: ContinueSessionCardProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
-  // Calculate progress
-  const completedProblems = countedTries(session.results).length
-  const totalProblems = session.parts.reduce((sum, part) => sum + part.slots.length, 0)
+  // Progress: the report's items done of planned (Phase 4d)
+  const completedProblems = report.position?.progress.done ?? report.totals.problems
+  const totalProblems = report.position?.progress.total ?? report.totals.plannedProblems
   const progressPercent =
     totalProblems > 0 ? Math.round((completedProblems / totalProblems) * 100) : 0
 

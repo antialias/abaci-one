@@ -7,13 +7,11 @@
  * Use these for SSR prefetching with React Query's HydrationBoundary.
  */
 
-import { countedTries } from '@/db/schema/session-plan-helpers'
 import 'server-only'
 
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { Player } from '@/db/schema/players'
-import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { getPlayer } from '@/lib/arcade/player-manager'
 import { batchGetEnrolledClassrooms, batchGetStudentPresence } from '@/lib/classroom'
 import { getParentedPlayerIds } from '@/lib/classroom/access-control'
@@ -28,9 +26,9 @@ import {
 } from '@/utils/studentGrouping'
 import { type BktEvidence, computeBktFromHistory, getStalenessWarning } from './bkt'
 import { BKT_EVIDENCE_PLAYER_CHUNK_SIZE, batchGetRecentBktEvidence } from './bkt/evidence-query'
-import { plannedItemCount } from './parts/registry'
 import { getAllSkillMastery, getPlayerCurriculum, getRecentSessions } from './progress-manager'
 import { getActiveSessionPlan } from './session-planner'
+import { buildSessionReports, reportRowColumns } from './session-report-batch'
 
 export type { PlayerCurriculum } from '@/db/schema/player-curriculum'
 export type { PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
@@ -157,36 +155,37 @@ async function batchGetActiveSessions(
   const result = new Map<string, StudentActiveSessionInfo>()
   if (playerIds.length === 0) return result
 
-  // Single query: active session plans for all players
+  // Single query: active session plans for all players, newest first, never
+  // an ended one; `parts` slimmed in SQL (#141)
   const activePlans = await db
-    .select({
-      id: schema.sessionPlans.id,
-      playerId: schema.sessionPlans.playerId,
-      status: schema.sessionPlans.status,
-      parts: schema.sessionPlans.parts,
-      results: schema.sessionPlans.results,
-    })
+    .select({ ...reportRowColumns(), createdAt: schema.sessionPlans.createdAt })
     .from(schema.sessionPlans)
     .where(
       and(
         inArray(schema.sessionPlans.playerId, playerIds),
-        inArray(schema.sessionPlans.status, ['approved', 'in_progress'])
+        inArray(schema.sessionPlans.status, ['approved', 'in_progress']),
+        isNull(schema.sessionPlans.completedAt)
       )
     )
+    .orderBy(desc(schema.sessionPlans.createdAt))
 
-  // Group by player (take most recent if multiple — though unlikely)
-  for (const plan of activePlans) {
-    if (result.has(plan.playerId)) continue // first one wins
-    const parts = (plan.parts as SessionPart[]) || []
-    const results = (plan.results as SlotResult[]) || []
-    const totalProblems = parts.reduce((sum, part) => sum + plannedItemCount(part), 0)
+  // The counts come from the session report, as /api/players/[id]/active-session
+  // (Phase 4d, §10 P4d-7): the seed and the fetch it replaces agree
+  const reports = await buildSessionReports(activePlans)
+  activePlans.forEach((plan, i) => {
+    const report = reports[i]
+    if (!report || result.has(plan.playerId)) return // newest wins
+    const progress = report.position?.progress ?? {
+      done: 0,
+      total: report.totals.plannedProblems,
+    }
     result.set(plan.playerId, {
       sessionId: plan.id,
       status: plan.status,
-      completedProblems: countedTries(results).length,
-      totalProblems,
+      completedProblems: progress.done,
+      totalProblems: progress.total,
     })
-  }
+  })
 
   return result
 }
@@ -412,12 +411,13 @@ async function loadPlayersWithSkillData(
 // Re-export the individual functions for granular prefetching
 export { getPlayer } from '@/lib/arcade/player-manager'
 export { getPracticeStudent } from './practice-student'
-export type { PaginatedSessionsResponse } from './progress-manager'
+export type { PaginatedSessionsResponse, SessionDates } from './progress-manager'
 export {
   getAllSkillMastery,
   getPaceAssessment,
   getPaginatedSessions,
   getPlayerCurriculum,
+  getRecentSessionDates,
   getRecentSessions,
 } from './progress-manager'
 export type { ProblemResultWithContext } from './session-planner'

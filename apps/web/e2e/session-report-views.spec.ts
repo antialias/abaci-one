@@ -45,6 +45,9 @@ interface Report {
   sessionId: string
   outcome: string
   endedEarly: boolean
+  startedAt: number | null
+  endedAt: number | null
+  time: { activeMs: number; wallMs: number }
   totals: Counts
   position: { progress: { done: number; total: number } } | null
 }
@@ -80,7 +83,11 @@ async function seedStudent(request: APIRequestContext): Promise<string> {
 }
 
 /** One abacus part, no breaks: every answer stays in the part the observers show. */
-async function startSession(request: APIRequestContext, playerId: string): Promise<Plan> {
+async function startSession(
+  request: APIRequestContext,
+  playerId: string,
+  previous?: string
+): Promise<Plan> {
   const gen = await request.post(`/api/curriculum/${playerId}/sessions/plans`, {
     data: {
       durationMinutes: 2,
@@ -101,7 +108,9 @@ async function startSession(request: APIRequestContext, playerId: string): Promi
     .poll(
       async () => {
         const r = await request.get(`/api/curriculum/${playerId}/sessions/plans`)
-        planId = (await r.json()).plan?.id ?? ''
+        // The player's latest plan may still be the one that just ended
+        const id: string = (await r.json()).plan?.id ?? ''
+        planId = id === previous ? '' : id
         return planId
       },
       { timeout: 60_000 }
@@ -339,13 +348,73 @@ async function expectEndedSummary(scope: Locator, report: Report, want: Expected
   )
 }
 
+/** The admin's classroom, which the seeder enrols every seeded student in. */
+async function seededClassroom(request: APIRequestContext, playerId: string) {
+  const r = await request.get('/api/classrooms/mine')
+  expect(r.ok(), await r.text()).toBeTruthy()
+  const classroomId: string = (await r.json()).classroom.id
+  const enrolled = await request.get(`/api/classrooms/${classroomId}/enrollments`)
+  expect(enrolled.ok(), await enrolled.text()).toBeTruthy()
+  const { students } = (await enrolled.json()) as { students: { id: string }[] }
+  expect(students.map((st) => st.id)).toContain(playerId)
+  return classroomId
+}
+
+interface ClassroomActiveSession {
+  sessionId: string
+  playerId: string
+  completedProblems: number
+  totalProblems: number
+  totals: Counts
+}
+
+async function classroomActiveSessions(request: APIRequestContext, classroomId: string) {
+  const r = await request.get(`/api/classrooms/${classroomId}/presence/active-sessions`)
+  expect(r.ok(), await r.text()).toBeTruthy()
+  return (await r.json()).sessions as ClassroomActiveSession[]
+}
+
+/** The history list's "N min" (VirtualizedSessionList's formatMinutes). */
+const listMinutes = (ms: number) => (ms > 0 && ms < 30_000 ? '<1' : String(Math.round(ms / 60_000)))
+
+/** A finished session's history row shows its report's first try, final, times and end date. */
+async function expectHistoryRow(dashboard: Page, report: Report, want: Expected) {
+  const t = report.totals
+  const row = dashboard.locator(
+    `[data-element="session-history-item"][data-session-id="${report.sessionId}"]`
+  )
+  await expect(row).toBeVisible({ timeout: 30_000 })
+  const firstTry = pct(want.firstTryCorrect, want.problems)
+  await expect(row.locator('[data-element="status-badge"]')).toHaveAttribute(
+    'data-status',
+    'completed'
+  )
+  await expect(row.locator('[data-element="status-badge"]')).toHaveText(
+    `${want.firstTryCorrect}/${want.problems} first try · ${firstTry}`
+  )
+  expect(`${t.firstTryCorrect}/${t.problems}`).toBe(`${want.firstTryCorrect}/${want.problems}`)
+  await expect(row.locator('[data-element="final-accuracy"]')).toHaveText(
+    `${pct(want.finalCorrect, want.problems)} final`
+  )
+  expect(pct(t.finalCorrect, t.problems)).toBe(pct(want.finalCorrect, want.problems))
+  await expect(row.locator('[data-element="wall-duration"]')).toHaveText(
+    `${listMinutes(report.time.wallMs)} min`
+  )
+  await expect(row.locator('[data-element="active-duration"]')).toHaveText(
+    `${listMinutes(report.time.activeMs)} min active`
+  )
+  // Dated by when it ended, in the browser's own locale and zone
+  const date = await dashboard.evaluate((ms) => new Date(ms).toLocaleDateString(), report.endedAt!)
+  await expect(row.locator('[data-element="session-header"]')).toContainText(date)
+}
+
 const noAuth = { storageState: { cookies: [], origins: [] } }
 
 // ---------------------------------------------------------------------------
 // Scenario
 // ---------------------------------------------------------------------------
 
-test.describe('session report views (Phase 4c)', () => {
+test.describe('session report views (Phases 4c, 4d)', () => {
   test.setTimeout(300_000)
 
   let playerId = ''
@@ -463,5 +532,95 @@ test.describe('session report views (Phase 4c)', () => {
     await expect(stranger.locator('[data-component="public-observation-page"]')).toHaveCount(0)
     const bogusReport = await strangerContext.request.get(`/api/observe/${bogus}/report`)
     expect(bogusReport.status()).toBe(404)
+  })
+
+  test('dashboard history and the classroom route read the report (Phase 4d)', async ({
+    page,
+    context,
+    request,
+  }) => {
+    const t0 = Date.now()
+    playerId = await seedStudent(request)
+    const classroomId = await seededClassroom(request, playerId)
+    await instrument(page)
+
+    // Session A: slot 0 wrong then fixed by a do-over, slot 1 right
+    const a = await startSession(request, playerId)
+    const planned = a.parts[0].slots.length
+    expect(planned).toBeGreaterThanOrEqual(4)
+    console.log(`[4d views] player ${playerId} plans A ${a.id}`)
+    await page.goto(`/practice/${playerId}`)
+    await answer(page, a.id, false)
+    await doOverCorrectly(page, a.id, 0)
+    await answer(page, a.id, true)
+    const wantA: Expected = { problems: 2, tries: 3, firstTryCorrect: 1, fixed: 1, finalCorrect: 2 }
+
+    // The classroom route, while A is live: the report's progress and totals
+    const liveA = await planReport(request, playerId, a.id)
+    expectCounts(liveA, wantA, planned)
+    const cardA = (await classroomActiveSessions(request, classroomId)).find(
+      (s) => s.playerId === playerId
+    )
+    expect(cardA?.sessionId).toBe(a.id)
+    expect(cardA).toMatchObject({ completedProblems: 2, totalProblems: planned })
+    expect(cardA!.totals).toEqual(liveA.totals)
+
+    let end = await request.patch(`/api/curriculum/${playerId}/sessions/plans/${a.id}`, {
+      data: { action: 'end_early', reason: 'e2e: dashboard A' },
+    })
+    expect(end.ok(), await end.text()).toBeTruthy()
+    const finalA = await planReport(request, playerId, a.id)
+    expectCounts(finalA, wantA, planned)
+    const ended = (await classroomActiveSessions(request, classroomId)).filter(
+      (s) => s.playerId === playerId
+    )
+    expect(ended).toEqual([])
+
+    // Session B: two right; the dashboard opens while it is live
+    const b = await startSession(request, playerId, a.id)
+    expect(b.id).not.toBe(a.id)
+    await page.goto(`/practice/${playerId}`)
+    await answer(page, b.id, true)
+    await answer(page, b.id, true)
+    const dashboard = await context.newPage()
+    await dashboard.goto(`/practice/${playerId}/dashboard?tab=history`)
+    await expectHistoryRow(dashboard, finalA, wantA)
+    await expect(
+      dashboard.locator(`[data-element="active-session-item"][data-session-id="${b.id}"]`)
+    ).toContainText(`2/${planned} · 100% first try`)
+    // The dashboard's in-progress card (the sub-nav carries a hidden variant too)
+    const inProgress = dashboard.locator('[data-element="active-session-banner"]')
+    await expect(inProgress.and(dashboard.locator('[data-variant="dashboard"]'))).toBeVisible()
+    await expect(inProgress.and(dashboard.locator('[data-variant="dashboard"]'))).toContainText(
+      `2/${planned}`
+    )
+
+    // B's third answer is wrong and never fixed; ending B lists it without a reload
+    await answer(page, b.id, false)
+    end = await request.patch(`/api/curriculum/${playerId}/sessions/plans/${b.id}`, {
+      data: { action: 'end_early', reason: 'e2e: dashboard B' },
+    })
+    expect(end.ok(), await end.text()).toBeTruthy()
+    const wantB: Expected = { problems: 3, tries: 3, firstTryCorrect: 2, fixed: 0, finalCorrect: 2 }
+    const finalB = await planReport(request, playerId, b.id)
+    expectCounts(finalB, wantB, planned)
+    await expectHistoryRow(dashboard, finalB, wantB)
+    // ...and the in-progress card goes with it, also without a reload (P4d-13)
+    await expect(inProgress).toHaveCount(0)
+    await expect(
+      dashboard.locator(`[data-element="active-session-item"][data-session-id="${b.id}"]`)
+    ).toHaveCount(0)
+    await dashboard.screenshot({ path: `${SHOTS}/dashboard-history.png` })
+
+    // Dates are the reports' end times; newest first
+    for (const r of [finalA, finalB]) {
+      expect(r.endedAt).toBeGreaterThanOrEqual(t0)
+      expect(r.endedAt).toBeLessThanOrEqual(Date.now())
+    }
+    expect(finalB.endedAt!).toBeGreaterThan(finalA.endedAt!)
+    const ids = await dashboard
+      .locator('[data-element="session-history-item"]')
+      .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-session-id')))
+    expect(ids.slice(0, 2)).toEqual([b.id, a.id])
   })
 })

@@ -55,6 +55,7 @@ import {
   getPaginatedSessions,
   getRecentSessions,
   getTimingReviewData,
+  type SessionHistoryEntry,
 } from '@/lib/curriculum/progress-manager'
 import {
   batchGetRecentSessionResults,
@@ -325,14 +326,31 @@ describe('practice-only do-overs: database readers are invariant', () => {
     eph.cleanup()
   })
 
+  function verdictsOf(rows: SessionHistoryEntry[]) {
+    return rows.map(
+      ({
+        averageTimeMs: _a,
+        totalTimeMs: _t,
+        report: { time: _time, totals, ...report },
+        ...row
+      }) => {
+        const { tries: _tries, ...verdicts } = totals
+        return { ...row, report: { ...report, totals: verdicts } }
+      }
+    )
+  }
+
   async function readAll() {
     const timing = await getTimingReviewData(playerId)
     return {
       history: await getRecentSessionResults(playerId, 10),
       batch: [...(await batchGetRecentSessionResults([playerId], 10))],
       evidence: [...(await batchGetRecentBktEvidence([playerId], 10))],
-      recent: await getRecentSessions(playerId, 10),
-      paginated: await getPaginatedSessions(playerId, 10),
+      // Session lists read the report (Phase 4d): its `tries` and active time
+      // count practice-only tries by definition (§4, P4a-2: time the kid
+      // spent, not a verdict), so only the verdicts must be invariant
+      recent: verdictsOf(await getRecentSessions(playerId, 10)),
+      paginated: verdictsOf((await getPaginatedSessions(playerId, 10)).sessions),
       timingAssessment: timing.assessment,
       timingFlagged: timing.flagged,
       deleted: timing.deletedSessions,

@@ -1,10 +1,10 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
-import { countedTries } from '@/db/schema/session-plan-helpers'
-import { type SessionPart, type SlotResult, sessionPlans } from '@/db/schema/session-plans'
+import { sessionPlans } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
+import { buildSessionReports } from '@/lib/curriculum/session-report-batch'
 import { getUserId } from '@/lib/viewer'
 
 /**
@@ -13,9 +13,16 @@ import { getUserId } from '@/lib/viewer'
  * Returns the active session for a player (if any).
  * Requires 'view' permission (parent or teacher relationship).
  *
+ * Active = approved or in progress and not ended (`completedAt` null: a row
+ * the sweep or an end stamped is never returned, whatever its status says).
+ * Every number is the session report's (Phase 4d).
+ *
  * Response:
  * - { session: null } if no active session
- * - { session: { sessionId, status, completedProblems, totalProblems } } if active
+ * - { session: { sessionId, status, outcome, startedAt, completedProblems,
+ *     totalProblems, totals, rowVersion } } if active; `completedProblems` /
+ *   `totalProblems` are the report's items done of planned (0 of planned
+ *   before the session starts), `startedAt` null until it starts
  */
 export const GET = withAuth(async (_request, { params }) => {
   try {
@@ -32,39 +39,39 @@ export const GET = withAuth(async (_request, { params }) => {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
 
-    // Find active session (started but not completed/abandoned)
-    const activeStatuses = ['approved', 'in_progress'] as const
-    const activePlan = await db
-      .select({
-        id: sessionPlans.id,
-        status: sessionPlans.status,
-        parts: sessionPlans.parts,
-        results: sessionPlans.results,
-      })
-      .from(sessionPlans)
-      .where(
-        and(eq(sessionPlans.playerId, playerId), inArray(sessionPlans.status, [...activeStatuses]))
-      )
-      .orderBy(sessionPlans.createdAt)
-      .limit(1)
-      .then((rows) => rows[0])
+    // Find active session (started or about to start, not ended)
+    const activePlan = await db.query.sessionPlans.findFirst({
+      where: and(
+        eq(sessionPlans.playerId, playerId),
+        inArray(sessionPlans.status, ['approved', 'in_progress']),
+        isNull(sessionPlans.completedAt)
+      ),
+      orderBy: [desc(sessionPlans.createdAt)],
+    })
 
     if (!activePlan) {
       return NextResponse.json({ session: null })
     }
 
-    // Calculate progress - parts is an array of SessionPart, each with slots
-    const parts = (activePlan.parts as SessionPart[]) || []
-    const results = (activePlan.results as SlotResult[]) || []
-    const totalProblems = parts.reduce((sum, part) => sum + part.slots.length, 0)
-    const completedProblems = countedTries(results).length
+    const [report] = await buildSessionReports([activePlan])
+    if (!report) {
+      return NextResponse.json({ error: 'Failed to fetch active session' }, { status: 500 })
+    }
+    const progress = report.position?.progress ?? {
+      done: 0,
+      total: report.totals.plannedProblems,
+    }
 
     return NextResponse.json({
       session: {
         sessionId: activePlan.id,
         status: activePlan.status,
-        completedProblems,
-        totalProblems,
+        outcome: report.outcome,
+        startedAt: report.startedAt != null ? new Date(report.startedAt).toISOString() : null,
+        completedProblems: progress.done,
+        totalProblems: progress.total,
+        totals: report.totals,
+        rowVersion: report.rowVersion,
       },
     })
   } catch (error) {
