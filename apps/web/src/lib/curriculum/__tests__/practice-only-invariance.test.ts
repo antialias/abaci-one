@@ -57,11 +57,13 @@ import {
   getTimingReviewData,
   type SessionHistoryEntry,
 } from '@/lib/curriculum/progress-manager'
+import { readTriesSync } from '@/lib/curriculum/read-tries'
 import {
   batchGetRecentSessionResults,
   getRecentSessionResults,
   type ProblemResultWithContext,
 } from '@/lib/curriculum/session-planner'
+import { buildSessionReport } from '@/lib/curriculum/session-report'
 import { computeStudentSkillMetrics } from '@/lib/curriculum/skill-metrics'
 import { assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
 import { calculateSessionTrends } from '@/lib/curriculum/trends'
@@ -268,7 +270,18 @@ describe('practice-only do-overs: pure readers are invariant', () => {
       calculateComplexityScaledThresholds(r, PROGRESSIVE_ASSISTANCE_TIMING.production, 2)
     )
     invariant((r) => calculateTimingStats(r, PARTS, 'abacus'))
-    invariant((r) => getSessionTimeEstimate(r, PARTS))
+    // The estimate reads the report (Phase 5c): its progress and its tries' times
+    invariant((r) => {
+      const p = plan(r)
+      const report = buildSessionReport({
+        plan: p,
+        tries: readTriesSync(p),
+        gameResults: [],
+        song: null,
+        now: Date.parse('2026-01-05T16:00:00.000Z'),
+      })
+      return getSessionTimeEstimate(report, 'abacus')
+    })
   })
 
   it('mastery: BKT, readiness, linear gate, skill metrics', () => {

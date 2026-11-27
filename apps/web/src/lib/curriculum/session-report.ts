@@ -176,6 +176,8 @@ export type ReportPlan = Pick<
 > & {
   rowVersion?: number | null
   pauses?: SessionPlan['pauses'] | null
+  /** The machine's break list (Phase 3a on); absent or empty on older rows */
+  breaks?: SessionPlan['breaks'] | null
 }
 
 /** A practice-break `game_results` row (plus its report, for the dedupe). */
@@ -403,18 +405,180 @@ function currentItemOf(plan: ReportPlan): SessionReportPosition['currentItem'] {
   }
 }
 
+/** Where a session's breaks were read from (§3.1). */
+export type BreakSource = 'breaks' | 'legacy'
+
 /**
- * Breaks by the legacy path (§3.1; §10 P3b-1, P4a-3): one per distinct
- * `practice-break` game result, else the legacy break columns; plus the break
- * running now (a break state whose game has not reported yet), as open.
+ * A session's breaks (§3.1; Phase 5c, §10 P5a-4): the machine's list,
+ * `plan.breaks`, when it holds any (every break from Phase 3a on: played,
+ * skipped or timed out, open or closed); else the legacy path for rows written
+ * before it: one per distinct `practice-break` game result, else the four
+ * legacy columns as at most one (`legacyBreaksOf`). The report and the song
+ * both read this, so they name the same breaks.
+ *
+ * A session that straddles Phase 3a's deploy (§10 P5c-7) has `breaks` records
+ * only for its later breaks: its earlier ones are the game result rows played
+ * before the first record started, listed first. A row a record already names
+ * (by id, or by its game's report) is never listed twice.
+ */
+export function sessionBreaksOf(
+  plan: Pick<
+    ReportPlan,
+    | 'breaks'
+    | 'breakStartedAt'
+    | 'breakReason'
+    | 'breakSelectedGame'
+    | 'breakResults'
+    | 'flowState'
+    | 'currentPartIndex'
+  >,
+  gameResults: readonly ReportGameResult[]
+): { source: BreakSource; records: BreakRecord[] } {
+  const records = Array.isArray(plan.breaks) ? plan.breaks : []
+  const distinct = distinctBreakResults(gameResults)
+  if (records.length === 0) return { source: 'legacy', records: legacyBreaksOf(plan, distinct) }
+  const firstStart = msOf(records[0].startedAt)
+  const earlier =
+    firstStart == null
+      ? []
+      : distinct.filter((g) => {
+          const playedAt = msOf(g.playedAt)
+          return playedAt != null && playedAt < firstStart && !records.some((r) => names(r, g))
+        })
+  if (earlier.length === 0) return { source: 'breaks', records }
+  const before = legacyBreaksOf(plan, earlier)
+  return {
+    source: 'breaks',
+    records: [...before, ...records].map((r, breakIndex) => ({ ...r, breakIndex })),
+  }
+}
+
+/** Whether a `breaks` record is the break a game result row reports. */
+function names(record: BreakRecord, row: ReportGameResult): boolean {
+  if (record.gameResultId != null && record.gameResultId === row.id) return true
+  const stored = row.fullReport as { gameName?: unknown; endedAt?: unknown } | null | undefined
+  return (
+    record.results != null &&
+    stored != null &&
+    stored.endedAt === record.results.endedAt &&
+    stored.gameName === record.results.gameName
+  )
+}
+
+/**
+ * The report's break rows: `sessionBreaksOf`, plus the break the kid is in
+ * when it has no record yet. From `breaks`, a record is open while it has no
+ * end and the session is in a break state; the break of `break_pending` gets
+ * its record only when it starts or is skipped (§10 P5a-3), so it shows as an
+ * open row from the legacy `breakStartedAt`. From the legacy path (§10 P3b-1,
+ * P4a-3), as before Phase 5: a column break is open while in a break state,
+ * and a game result row closes a break.
  */
 function breakRows(
   plan: ReportPlan,
   gameResults: readonly ReportGameResult[],
   live: readonly Try[]
+): { rows: BreakReportRow[]; closedByAbandon: ReadonlySet<number> } {
+  const { source, records } = sessionBreaksOf(plan, gameResults)
+  return source === 'breaks'
+    ? machineBreakRows(plan, records, live)
+    : {
+        rows: legacyBreakRows(plan, records, distinctBreakResults(gameResults), live),
+        closedByAbandon: new Set<number>(),
+      }
+}
+
+/**
+ * The machine closes a break that is open when the session is abandoned at
+ * the moment of abandonment (`closeOpenBreak`), and auto-abandon can land
+ * days later (§10 P5c-13). Such a record (closed, no finish / skip / timeout
+ * reason, in an abandoned session) ends, for the report, at the session's
+ * last activity: its last try or the end of a break that did end. It never
+ * moves the session's end. The stored record keeps its abandon-time close.
+ */
+function abandonClampOf(
+  plan: ReportPlan,
+  records: readonly BreakRecord[],
+  live: readonly Try[]
+): { clampTo: number | null; closedByAbandon: (b: BreakRecord) => boolean } {
+  if (sessionOutcome(plan) !== 'abandoned') {
+    return { clampTo: null, closedByAbandon: () => false }
+  }
+  const closedByAbandon = (b: BreakRecord) => b.endedAt != null && b.reason == null
+  let clampTo: number | null = null
+  for (const t of live) {
+    const at = msOf(t.recordedAt)
+    if (at != null && (clampTo == null || at > clampTo)) clampTo = at
+  }
+  for (const b of records) {
+    const end = msOf(b.endedAt)
+    if (!closedByAbandon(b) && end != null && (clampTo == null || end > clampTo)) clampTo = end
+  }
+  return { clampTo, closedByAbandon }
+}
+
+function machineBreakRows(
+  plan: ReportPlan,
+  records: readonly BreakRecord[],
+  live: readonly Try[]
+): { rows: BreakReportRow[]; closedByAbandon: Set<number> } {
+  const inBreak = BREAK_STATES.has(plan.flowState)
+  const clamp = abandonClampOf(plan, records, live)
+  const closedByAbandon = new Set<number>()
+  const rows: BreakReportRow[] = records.map((b, breakIndex) => {
+    const startedAt = msOf(b.startedAt)
+    let endedAt = msOf(b.endedAt)
+    // An end the record never got (only a writer that skipped the machine
+    // leaves one) is unknown, not running, outside a break state
+    const open = endedAt == null && inBreak && breakIndex === records.length - 1
+    let durationMs =
+      endedAt == null
+        ? null
+        : (b.durationMs ?? (startedAt != null ? Math.max(0, endedAt - startedAt) : null))
+    if (endedAt != null && clamp.closedByAbandon(b)) {
+      closedByAbandon.add(breakIndex)
+      const bound = clamp.clampTo ?? startedAt ?? endedAt
+      endedAt = Math.max(startedAt ?? bound, Math.min(endedAt, bound))
+      durationMs = startedAt != null ? Math.max(0, endedAt - startedAt) : 0
+    }
+    return {
+      breakIndex,
+      afterPartIndex: b.afterPartIndex ?? afterPartIndexOf(startedAt, live),
+      game: b.game ?? null,
+      startedAt,
+      endedAt,
+      durationMs,
+      reason: b.reason ?? null,
+      open,
+      estimated: b.estimated === true,
+    }
+  })
+  const pending =
+    (plan.flowState === 'break_pending' || plan.flowState === 'break_active') &&
+    !rows.some((r) => r.open)
+  if (pending) {
+    rows.push({
+      breakIndex: rows.length,
+      afterPartIndex: plan.currentPartIndex - 1,
+      game: plan.breakSelectedGame ?? null,
+      startedAt: msOf(plan.breakStartedAt),
+      endedAt: null,
+      durationMs: null,
+      reason: null,
+      open: true,
+      estimated: false,
+    })
+  }
+  return { rows, closedByAbandon }
+}
+
+/** Break rows by the legacy path, exactly as before Phase 5 (§10 P3b-1, P4a-3). */
+function legacyBreakRows(
+  plan: ReportPlan,
+  records: readonly BreakRecord[],
+  distinct: readonly ReportGameResult[],
+  live: readonly Try[]
 ): BreakReportRow[] {
-  const distinct = distinctBreakResults(gameResults)
-  const records: BreakRecord[] = legacyBreaksOf(plan, distinct)
   const inBreak = BREAK_STATES.has(plan.flowState)
   const rows: BreakReportRow[] = records.map((b) => {
     const startedAt = msOf(b.startedAt)
@@ -533,7 +697,7 @@ export function buildSessionReport(input: SessionReportInput): SessionReport {
     ].reduce<Counts>((sum, row) => addCounts(sum, row), emptyCounts(0))
   )
 
-  const breaks = breakRows(plan, input.gameResults ?? [], live)
+  const { rows: breaks, closedByAbandon } = breakRows(plan, input.gameResults ?? [], live)
   const closedBreaks = breaks.filter((b) => !b.open)
   const breakMs = closedBreaks.reduce((sum, b) => sum + (b.durationMs ?? 0), 0)
   const pausedMs = (plan.pauses ?? []).reduce((sum, p) => {
@@ -554,10 +718,13 @@ export function buildSessionReport(input: SessionReportInput): SessionReport {
       const at = msOf(t.recordedAt)
       return at != null && (max == null || at > max) ? at : max
     }, null)
-    const lastBreak = closedBreaks.reduce<number | null>(
-      (max, b) => (b.endedAt != null && (max == null || b.endedAt > max) ? b.endedAt : max),
-      null
-    )
+    // A break the abandonment closed is not activity (§10 P5c-13)
+    const lastBreak = closedBreaks
+      .filter((b) => !closedByAbandon.has(b.breakIndex))
+      .reduce<number | null>(
+        (max, b) => (b.endedAt != null && (max == null || b.endedAt > max) ? b.endedAt : max),
+        null
+      )
     end = lastTry == null && lastBreak == null ? startedAt : Math.max(lastTry ?? 0, lastBreak ?? 0)
   } else {
     end = completedAt

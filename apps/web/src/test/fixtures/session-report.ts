@@ -15,12 +15,14 @@
  */
 
 import type {
+  BreakRecord,
   GeneratedProblem,
   ProblemSlot,
   SessionPart,
   SessionPlan,
   SlotResult,
 } from '@/db/schema/session-plans'
+import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { readTriesSync } from '@/lib/curriculum/read-tries'
 import {
   buildSessionReport,
@@ -536,5 +538,238 @@ export function doOverSession(): SessionReportFixture {
     plan: { ...base.plan, id, results },
     gameResults: [fixtureBreakGameResult(id)],
     song: null,
+  }
+}
+
+// ============================================================================
+// Phase 5c: result grids and every break
+// ============================================================================
+
+/**
+ * Expected totals of `gridSession` (Phase 5c, the result grids). Its cells:
+ * 4 right (final verdict correct), 2 wrong (unresolved), 1 not counted (first
+ * try excluded by an adult), 3 not answered (part 3).
+ */
+export const GRID_EXPECTED = {
+  plannedProblems: 10,
+  problems: 6,
+  tries: 9,
+  firstTryCorrect: 4,
+  fixedInRetries: 0,
+  unresolved: 2,
+  finalCorrect: 4,
+  cells: { correct: 4, incorrect: 2, 'not-counted': 1, 'practice-only': 0, unanswered: 3 },
+} as const
+
+/**
+ * Abandoned in part 2 (Phase 5c, the result grids): in part 1 slot 1 was
+ * wrong and an adult excluded its right retry, so it stays wrong; in part 2
+ * an adult excluded slot 0's try, slot 1 stayed wrong after its retry, slot 2
+ * right; part 3 not reached.
+ */
+export function gridSession(): SessionReportFixture {
+  const id = 'fx-grid'
+  const parts = fixtureParts()
+  const specs = tenProblemTries().slice(0, 9)
+  specs[8] = { ...specs[8], correct: false }
+  const results = specs.map((spec, i) => rowOf(parts, spec, i + 1))
+  results[4] = { ...results[4], source: 'teacher-excluded' }
+  results[5] = { ...results[5], source: 'teacher-excluded' }
+  return {
+    plan: planOf(id, parts, results, {
+      status: 'abandoned',
+      flowState: 'abandoned',
+      currentPartIndex: 1,
+      completedAt: new Date(T0 + 700 * S),
+    }),
+    gameResults: [fixtureBreakGameResult(id)],
+    song: null,
+    now: SESSION_REPORT_NOW,
+  }
+}
+
+/** A break the machine recorded (`plan.breaks`), closed. */
+function closedBreak(
+  breakIndex: number,
+  afterPartIndex: number,
+  fromS: number,
+  toS: number,
+  over: Partial<BreakRecord>
+): BreakRecord {
+  return {
+    breakIndex,
+    afterPartIndex,
+    startedAt: new Date(T0 + fromS * S).toISOString(),
+    endedAt: new Date(T0 + toS * S).toISOString(),
+    durationMs: (toS - fromS) * S,
+    ...over,
+  }
+}
+
+/**
+ * The ten-problem session with two breaks the machine recorded in `breaks`
+ * and no game result row (Phase 5c, P5a-4): after part 1 the 5-minute break
+ * timed out in memory-quiz; after part 2 a 20-second break in matching was
+ * skipped. The legacy columns hold only the last break, as the machine
+ * leaves them. Expected: two breaks, 5 min 20 s, not estimated; the song
+ * names each once.
+ */
+export function skippedAndTimedOutBreaksSession(): SessionReportFixture {
+  const id = 'fx-breaks-skip-timeout'
+  const base = tenProblemSession()
+  return {
+    plan: {
+      ...base.plan,
+      id,
+      breaks: [
+        closedBreak(0, 0, 180, 480, { reason: 'timeout', game: 'memory-quiz' }),
+        closedBreak(1, 1, 605, 625, { reason: 'skipped', game: 'matching' }),
+      ],
+      breakReason: 'skipped',
+      breakSelectedGame: 'matching',
+    },
+    gameResults: [],
+    song: null,
+    now: SESSION_REPORT_NOW,
+  }
+}
+
+/** The game's report of the played break of `playedAndSkippedBreaksSession`. */
+function playedBreakReport(): GameResultsReport {
+  return {
+    gameName: 'memory-quiz',
+    gameDisplayName: 'Memory Quiz',
+    gameIcon: '🧠',
+    durationMs: 5 * MIN,
+    completedNormally: true,
+    startedAt: T0 + 180 * S,
+    endedAt: T0 + 480 * S,
+    gameMode: 'single-player',
+    playerCount: 1,
+    playerResults: [],
+    headline: 'Remembered every card!',
+  } as unknown as GameResultsReport
+}
+
+/**
+ * The ten-problem session with a played break (its report on the record and
+ * its game result row) and a break skipped before a game was chosen (Phase
+ * 5c). Expected: two breaks in the report; the song names the played one
+ * once, from its row, and not the one without a game (as before).
+ */
+export function playedAndSkippedBreaksSession(): SessionReportFixture {
+  const id = 'fx-breaks-played-skip'
+  const base = tenProblemSession()
+  const report = playedBreakReport()
+  return {
+    plan: {
+      ...base.plan,
+      id,
+      breaks: [
+        closedBreak(0, 0, 180, 480, {
+          reason: 'gameFinished',
+          game: 'memory-quiz',
+          results: report,
+        }),
+        closedBreak(1, 1, 605, 610, { reason: 'skipped', game: null }),
+      ],
+      breakReason: 'skipped',
+      breakSelectedGame: null,
+    },
+    gameResults: [
+      {
+        id: `${id}-break-0`,
+        gameName: 'memory-quiz',
+        playedAt: new Date(T0 + 480 * S),
+        durationMs: 5 * MIN,
+        fullReport: report,
+        // The row's own column: only the row has it (the song reads it from there)
+        accuracy: 0.92,
+      } as ReportGameResult,
+    ],
+    song: null,
+    now: SESSION_REPORT_NOW,
+  }
+}
+
+/**
+ * The ten-problem session written before slots carried ids (Phase 5c): its
+ * tries name their slots by `slotId`, its parts' slots have none, so a grid
+ * finds each item where its tries were recorded.
+ */
+export function slotIdlessPlanSession(): SessionReportFixture {
+  const base = tenProblemSession()
+  const parts = base.plan.parts.map((part) => ({
+    ...part,
+    slots: part.slots.map(({ slotId: _slotId, ...slot }) => slot as ProblemSlot),
+  }))
+  const id = 'fx-slot-idless'
+  return {
+    ...base,
+    plan: { ...base.plan, id, parts },
+    gameResults: [fixtureBreakGameResult(id)],
+    song: null,
+  }
+}
+
+/**
+ * A session straddling Phase 3a's deploy (Phase 5c, §10 P5c-7): its first
+ * break (after part 1) was played before `breaks` existed and has only its
+ * game result row; its second (after part 2, skipped in matching) is a
+ * `breaks` record. Expected: both breaks, the first estimated.
+ */
+export function straddleBreaksSession(): SessionReportFixture {
+  const id = 'fx-breaks-straddle'
+  const base = tenProblemSession()
+  return {
+    plan: {
+      ...base.plan,
+      id,
+      breaks: [closedBreak(0, 1, 605, 625, { reason: 'skipped', game: 'matching' })],
+      breakReason: 'skipped',
+      breakSelectedGame: 'matching',
+    },
+    gameResults: [
+      {
+        ...fixtureBreakGameResult(id),
+        fullReport: { ...playedBreakReport(), headline: 'Every pair found!' },
+        accuracy: 0.8,
+      } as ReportGameResult,
+    ],
+    song: null,
+    now: SESSION_REPORT_NOW,
+  }
+}
+
+/**
+ * Abandoned during a break (Phase 5c, §10 P5c-13): the session of
+ * `abandonedSession` (last try at 10 min), its first break played and
+ * recorded, the kid in a second break from 10 min 5 s, auto-abandoned three
+ * days later. The machine closed the open break at the abandonment, with no
+ * reason. Expected: the session ends at its last try, as on the legacy path,
+ * and the second break adds no time.
+ */
+export function abandonedInBreakSession(): SessionReportFixture {
+  const base = abandonedSession()
+  const abandonedAt = T0 + 3 * 24 * 60 * MIN
+  return {
+    plan: {
+      ...base.plan,
+      id: 'fx-abandoned-in-break',
+      breaks: [
+        closedBreak(0, 0, 180, 480, { reason: 'gameFinished', game: 'memory-quiz' }),
+        {
+          breakIndex: 1,
+          afterPartIndex: 1,
+          startedAt: new Date(T0 + 605 * S).toISOString(),
+          endedAt: new Date(abandonedAt).toISOString(),
+          durationMs: abandonedAt - (T0 + 605 * S),
+          game: 'matching',
+        },
+      ],
+    },
+    gameResults: [],
+    song: null,
+    now: SESSION_REPORT_NOW,
   }
 }

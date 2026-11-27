@@ -3,14 +3,40 @@
 import * as Collapsible from '@radix-ui/react-collapsible'
 import { useState } from 'react'
 import type { SessionPart } from '@/db/schema/session-plans'
+import { arithmeticPartOverview } from '@/lib/curriculum/parts/arithmetic/result-view'
+import { plannedItemCount } from '@/lib/curriculum/parts/registry'
+import type { SessionReport } from '@/lib/curriculum/session-report'
 import { css } from '../../../styled-system/css'
 import { getPurposeColors, getPurposeConfig, type PurposeType } from './purposeExplanations'
 
 interface SessionPlanOverviewProps {
   parts: SessionPart[]
-  currentPartIndex: number
-  currentSlotIndex: number
+  /**
+   * The session report: each part's planned count, the total, and the part the
+   * kid is in (`position.segment`). Before it loads, the counts are the
+   * parts' own and the current part is `currentPartIndex`.
+   */
+  report?: SessionReport | null
+  /** The part shown as current until the report says otherwise */
+  currentPartIndex?: number
   isDark: boolean
+}
+
+/** The part the kid is in, by the report's position: a break counts as the part after it. */
+function reportCurrentPartIndex(report: SessionReport): number | null {
+  const segment = report.position?.segment
+  if (!segment) return null
+  if (segment.kind === 'part') return segment.partIndex
+  if (segment.kind === 'break') return segment.afterPartIndex + 1
+  return null
+}
+
+function plannedOf(part: SessionPart): number {
+  try {
+    return plannedItemCount(part)
+  } catch {
+    return 0
+  }
 }
 
 function getPartEmoji(type: SessionPart['type']): string {
@@ -43,17 +69,23 @@ function getPartLabel(type: SessionPart['type']): string {
  */
 export function SessionPlanOverview({
   parts,
+  report,
   currentPartIndex,
-  currentSlotIndex,
   isDark,
 }: SessionPlanOverviewProps) {
   const [isOpen, setIsOpen] = useState(false)
 
-  const totalProblems = parts.reduce((sum, p) => sum + p.slots.length, 0)
+  // Planned problems: the report's, per part and in total (Phase 5c)
+  const partCount = (partIndex: number) =>
+    report ? (report.parts[partIndex]?.plannedProblems ?? 0) : plannedOf(parts[partIndex])
+  const totalProblems = report
+    ? report.totals.plannedProblems
+    : parts.reduce((sum, _part, i) => sum + partCount(i), 0)
+  const currentIndex = report ? reportCurrentPartIndex(report) : (currentPartIndex ?? null)
 
   // Build collapsed summary: emoji (count) for each part
   const partSummaries = parts.map(
-    (part) => `${getPartEmoji(part.type)} ${getPartLabel(part.type)} (${part.slots.length})`
+    (part, i) => `${getPartEmoji(part.type)} ${getPartLabel(part.type)} (${partCount(i)})`
   )
 
   return (
@@ -118,17 +150,9 @@ export function SessionPlanOverview({
           })}
         >
           {parts.map((part, partIndex) => {
-            const isCurrent = partIndex === currentPartIndex
-            const purposeCounts: Record<PurposeType, number> = {
-              focus: 0,
-              reinforce: 0,
-              review: 0,
-              challenge: 0,
-            }
-            for (const slot of part.slots) purposeCounts[slot.purpose]++
-
-            // Get comfort level from first slot's termCountExplanation
-            const comfortLevel = part.slots[0]?.termCountExplanation?.comfortLevel
+            const isCurrent = partIndex === currentIndex
+            // Purpose mix and comfort level: what only arithmetic has
+            const { purposeCounts, comfortLevel } = arithmeticPartOverview(part)
 
             const purposeEntries = (
               Object.entries(purposeCounts) as [PurposeType, number][]
@@ -179,7 +203,7 @@ export function SessionPlanOverview({
                         fontWeight: 'normal',
                       })}
                     >
-                      {part.slots.length} problems
+                      {partCount(partIndex)} problems
                       {part.estimatedMinutes > 0 && `, ~${part.estimatedMinutes} min`}
                     </span>
                     {comfortLevel !== undefined && (

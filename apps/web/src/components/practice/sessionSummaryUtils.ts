@@ -6,6 +6,7 @@
 
 import { countedTries, isExcludedTry } from '@/db/schema/session-plan-helpers'
 import type { ProblemSlot, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import { arithmeticSlotsOf } from '@/lib/curriculum/parts/arithmetic/result-view'
 
 // ============================================================================
 // Types
@@ -87,7 +88,7 @@ export function getProblemsWithContext(plan: SessionPlan): ProblemWithContext[] 
   let globalNumber = 0
 
   for (const part of plan.parts) {
-    for (const slot of part.slots) {
+    for (const slot of arithmeticSlotsOf(part)) {
       globalNumber++
       const key = `${part.partNumber}-${slot.index}`
       const result = resultMap.get(key)

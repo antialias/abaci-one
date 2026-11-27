@@ -621,7 +621,7 @@ export function SummaryClient({
                         {/* All Problems - complete session listing */}
                         {hasProblems && (
                           <div className={css({ marginTop: '1.5rem' })}>
-                            <AllProblemsSection plan={session} isDark={isDark} />
+                            <AllProblemsSection plan={session} report={report} isDark={isDark} />
                           </div>
                         )}
                       </div>
