@@ -2,10 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type {
-  FlaggedAttempt,
-  SerializedSlotResult,
-} from '@/lib/curriculum/timing/review-types'
+import type { FlaggedAttempt, SerializedSlotResult } from '@/lib/curriculum/timing/review-types'
 import { FlaggedAttemptCard } from '../FlaggedAttemptCard'
 
 let queryClient: QueryClient
@@ -73,9 +70,7 @@ describe('FlaggedAttemptCard — legacy 8h01m litmus', () => {
     expect(screen.queryByRole('button', { name: /Looks right/i })).not.toBeInTheDocument()
 
     // The pace state is spelled out: this legacy value is set aside, not counting.
-    expect(document.querySelector('[data-element="axis-status"]')).toHaveTextContent(
-      'Not counting'
-    )
+    expect(document.querySelector('[data-element="axis-status"]')).toHaveTextContent('Not counting')
   })
 
   it('omit-from-timing calls the tries PATCH with scope=timing', async () => {
@@ -116,6 +111,49 @@ describe('FlaggedAttemptCard — legacy 8h01m litmus', () => {
     const doesnt = screen.getByRole('button', { name: /Doesn.t count/i })
     expect(counts).toHaveAttribute('aria-pressed', 'true')
     expect(doesnt).toHaveAttribute('aria-pressed', 'false')
+  })
+})
+
+describe('FlaggedAttemptCard — an attempt from a server that predates tries/[tryId] (D9, §10 P6b1-12a)', () => {
+  // What a pod from before P6b1-12 sends: no tryId, only the index
+  const { tryId: _noId, ...fromOldServer } = legacyAttempt
+
+  it('an edit goes to the index route, never tries/undefined', async () => {
+    render(<FlaggedAttemptCard playerId="player-1" attempt={fromOldServer} />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: /Ignore this time/i }))
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/curriculum/player-1/sessions/plans/session-1/results/0',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'exclude', scope: 'timing' }),
+      })
+    )
+  })
+
+  it('confirming a timing goes to the index route too', async () => {
+    const tier2: FlaggedAttempt = {
+      ...fromOldServer,
+      resultIndex: 4,
+      tier: 'tier2',
+      reason: 'unusual-for-child',
+      effectiveMs: 95_000,
+      result: { ...legacyResult, responseTimeMs: 95_000 },
+    }
+    render(<FlaggedAttemptCard playerId="player-1" attempt={tier2} />, { wrapper })
+
+    fireEvent.click(screen.getByRole('button', { name: /Looks right — keep it/i }))
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/curriculum/player-1/sessions/plans/session-1/results/4',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({ action: 'confirm_timing' }),
+      })
+    )
   })
 })
 
@@ -227,9 +265,7 @@ describe('FlaggedAttemptCard — confirm timing is real', () => {
     render(<FlaggedAttemptCard playerId="player-1" attempt={confirmed} />, { wrapper })
 
     // No re-offer to confirm; instead an undo.
-    expect(
-      screen.queryByRole('button', { name: /Looks right — keep it/i })
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Looks right — keep it/i })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Undo/i }))
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled())
@@ -270,9 +306,7 @@ describe('FlaggedAttemptCard — idle-capped attempt with a raw span', () => {
     expect(preset).toHaveTextContent('8h 1m')
     expect(screen.getByRole('button', { name: /Custom/i })).toBeInTheDocument()
 
-    expect(
-      screen.queryByRole('button', { name: /Looks right — keep it/i })
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Looks right — keep it/i })).not.toBeInTheDocument()
   })
 
   it('sets the adjusted time to the raw span when the preset is chosen', async () => {
