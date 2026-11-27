@@ -96,6 +96,7 @@ export const reportRowColumns = () => ({
   completedAt: schema.sessionPlans.completedAt,
   rowVersion: schema.sessionPlans.rowVersion,
   pauses: schema.sessionPlans.pauses,
+  breaks: schema.sessionPlans.breaks,
 })
 
 /** The `practice-break` game results of many sessions, in one query, by session id. */
@@ -154,6 +155,7 @@ function withListColumns<P extends ReportPlan>(plan: P): P {
     results: list(plan.results),
     adjustments: list(plan.adjustments),
     pauses: list(plan.pauses),
+    breaks: list(plan.breaks),
   }
 }
 

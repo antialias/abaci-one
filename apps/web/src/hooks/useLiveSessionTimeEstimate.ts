@@ -14,6 +14,7 @@ import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import { useUserId } from '@/hooks/useUserId'
 import type { SessionStatsEvent } from '@/lib/classroom/socket-events'
+import { arithmeticSlotTotal } from '@/lib/curriculum/parts/arithmetic/session-view'
 import { createSocket } from '@/lib/socket'
 import {
   calculateEstimatedTimeRemainingMs,
@@ -209,9 +210,7 @@ export function useLiveSessionTimeEstimate({
   const results = countedTries(liveResults)
   const parts = liveParts
 
-  const totalProblems = progress
-    ? progress.total
-    : parts.reduce((sum, p) => sum + (p.slots?.length ?? 0), 0)
+  const totalProblems = progress ? progress.total : arithmeticSlotTotal(parts)
   const completedProblems = progress ? progress.done : results.length
   const problemsRemaining = Math.max(0, totalProblems - completedProblems)
 

@@ -1,6 +1,8 @@
 /**
  * Phase 4c in a real browser: the parent observer and the public share link
- * show the same numbers as the session report, live and after the end.
+ * show the same numbers as the session report, live and after the end; and
+ * (Phase 5c) the observer's plan overview and the summary's problem grid
+ * count what the report counts.
  *
  * The kid's practice page (admin context) drives the session with the keyboard,
  * as retry-redo-attribution.spec.ts does: the observers' problem view needs the
@@ -41,6 +43,7 @@ interface Counts {
   firstTryCorrect: number
   firstTryAccuracy: number | null
   fixedInRetries: number
+  unresolved: number
   finalCorrect: number
   finalAccuracy: number | null
 }
@@ -327,6 +330,42 @@ async function expectLivePanel(page: Page, report: Report, want: Expected) {
   await expect(panel.locator('[data-component="observed-result-item"]')).toHaveCount(want.tries)
 }
 
+/** The observer's plan overview counts the report's planned problems (Phase 5c). */
+async function expectPlanOverview(page: Page, report: Report) {
+  const overview = page.locator(
+    '[data-component="session-observer-view"] [data-component="session-plan-overview"]'
+  )
+  const toggle = overview.locator('[data-action="toggle-session-plan"]')
+  await expect(toggle).toContainText(`— ${report.totals.plannedProblems} problems`, {
+    timeout: 30_000,
+  })
+  await toggle.click()
+  // One part: its row counts every planned problem
+  const rows = overview.locator('[data-element="part-row"]')
+  await expect(rows).toHaveCount(1)
+  await expect(rows.nth(0)).toContainText(`${report.totals.plannedProblems} problems,`)
+  await expect(rows.nth(0)).toHaveAttribute('data-current', 'true')
+  await toggle.click()
+}
+
+/**
+ * The summary's problem grid (Phase 5c): the header counts the report's
+ * planned problems, and its cells' marks add up to the report's totals
+ * (✓ = final correct, ❌ = unresolved, ○ = not answered).
+ */
+async function expectProblemGrid(page: Page, report: Report) {
+  const t = report.totals
+  const grid = page.locator('[data-component="all-problems-section"]')
+  await expect(grid).toBeVisible({ timeout: 30_000 })
+  await expect(grid).toContainText(`All Session Problems (${t.plannedProblems})`)
+  await grid.locator('button', { hasText: 'All Session Problems' }).click()
+  const items = grid.locator('[data-element="compact-problem-item"]')
+  await expect(items).toHaveCount(t.plannedProblems)
+  await expect(items.filter({ hasText: '✓' })).toHaveCount(t.finalCorrect)
+  await expect(items.filter({ hasText: '❌' })).toHaveCount(t.unresolved)
+  await expect(items.filter({ hasText: '○' })).toHaveCount(t.plannedProblems - t.problems)
+}
+
 /** The ended view shows the report's final totals. */
 async function expectEndedSummary(scope: Locator, report: Report, want: Expected) {
   const t = report.totals
@@ -558,6 +597,7 @@ test.describe('session report views (Phases 4c-4e)', () => {
     await expect(observer.locator('[data-component="practice-observation-page"]')).toBeVisible()
     await showAllTries(observer)
     await expectLivePanel(observer, before, want)
+    await expectPlanOverview(observer, before)
     await observer.screenshot({ path: `${SHOTS}/observer-live.png` })
 
     // 3. The share link, in a browser with no sign-in
@@ -629,6 +669,20 @@ test.describe('session report views (Phases 4c-4e)', () => {
     await expect(stranger.locator('[data-component="public-observation-page"]')).toHaveCount(0)
     const bogusReport = await strangerContext.request.get(`/api/observe/${bogus}/report`)
     expect(bogusReport.status()).toBe(404)
+
+    // 7. The session's summary page (Phase 5c): its problem grid agrees with
+    // the report route's totals, as the observer's live results did
+    expect(final.totals.unresolved).toBe(0)
+    await page.goto(`/practice/${playerId}/session/${plan.id}`)
+    await expectProblemGrid(page, final)
+    const items = page.locator(
+      '[data-component="all-problems-section"] [data-element="compact-problem-item"]'
+    )
+    // By position: slots 0-2 answered (slot 0 fixed by its do-over), slot 3 not
+    for (const i of [0, 1, 2]) await expect(items.nth(i)).toContainText('✓')
+    await expect(items.nth(3)).toContainText('○')
+    await expect(items.nth(3)).toHaveAttribute('data-problem-number', '4')
+    await page.screenshot({ path: `${SHOTS}/summary-grid.png` })
   })
 
   test('dashboard history and the classroom route read the report (Phase 4d)', async ({

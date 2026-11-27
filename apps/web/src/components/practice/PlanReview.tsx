@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type {
   PartSummary,
@@ -8,7 +9,7 @@ import type {
   SessionPlan,
   SessionSummary,
 } from '@/db/schema/session-plans'
-import { useState } from 'react'
+import { arithmeticSlotsOf } from '@/lib/curriculum/parts/arithmetic/result-view'
 import { css } from '../../../styled-system/css'
 import { AllProblemsSection } from './AllProblemsSection'
 
@@ -79,7 +80,7 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
   const parts = plan.parts as SessionPart[]
 
   // Count total slots by purpose across all parts
-  const allSlots = parts.flatMap((p) => p.slots)
+  const allSlots = parts.flatMap((p) => arithmeticSlotsOf(p))
   const focusCount = allSlots.filter((s) => s.purpose === 'focus').length
   const reinforceCount = allSlots.filter((s) => s.purpose === 'reinforce').length
   const reviewCount = allSlots.filter((s) => s.purpose === 'review').length
@@ -455,14 +456,14 @@ export function PlanReview({ plan, studentName, onApprove, onCancel }: PlanRevie
             {parts.map((part: SessionPart) => (
               <details key={part.partNumber}>
                 <summary className={css({ cursor: 'pointer', fontWeight: 'bold' })}>
-                  Part {part.partNumber}: {part.type} ({part.slots.length} slots)
+                  Part {part.partNumber}: {part.type} ({arithmeticSlotsOf(part).length} slots)
                 </summary>
                 <div className={css({ marginTop: '0.5rem', marginLeft: '1rem' })}>
                   <div>Format: {part.format}</div>
                   <div>Use Abacus: {part.useAbacus ? 'Yes' : 'No'}</div>
                   <div>Estimated: {part.estimatedMinutes} min</div>
                   <div style={{ marginTop: '0.5rem' }}>
-                    {part.slots.map((slot: ProblemSlot, i: number) => (
+                    {arithmeticSlotsOf(part).map((slot: ProblemSlot, i: number) => (
                       <div
                         key={i}
                         className={css({

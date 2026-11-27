@@ -3,21 +3,38 @@
  *
  * A collapsible section showing all session problems.
  * Compact view with problem numbers - tap any problem to see details in a popover.
+ *
+ * Counts and verdicts come from the session report (Phase 5c): the header's
+ * and each part's count are the report's planned problems, and a cell's mark
+ * is its item's status by the report's rules (`arithmeticItemCells`), so the
+ * cells add up to the report's totals. The cells themselves (one per slot,
+ * with its problem and purpose) are the arithmetic kind's.
  */
 
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { countedTries } from '@/db/schema/session-plan-helpers'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ProblemSlot, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import {
+  type ArithmeticItemCell,
+  type ArithmeticItemStatus,
+  arithmeticItemCells,
+  triesBeforeItem,
+} from '@/lib/curriculum/parts/arithmetic/result-view'
+import type { SessionReport } from '@/lib/curriculum/session-report'
 import { css } from '../../../styled-system/css'
 import { calculateAutoPauseInfo, formatMs } from './autoPauseCalculator'
 import { CompactLinearProblem, CompactVerticalProblem } from './CompactProblemDisplay'
-import { buildResultMap, getPartTypeLabel, isVerticalPart } from './sessionSummaryUtils'
+import { getPartTypeLabel, isVerticalPart } from './sessionSummaryUtils'
 
 export interface AllProblemsSectionProps {
-  /** The session plan */
+  /** The session plan: the problems themselves */
   plan: SessionPlan
+  /**
+   * The session report: every count and verdict shown. Absent for a plan not
+   * started (plan review): the problems show without verdicts.
+   */
+  report?: SessionReport | null
   /** Dark mode */
   isDark: boolean
 }
@@ -28,19 +45,32 @@ interface SelectedProblemInfo {
   part: SessionPart
   result?: SlotResult
   problemNumber: number
+  /** How the report counts the problem (green / red only for a counted verdict) */
+  status: ArithmeticItemStatus
+  /** The stored tries recorded before the problem was first answered (its auto-pause history) */
+  priorResults: SlotResult[]
   /** Position of the triggering element for popover positioning */
   triggerRect?: DOMRect
 }
 
-/**
- * Calculate auto-pause stats at a specific position
- */
-function calculateAutoPauseAtPosition(
-  allResults: SlotResult[],
-  position: number
-): ReturnType<typeof calculateAutoPauseInfo> {
-  const previousResults = allResults.slice(0, position)
-  return calculateAutoPauseInfo(previousResults)
+/** A cell's mark: right / wrong by the item's final verdict; excluded; not answered. */
+const STATUS_MARK: Record<ArithmeticItemStatus, string> = {
+  correct: '✓',
+  incorrect: '❌',
+  'not-counted': '⊘',
+  'practice-only': '↻',
+  unanswered: '○',
+}
+
+/** What a mark that counts nowhere means. */
+const STATUS_TITLE: Partial<Record<ArithmeticItemStatus, string>> = {
+  'not-counted': 'Excluded by an adult: does not count',
+  'practice-only': 'Only practice tries: does not count',
+}
+
+/** Whether the report counts the item's verdict (green / red only then). */
+function isCounted(status: ArithmeticItemStatus): boolean {
+  return status === 'correct' || status === 'incorrect'
 }
 
 /**
@@ -48,20 +78,18 @@ function calculateAutoPauseAtPosition(
  * Clickable to show detailed popover
  */
 function CompactProblemItem({
-  slot,
-  part,
-  result,
-  problemNumber,
+  cell,
   isDark,
   onClick,
 }: {
-  slot: SessionPlan['parts'][0]['slots'][0]
-  part: SessionPart
-  result?: SlotResult
-  problemNumber: number
+  cell: ArithmeticItemCell
   isDark: boolean
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void
 }) {
+  const { slot, part, number: problemNumber, status } = cell
+  const result = cell.shown ?? undefined
+  // Green / red only for a verdict the report counts
+  const verdict = isCounted(status) ? result : undefined
   const problem = result?.problem ?? slot.problem
   if (!problem) return null
 
@@ -70,14 +98,16 @@ function CompactProblemItem({
       type="button"
       data-element="compact-problem-item"
       data-problem-number={problemNumber}
+      data-status={status}
+      title={STATUS_TITLE[status]}
       onClick={onClick}
       className={css({
         display: 'flex',
         alignItems: 'center',
         gap: '0.375rem',
         padding: '0.375rem 0.5rem',
-        backgroundColor: result
-          ? result.isCorrect
+        backgroundColor: verdict
+          ? verdict.isCorrect
             ? isDark
               ? 'green.900/40'
               : 'green.50'
@@ -89,8 +119,8 @@ function CompactProblemItem({
             : 'white',
         borderRadius: '6px',
         border: '1px solid',
-        borderColor: result
-          ? result.isCorrect
+        borderColor: verdict
+          ? verdict.isCorrect
             ? isDark
               ? 'green.700'
               : 'green.200'
@@ -128,8 +158,8 @@ function CompactProblemItem({
         className={css({
           fontSize: '0.875rem',
           fontWeight: 'bold',
-          color: result
-            ? result.isCorrect
+          color: verdict
+            ? verdict.isCorrect
               ? isDark
                 ? 'green.400'
                 : 'green.600'
@@ -141,7 +171,7 @@ function CompactProblemItem({
               : 'gray.400',
         })}
       >
-        {result ? (result.isCorrect ? '✓' : '❌') : '○'}
+        {STATUS_MARK[status]}
       </span>
 
       {/* Problem display */}
@@ -150,7 +180,7 @@ function CompactProblemItem({
           terms={problem.terms}
           answer={problem.answer}
           studentAnswer={result?.studentAnswer}
-          isCorrect={result?.isCorrect}
+          isCorrect={verdict?.isCorrect}
           isDark={isDark}
         />
       ) : (
@@ -158,7 +188,7 @@ function CompactProblemItem({
           terms={problem.terms}
           answer={problem.answer}
           studentAnswer={result?.studentAnswer}
-          isCorrect={result?.isCorrect}
+          isCorrect={verdict?.isCorrect}
           isDark={isDark}
         />
       )}
@@ -191,27 +221,23 @@ function getPurposeLabel(purpose: ProblemSlot['purpose']): {
  */
 function ProblemDetailPopover({
   info,
-  allResults,
   isDark,
   onClose,
 }: {
   info: SelectedProblemInfo
-  allResults: SlotResult[]
   isDark: boolean
   onClose: () => void
 }) {
   const popoverRef = useRef<HTMLDivElement>(null)
   const { slot, part, result, problemNumber } = info
   const problem = result?.problem ?? slot.problem
+  // Green / red only for a verdict the report counts; a try that counts nowhere is neutral
+  const verdict = isCounted(info.status) ? result : undefined
+  const uncountedNote = STATUS_TITLE[info.status]
 
-  // Calculate auto-pause info at this problem's position
-  const position = result
-    ? allResults.findIndex(
-        (r) => r.partNumber === result.partNumber && r.slotIndex === result.slotIndex
-      )
-    : allResults.length
-  const previousResults = allResults.slice(0, position)
-  const autoPauseInfo = calculateAutoPauseInfo(previousResults)
+  // The auto-pause threshold in force when the problem was first answered
+  // (counted tries only: `calculateAutoPauseInfo` reads through `isCountedTry`)
+  const autoPauseInfo = calculateAutoPauseInfo(info.priorResults)
 
   const purposeInfo = getPurposeLabel(slot.purpose)
 
@@ -346,8 +372,8 @@ function ProblemDetailPopover({
               textAlign: 'center',
               padding: '0.75rem',
               borderRadius: '8px',
-              backgroundColor: result
-                ? result.isCorrect
+              backgroundColor: verdict
+                ? verdict.isCorrect
                   ? isDark
                     ? 'green.900/40'
                     : 'green.50'
@@ -368,8 +394,8 @@ function ProblemDetailPopover({
             </span>
             <span
               className={css({
-                color: result
-                  ? result.isCorrect
+                color: verdict
+                  ? verdict.isCorrect
                     ? isDark
                       ? 'green.300'
                       : 'green.700'
@@ -386,7 +412,23 @@ function ProblemDetailPopover({
           </div>
 
           {/* Result info */}
-          {result && !result.isCorrect && (
+          {uncountedNote && (
+            <div
+              data-element="uncounted-note"
+              className={css({
+                marginTop: '0.75rem',
+                padding: '0.5rem',
+                borderRadius: '6px',
+                backgroundColor: isDark ? 'gray.700' : 'gray.100',
+                textAlign: 'center',
+                fontSize: '0.875rem',
+                color: isDark ? 'gray.300' : 'gray.700',
+              })}
+            >
+              {uncountedNote}
+            </div>
+          )}
+          {verdict && !verdict.isCorrect && (
             <div
               className={css({
                 marginTop: '0.75rem',
@@ -398,7 +440,7 @@ function ProblemDetailPopover({
                 color: isDark ? 'red.300' : 'red.700',
               })}
             >
-              Student answered: <strong>{result.studentAnswer}</strong>
+              Student answered: <strong>{verdict.studentAnswer}</strong>
             </div>
           )}
         </div>
@@ -565,35 +607,31 @@ function ProblemDetailPopover({
   )
 }
 
-export function AllProblemsSection({ plan, isDark }: AllProblemsSectionProps) {
+export function AllProblemsSection({ plan, report, isDark }: AllProblemsSectionProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedProblem, setSelectedProblem] = useState<SelectedProblemInfo | null>(null)
 
-  // Practice-only do-overs are neither a verdict nor timing evidence
-  const results = countedTries(plan.results as SlotResult[])
-  const resultMap = buildResultMap(results)
-  const totalProblems = plan.parts.reduce((sum, part) => sum + part.slots.length, 0)
-
-  // Build a flat list of problem numbers for consistent numbering
-  const problemNumberMap = new Map<string, number>()
-  let problemNum = 0
-  for (const part of plan.parts) {
-    for (const slot of part.slots) {
-      problemNum++
-      problemNumberMap.set(`${part.partNumber}-${slot.index}`, problemNum)
-    }
-  }
+  // One cell per problem, with its item's tries and status from the report
+  const cells = useMemo(() => arithmeticItemCells(plan, report), [plan, report])
+  // Planned problems: the report's; a plan not started counts its cells
+  const totalProblems = report
+    ? report.totals.plannedProblems
+    : cells.reduce((sum, partCells) => sum + partCells.length, 0)
+  const partProblems = (partIndex: number) =>
+    report ? (report.parts[partIndex]?.plannedProblems ?? 0) : (cells[partIndex]?.length ?? 0)
 
   const handleProblemClick = useCallback(
-    (
-      slot: ProblemSlot,
-      part: SessionPart,
-      result: SlotResult | undefined,
-      problemNumber: number
-    ) => {
-      setSelectedProblem({ slot, part, result, problemNumber })
+    (cell: ArithmeticItemCell) => {
+      setSelectedProblem({
+        slot: cell.slot,
+        part: cell.part,
+        result: cell.shown ?? undefined,
+        problemNumber: cell.number,
+        status: cell.status,
+        priorResults: triesBeforeItem(plan, cell),
+      })
     },
-    []
+    [plan]
   )
 
   const handleClosePopover = useCallback(() => {
@@ -681,7 +719,7 @@ export function AllProblemsSection({ plan, isDark }: AllProblemsSectionProps) {
               padding: '1rem',
             })}
           >
-            {plan.parts.map((part) => (
+            {plan.parts.map((part, partIndex) => (
               <section key={part.partNumber} data-section={`part-${part.partNumber}`}>
                 {/* Part header */}
                 <h3
@@ -702,7 +740,7 @@ export function AllProblemsSection({ plan, isDark }: AllProblemsSectionProps) {
                       textTransform: 'none',
                     })}
                   >
-                    ({part.slots.length} problems)
+                    ({partProblems(partIndex)} problems)
                   </span>
                 </h3>
 
@@ -714,23 +752,14 @@ export function AllProblemsSection({ plan, isDark }: AllProblemsSectionProps) {
                     gap: '0.5rem',
                   })}
                 >
-                  {part.slots.map((slot) => {
-                    const key = `${part.partNumber}-${slot.index}`
-                    const resultInfo = resultMap.get(key)
-                    const pNum = problemNumberMap.get(key) ?? 0
-
-                    return (
-                      <CompactProblemItem
-                        key={key}
-                        slot={slot}
-                        part={part}
-                        result={resultInfo?.result}
-                        problemNumber={pNum}
-                        isDark={isDark}
-                        onClick={() => handleProblemClick(slot, part, resultInfo?.result, pNum)}
-                      />
-                    )
-                  })}
+                  {(cells[partIndex] ?? []).map((cell) => (
+                    <CompactProblemItem
+                      key={cell.itemId}
+                      cell={cell}
+                      isDark={isDark}
+                      onClick={() => handleProblemClick(cell)}
+                    />
+                  ))}
                 </div>
               </section>
             ))}
@@ -740,12 +769,7 @@ export function AllProblemsSection({ plan, isDark }: AllProblemsSectionProps) {
 
       {/* Problem detail popover */}
       {selectedProblem && (
-        <ProblemDetailPopover
-          info={selectedProblem}
-          allResults={results}
-          isDark={isDark}
-          onClose={handleClosePopover}
-        />
+        <ProblemDetailPopover info={selectedProblem} isDark={isDark} onClose={handleClosePopover} />
       )}
     </div>
   )

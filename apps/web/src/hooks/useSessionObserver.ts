@@ -19,6 +19,7 @@ import type {
   SessionResumedEvent,
   VisionFrameEvent,
 } from '@/lib/classroom/socket-events'
+import { arithmeticObserverDotsOf } from '@/lib/curriculum/parts/arithmetic/result-view'
 import { createSocket } from '@/lib/socket'
 
 /**
@@ -329,8 +330,6 @@ export function useSessionObserver(
         terms: number[]
         answer: number
       }
-      const sessionParts = data.sessionParts as SessionPart[] | undefined
-      const slotResults = data.slotResults as SlotResult[] | undefined
 
       setState({
         currentProblem,
@@ -343,11 +342,8 @@ export function useSessionObserver(
         receivedAt: Date.now(),
         currentProblemNumber: data.currentProblemNumber,
         totalProblems: data.totalProblems,
-        // Session structure for progress indicator
-        sessionParts,
-        currentPartIndex: data.currentPartIndex,
-        currentSlotIndex: data.currentSlotIndex,
-        slotResults,
+        // Session structure for progress indicator (the arithmetic dots' legacy wire)
+        ...arithmeticObserverDotsOf(data),
       })
     })
 

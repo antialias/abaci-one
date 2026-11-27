@@ -1,15 +1,23 @@
 import { renderHook } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import {
-  useSessionTimeEstimate,
-  calculateTimingStats,
-  formatEstimatedTimeRemaining,
-  calculateEstimatedTimeRemainingMs,
-  getSessionTimeEstimate,
-  MIN_SAMPLES_FOR_STATS,
-  DEFAULT_TIME_PER_PROBLEM_MS,
-} from '../useSessionTimeEstimate'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
+import {
+  abandonedSession,
+  legacyTenProblemSession,
+  liveTenProblemSession,
+  offlineSession,
+  reportOf,
+  sentinelSession,
+  tenProblemSessionReport,
+} from '@/test/fixtures/session-report'
+import {
+  calculateEstimatedTimeRemainingMs,
+  calculateTimingStats,
+  DEFAULT_TIME_PER_PROBLEM_MS,
+  formatEstimatedTimeRemaining,
+  getSessionTimeEstimate,
+  useSessionTimeEstimate,
+} from '../useSessionTimeEstimate'
 
 // ============================================================================
 // Helpers
@@ -188,96 +196,93 @@ describe('calculateEstimatedTimeRemainingMs', () => {
 })
 
 // ============================================================================
-// useSessionTimeEstimate (hook)
+// useSessionTimeEstimate (hook): reads the session report (Phase 5c)
 // ============================================================================
 
 describe('useSessionTimeEstimate', () => {
-  it('calculates total/completed/remaining problems correctly', () => {
-    const parts = [makePart('abacus', 5, 1), makePart('visualization', 3, 2)]
-    const results = [makeResult(5000, 1), makeResult(6000, 1)]
+  it("takes problems done and planned from the report's position, not from tries", () => {
+    // 9 tries recorded, 7 problems done of 10 (two of the tries are retries)
+    const report = reportOf(liveTenProblemSession())
+    expect(report.tries).toHaveLength(9)
 
-    const { result } = renderHook(() => useSessionTimeEstimate({ results, parts }))
+    const { result } = renderHook(() => useSessionTimeEstimate({ report }))
 
-    expect(result.current.totalProblems).toBe(8) // 5 + 3
-    expect(result.current.completedProblems).toBe(2)
-    expect(result.current.problemsRemaining).toBe(6)
+    expect(result.current.totalProblems).toBe(10)
+    expect(result.current.completedProblems).toBe(7)
+    expect(result.current.problemsRemaining).toBe(3)
   })
 
-  it('returns default time estimate when not enough data', () => {
-    const parts = [makePart('abacus', 10, 1)]
-    const results = [makeResult(5000, 1), makeResult(6000, 1)]
+  it("times the student's tries by their effective time", () => {
+    const report = reportOf(liveTenProblemSession())
 
-    const { result } = renderHook(() => useSessionTimeEstimate({ results, parts }))
+    const { result } = renderHook(() => useSessionTimeEstimate({ report }))
 
-    expect(result.current.timingStats.hasEnoughData).toBe(false)
-    // 8 problems remaining * 10000ms default
-    expect(result.current.estimatedTimeRemainingMs).toBe(8 * DEFAULT_TIME_PER_PROBLEM_MS)
-  })
-
-  it('uses actual timing data when enough samples', () => {
-    const parts = [makePart('abacus', 10, 1)]
-    const results = [4000, 5000, 6000, 7000, 8000].map((ms) => makeResult(ms, 1))
-
-    const { result } = renderHook(() => useSessionTimeEstimate({ results, parts }))
-
+    // 7 first tries × 4 s + 2 retries × 6 s, over 9 tries
     expect(result.current.timingStats.hasEnoughData).toBe(true)
-    expect(result.current.timingStats.mean).toBe(6000)
-    // 5 problems remaining * 6000ms mean
-    expect(result.current.estimatedTimeRemainingMs).toBe(30_000)
+    expect(result.current.timingStats.count).toBe(9)
+    expect(result.current.timingStats.mean).toBeCloseTo(40_000 / 9)
+    expect(result.current.estimatedTimeRemainingMs).toBeCloseTo(3 * (40_000 / 9))
   })
 
-  it('provides formatted time remaining', () => {
-    const parts = [makePart('abacus', 10, 1)]
-    const results = [4000, 5000, 6000, 7000, 8000].map((ms) => makeResult(ms, 1))
+  it('filters the times by the current part type, through the report parts', () => {
+    const report = reportOf(liveTenProblemSession())
 
-    const { result } = renderHook(() => useSessionTimeEstimate({ results, parts }))
+    const abacus = getSessionTimeEstimate(report, 'abacus')
+    // Part 0: 4 first tries × 4 s + 1 retry × 6 s
+    expect(abacus.timingStats.count).toBe(5)
+    expect(abacus.timingStats.mean).toBe(4400)
+    expect(abacus.estimatedTimeRemainingMs).toBe(3 * 4400)
 
-    // 30000ms rounds to 1 min => "~1 min" (Math.round(30000/60000) = 1, not 0)
-    expect(result.current.estimatedTimeRemainingFormatted).toBe('~1 min')
+    // Part 1 so far: 4 tries, too few: the default time per problem
+    const visualization = getSessionTimeEstimate(report, 'visualization')
+    expect(visualization.timingStats.hasEnoughData).toBe(false)
+    expect(visualization.estimatedTimeRemainingMs).toBe(3 * DEFAULT_TIME_PER_PROBLEM_MS)
   })
 
-  it('handles empty results', () => {
-    const parts = [makePart('abacus', 5, 1)]
+  it('a practice-only do-over is not timing evidence', () => {
+    const report = reportOf(liveTenProblemSession())
+    const withDoOver = {
+      ...report,
+      tries: [
+        ...report.tries,
+        { ...report.tries[0], tryId: 'fx-do-over', practiceOnly: true, effectiveMs: 99_000 },
+      ],
+    }
 
-    const { result } = renderHook(() => useSessionTimeEstimate({ results: [], parts }))
-
-    expect(result.current.completedProblems).toBe(0)
-    expect(result.current.problemsRemaining).toBe(5)
-    expect(result.current.estimatedTimeRemainingMs).toBe(5 * DEFAULT_TIME_PER_PROBLEM_MS)
+    expect(getSessionTimeEstimate(withDoOver)).toEqual(getSessionTimeEstimate(report))
   })
 
-  it('handles empty parts', () => {
-    const { result } = renderHook(() => useSessionTimeEstimate({ results: [], parts: [] }))
+  it('a finished session has nothing left', () => {
+    const { result } = renderHook(() =>
+      useSessionTimeEstimate({ report: tenProblemSessionReport() })
+    )
+
+    expect(result.current.totalProblems).toBe(10)
+    expect(result.current.completedProblems).toBe(10)
+    expect(result.current.problemsRemaining).toBe(0)
+    expect(result.current.estimatedTimeRemainingMs).toBe(0)
+    expect(result.current.estimatedTimeRemainingFormatted).toBe('< 1 min')
+  })
+
+  it('no report yet: nothing planned, no estimate', () => {
+    const { result } = renderHook(() => useSessionTimeEstimate({ report: undefined }))
 
     expect(result.current.totalProblems).toBe(0)
     expect(result.current.problemsRemaining).toBe(0)
     expect(result.current.estimatedTimeRemainingMs).toBe(0)
   })
 
-  it('passes currentPartType through to calculateTimingStats', () => {
-    const parts = [makePart('abacus', 5, 1), makePart('visualization', 5, 2)]
-    const results = [
-      makeResult(3000, 1),
-      makeResult(3000, 1),
-      makeResult(3000, 1),
-      makeResult(3000, 1),
-      makeResult(3000, 1),
-      makeResult(10000, 2),
-      makeResult(10000, 2),
-      makeResult(10000, 2),
-      makeResult(10000, 2),
-      makeResult(10000, 2),
-    ]
-
-    // Without filter: mean = 6500
-    const { result: allResult } = renderHook(() => useSessionTimeEstimate({ results, parts }))
-    expect(allResult.current.timingStats.mean).toBe(6500)
-
-    // With abacus filter: mean = 3000
-    const { result: abacusResult } = renderHook(() =>
-      useSessionTimeEstimate({ results, parts, currentPartType: 'abacus' })
-    )
-    expect(abacusResult.current.timingStats.mean).toBe(3000)
+  it('old sessions estimate without throwing: legacy, offline, sentinel, abandoned', () => {
+    for (const fixture of [
+      legacyTenProblemSession(),
+      offlineSession(),
+      sentinelSession(),
+      abandonedSession(),
+    ]) {
+      const estimate = getSessionTimeEstimate(reportOf(fixture))
+      expect(estimate.problemsRemaining).toBeGreaterThanOrEqual(0)
+      expect(Number.isFinite(estimate.estimatedTimeRemainingMs)).toBe(true)
+    }
   })
 })
 
@@ -287,15 +292,10 @@ describe('useSessionTimeEstimate', () => {
 
 describe('getSessionTimeEstimate', () => {
   it('returns the same values as the hook', () => {
-    const parts = [makePart('abacus', 10, 1)]
-    const results = [4000, 5000, 6000, 7000, 8000].map((ms) => makeResult(ms, 1))
+    const report = reportOf(liveTenProblemSession())
 
-    const estimate = getSessionTimeEstimate(results, parts)
+    const { result } = renderHook(() => useSessionTimeEstimate({ report }))
 
-    expect(estimate.totalProblems).toBe(10)
-    expect(estimate.completedProblems).toBe(5)
-    expect(estimate.problemsRemaining).toBe(5)
-    expect(estimate.timingStats.mean).toBe(6000)
-    expect(estimate.estimatedTimeRemainingMs).toBe(30_000)
+    expect(getSessionTimeEstimate(report)).toEqual(result.current)
   })
 })

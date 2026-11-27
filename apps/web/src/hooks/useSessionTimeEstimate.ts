@@ -3,6 +3,8 @@
 import { useMemo } from 'react'
 import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
+import { reportProgress } from '@/lib/curriculum/observer-report'
+import type { SessionReport } from '@/lib/curriculum/session-report'
 
 // ============================================================================
 // Constants
@@ -99,6 +101,11 @@ export function calculateTimingStats(
     times = results.map((r) => r.responseTimeMs)
   }
 
+  return timingStatsOf(times)
+}
+
+/** Mean, spread and auto-pause threshold of a list of response times. */
+function timingStatsOf(times: number[]): TimingStats {
   const stats = calculateStats(times)
   const hasEnoughData = stats.count >= MIN_SAMPLES_FOR_STATS
 
@@ -136,88 +143,88 @@ export function calculateEstimatedTimeRemainingMs(
   return timePerProblem * problemsRemaining
 }
 
+/**
+ * Timing stats from the session report's tries (Phase 5c): every try that is
+ * not practice-only (`isCountedTry`; voided tries are never listed), by its
+ * effective time (`effectiveMs`, pauses taken out). With `currentPartType`,
+ * only the tries of parts of that type.
+ */
+export function reportTimingStats(
+  report: Pick<SessionReport, 'tries' | 'parts'>,
+  currentPartType?: SessionPart['type']
+): TimingStats {
+  const times: number[] = []
+  for (const row of report.tries) {
+    if (row.practiceOnly || row.effectiveMs == null) continue
+    if (currentPartType && report.parts[row.partIndex]?.type !== currentPartType) continue
+    times.push(row.effectiveMs)
+  }
+  return timingStatsOf(times)
+}
+
 // ============================================================================
 // Hook
 // ============================================================================
 
 export interface UseSessionTimeEstimateOptions {
-  /** Session results array */
-  results: SlotResult[]
-  /** Session parts array */
-  parts: SessionPart[]
+  /** The session report: position (problems done of planned) and the tries' times */
+  report: SessionReport | null | undefined
   /** Optional: current part type to filter stats by (for more accurate current-part estimates) */
   currentPartType?: SessionPart['type']
+}
+
+const EMPTY_REPORT_ESTIMATE: SessionTimeEstimate = {
+  timingStats: timingStatsOf([]),
+  problemsRemaining: 0,
+  totalProblems: 0,
+  completedProblems: 0,
+  estimatedTimeRemainingMs: 0,
+  estimatedTimeRemainingFormatted: formatEstimatedTimeRemaining(0),
 }
 
 /**
  * Hook to calculate session time estimates
  *
- * Provides timing statistics and estimated time remaining based on
- * the student's response times during the session.
+ * Problems done and planned are the report's (`reportProgress`: the live
+ * position, else the totals); the time per problem is the student's own
+ * effective response times in this session (`reportTimingStats`).
  *
  * @example
  * ```tsx
- * const estimate = useSessionTimeEstimate({
- *   results: session.results,
- *   parts: session.parts,
- * })
+ * const { data: report } = useSessionReport(source)
+ * const estimate = useSessionTimeEstimate({ report })
  *
  * return <span>{estimate.estimatedTimeRemainingFormatted} left</span>
  * ```
  */
 export function useSessionTimeEstimate({
-  results,
-  parts,
+  report,
   currentPartType,
 }: UseSessionTimeEstimateOptions): SessionTimeEstimate {
-  return useMemo(() => {
-    // Calculate total and completed problems
-    const totalProblems = parts.reduce((sum, p) => sum + (p.slots?.length ?? 0), 0)
-    const completedProblems = countedTries(results).length
-    const problemsRemaining = totalProblems - completedProblems
-
-    // Calculate timing stats
-    const timingStats = calculateTimingStats(results, parts, currentPartType)
-
-    // Calculate estimated time remaining
-    const estimatedTimeRemainingMs = calculateEstimatedTimeRemainingMs(
-      timingStats,
-      problemsRemaining
-    )
-
-    return {
-      timingStats,
-      problemsRemaining,
-      totalProblems,
-      completedProblems,
-      estimatedTimeRemainingMs,
-      estimatedTimeRemainingFormatted: formatEstimatedTimeRemaining(estimatedTimeRemainingMs),
-    }
-  }, [results, parts, currentPartType])
+  return useMemo(() => getSessionTimeEstimate(report, currentPartType), [report, currentPartType])
 }
 
 /**
  * Standalone function version for use outside React components
  *
- * Useful for computing time estimates from raw session data without hooks.
+ * No report yet (still loading): nothing done, nothing planned, no estimate.
  */
 export function getSessionTimeEstimate(
-  results: SlotResult[],
-  parts: SessionPart[],
+  report: SessionReport | null | undefined,
   currentPartType?: SessionPart['type']
 ): SessionTimeEstimate {
-  const totalProblems = parts.reduce((sum, p) => sum + (p.slots?.length ?? 0), 0)
-  const completedProblems = countedTries(results).length
-  const problemsRemaining = totalProblems - completedProblems
+  if (!report) return EMPTY_REPORT_ESTIMATE
+  const { done, total } = reportProgress(report)
+  const problemsRemaining = Math.max(0, total - done)
 
-  const timingStats = calculateTimingStats(results, parts, currentPartType)
+  const timingStats = reportTimingStats(report, currentPartType)
   const estimatedTimeRemainingMs = calculateEstimatedTimeRemainingMs(timingStats, problemsRemaining)
 
   return {
     timingStats,
     problemsRemaining,
-    totalProblems,
-    completedProblems,
+    totalProblems: total,
+    completedProblems: done,
     estimatedTimeRemainingMs,
     estimatedTimeRemainingFormatted: formatEstimatedTimeRemaining(estimatedTimeRemainingMs),
   }

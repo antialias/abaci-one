@@ -12,6 +12,7 @@ import type { Player } from '@/db/schema/players'
 import { countedTries } from '@/db/schema/session-plan-helpers'
 import { distinctBreakResults } from '@/db/schema/session-plan-normalize'
 import type {
+  BreakRecord,
   GameBreakEndReason,
   GeneratedProblem,
   ProblemSlot,
@@ -20,7 +21,7 @@ import type {
   SlotResult,
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
-import type { SessionReport } from '@/lib/curriculum/session-report'
+import { type SessionReport, sessionBreaksOf } from '@/lib/curriculum/session-report'
 import { getSkillDisplayName } from '@/utils/skillSearch'
 
 // ============================================================================
@@ -117,9 +118,10 @@ export interface SongPromptInput {
     trend: 'improving' | 'steady' | 'declining'
   }
   /**
-   * Every game break of this session, in the order played (§3.1 legacy path:
-   * one per `practice-break` game result, else the plan's legacy break
-   * columns as at most one). Absent when the session had no break.
+   * Every game break of this session, in the order played (§3.1: the plan's
+   * `breaks`, played, skipped or timed out; for rows written before it, one
+   * per `practice-break` game result, else the legacy break columns as at most
+   * one). Absent when the session had no break.
    */
   gameBreaks?: SongGameBreak[]
   /**
@@ -798,8 +800,9 @@ interface PlanBreakFallback {
  * @param plan - The current session plan (may be in-progress or completed)
  * @param player - The player profile
  * @param recentSessions - The kid's latest completed sessions, newest first, for the trend
- * @param gameBreakResults - The session's `practice-break` game results, in `played_at` order
- * @param planBreakFallback - Legacy break columns, used only when no result yields a break
+ * @param gameBreakResults - The session's `practice-break` game results, in `played_at` order (a
+ *   played break's facts; the breaks themselves come from `plan.breaks` when it has any)
+ * @param planBreakFallback - Legacy break columns, used only for a plan without `breaks` when no result yields a break
  */
 export function extractSessionStats(
   sessionPlan: SessionPlan,
@@ -848,13 +851,7 @@ export function extractSessionStats(
     }
   }
 
-  const fromResults = distinctBreakResults(gameBreakResults)
-    .map(extractGameBreak)
-    .filter((gb): gb is SongGameBreak => gb != null)
-  const fallback =
-    extractGameBreakFromReport(planBreakFallback?.breakResults ?? null) ??
-    extractGameBreakFallback(planBreakFallback)
-  const gameBreaks = fromResults.length > 0 ? fromResults : fallback ? [fallback] : []
+  const gameBreaks = songGameBreaksOf(sessionPlan, gameBreakResults, planBreakFallback)
   const practiceDrama = buildPracticeDrama(plan, bestCorrectStreak, gameBreaks)
   const attemptStats = getCurrentSessionAttemptStats(plan)
   const age = computeAge(player.birthday)
@@ -983,6 +980,59 @@ function extractGameBreakFromReport(
 function extractGameBreak(result?: GameResult | null): SongGameBreak | undefined {
   if (!result?.fullReport) return undefined
   return extractGameBreakFromReport(result.fullReport as GameResultsReport, result.accuracy)
+}
+
+/**
+ * The song's breaks, in the order played: the session's breaks as the report
+ * reads them (`sessionBreaksOf`, Phase 5c). From the machine's list, every
+ * break is named, played, skipped or timed out (a break whose kid never chose
+ * a game has nothing to sing and is left out, as before); a played one takes
+ * its facts from its game's result row (the same report, matched by game and
+ * end time), else from the report the break stored. A row written before
+ * `breaks` existed reads the legacy path exactly as before: one break per
+ * distinct game result, else the legacy columns as at most one.
+ */
+function songGameBreaksOf(
+  plan: SessionPlan,
+  gameBreakResults: readonly GameResult[],
+  planBreakFallback: PlanBreakFallback | undefined
+): SongGameBreak[] {
+  const distinct = distinctBreakResults(gameBreakResults)
+  const { source, records } = sessionBreaksOf(plan, distinct)
+  if (source === 'breaks') {
+    return records
+      .map((record) => songBreakOfRecord(record, distinct))
+      .filter((gb): gb is SongGameBreak => gb != null)
+  }
+  const fromResults = distinct.map(extractGameBreak).filter((gb): gb is SongGameBreak => gb != null)
+  const fallback =
+    extractGameBreakFromReport(planBreakFallback?.breakResults ?? null) ??
+    extractGameBreakFallback(planBreakFallback)
+  return fromResults.length > 0 ? fromResults : fallback ? [fallback] : []
+}
+
+function songBreakOfRecord(
+  record: BreakRecord,
+  gameResults: readonly GameResult[]
+): SongGameBreak | undefined {
+  // A break played before Phase 3a, listed from its game result row (§10 P5c-7)
+  if (record.gameResultId != null) {
+    const row = gameResults.find((g) => g.id === record.gameResultId)
+    const fromRow = row && extractGameBreak(row)
+    if (fromRow) return fromRow
+  }
+  const report = record.results
+  if (report) {
+    const row = gameResults.find((g) => {
+      const stored = g.fullReport as Partial<GameResultsReport> | null | undefined
+      return stored?.endedAt === report.endedAt && stored?.gameName === report.gameName
+    })
+    return (row && extractGameBreak(row)) ?? extractGameBreakFromReport(report)
+  }
+  return extractGameBreakFallback({
+    breakSelectedGame: record.game ?? null,
+    breakReason: record.reason ?? null,
+  })
 }
 
 const BREAK_REASON_LABELS: Record<GameBreakEndReason, string> = {

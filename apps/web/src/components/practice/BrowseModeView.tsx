@@ -11,61 +11,36 @@
 
 import { useMemo, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
-import type { ProblemSlot, SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import type { SessionPlan } from '@/db/schema/session-plans'
+import { useSessionReport } from '@/hooks/useSessionReport'
+import {
+  type ArithmeticItemCell,
+  arithmeticItemCells,
+  triesBeforeItem,
+} from '@/lib/curriculum/parts/arithmetic/result-view'
+import type { SessionReport } from '@/lib/curriculum/session-report'
 import { css } from '../../../styled-system/css'
-import { AttemptHistoryPanel } from './AttemptHistoryPanel'
+import { AttemptHistoryPanel, type ResultWithGlobalIndex } from './AttemptHistoryPanel'
 import { calculateAutoPauseInfo } from './autoPauseCalculator'
 import { DetailedProblemCard } from './DetailedProblemCard'
 import { PracticePreview } from './PracticePreview'
-import { getResultForProblem } from './sessionSummaryUtils'
 
 /**
- * Flattened problem item with all context needed for display
+ * Every problem of the session in the dots' order (`browseIndex` is the dots'
+ * 0-based index), each with its tries and verdict from the session report.
  */
-export interface LinearProblemItem {
-  partNumber: number
-  slotIndex: number
-  slot: ProblemSlot
-  part: SessionPart
-  linearIndex: number
+export function browseCells(
+  plan: Pick<SessionPlan, 'id' | 'parts' | 'results'>,
+  report: Pick<SessionReport, 'tries'> | null | undefined
+): ArithmeticItemCell[] {
+  return arithmeticItemCells(plan, report).flat()
 }
 
-/**
- * Build a flattened list of all problems for navigation
- */
-export function buildLinearProblemList(parts: SessionPart[]): LinearProblemItem[] {
-  const items: LinearProblemItem[] = []
-  let linearIndex = 0
-
-  for (const part of parts) {
-    for (let slotIndex = 0; slotIndex < part.slots.length; slotIndex++) {
-      items.push({
-        partNumber: part.partNumber,
-        slotIndex,
-        slot: part.slots[slotIndex],
-        part,
-        linearIndex,
-      })
-      linearIndex++
-    }
-  }
-
-  return items
-}
-
-/**
- * Convert current part/slot indices to linear index
- */
-export function getLinearIndex(
-  parts: SessionPart[],
-  currentPartIndex: number,
-  currentSlotIndex: number
-): number {
-  let index = 0
-  for (let i = 0; i < currentPartIndex; i++) {
-    index += parts[i].slots.length
-  }
-  return index + currentSlotIndex
+/** A cell's tries as the attempt history lists them: stored tries with their index (review edits). */
+export function attemptHistoryOf(cell: ArithmeticItemCell): ResultWithGlobalIndex[] {
+  return cell.tries.flatMap((t) =>
+    t.result && t.resultIndex >= 0 ? [{ result: t.result, globalIndex: t.resultIndex }] : []
+  )
 }
 
 export interface BrowseModeViewProps {
@@ -81,33 +56,6 @@ export interface BrowseModeViewProps {
   onResultEdited?: () => void
 }
 
-/**
- * Result with its global index in the plan.results array
- */
-export interface ResultWithGlobalIndex {
-  result: SlotResult
-  globalIndex: number
-}
-
-/**
- * Get ALL results for a specific slot (including retries) with their global indices
- * Results are matched by partNumber and originalSlotIndex (or slotIndex for non-retries)
- */
-function getAllResultsForSlot(
-  results: SlotResult[],
-  partNumber: number,
-  slotIndex: number
-): ResultWithGlobalIndex[] {
-  const matches: ResultWithGlobalIndex[] = []
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i]
-    if (r.partNumber === partNumber && (r.originalSlotIndex ?? r.slotIndex) === slotIndex) {
-      matches.push({ result: r, globalIndex: i })
-    }
-  }
-  return matches
-}
-
 export function BrowseModeView({
   plan,
   browseIndex,
@@ -121,42 +69,42 @@ export function BrowseModeView({
   // Practice preview mode - when true, show interactive practice interface
   const [isPracticing, setIsPracticing] = useState(false)
 
-  // Build linear problem list
-  const linearProblems = useMemo(() => buildLinearProblemList(plan.parts), [plan.parts])
+  // The session report (Phase 5c): each problem's tries and verdict. The kid's
+  // page holds the same cache entry and keeps it current with the pushes; the
+  // fetch needs only the cookie (no viewer id: no second push room).
+  const { data: report } = useSessionReport({
+    playerId: studentId,
+    planId: plan.id,
+    viewerId: null,
+  })
 
-  const currentItem = linearProblems[browseIndex]
+  // Every problem in the dots' order, with its tries from the report
+  const cells = useMemo(() => browseCells(plan, report), [plan, report])
 
-  // Get result for current browse item (for DetailedProblemCard display)
-  const result = useMemo(() => {
-    if (!currentItem) return undefined
-    return getResultForProblem(plan.results, currentItem.partNumber, currentItem.slotIndex)
-  }, [plan.results, currentItem])
+  const currentCell = cells[browseIndex]
 
-  // Get ALL results for current slot (including retries) for AttemptHistoryPanel
-  const allResults = useMemo(() => {
-    if (!currentItem) return []
-    return getAllResultsForSlot(plan.results, currentItem.partNumber, currentItem.slotIndex)
-  }, [plan.results, currentItem])
+  // The problem's verdict try (DetailedProblemCard), by the report's rules
+  const result = currentCell?.shown ?? undefined
 
-  // Calculate auto-pause stats at this position
+  // All of the problem's tries (including retries and do-overs) for AttemptHistoryPanel
+  const allResults = useMemo(
+    () => (currentCell ? attemptHistoryOf(currentCell) : []),
+    [currentCell]
+  )
+
+  // The auto-pause threshold in force when the problem was first answered
+  // (counted tries only: `calculateAutoPauseInfo` reads through `isCountedTry`)
   const autoPauseStats = useMemo(() => {
-    if (!currentItem) return undefined
-    // Find the position in results where this problem would be
-    const resultsUpToHere = plan.results.filter((r) => {
-      const rLinear = linearProblems.findIndex(
-        (p) => p.partNumber === r.partNumber && p.slotIndex === r.slotIndex
-      )
-      return rLinear < browseIndex
-    })
-    return calculateAutoPauseInfo(resultsUpToHere).stats
-  }, [plan.results, linearProblems, browseIndex, currentItem])
+    if (!currentCell) return undefined
+    return calculateAutoPauseInfo(triesBeforeItem(plan, currentCell)).stats
+  }, [plan, currentCell])
 
   // Is this the current practice problem?
   const isCurrentPractice = browseIndex === currentPracticeIndex
   const isCompleted = browseIndex < currentPracticeIndex
   const isUpcoming = browseIndex > currentPracticeIndex
 
-  if (!currentItem) {
+  if (!currentCell) {
     return (
       <div
         className={css({
@@ -204,8 +152,8 @@ export function BrowseModeView({
 
       {/* Problem Display */}
       <DetailedProblemCard
-        slot={currentItem.slot}
-        part={currentItem.part}
+        slot={currentCell.slot}
+        part={currentCell.part}
         result={result}
         autoPauseStats={autoPauseStats}
         isDark={isDark}
@@ -298,8 +246,8 @@ export function BrowseModeView({
             </span>
           </div>
           <PracticePreview
-            slot={currentItem.slot}
-            part={currentItem.part}
+            slot={currentCell.slot}
+            part={currentCell.part}
             problemNumber={browseIndex + 1}
             onBack={() => setIsPracticing(false)}
             inline
@@ -308,10 +256,10 @@ export function BrowseModeView({
       )}
 
       {/* Attempt History Panel - show all attempts with edit options */}
-      {allResults.length > 0 && currentItem.slot.problem && (
+      {allResults.length > 0 && currentCell.slot.problem && (
         <AttemptHistoryPanel
           results={allResults}
-          correctAnswer={currentItem.slot.problem.answer}
+          correctAnswer={currentCell.slot.problem.answer}
           isDark={isDark}
           studentId={studentId}
           planId={plan.id}

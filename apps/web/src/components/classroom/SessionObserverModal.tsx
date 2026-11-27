@@ -806,7 +806,7 @@ export function SessionObserverView({
             <SessionPlanOverview
               parts={state.sessionParts}
               currentPartIndex={state.currentPartIndex}
-              currentSlotIndex={state.currentSlotIndex}
+              report={report}
               isDark={isDark}
             />
           </div>
