@@ -29,20 +29,6 @@ import type {
   SlotResult,
 } from './session-plans'
 
-// The arithmetic part kind's plan-level helpers moved to lib/curriculum/parts/
-// (session architecture Phase 2); re-exported here until Phase 5 so existing
-// imports keep working. Both modules are client-safe.
-export { calculateTotalProblemsWithRetries } from '@/lib/curriculum/parts/arithmetic/report'
-export {
-  type CurrentPlanItem,
-  getCurrentProblemInfo,
-  initRetryState,
-  isInRetryEpoch,
-  MAX_RETRY_EPOCHS,
-  needsRetryTransition,
-  resolveCurrentItem,
-} from '@/lib/curriculum/parts/arithmetic/state'
-
 // ============================================================================
 // Constants
 // ============================================================================

@@ -29,10 +29,10 @@ import type {
 import type { ObserverPosition, PracticeItemRef } from '@/lib/classroom/socket-events'
 import type { ArithmeticState } from './state'
 
-/** The plan fields this module reads (the legacy cursor columns only through `partStateOf`'s legacy decode). */
+/** The plan fields this module reads (position through `partStateOf`). */
 export type ArithmeticViewPlan = Pick<
   SessionPlan,
-  'id' | 'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState' | 'partStates' | 'results'
+  'id' | 'parts' | 'currentPartIndex' | 'partStates' | 'results'
 >
 
 /** The item on the kid's screen, as the session screens name it. */

@@ -56,9 +56,7 @@ function plan(over: Partial<ArithmeticViewPlan> = {}): ArithmeticViewPlan {
   return {
     parts,
     currentPartIndex: 1,
-    currentSlotIndex: 2,
-    retryState: null,
-    partStates: null,
+    partStates: { 1: { slotIndex: 2 } },
     results: [],
     ...over,
   } as ArithmeticViewPlan
@@ -121,16 +119,18 @@ describe('arithmetic session view', () => {
   it('keeps the parked cursor during a retry round and sizes the round', () => {
     const retrying = plan({
       currentPartIndex: 0,
-      currentSlotIndex: 3,
-      retryState: {
+      partStates: {
         0: {
-          currentEpoch: 1,
-          pendingRetries: [],
-          currentEpochItems: [
-            { originalSlotIndex: 0, attemptCount: 1, slotId: 'p0s0' },
-            { originalSlotIndex: 2, attemptCount: 1, slotId: 'p0s2' },
-          ],
-          currentRetryIndex: 0,
+          slotIndex: 3,
+          retry: {
+            currentEpoch: 1,
+            pendingRetries: [],
+            currentEpochItems: [
+              { originalSlotIndex: 0, attemptCount: 1, slotId: 'p0s0' },
+              { originalSlotIndex: 2, attemptCount: 1, slotId: 'p0s2' },
+            ],
+            currentRetryIndex: 0,
+          },
         },
       },
     } as unknown as Partial<ArithmeticViewPlan>)

@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { players } from '@/db/schema'
-import type { SessionPlan, SlotResult, SlotResultSubmission } from '@/db/schema/session-plans'
+import type { SlotResult, SlotResultSubmission } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction, getStudentPresence } from '@/lib/classroom'
 import { emitSessionStarted, emitSessionStartedToPlayer } from '@/lib/classroom/socket-emitter'
@@ -26,30 +26,11 @@ import {
   updateSessionPlanRemoteCamera,
 } from '@/lib/curriculum'
 import { arithmeticCursorSlotIndex } from '@/lib/curriculum/parts/arithmetic/session-view'
+import { serializePlan } from '@/lib/curriculum/plan-wire'
 import { WriteContentionError } from '@/lib/curriculum/row-cas'
 import { InvalidFlowTransitionError } from '@/lib/curriculum/session-flow'
 import { MalformedDoOverError, NotPracticingError } from '@/lib/curriculum/session-planner'
 import { getUserId } from '@/lib/viewer'
-
-/**
- * Serialize a SessionPlan for JSON response.
- * Converts Date objects to timestamps (milliseconds) for consistent client handling.
- */
-function serializePlan(plan: SessionPlan) {
-  return {
-    ...plan,
-    createdAt: plan.createdAt instanceof Date ? plan.createdAt.getTime() : plan.createdAt,
-    approvedAt: plan.approvedAt instanceof Date ? plan.approvedAt.getTime() : plan.approvedAt,
-    startedAt: plan.startedAt instanceof Date ? plan.startedAt.getTime() : plan.startedAt,
-    completedAt: plan.completedAt instanceof Date ? plan.completedAt.getTime() : plan.completedAt,
-    flowUpdatedAt:
-      plan.flowUpdatedAt instanceof Date ? plan.flowUpdatedAt.getTime() : plan.flowUpdatedAt,
-    // Wire pass-through for bundles from before Phase 6b-0, which read it (D9)
-    breakStartedAt:
-      plan.breakStartedAt instanceof Date ? plan.breakStartedAt.getTime() : plan.breakStartedAt,
-    deletedAt: plan.deletedAt instanceof Date ? plan.deletedAt.getTime() : plan.deletedAt,
-  }
-}
 
 /**
  * GET /api/curriculum/[playerId]/sessions/plans/[planId]

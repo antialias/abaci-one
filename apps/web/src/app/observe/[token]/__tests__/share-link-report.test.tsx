@@ -119,7 +119,7 @@ describe('OG card from the session report', () => {
         flowState: 'practicing',
         completedAt: null,
         currentPartIndex: 2,
-        currentSlotIndex: 1,
+        partStates: { 2: { slotIndex: 1 } },
         results: tenProblemSession().plan.results.slice(0, 10),
       },
     })

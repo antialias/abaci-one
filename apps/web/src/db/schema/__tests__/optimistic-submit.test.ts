@@ -8,13 +8,13 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
 import type {
   GeneratedProblem,
   ProblemSlot,
   SessionPart,
   SessionPlan,
 } from '@/db/schema/session-plans'
+import { getCurrentProblemInfo } from '@/lib/curriculum/parts/arithmetic/state'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -68,15 +68,9 @@ function buildPlan(overrides: Partial<SessionPlan> = {}): SessionPlan {
     flowUpdatedAt: new Date('2026-01-01'),
     flowVersion: 0,
     currentPartIndex: 0,
-    currentSlotIndex: 0,
-    breakStartedAt: null,
-    breakReason: null,
-    breakSelectedGame: null,
-    breakResults: null,
     sessionHealth: null,
     adjustments: [],
     results: [],
-    retryState: null,
     rowVersion: 0,
     breaks: [],
     partStates: {},
@@ -103,7 +97,7 @@ function buildPlan(overrides: Partial<SessionPlan> = {}): SessionPlan {
 
 describe('getCurrentProblemInfo — slotId', () => {
   it('returns slotId for a normal (epoch 0) problem', () => {
-    const plan = buildPlan({ currentSlotIndex: 2 })
+    const plan = buildPlan({ partStates: { 0: { slotIndex: 2 } } })
     const info = getCurrentProblemInfo(plan)
     expect(info).not.toBeNull()
     expect(info!.slotId).toBe('slot-2')
@@ -113,30 +107,32 @@ describe('getCurrentProblemInfo — slotId', () => {
 
   it('returns slotId from the retry item during a retry epoch', () => {
     const plan = buildPlan({
-      currentSlotIndex: 5, // past last slot → retry epoch drives the problem
-      retryState: {
+      partStates: {
         0: {
-          currentEpoch: 1,
-          pendingRetries: [],
-          currentEpochItems: [
-            {
-              slotId: 'original-slot-id-A',
-              originalSlotIndex: 1,
-              problem: fakeProblem,
-              epochNumber: 1,
-              originalPurpose: 'focus',
-            },
-            {
-              slotId: 'original-slot-id-B',
-              originalSlotIndex: 3,
-              problem: fakeProblem,
-              epochNumber: 1,
-              originalPurpose: 'reinforce',
-            },
-          ],
-          currentRetryIndex: 0,
+          slotIndex: 5,
+          retry: {
+            currentEpoch: 1,
+            pendingRetries: [],
+            currentEpochItems: [
+              {
+                slotId: 'original-slot-id-A',
+                originalSlotIndex: 1,
+                problem: fakeProblem,
+                epochNumber: 1,
+                originalPurpose: 'focus',
+              },
+              {
+                slotId: 'original-slot-id-B',
+                originalSlotIndex: 3,
+                problem: fakeProblem,
+                epochNumber: 1,
+                originalPurpose: 'reinforce',
+              },
+            ],
+            currentRetryIndex: 0,
+          },
         },
-      },
+      }, // past last slot → retry epoch drives the problem
     })
 
     const info = getCurrentProblemInfo(plan)
@@ -148,29 +144,31 @@ describe('getCurrentProblemInfo — slotId', () => {
 
   it('advances past redeemed retry items and returns correct slotId', () => {
     const plan = buildPlan({
-      currentSlotIndex: 5,
-      retryState: {
+      partStates: {
         0: {
-          currentEpoch: 1,
-          pendingRetries: [],
-          currentEpochItems: [
-            {
-              slotId: 'redeemed-slot',
-              originalSlotIndex: 1,
-              problem: fakeProblem,
-              epochNumber: 1,
-              originalPurpose: 'focus',
-            },
-            {
-              slotId: 'active-slot',
-              originalSlotIndex: 3,
-              problem: fakeProblem,
-              epochNumber: 1,
-              originalPurpose: 'reinforce',
-            },
-          ],
-          currentRetryIndex: 0,
-          redeemedSlots: [1], // slot 1 was redeemed via manual redo
+          slotIndex: 5,
+          retry: {
+            currentEpoch: 1,
+            pendingRetries: [],
+            currentEpochItems: [
+              {
+                slotId: 'redeemed-slot',
+                originalSlotIndex: 1,
+                problem: fakeProblem,
+                epochNumber: 1,
+                originalPurpose: 'focus',
+              },
+              {
+                slotId: 'active-slot',
+                originalSlotIndex: 3,
+                problem: fakeProblem,
+                epochNumber: 1,
+                originalPurpose: 'reinforce',
+              },
+            ],
+            currentRetryIndex: 0,
+            redeemedSlots: [1], // slot 1 was redeemed via manual redo
+          },
         },
       },
     })
@@ -183,22 +181,24 @@ describe('getCurrentProblemInfo — slotId', () => {
 
   it('returns null when all retry items are redeemed', () => {
     const plan = buildPlan({
-      currentSlotIndex: 5,
-      retryState: {
+      partStates: {
         0: {
-          currentEpoch: 1,
-          pendingRetries: [],
-          currentEpochItems: [
-            {
-              slotId: 'slot-A',
-              originalSlotIndex: 1,
-              problem: fakeProblem,
-              epochNumber: 1,
-              originalPurpose: 'focus',
-            },
-          ],
-          currentRetryIndex: 0,
-          redeemedSlots: [1],
+          slotIndex: 5,
+          retry: {
+            currentEpoch: 1,
+            pendingRetries: [],
+            currentEpochItems: [
+              {
+                slotId: 'slot-A',
+                originalSlotIndex: 1,
+                problem: fakeProblem,
+                epochNumber: 1,
+                originalPurpose: 'focus',
+              },
+            ],
+            currentRetryIndex: 0,
+            redeemedSlots: [1],
+          },
         },
       },
     })
@@ -208,21 +208,23 @@ describe('getCurrentProblemInfo — slotId', () => {
 
   it('returns slotId from retry item', () => {
     const plan = buildPlan({
-      currentSlotIndex: 5,
-      retryState: {
+      partStates: {
         0: {
-          currentEpoch: 1,
-          pendingRetries: [],
-          currentEpochItems: [
-            {
-              slotId: 'test-slot-retry',
-              originalSlotIndex: 0,
-              problem: fakeProblem,
-              epochNumber: 1,
-              originalPurpose: 'focus',
-            },
-          ],
-          currentRetryIndex: 0,
+          slotIndex: 5,
+          retry: {
+            currentEpoch: 1,
+            pendingRetries: [],
+            currentEpochItems: [
+              {
+                slotId: 'test-slot-retry',
+                originalSlotIndex: 0,
+                problem: fakeProblem,
+                epochNumber: 1,
+                originalPurpose: 'focus',
+              },
+            ],
+            currentRetryIndex: 0,
+          },
         },
       },
     })
@@ -238,7 +240,7 @@ describe('getCurrentProblemInfo — slotId', () => {
   })
 
   it('returns null when slot index is beyond slots array and no retry state', () => {
-    const plan = buildPlan({ currentSlotIndex: 99 })
+    const plan = buildPlan({ partStates: { 0: { slotIndex: 99 } } })
     expect(getCurrentProblemInfo(plan)).toBeNull()
   })
 })

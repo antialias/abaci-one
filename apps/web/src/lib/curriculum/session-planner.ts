@@ -40,7 +40,6 @@ import {
   DEFAULT_PLAN_CONFIG,
   type GameBreakSettings,
   type GeneratedProblem,
-  MAX_RETRY_EPOCHS,
   type NewSessionPlan,
   type PartSummary,
   type PlanGenerationConfig,
@@ -56,6 +55,7 @@ import {
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { resolveLinearEntryPolicy } from '@/lib/curriculum/linear-entry-policy'
+import { MAX_RETRY_EPOCHS } from '@/lib/curriculum/parts/arithmetic/state'
 import { getFlag } from '@/lib/feature-flags'
 import { revokeSharesForSession } from '@/lib/session-share'
 import {
@@ -715,7 +715,6 @@ export async function generateSessionPlan(
     masteredSkillIds: activeSkills.map((s) => s.skillId),
     status: 'draft',
     currentPartIndex: 0,
-    currentSlotIndex: 0,
     sessionHealth: null,
     adjustments: [],
     results: [],
@@ -1429,6 +1428,25 @@ function withoutServerStamps<T extends Partial<SlotResult>>(submission: T): Unst
   return (tryId === undefined ? rest : { ...rest, tryId }) as Unstamped<T>
 }
 
+/**
+ * A submission without the legacy try fields a client may still send
+ * (`epochNumber` is read before this, to tell a resubmit from the next round;
+ * the others are dropped by `withoutServerStamps`). New rows carry none of
+ * them since Phase 6b-1 (§10 P6b1-4).
+ */
+function withoutLegacyTryFields<T extends Partial<SlotResult>>(
+  submission: T
+): Omit<T, 'isRetry' | 'epochNumber' | 'isManualRedo' | 'originalSlotIndex'> {
+  const {
+    isRetry: _isRetry,
+    epochNumber: _epochNumber,
+    isManualRedo: _isManualRedo,
+    originalSlotIndex: _originalSlotIndex,
+    ...rest
+  } = submission
+  return rest
+}
+
 /** Whether a try with this id is already recorded (idempotent record by `tryId`). */
 function isRecordedTry(plan: SessionPlan, tryId: string | undefined): boolean {
   return tryId !== undefined && plan.results.some((r) => r.tryId === tryId)
@@ -1635,8 +1653,12 @@ export async function recordSlotResult(
     const originalSlotIndex = expected.originalSlotIndex
     const kind = inRetryEpoch ? ('retry' as const) : ('first' as const)
 
+    // The row carries the try record only: the legacy try fields (`isRetry`,
+    // `epochNumber`, `isManualRedo`, `originalSlotIndex`) are not written
+    // since Phase 6b-1; every reader takes kind, round and item position
+    // through the normalizer (`legacy-try-fields.ts`, §10 P6b1-4)
     const newResult: SlotResult = {
-      ...result,
+      ...withoutLegacyTryFields(result),
       tryId: result.tryId ?? mintTryId(),
       kind,
       round: epochNumber,
@@ -1646,15 +1668,12 @@ export async function recordSlotResult(
       slotIndex: originalSlotIndex,
       partNumber: currentPart.partNumber,
       timestamp: new Date(),
-      epochNumber,
       masteryWeight: weightOfTry({
         kind,
         round: epochNumber,
         isCorrect: result.isCorrect,
         practiceOnly: false,
       }),
-      isRetry: epochNumber > 0,
-      originalSlotIndex,
     }
 
     return {
@@ -1856,8 +1875,9 @@ export async function recordRedoResult(
     }
 
     const { round, practiceOnly } = doOverStamp(priorTries)
+    // No legacy try fields since Phase 6b-1 (§10 P6b1-4): `kind` says do-over
     const newResult: SlotResult = {
-      ...result,
+      ...withoutLegacyTryFields(result),
       tryId: result.tryId ?? mintTryId(),
       kind: 'do_over',
       round,
@@ -1867,18 +1887,12 @@ export async function recordRedoResult(
       slotIndex,
       partNumber: part.partNumber,
       timestamp: new Date(),
-      isManualRedo: true,
       masteryWeight: weightOfTry({
         kind: 'do_over',
         round,
         isCorrect: result.isCorrect,
         practiceOnly,
       }),
-      // Legacy fields keep their legacy meaning until Phase 6: a do-over is not a
-      // retry-round try. Its round is `round`.
-      epochNumber: 0,
-      isRetry: false,
-      originalSlotIndex: slotIndex,
     }
 
     return {

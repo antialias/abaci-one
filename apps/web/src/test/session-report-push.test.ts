@@ -12,8 +12,8 @@
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
-import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SessionPlan, SlotResultSubmission } from '@/db/schema/session-plans'
+import { getCurrentProblemInfo } from '@/lib/curriculum/parts/arithmetic/state'
 import { setRowCommitListener } from '@/lib/curriculum/row-cas'
 import {
   abandonSessionPlan,
@@ -159,7 +159,6 @@ async function insertLivePlan(playerId: string, parts: SessionPart[] = fixturePa
       flowUpdatedAt: FIXED,
       flowVersion: 0,
       currentPartIndex: 0,
-      currentSlotIndex: 0,
       results: [],
       adjustments: [],
       createdAt: FIXED,

@@ -24,11 +24,8 @@ interface Slot {
 interface Result {
   slotId?: string
   partNumber: number
+  /** The slot the try answered (the legacy try fields are not written since 6b-1) */
   slotIndex: number
-  originalSlotIndex?: number
-  epochNumber?: number
-  isRetry?: boolean
-  isManualRedo?: boolean
   isCorrect: boolean
   studentAnswer: number
   problem: Problem
@@ -45,20 +42,31 @@ interface Plan {
   flowState: string
   flowVersion: number
   currentPartIndex: number
-  currentSlotIndex: number
   parts: { type: string; slots: Slot[] }[]
   results: Result[]
-  retryState: Record<
+  /**
+   * Each part's position, the cursor and its retry round (the legacy
+   * `currentSlotIndex` and `retryState` are not written since 6b-1, §10 P6b1-9)
+   */
+  partStates: Record<
     string,
     {
-      currentEpoch: number
-      currentRetryIndex: number
-      currentEpochItems: { originalSlotIndex: number }[]
-      pendingRetries: { originalSlotIndex: number }[]
-      redeemedSlots?: number[]
+      slotIndex: number
+      retry?: {
+        currentEpoch: number
+        currentRetryIndex: number
+        currentEpochItems: { originalSlotIndex: number }[]
+        pendingRetries: { originalSlotIndex: number }[]
+        redeemedSlots?: number[]
+      }
     }
-  > | null
+  >
 }
+
+/** A part's retry round, from its state */
+const retryOf = (plan: Plan, partIndex = 0) => plan.partStates[String(partIndex)]?.retry
+/** The cursor of the current part (0 for a part no try has reached) */
+const cursorOf = (plan: Plan) => plan.partStates[String(plan.currentPartIndex)]?.slotIndex ?? 0
 
 // ---------------------------------------------------------------------------
 // Setup: seed a student and start a short two-part session
@@ -380,7 +388,7 @@ test.describe('retry / do-over attribution', () => {
     for (let i = 2; i < plan.parts[0].slots.length; i++) await answer(page, plan.id, true)
 
     let server = await getPlan(request, playerId, plan.id)
-    expect(server.retryState?.['0']?.currentEpoch).toBe(1)
+    expect(retryOf(server)?.currentEpoch).toBe(1)
     expect(sameProblem(await shownProblem(page), slotProblem(plan, 0, 0))).toBe(true)
     await page.screenshot({ path: `${SHOTS}/s1-retry-round.png` })
 
@@ -388,7 +396,7 @@ test.describe('retry / do-over attribution', () => {
     await doOverCorrectly(page, plan.id, 0)
     server = await getPlan(request, playerId, plan.id)
     const redo = server.results.at(-1)!
-    expect(redo).toMatchObject({ isManualRedo: true, slotIndex: 0, isCorrect: true })
+    expect(redo).toMatchObject({ kind: 'do_over', slotIndex: 0, isCorrect: true })
     // A do-over of a once-wrong problem: round 1, weighs 1/2^1 (Phase 1w, §10 P1-9)
     expect(redo).toMatchObject({
       kind: 'do_over',
@@ -396,7 +404,7 @@ test.describe('retry / do-over attribution', () => {
       practiceOnly: false,
       masteryWeight: 0.5,
     })
-    expect(server.retryState?.['0']?.redeemedSlots).toContain(0)
+    expect(retryOf(server)?.redeemedSlots).toContain(0)
 
     // The screen moves on to slot 1, not back to the redeemed slot 0
     const next = await shownProblem(page)
@@ -410,11 +418,10 @@ test.describe('retry / do-over attribution', () => {
     expect(last).toMatchObject({
       slotId: plan.parts[0].slots[1].slotId,
       slotIndex: 1,
-      originalSlotIndex: 1,
-      epochNumber: 1,
+      kind: 'retry',
+      round: 1,
       isCorrect: true,
     })
-    expect(last.isManualRedo).toBeFalsy()
     expect(server.currentPartIndex).toBe(1)
     await expect(page.locator('[data-component="part-transition-screen"]')).toBeVisible({
       timeout: 20_000,
@@ -442,7 +449,7 @@ test.describe('retry / do-over attribution', () => {
     const server = await getPlan(request, playerId, plan.id)
     expect(server.currentPartIndex).toBe(1)
     expect(server.status).toBe('in_progress')
-    expect(server.results.filter((r) => r.partNumber === 1 && r.isManualRedo)).toHaveLength(2)
+    expect(server.results.filter((r) => r.partNumber === 1 && r.kind === 'do_over')).toHaveLength(2)
     expect(await toasts(page)).toEqual([])
   })
 
@@ -520,8 +527,12 @@ test.describe('retry / do-over attribution', () => {
     const problemsStat = page.locator('[data-element="stat-problems"]').first()
     await expect(problemsStat.locator('[data-value]')).toHaveText(`${totals.problems}`)
     await expect(problemsStat).toContainText(`${totals.tries} tries`)
-    const retryTry = server.results.find((r) => r.partNumber === 1 && r.epochNumber === 1)
-    expect(retryTry).toMatchObject({ slotId: plan.parts[0].slots[0].slotId, originalSlotIndex: 0 })
+    const retryTry = server.results.find((r) => r.partNumber === 1 && r.kind === 'retry')
+    expect(retryTry).toMatchObject({
+      slotId: plan.parts[0].slots[0].slotId,
+      slotIndex: 0,
+      round: 1,
+    })
     expect(await toasts(page)).toEqual([])
   })
 
@@ -581,7 +592,7 @@ test.describe('retry / do-over attribution', () => {
       // already-recorded try: either way slot 1 is recorded once and slot 2 is up
       const expectedSlot = 2
       await expect
-        .poll(async () => (await getPlan(request, playerId, plan.id)).currentSlotIndex)
+        .poll(async () => cursorOf(await getPlan(request, playerId, plan.id)))
         .toBe(expectedSlot)
       await expect
         .poll(
@@ -672,9 +683,7 @@ test.describe('retry / do-over attribution', () => {
 
     // Tab A answers slot 0; tab B still has slot 0 up, unless it already synced
     await answer(page, plan.id, true)
-    await expect
-      .poll(async () => (await getPlan(request, playerId, plan.id)).currentSlotIndex)
-      .toBe(1)
+    await expect.poll(async () => cursorOf(await getPlan(request, playerId, plan.id))).toBe(1)
 
     const nowOnB = await shownProblem(stale)
     if (!sameProblem(nowOnB, slotProblem(plan, 0, 0))) {
@@ -716,7 +725,7 @@ test.describe('retry / do-over attribution', () => {
     expect(sameProblem(await shownProblem(page), slotProblem(plan, 0, 2))).toBe(true)
     await doOverCorrectly(page, plan.id, 1)
     let server = await getPlan(request, playerId, plan.id)
-    expect(server.results.at(-1)).toMatchObject({ isManualRedo: true, slotIndex: 1 })
+    expect(server.results.at(-1)).toMatchObject({ kind: 'do_over', slotIndex: 1 })
     // Redeemed: round 1 (one counted try before it), weighs 1/2^1 (Phase 1w, §10 P1-9)
     expect(server.results.at(-1)).toMatchObject({
       kind: 'do_over',
@@ -724,8 +733,8 @@ test.describe('retry / do-over attribution', () => {
       practiceOnly: false,
       masteryWeight: 0.5,
     })
-    expect(server.retryState?.['0']?.pendingRetries ?? []).toHaveLength(0)
-    expect(server.currentSlotIndex).toBe(2)
+    expect(retryOf(server)?.pendingRetries ?? []).toHaveLength(0)
+    expect(cursorOf(server)).toBe(2)
     expect(sameProblem(await shownProblem(page), slotProblem(plan, 0, 2))).toBe(true)
 
     // Do over slot 0 (correct): recorded as practice, the position and mastery do not move
@@ -741,17 +750,16 @@ test.describe('retry / do-over attribution', () => {
       .poll(async () => sameProblem(await shownProblem(page), slotProblem(plan, 0, 2)))
       .toBe(true)
     server = await getPlan(request, playerId, plan.id)
-    expect(server.currentSlotIndex).toBe(2)
+    expect(cursorOf(server)).toBe(2)
     expect(server.results).toHaveLength(before + 1)
     expect(server.results.at(-1)).toMatchObject({
-      isManualRedo: true,
       slotId: plan.parts[0].slots[0].slotId,
       kind: 'do_over',
       round: 1,
       practiceOnly: true,
       masteryWeight: 0,
     })
-    expect(server.retryState?.['0']?.pendingRetries ?? []).toHaveLength(0)
+    expect(retryOf(server)?.pendingRetries ?? []).toHaveLength(0)
     expect(await skillsPracticedAt(request, playerId)).toEqual(practicedBefore)
 
     // Slot 2 is attributed to slot 2, and no retry round follows
@@ -760,7 +768,7 @@ test.describe('retry / do-over attribution', () => {
       timeout: 20_000,
     })
     server = await getPlan(request, playerId, plan.id)
-    const last = server.results.filter((r) => !r.isManualRedo).at(-1)!
+    const last = server.results.filter((r) => r.kind !== 'do_over').at(-1)!
     expect(last).toMatchObject({ slotId: plan.parts[0].slots[2].slotId, slotIndex: 2 })
     expect(server.currentPartIndex).toBe(1)
     expect(await toasts(page)).toEqual([])

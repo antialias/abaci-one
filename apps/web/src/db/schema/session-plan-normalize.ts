@@ -15,7 +15,6 @@ import {
   arithmeticPartStateOf,
   type CurrentPlanItem,
   expectedArithmeticItem,
-  legacyArithmeticStateOf,
 } from '@/lib/curriculum/parts/arithmetic/state'
 import { kindIdOf, partKindOf } from '@/lib/curriculum/parts/registry'
 import { itemSlotIndexOfRow, tryKindOfRow, tryRoundOfRow } from './legacy-try-fields'
@@ -206,15 +205,11 @@ export function normalizeTries(
 }
 
 // ============================================================================
-// Part states (written to `part_states` and the legacy columns since Phase 3a;
-// read from `part_states` since Phase 5, legacy fallback; plan of record §5, D5)
+// Part states (`part_states`, the only position since Phase 6b-1; §5, D5)
 // ============================================================================
 
-/** The plan fields a part's state is read from (`id` names a stale entry in the warning). */
-export type PartStateSource = Pick<
-  SessionPlan,
-  'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState' | 'partStates'
-> &
+/** The plan fields a part's state is read from. */
+export type PartStateSource = Pick<SessionPlan, 'parts' | 'currentPartIndex' | 'partStates'> &
   Partial<Pick<SessionPlan, 'id'>>
 
 /** The part's entry in `part_states`, or undefined when the row has none. */
@@ -226,41 +221,22 @@ function storedPartStateOf(plan: PartStateSource, partIndex: number): unknown {
 
 /**
  * A part's state (its kind's cursor): its `part_states` entry, trusted as it
- * stands (Phase 6b-0). A part without one (a row written before Phase 3a, or
- * a part no try has moved since) falls back to the legacy decode
- * (`legacyPartStateOf`), the only reader of the legacy position columns.
- *
- * Until 6b-0 an arithmetic entry that disagreed with the legacy columns was
- * taken as stale and the legacy decode won (P5a-8). That guarded rows last
- * written by an image before 3a; migration 0148 closed the stale ones, and
- * from 6b-1 on the legacy columns are no longer written, so they cannot be
- * the judge (§10 P6b-2).
+ * stands (Phase 6b-0, §10 P6b-2). A part without one reads the state its
+ * place in the session implies: arithmetic through
+ * `unenteredArithmeticStateOf` (finished before the cursor, not started at or
+ * after it), any other kind its initial state. Since Phase 6b-1 no legacy
+ * column is read (§10 P6b1-3).
  */
 export function partStateOf(plan: PartStateSource, partIndex: number): unknown {
-  if (kindIdOf(plan.parts[partIndex]) === 'arithmetic')
-    return arithmeticPartStateOf(plan, partIndex)
-  return storedPartStateOf(plan, partIndex) ?? legacyPartStateOf(plan, partIndex)
-}
-
-/**
- * A part's state as Phase 3a read it. Arithmetic parts decode the legacy
- * columns (`legacyArithmeticStateOf`): the current part's cursor is
- * `currentSlotIndex` + `retryState[i]`; a part before it is finished (cursor
- * parked at its end), a part after it not started. Other kinds read
- * `partStates[i]`, else their initial state. The fallback of `partStateOf`
- * for a part without an entry; goes with the legacy columns in Phase 6b-2.
- */
-export function legacyPartStateOf(plan: PartStateSource, partIndex: number): unknown {
   const part = plan.parts[partIndex]
-  if (kindIdOf(part) === 'arithmetic') return legacyArithmeticStateOf(plan, partIndex)
+  if (kindIdOf(part) === 'arithmetic') return arithmeticPartStateOf(plan, partIndex)
   const kind = partKindOf(part)
   return storedPartStateOf(plan, partIndex) ?? kind.initialState(kind.contentOf(part))
 }
 
 /**
  * The item the student is on in the plan's current arithmetic part, from that
- * part's state (`partStateOf`: its `part_states` entry, the legacy cursor for
- * a part without one): what a first or retry try must answer
+ * part's state (`partStateOf`): what a first or retry try must answer
  * (`recordSlotResult`). The same decision, from the same state, as
  * `resolveCurrentItem`, which the client shows (`getCurrentProblemInfo`).
  * Null past the last part, when the part has nothing to show, or when the
@@ -275,44 +251,28 @@ export function currentItemOf(plan: PartStateSource): CurrentPlanItem | null {
   return item ? { partIndex, ...item } : null
 }
 
-/** The row fields that store a part's state: `part_states` and its legacy encoding. */
-export interface PartStatePatch {
-  partStates: Record<string, unknown>
-  retryState?: SessionRetryState
-  currentSlotIndex?: number
-}
-
 /**
- * The fields to write for part `partIndex` after a try: its new state (or
- * `undefined` when the try left it unchanged) and where the session cursor
- * lands (`nextPartIndex`). Arithmetic also writes its legacy encoding exactly
- * as the code before Phase 3a did: `retryState` is always rewritten (a copy,
- * `{}` for a row without one), `currentSlotIndex` is the current part's slot
- * cursor, 0 once the session moves to the next part, untouched for a try in
- * another part.
+ * `part_states` after a try in part `partIndex`: its new state (or
+ * `undefined` when the try left it unchanged), and, when the session cursor
+ * moves on into part `nextPartIndex`, that part's initial state. The move-on
+ * entry is what lets a 6b-0 pod, which decodes a part without an entry from
+ * the legacy cursor 6b-1 no longer writes, read the new part as not started
+ * (§10 P6b-1 (1)); it is the state this image reads for it anyway.
  */
-export function partStatePatch(
+export function partStatesPatch(
   plan: PartStateSource,
   partIndex: number,
   nextState: unknown,
   nextPartIndex: number
-): PartStatePatch {
-  const changed = nextState !== undefined
-  const partStates = changed
-    ? { ...(plan.partStates ?? {}), [String(partIndex)]: nextState }
-    : { ...(plan.partStates ?? {}) }
-  const movedOn = nextPartIndex !== plan.currentPartIndex
-  if (kindIdOf(plan.parts[partIndex]) !== 'arithmetic') {
-    return movedOn ? { partStates, currentSlotIndex: 0 } : { partStates }
+): { partStates: Record<string, unknown> } {
+  const partStates: Record<string, unknown> = { ...(plan.partStates ?? {}) }
+  if (nextState !== undefined) partStates[String(partIndex)] = nextState
+  const next = plan.parts[nextPartIndex]
+  if (nextPartIndex !== plan.currentPartIndex && next && !(String(nextPartIndex) in partStates)) {
+    const kind = partKindOf(next)
+    partStates[String(nextPartIndex)] = kind.initialState(kind.contentOf(next))
   }
-  const state = nextState as ArithmeticState | undefined
-  const retryState: SessionRetryState = plan.retryState ? { ...plan.retryState } : {}
-  if (state?.retry) retryState[partIndex] = state.retry
-  if (movedOn) return { partStates, retryState, currentSlotIndex: 0 }
-  if (changed && partIndex === plan.currentPartIndex) {
-    return { partStates, retryState, currentSlotIndex: state!.slotIndex }
-  }
-  return { partStates, retryState }
+  return { partStates }
 }
 
 // ============================================================================
@@ -428,6 +388,57 @@ export function currentBreakOf(plan: CurrentBreakSource): CurrentBreak | null {
   if (!last) return pending
   if (state === 'break_active' && last.endedAt !== undefined) return pending
   return { startedAt: last.startedAt, game: last.game ?? null, results: last.results ?? null }
+}
+
+/**
+ * The legacy wire fields: what the plan's legacy position and break columns
+ * told a client, derived from the new columns for bundles that still read
+ * them (D9, §10 P6b1-16). Every path that sends a plan to a browser spreads
+ * these over the plan. Until 6b-1 the routes passed the columns through.
+ *
+ * - `currentSlotIndex`, `retryState`: a bundle from Phase 6a resolves the
+ *   current item from them alone (`arithmeticStateOf`), and checks each
+ *   `part_states` entry against them (P5a-8, legacy wins on a mismatch); a
+ *   bundle from 6b-0 falls back to them for a part without an entry. So they
+ *   are the parts' states in the legacy encoding: the current part's cursor
+ *   (0 past the last part, as move-on wrote it) and every part's retry state.
+ * - `breakStartedAt`: bundles before 6b-0 time the break from it, read only in
+ *   a break state, where it is the start of the break the kid is in (P6b-3).
+ * - `breakResults`: bundles before 6b-0 restore the results screen from it in
+ *   `break_results`; without it they acknowledge the results unseen.
+ *
+ * `breakReason` and `breakSelectedGame` are not derived: no client reads
+ * them but a trace log line. These stay until a deliberate removal at least
+ * one release after Phase 6b-2.
+ */
+export interface LegacyWireFields {
+  currentSlotIndex: number
+  retryState: SessionRetryState
+  breakStartedAt: number | null
+  breakResults: GameResultsReport | null
+}
+
+export function legacyWireFieldsOf(plan: PartStateSource & CurrentBreakSource): LegacyWireFields {
+  const retryState: SessionRetryState = {}
+  plan.parts.forEach((part, partIndex) => {
+    if (kindIdOf(part) !== 'arithmetic') return
+    const retry = arithmeticPartStateOf(plan, partIndex).retry
+    if (retry) retryState[partIndex] = retry
+  })
+  const current = plan.parts[plan.currentPartIndex]
+  const currentSlotIndex =
+    current && kindIdOf(current) === 'arithmetic'
+      ? arithmeticPartStateOf(plan, plan.currentPartIndex).slotIndex
+      : 0
+  const currentBreak = currentBreakOf(plan)
+  const startedMs =
+    currentBreak?.startedAt != null ? new Date(currentBreak.startedAt).getTime() : null
+  return {
+    currentSlotIndex,
+    retryState,
+    breakStartedAt: startedMs == null || Number.isNaN(startedMs) ? null : startedMs,
+    breakResults: currentBreak?.results ?? null,
+  }
 }
 
 // ============================================================================

@@ -675,20 +675,12 @@ export const sessionPlans = sqliteTable(
     /** Current part index (0-based: 0=abacus, 1=visualization, 2=linear) */
     currentPartIndex: integer('current_part_index').notNull().default(0),
 
-    /** Current problem slot index within the current part (0-based) */
-    currentSlotIndex: integer('current_slot_index').notNull().default(0),
-
-    /** When the current game break started */
-    breakStartedAt: integer('break_started_at', { mode: 'timestamp' }),
-
-    /** How the last/active break ended (timeout, skipped, or game finished) */
-    breakReason: text('break_reason').$type<GameBreakEndReason>(),
-
-    /** Selected game for the active/last break (if any) */
-    breakSelectedGame: text('break_selected_game'),
-
-    /** Optional lightweight persisted game-break results payload */
-    breakResults: text('break_results', { mode: 'json' }).$type<GameResultsReport>(),
+    // The legacy position and break columns (`current_slot_index`,
+    // `break_started_at`, `break_reason`, `break_selected_game`,
+    // `break_results`, `retry_state`) are no longer written or read (Phase
+    // 6b-1); they stay in the database until 6b-2 drops them. Each has a
+    // default or is nullable, so inserts without them succeed. Position is
+    // `partStates`, breaks are `breaks`.
 
     /** Real-time health metrics */
     sessionHealth: text('session_health', {
@@ -704,18 +696,10 @@ export const sessionPlans = sqliteTable(
     /** Results for each completed slot */
     results: text('results', { mode: 'json' }).notNull().default('[]').$type<SlotResult[]>(),
 
-    // ---- Retry State ----
-
-    /** Retry state per part - tracks problems that need retrying */
-    retryState: text('retry_state', {
-      mode: 'json',
-    }).$type<SessionRetryState>(),
-
     // ---- Row version, breaks, part states, pauses (session architecture Phase 3a) ----
     //
-    // Expand/contract (plan of record §5, D5): from Phase 3a every writer
-    // writes these AND the legacy columns (current_slot_index, retry_state,
-    // break_*); readers stay on the legacy columns until Phase 5.
+    // Expand/contract (plan of record §5, D5): written since Phase 3a, read
+    // since Phase 5, the only position and break columns since Phase 6b-1.
 
     /**
      * Compare-and-set version for every writer of the row (`withRowCas`),
@@ -827,24 +811,18 @@ export type { PlanGenerationConfig } from './session-plan-helpers'
 export {
   calculateMasteryWeight,
   calculateSessionHealth,
-  calculateTotalProblemsWithRetries,
   countedTries,
   DEFAULT_GAME_BREAK_SETTINGS,
   DEFAULT_PLAN_CONFIG,
   getCompletedProblemCount,
   getCurrentPart,
-  getCurrentProblemInfo,
   getNextSlot,
   getSessionPlanAccuracy,
   getSlotRetryStatus,
   getTotalProblemCount,
-  initRetryState,
   isCountedTry,
-  isInRetryEpoch,
   isPartComplete,
   isSessionComplete,
-  MAX_RETRY_EPOCHS,
-  needsRetryTransition,
   summarizeTries,
   type TryStats,
 } from './session-plan-helpers'

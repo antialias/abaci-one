@@ -231,7 +231,6 @@ describe('buildSessionReport: definitions', () => {
         completedAt: null,
         flowState: 'break_active',
         currentPartIndex: 1,
-        currentSlotIndex: 0,
         breaks: [
           {
             breakIndex: 0,
@@ -269,7 +268,7 @@ describe('buildSessionReport: definitions', () => {
       completedAt: null,
       flowState: 'practicing' as const,
       currentPartIndex: 1,
-      currentSlotIndex: 1,
+      partStates: { 1: { slotIndex: 1 } },
     }
     const report = buildSessionReport({
       plan,

@@ -2,9 +2,9 @@
  * The arithmetic part kind: slots, retry rounds and do-overs behind the
  * `PartKind` contract (session architecture §1.2, Phase 2).
  *
- * `Content` = the part's slots, `State` = the legacy cursor
- * (`currentSlotIndex` + `retryState[i]`, see `state.ts`), `Item` = the slot or
- * retry-round item shown next.
+ * `Content` = the part's slots, `State` = the cursor and its retry round
+ * (`{ slotIndex, retry }`, the part's `part_states` entry, see `state.ts`),
+ * `Item` = the slot or retry-round item shown next.
  *
  * Pure (no database, no server-only imports), so the registry can be read on
  * either side; the name follows the plan's module layout.

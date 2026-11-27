@@ -76,9 +76,7 @@ const parts = [part(0, 'abacus', 3), part(1, 'linear', 2)]
 const plan = {
   parts,
   currentPartIndex: 0,
-  currentSlotIndex: 2,
-  retryState: null,
-  partStates: null,
+  partStates: { 0: { slotIndex: 2 } },
   results: [],
 } as unknown as ArithmeticViewPlan
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { legacyWireFieldsOf } from '@/db/schema/session-plan-normalize'
 import { canPerformAction } from '@/lib/classroom'
 import {
   type ApplySlotResultReviewParams,
@@ -47,6 +48,8 @@ export async function reviewTry(
         startedAt: toMs(updatedPlan.startedAt),
         completedAt: toMs(updatedPlan.completedAt),
         deletedAt: toMs(updatedPlan.deletedAt),
+        // The legacy position and break fields, derived, for older bundles (D9, §10 P6b1-16)
+        ...legacyWireFieldsOf(updatedPlan),
       },
     })
   } catch (error) {

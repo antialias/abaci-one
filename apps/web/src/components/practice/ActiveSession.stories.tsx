@@ -227,11 +227,6 @@ function createMockSessionPlanWithProblems(config: {
     flowUpdatedAt: new Date(),
     flowVersion: 0,
     currentPartIndex: config.currentPartIndex ?? 0,
-    currentSlotIndex: config.currentSlotIndex ?? 0,
-    breakStartedAt: null,
-    breakReason: null,
-    breakSelectedGame: null,
-    breakResults: null,
     sessionHealth: config.sessionHealth ?? null,
     adjustments: [],
     results: [],
@@ -246,10 +241,11 @@ function createMockSessionPlanWithProblems(config: {
     pausedAt: null,
     pausedBy: null,
     pauseReason: null,
-    retryState: null,
     rowVersion: 0,
     breaks: [],
-    partStates: {},
+    partStates: {
+      [config.currentPartIndex ?? 0]: { slotIndex: config.currentSlotIndex ?? 0 },
+    },
     pauses: [],
     remoteCameraSessionId: null,
   }
@@ -435,20 +431,21 @@ function InteractiveSessionDemo() {
       // Advance to next problem
       setPlan((prev) => {
         const currentPart = prev.parts[prev.currentPartIndex]
-        const nextSlotIndex = prev.currentSlotIndex + 1
+        const cursor = prev.partStates[prev.currentPartIndex] as { slotIndex?: number } | undefined
+        const nextSlotIndex = (cursor?.slotIndex ?? 0) + 1
 
         if (nextSlotIndex >= currentPart.slots.length) {
           // Move to next part
           return {
             ...prev,
             currentPartIndex: prev.currentPartIndex + 1,
-            currentSlotIndex: 0,
+            partStates: { ...prev.partStates, [prev.currentPartIndex + 1]: { slotIndex: 0 } },
           }
         }
 
         return {
           ...prev,
-          currentSlotIndex: nextSlotIndex,
+          partStates: { ...prev.partStates, [prev.currentPartIndex]: { slotIndex: nextSlotIndex } },
         }
       })
     },

@@ -1,3 +1,4 @@
+import { legacyWireFieldsOf } from '@/db/schema/session-plan-normalize'
 import type { SessionPlan, GameBreakSettings } from '@/db/schema/session-plans'
 import {
   generateSessionPlan,
@@ -115,7 +116,8 @@ export async function startSessionPlanGeneration(
       }
 
       const plan = await generateSessionPlan(options)
-      handle.complete({ plan })
+      // The legacy position and break fields, derived, for older bundles (D9, §10 P6b1-16)
+      handle.complete({ plan: { ...plan, ...legacyWireFieldsOf(plan) } })
     },
     userId
   )

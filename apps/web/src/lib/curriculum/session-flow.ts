@@ -11,16 +11,13 @@
  *
  * Pure: the caller writes the patch through `withRowCas` (D2).
  *
- * Expand/contract (D5): the patch writes the new columns (`breaks`,
- * `partStates`) and the legacy ones (`break_*`, `currentSlotIndex`,
- * `retryState`) exactly as the code before Phase 3a did. Since Phase 6b-0 the
- * machine reads only the new ones (`partStateOf`, whose legacy decode is left
- * for a part without an entry; `runningBreakGame`, `lastBreakOutcome`); a
- * pending break's start is `flowUpdatedAt` (§10 P6b-3). The legacy columns
- * are read only to compute their own writes, which stay exactly as they were
- * until 6b-1 drops them: `legacyBreakStartedAtWrite`, and
- * `clearsLegacyBreakFields`, whether a try's clearing of
- * `breakStartedAt`/`breakResults` bumps `flowVersion` (§10 P5a-3 (2), P6b-5).
+ * Expand/contract (D5): the patch writes only the new columns (`breaks`,
+ * `partStates`) since Phase 6b-1; the legacy ones (`break_*`,
+ * `current_slot_index`, `retry_state`) are neither read nor written, and 6b-2
+ * drops them. A pending break's start is `flowUpdatedAt` (§10 P6b-3). When the
+ * cursor moves into a part, that part's initial entry is written
+ * (`partStatesPatch`), so a 6b-0 pod beside this one never decodes the stale
+ * legacy cursor (§10 P6b-1 (1)).
  */
 
 import { isCountedTry } from '@/db/schema/session-plan-helpers'
@@ -28,7 +25,7 @@ import {
   adjustmentsOf,
   normalizeTries,
   partStateOf,
-  partStatePatch,
+  partStatesPatch,
   tryIdOf,
 } from '@/db/schema/session-plan-normalize'
 import type {
@@ -97,14 +94,8 @@ export type FlowPatch = Partial<
     | 'status'
     | 'completedAt'
     | 'currentPartIndex'
-    | 'currentSlotIndex'
-    | 'retryState'
     | 'partStates'
     | 'breaks'
-    | 'breakStartedAt'
-    | 'breakReason'
-    | 'breakSelectedGame'
-    | 'breakResults'
     | 'results'
     | 'adjustments'
   >
@@ -172,25 +163,6 @@ function pendingBreakStart(plan: SessionPlan, now: Date): Date {
   return Number.isNaN(date.getTime()) ? now : date
 }
 
-/**
- * The legacy `breakStartedAt` write when a break opens, exactly as before
- * (Phase 6b-0 keeps every legacy write; 6b-1 drops it). Nothing reads the
- * column back.
- */
-function legacyBreakStartedAtWrite(plan: SessionPlan, now: Date): Date {
-  return plan.breakStartedAt ?? now
-}
-
-/**
- * Whether a try's patch clears operational legacy break fields left set
- * (after a skipped or timed-out break), which counts as a flow change and
- * bumps `flowVersion` (§10 P5a-3 (2)). Reads the legacy write itself; kept so
- * the golden replay is unchanged, and goes with the write in 6b-1 (§10 P6b-5).
- */
-function clearsLegacyBreakFields(plan: SessionPlan): boolean {
-  return plan.breakStartedAt !== null || plan.breakResults !== null
-}
-
 /** Index of the open break (started, not ended), or -1. */
 function openBreakIndex(breaks: readonly BreakRecord[]): number {
   const last = breaks.length - 1
@@ -248,10 +220,6 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
       }
       return commit({
         flowState: 'part_transition',
-        breakStartedAt: null,
-        breakReason: null,
-        breakSelectedGame: null,
-        breakResults: null,
       })
     }
 
@@ -278,19 +246,11 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
       if (!breaksEnabled(plan)) {
         return commit({
           flowState: 'practicing',
-          breakStartedAt: null,
-          breakReason: null,
-          breakSelectedGame: null,
-          breakResults: null,
         })
       }
 
       return commit({
         flowState: 'break_pending',
-        breakStartedAt: legacyBreakStartedAtWrite(plan, now),
-        breakReason: null,
-        breakSelectedGame: null,
-        breakResults: null,
       })
     }
 
@@ -306,7 +266,6 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
         const updated = [...breaks]
         if (open >= 0) updated[open] = { ...updated[open], game: selectedGame }
         return commit({
-          breakSelectedGame: selectedGame,
           breaks: updated,
         })
       }
@@ -322,8 +281,6 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
       const startedAt = pendingBreakStart(plan, now)
       return commit({
         flowState: 'break_active',
-        breakStartedAt: legacyBreakStartedAtWrite(plan, now),
-        breakSelectedGame: selectedGame,
         breaks: [
           ...breaks,
           {
@@ -381,8 +338,6 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
 
       return commit({
         flowState: targetState,
-        breakReason: event.reason,
-        breakResults: targetResults,
         breaks,
       })
     }
@@ -405,12 +360,8 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
         )
       }
 
-      // The legacy columns are cleared as before; `breaks` keeps the record.
       return commit({
         flowState: 'practicing',
-        breakReason: null,
-        breakSelectedGame: null,
-        breakResults: null,
       })
     }
 
@@ -576,7 +527,7 @@ function applyTryRecorded(
 
   const patch: FlowPatch = {
     results: [...plan.results, event.row],
-    ...partStatePatch(plan, t.partIndex, changed ? next : undefined, nextPartIndex),
+    ...partStatesPatch(plan, t.partIndex, changed ? next : undefined, nextPartIndex),
   }
   // A first/retry try always settles the position; a do-over only when it
   // finished the part (it never steps past an item).
@@ -588,17 +539,13 @@ function applyTryRecorded(
       : partTransitioned
         ? 'part_transition'
         : 'practicing'
-    const flowStateChanged = current !== nextFlowState || clearsLegacyBreakFields(plan)
+    const flowStateChanged = current !== nextFlowState
     Object.assign(patch, {
       currentPartIndex: nextPartIndex,
       status: isComplete ? 'completed' : 'in_progress',
       flowState: nextFlowState,
       flowUpdatedAt: flowStateChanged ? now : (plan.flowUpdatedAt ?? now),
       flowVersion: (plan.flowVersion ?? 0) + (flowStateChanged ? 1 : 0),
-      // Operational break fields are cleared; breakSelectedGame/breakReason
-      // stay for readers of the legacy columns (the song).
-      breakStartedAt: null,
-      breakResults: null,
       completedAt: isComplete ? now : null,
     } satisfies FlowPatch)
   }

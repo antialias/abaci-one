@@ -1,26 +1,11 @@
 import { NextResponse } from 'next/server'
-import type { SessionPlan } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
+import { serializePlan } from '@/lib/curriculum/plan-wire'
 import { WriteContentionError } from '@/lib/curriculum/row-cas'
 import { type ClientFlowEvent, InvalidFlowTransitionError } from '@/lib/curriculum/session-flow'
 import { applySessionFlowEvent, StaleFlowVersionError } from '@/lib/curriculum/session-planner'
 import { getUserId } from '@/lib/viewer'
-
-function serializePlan(plan: SessionPlan) {
-  return {
-    ...plan,
-    createdAt: plan.createdAt instanceof Date ? plan.createdAt.getTime() : plan.createdAt,
-    approvedAt: plan.approvedAt instanceof Date ? plan.approvedAt.getTime() : plan.approvedAt,
-    startedAt: plan.startedAt instanceof Date ? plan.startedAt.getTime() : plan.startedAt,
-    completedAt: plan.completedAt instanceof Date ? plan.completedAt.getTime() : plan.completedAt,
-    flowUpdatedAt:
-      plan.flowUpdatedAt instanceof Date ? plan.flowUpdatedAt.getTime() : plan.flowUpdatedAt,
-    // Wire pass-through for bundles from before Phase 6b-0, which read it (D9)
-    breakStartedAt:
-      plan.breakStartedAt instanceof Date ? plan.breakStartedAt.getTime() : plan.breakStartedAt,
-  }
-}
 
 /**
  * POST /api/curriculum/[playerId]/sessions/plans/[planId]/flow-events

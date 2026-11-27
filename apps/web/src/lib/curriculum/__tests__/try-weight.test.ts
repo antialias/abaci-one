@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { calculateMasteryWeight, MAX_RETRY_EPOCHS } from '@/db/schema/session-plan-helpers'
+import { calculateMasteryWeight } from '@/db/schema/session-plan-helpers'
 import type { TryKind } from '@/db/schema/session-plans'
+import { MAX_RETRY_EPOCHS } from '@/lib/curriculum/parts/arithmetic/state'
 import { evidenceWeightOf, weightOfTry } from '../try-weight'
 
 /**

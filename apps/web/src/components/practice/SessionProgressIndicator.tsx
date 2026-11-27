@@ -18,8 +18,9 @@
 
 import { useMemo } from 'react'
 import { itemSlotIndexOfRow, tryKindOfRow, tryRoundOfRow } from '@/db/schema/legacy-try-fields'
-import { isCountedTry, MAX_RETRY_EPOCHS } from '@/db/schema/session-plan-helpers'
+import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import type { ProblemSlot, SessionPart, SlotResult } from '@/db/schema/session-plans'
+import { MAX_RETRY_EPOCHS } from '@/lib/curriculum/parts/arithmetic/state'
 import { css } from '../../../styled-system/css'
 import { Tooltip } from '../ui/Tooltip'
 import { formatMs } from './autoPauseCalculator'

@@ -6,7 +6,7 @@
  *
  * The client picks the problem to show with getCurrentProblemInfo (which skips
  * retry items redeemed by a manual do-over); the server attributes the answer
- * with its own position (retryState.currentEpochItems[currentRetryIndex]).
+ * with its own position (the part state's retry.currentEpochItems[currentRetryIndex]).
  * These tests drive both sides the way ActiveSession does and compare.
  */
 
@@ -17,15 +17,16 @@ import {
   type TransitionTarget,
 } from '@/components/practice/redoReturnTarget'
 import * as schema from '@/db/schema'
-import {
-  DEFAULT_GAME_BREAK_SETTINGS,
-  getCurrentProblemInfo,
-} from '@/db/schema/session-plan-helpers'
+import { DEFAULT_GAME_BREAK_SETTINGS } from '@/db/schema/session-plan-helpers'
 import { legacyTryId } from '@/db/schema/session-plan-normalize'
 import type { SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { computeBktFromHistory } from '@/lib/curriculum/bkt/compute-bkt'
 import { batchGetRecentBktEvidence } from '@/lib/curriculum/bkt/evidence-query'
 import { deriveLinearGateState } from '@/lib/curriculum/linear-gate'
+import {
+  arithmeticPartStateOf,
+  getCurrentProblemInfo,
+} from '@/lib/curriculum/parts/arithmetic/state'
 import { getAllSkillMastery, setPracticingSkills } from '@/lib/curriculum/progress-manager'
 import {
   approveSessionPlan,
@@ -79,6 +80,19 @@ async function newPlan(
   })
   await approveSessionPlan(plan.id)
   return startSessionPlan(plan.id)
+}
+
+/**
+ * The retry round and cursor as the row holds them: `part_states` since 6b-1
+ * stopped writing `retry_state` and `current_slot_index` (§10 P6b1-1).
+ */
+const retryOf = (plan: SessionPlan, partIndex = 0) => arithmeticPartStateOf(plan, partIndex).retry
+const cursorOf = (plan: SessionPlan) => arithmeticPartStateOf(plan, plan.currentPartIndex).slotIndex
+
+/** The four legacy try fields 6b-1 no longer writes on a new try (§10 P6b1-4). */
+const LEGACY_TRY_FIELDS = ['isRetry', 'epochNumber', 'isManualRedo', 'originalSlotIndex'] as const
+function expectNoLegacyTryFields(row: object) {
+  for (const name of LEGACY_TRY_FIELDS) expect(row).not.toHaveProperty(name)
 }
 
 /** A client-shaped try id (UUID) */
@@ -162,7 +176,7 @@ describe('retry and do-over attribution', () => {
     plan = await answerShown(plan, false) // slot 0 wrong
     plan = await answerShown(plan, false) // slot 1 wrong
     plan = await answerShown(plan, true) // slot 2 right -> retry round 1 = [slot 0, slot 1]
-    expect(plan.retryState?.[0]?.currentEpoch).toBe(1)
+    expect(retryOf(plan)?.currentEpoch).toBe(1)
 
     plan = await redoCorrect(plan, 0) // kid taps slot 0's dot and gets it right
     const shown = getCurrentProblemInfo(plan)!
@@ -171,7 +185,7 @@ describe('retry and do-over attribution', () => {
     plan = await answerShown(plan, true)
     const last = plan.results.at(-1)!
     expect(last.slotId).toBe(plan.parts[0].slots[1].slotId)
-    expect(last.originalSlotIndex).toBe(1) // the try belongs to slot 1
+    expect(last.slotIndex).toBe(1) // the try belongs to slot 1
     expect(plan.status).toBe('completed') // nothing left to retry
   })
 
@@ -206,7 +220,7 @@ describe('retry and do-over attribution', () => {
       incorrectAttempts: 0,
     })
     expect(plan.results).toHaveLength(1)
-    expect(plan.currentSlotIndex).toBe(1)
+    expect(cursorOf(plan)).toBe(1)
   })
 
   it('rejects a try for a problem other than the one shown, and records nothing', async () => {
@@ -261,7 +275,7 @@ describe('retry and do-over attribution', () => {
 
     plan = await recordSlotResult(plan.id, tryOf(1, true)) // the retry itself
     expect(plan.results).toHaveLength(4)
-    expect(plan.results.at(-1)!.epochNumber).toBe(1)
+    expect(plan.results.at(-1)).toMatchObject({ kind: 'retry', round: 1 })
     expect(plan.status).toBe('completed')
   })
 
@@ -292,12 +306,12 @@ describe('retry and do-over attribution', () => {
       plan = await recordSlotResult(plan.id, tryFor(plan, 1, slot0))
       expect(plan.results).toHaveLength(2)
       expect(plan.results[1].slotId).toBe(slot1)
-      expect(plan.results[1].originalSlotIndex).toBe(1)
-      expect(plan.currentSlotIndex).toBe(2) // advanced once
+      expect(plan.results[1].slotIndex).toBe(1)
+      expect(cursorOf(plan)).toBe(2) // advanced once
       // and the next lagging answer (slot 2, named slot 1) goes to slot 2, not slot 1
       plan = await recordSlotResult(plan.id, tryFor(plan, 2, slot1))
       expect(plan.results[2].slotId).toBe(plan.parts[0].slots[2].slotId)
-      expect(plan.results[2].originalSlotIndex).toBe(2)
+      expect(plan.results[2].slotIndex).toBe(2)
     })
 
     it('(b) ignores an exact resubmit, but rejects the same slot with a different answer', async () => {
@@ -306,7 +320,7 @@ describe('retry and do-over attribution', () => {
       plan = await recordSlotResult(plan.id, tryFor(plan, 0, slot0))
       const after = await recordSlotResult(plan.id, tryFor(plan, 0, slot0))
       expect(after.results).toHaveLength(1)
-      expect(after.currentSlotIndex).toBe(1)
+      expect(cursorOf(after)).toBe(1)
 
       const wrong = plan.parts[0].slots[0].problem!.answer + 1
       await expect(recordSlotResult(plan.id, tryFor(plan, 0, slot0, wrong))).rejects.toBeInstanceOf(
@@ -320,9 +334,9 @@ describe('retry and do-over attribution', () => {
       plan = await recordSlotResult(plan.id, tryFor(plan, 0, slot0))
       plan = await recordSlotResult(plan.id, tryFor(plan, 0, slot0)) // resubmit: no-op
       plan = await answerShown(plan, true) // slot 1
-      expect(plan.results.map((r) => r.originalSlotIndex)).toEqual([0, 1])
+      expect(plan.results.map((r) => r.slotIndex)).toEqual([0, 1])
       expect(plan.results[1].slotId).toBe(plan.parts[0].slots[1].slotId)
-      expect(plan.currentSlotIndex).toBe(2)
+      expect(cursorOf(plan)).toBe(2)
     })
   })
 
@@ -333,7 +347,7 @@ describe('retry and do-over attribution', () => {
       plan = await answerShown(plan, false)
       plan = await answerShown(plan, false)
       plan = await answerShown(plan, true)
-      expect(plan.retryState?.[0]?.currentEpoch).toBe(1)
+      expect(retryOf(plan)?.currentEpoch).toBe(1)
       return plan
     }
 
@@ -393,7 +407,7 @@ describe('retry and do-over attribution', () => {
       expect(plan.currentPartIndex).toBe(0)
       plan = await redoCorrect(plan, 1)
       expect(plan.currentPartIndex).toBe(1)
-      expect(plan.currentSlotIndex).toBe(0)
+      expect(cursorOf(plan)).toBe(0)
       expect(plan.flowState).toBe('part_transition')
       expect(plan.flowVersion).toBe((before.flowVersion ?? 0) + 1)
       expect(plan.status).toBe('in_progress')
@@ -414,7 +428,7 @@ describe('retry and do-over attribution', () => {
       let plan = await inRetryRound()
       plan = await answerShown(plan, false) // slot 0 wrong again -> pending round 2 = [slot 0]
       plan = await redoCorrect(plan, 1) // redeem slot 1, the rest of round 1
-      expect(plan.retryState?.[0]?.currentEpoch).toBe(2)
+      expect(retryOf(plan)?.currentEpoch).toBe(2)
       expect(plan.status).toBe('in_progress')
       const shown = getCurrentProblemInfo(plan)!
       expect(shown).toMatchObject({ originalSlotIndex: 0, epochNumber: 2, isRetry: true })
@@ -439,10 +453,10 @@ describe('retry and do-over attribution', () => {
     plan = await answerShown(plan, true)
     plan = await answerShown(plan, true) // round 1 = [slot 0]
     plan = await answerShown(plan, false) // round 1 wrong -> round 2 = [slot 0]
-    expect(plan.retryState?.[0]?.currentEpoch).toBe(2)
+    expect(retryOf(plan)?.currentEpoch).toBe(2)
     plan = await answerShown(plan, false) // round 2 wrong: answer revealed, not re-queued
-    expect(plan.results.map((r) => r.epochNumber)).toEqual([0, 0, 0, 1, 2])
-    expect(plan.retryState?.[0]?.pendingRetries).toEqual([])
+    expect(plan.results.map((r) => r.round)).toEqual([0, 0, 0, 1, 2])
+    expect(retryOf(plan)?.pendingRetries).toEqual([])
     expect(plan.status).toBe('completed')
   })
 
@@ -475,11 +489,12 @@ describe('retry and do-over attribution', () => {
       const [a, b, c] = plan.results
       expect(a).toMatchObject({ tryId: tid(1), kind: 'first', round: 0, practiceOnly: false })
       // Phase 1w: a wrong first try weighs 1, like a right one
-      expect(a).toMatchObject({ partIndex: 0, masteryWeight: 1, epochNumber: 0 })
+      expect(a).toMatchObject({ partIndex: 0, masteryWeight: 1, slotIndex: 0 })
       expect(b.tryId).toMatch(/^[0-9a-f-]{36}$/) // minted server-side
       expect(b).toMatchObject({ kind: 'first', round: 0, masteryWeight: 1 })
-      expect(c).toMatchObject({ kind: 'retry', round: 1, masteryWeight: 0.5, epochNumber: 1 })
-      expect(c.isRetry).toBe(true)
+      expect(c).toMatchObject({ kind: 'retry', round: 1, masteryWeight: 0.5, slotIndex: 0 })
+      // 6b-1: kind/round/slotIndex carry what the legacy fields did; they are not written
+      for (const row of [a, b, c]) expectNoLegacyTryFields(row)
     })
 
     it('records a tryId once: a resend is a no-op, also for a do-over', async () => {
@@ -491,7 +506,7 @@ describe('retry and do-over attribution', () => {
         tryId: tid(2),
       })
       expect(again.results).toHaveLength(1)
-      expect(again.currentSlotIndex).toBe(1)
+      expect(cursorOf(again)).toBe(1)
 
       plan = await redo(plan, 0, true, { tryId: tid(3) })
       expect(plan.results).toHaveLength(2)
@@ -567,8 +582,9 @@ describe('retry and do-over attribution', () => {
         round: 0,
         practiceOnly: false,
         masteryWeight: 1,
-        isRetry: false,
       })
+      // the client's isRetry is not stored either (6b-1)
+      expectNoLegacyTryFields(after.results[0])
     })
 
     it('a correct do-over of a wrong problem weighs 1/2^round (round 1: 0.5) and redeems it', async () => {
@@ -583,16 +599,15 @@ describe('retry and do-over attribution', () => {
         round: 1,
         practiceOnly: false,
         masteryWeight: 0.5,
-        isManualRedo: true,
         slotId: plan.parts[0].slots[1].slotId,
-        originalSlotIndex: 1,
-        // legacy meaning: a do-over is not a retry-round try
-        epochNumber: 0,
-        isRetry: false,
+        slotIndex: 1,
       })
-      expect(plan.retryState?.[0]?.pendingRetries ?? []).toHaveLength(0)
-      expect(plan.retryState?.[0]?.redeemedSlots).toContain(1)
-      expect(plan.currentSlotIndex).toBe(2)
+      // 6b-1: a do-over writes none of the legacy fields; the normalizer reads
+      // kind 'do_over' where isManualRedo stood (§10 P6b1-4)
+      expectNoLegacyTryFields(r)
+      expect(retryOf(plan)?.pendingRetries ?? []).toHaveLength(0)
+      expect(retryOf(plan)?.redeemedSlots).toContain(1)
+      expect(cursorOf(plan)).toBe(2)
     })
 
     it('counts round over earlier counted tries only: a wrong do-over after a wrong retry is round 2', async () => {
@@ -624,8 +639,8 @@ describe('retry and do-over attribution', () => {
       for (const r of doOvers) {
         expect(r).toMatchObject({ kind: 'do_over', round: 1, practiceOnly: true, masteryWeight: 0 })
       }
-      expect(plan.currentSlotIndex).toBe(3)
-      expect(plan.retryState?.[0]?.pendingRetries ?? []).toHaveLength(0)
+      expect(cursorOf(plan)).toBe(3)
+      expect(retryOf(plan)?.pendingRetries ?? []).toHaveLength(0)
       expect(plan.sessionHealth).toMatchObject({
         accuracy: healthBefore!.accuracy,
         currentStreak: healthBefore!.currentStreak,
