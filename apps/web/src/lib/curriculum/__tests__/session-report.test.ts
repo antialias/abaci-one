@@ -232,8 +232,14 @@ describe('buildSessionReport: definitions', () => {
         flowState: 'break_active',
         currentPartIndex: 1,
         currentSlotIndex: 0,
-        breakStartedAt: new Date(T0 + 180_000),
-        breakSelectedGame: 'memory-quiz',
+        breaks: [
+          {
+            breakIndex: 0,
+            afterPartIndex: 0,
+            startedAt: new Date(T0 + 180_000).toISOString(),
+            game: 'memory-quiz',
+          },
+        ],
       },
       tries: readTriesSync({ ...fixture.plan, results }),
       gameResults: [],
@@ -311,5 +317,64 @@ describe('buildSessionReport: definitions', () => {
       },
     })
     expect(report).toMatchObject({ outcome: 'completed', endedEarly: true })
+  })
+})
+
+/**
+ * Phase 6b-0 (§10 P6b-3, P6b-4): the report no longer reads the legacy break
+ * columns. A row with no break records (one from before Phase 3a) shows a
+ * break only from its game results, and a break running now from the flow
+ * state, started when the flow entered it.
+ */
+describe('buildSessionReport: breaks without the legacy columns (Phase 6b-0)', () => {
+  const legacyColumns = {
+    breakStartedAt: new Date(T0 + 170_000),
+    breakReason: 'skipped' as const,
+    breakSelectedGame: 'memory-quiz',
+    breakResults: null,
+  }
+
+  it('a row from before 3a with a skipped break and no game result shows no break', () => {
+    const fixture = tenProblemSession()
+    const report = buildSessionReport({
+      plan: { ...fixture.plan, ...legacyColumns, breaks: [] } as never,
+      tries: readTriesSync(fixture.plan),
+      gameResults: [],
+      song: null,
+      now: T0 + 900_000,
+    })
+    // Until 6b-0 the columns named it: one estimated, skipped memory-quiz break
+    expect(report.breaks).toEqual([])
+  })
+
+  it('a break running now, with no record, starts when the flow entered it', () => {
+    const fixture = tenProblemSession()
+    const results = fixture.plan.results.slice(0, 5)
+    const report = buildSessionReport({
+      plan: {
+        ...fixture.plan,
+        ...legacyColumns,
+        breakReason: null,
+        results,
+        status: 'in_progress',
+        completedAt: null,
+        flowState: 'break_pending',
+        flowUpdatedAt: new Date(T0 + 180_000),
+        currentPartIndex: 1,
+        breaks: [],
+      } as never,
+      tries: readTriesSync({ ...fixture.plan, results }),
+      gameResults: [],
+      song: null,
+      now: T0 + 300_000,
+    })
+    expect(report.breaks).toEqual([
+      expect.objectContaining({
+        open: true,
+        afterPartIndex: 0,
+        startedAt: T0 + 180_000,
+        game: null,
+      }),
+    ])
   })
 })

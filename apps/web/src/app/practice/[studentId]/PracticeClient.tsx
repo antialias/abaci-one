@@ -31,6 +31,7 @@ import type { RedoTarget } from '@/components/practice/SessionProgressIndicator'
 import { createWriteQueue } from '@/components/practice/writeQueue'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import type { Player } from '@/db/schema/players'
+import { currentBreakOf } from '@/db/schema/session-plan-normalize'
 import type {
   GameBreakSettings,
   SessionHealth,
@@ -241,16 +242,24 @@ export function PracticeClient({
   const showGameBreak = flowState === 'break_pending' || flowState === 'break_active'
   const showGameBreakResults = flowState === 'break_results'
 
+  // The break the kid is in, from the plan's break list (its start while
+  // pending is when the flow entered the break, §10 P6b-3); the legacy break
+  // columns are not read since Phase 6b-0
+  const currentBreak = currentBreakOf(currentPlan)
+  const currentBreakStartMs =
+    currentBreak?.startedAt != null ? new Date(currentBreak.startedAt).getTime() : null
+  const persistedBreakResults = currentBreak?.results ?? null
+
   useEffect(() => {
-    if (showGameBreak && currentPlan.breakStartedAt) {
-      setGameBreakStartTime(new Date(currentPlan.breakStartedAt).getTime())
+    if (showGameBreak && currentBreakStartMs != null && !Number.isNaN(currentBreakStartMs)) {
+      setGameBreakStartTime(currentBreakStartMs)
     }
-  }, [showGameBreak, currentPlan.breakStartedAt])
+  }, [showGameBreak, currentBreakStartMs])
 
   useEffect(() => {
     if (!showGameBreakResults) return
 
-    const persistedResults = currentPlan.breakResults ?? null
+    const persistedResults = persistedBreakResults
     if (persistedResults && !gameBreakResults) {
       setGameBreakResults(persistedResults)
       return
@@ -266,7 +275,7 @@ export function PracticeClient({
   }, [
     showGameBreakResults,
     gameBreakResults,
-    currentPlan.breakResults,
+    persistedBreakResults,
     currentPlan.flowVersion,
     acknowledgeGameBreakResults,
     studentId,
@@ -583,7 +592,6 @@ export function PracticeClient({
           logGameBreakTrace('game-break-finish-resolved', {
             reason,
             updatedFlowState: updatedPlan.flowState,
-            updatedBreakReason: updatedPlan.breakReason,
           })
         })
         .catch((err) => {
@@ -927,7 +935,7 @@ export function PracticeClient({
       .then((updatedPlan) => {
         logGameBreakTrace('part-transition-complete-resolved', {
           updatedFlowState: updatedPlan.flowState,
-          updatedBreakStartedAt: updatedPlan.breakStartedAt,
+          updatedFlowUpdatedAt: updatedPlan.flowUpdatedAt,
         })
       })
       .catch((err) => {

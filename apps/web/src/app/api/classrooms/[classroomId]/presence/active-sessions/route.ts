@@ -4,6 +4,7 @@ import { db, schema } from '@/db'
 import { getClassroomPresence, getEnrolledStudents, getTeacherClassroom } from '@/lib/classroom'
 import { getUserId } from '@/lib/viewer'
 import { withAuth } from '@/lib/auth/withAuth'
+import { arithmeticCursorSlotIndex } from '@/lib/curriculum/parts/arithmetic/session-view'
 import { buildSessionReports } from '@/lib/curriculum/session-report-batch'
 import type { Counts, SessionReport } from '@/lib/curriculum/session-report'
 
@@ -95,7 +96,7 @@ export const GET = withAuth(async (_request, { params }) => {
           startedAt: new Date(report.startedAt),
           // Structural cursor, for the observer (Phase 5 removes it)
           currentPartIndex: session.currentPartIndex,
-          currentSlotIndex: session.currentSlotIndex,
+          currentSlotIndex: arithmeticCursorSlotIndex(session),
           totalParts: session.parts.length,
           totalProblems: report.position.progress.total,
           completedProblems: report.position.progress.done,

@@ -217,10 +217,33 @@ describe('song input: game breaks (Phase 3b)', () => {
     ])
   })
 
-  it('one skipped break (no game_results row): the legacy columns, as before', async () => {
+  it('one skipped break before Phase 3a (no record, no game_results row): not read from the legacy columns since 6b-0', async () => {
     await insertPlan('current', 'in_progress', new Date(T0), tries(4, 5), {
       breakSelectedGame: 'matching-pairs',
       breakReason: 'skipped',
+    })
+
+    const input = await songInput()
+
+    // Until 6b-0 the legacy columns named it, 'Played matching-pairs (ended
+    // early)'; 6b-2 drops them (§10 P6b-4)
+    expect(input).not.toHaveProperty('gameBreaks')
+  })
+
+  it('one skipped break recorded in `breaks`, legacy columns at their defaults (6b-1 shape): named', async () => {
+    await insertPlan('current', 'in_progress', new Date(T0), tries(4, 5), {
+      breaks: [
+        {
+          breakIndex: 0,
+          afterPartIndex: 0,
+          startedAt: new Date(T0 + 60_000).toISOString(),
+          endedAt: new Date(T0 + 90_000).toISOString(),
+          game: 'matching-pairs',
+          reason: 'skipped',
+          results: null,
+          durationMs: 30_000,
+        },
+      ],
     })
 
     const input = await songInput()

@@ -10,7 +10,7 @@
 
 import type { SessionPlan } from '@/db/schema/session-plans'
 import type { PartProgress } from '../kind'
-import type { ArithmeticContent, ArithmeticState } from './state'
+import { type ArithmeticContent, type ArithmeticState, arithmeticPartStateOf } from './state'
 
 /**
  * Progress through one part: original slots passed of slots planned (the
@@ -28,7 +28,7 @@ export function calculateTotalProblemsWithRetries(plan: SessionPlan): number {
   for (let partIndex = 0; partIndex < plan.parts.length; partIndex++) {
     const part = plan.parts[partIndex]
     total += part.slots.length
-    const retryState = plan.retryState?.[partIndex]
+    const retryState = arithmeticPartStateOf(plan, partIndex).retry
     if (retryState) {
       total += retryState.currentEpochItems.length
       total += retryState.pendingRetries.length

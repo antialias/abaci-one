@@ -1037,6 +1037,13 @@
       "when": 1795735928416,
       "tag": "0147_add_game_results_session_index",
       "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "6",
+      "when": 1795801177976,
+      "tag": "0148_close_stale_pre_3a_sessions",
+      "breakpoints": true
     }
   ]
 }
