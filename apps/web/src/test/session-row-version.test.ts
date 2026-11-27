@@ -17,7 +17,7 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest'
 import * as schema from '@/db/schema'
 import { getCurrentProblemInfo } from '@/db/schema/session-plan-helpers'
-import { legacyBreaksOf, partStateOf } from '@/db/schema/session-plan-normalize'
+import { currentItemOf, legacyBreaksOf, partStateOf } from '@/db/schema/session-plan-normalize'
 import type {
   GeneratedProblem,
   ProblemSlot,
@@ -35,6 +35,7 @@ import {
   applySessionFlowEvent,
   completeSessionPlanEarly,
   getSessionPlan,
+  MalformedDoOverError,
   NotPracticingError,
   type RedoContext,
   recordRedoResult,
@@ -806,7 +807,11 @@ describe('Phase 3a: row version and the flow machine', () => {
       ).toEqual([])
     })
 
-    it('rollback: new writes, then an old image writes legacy columns only, then the new code resumes', async () => {
+    // Phase 3a's rollback test, restated for Phase 5a (§10 P5a-6, P5a-8): an
+    // image from before 3a advances the legacy columns alone after 3a code
+    // wrote both. The entry is stale; 5a reads the legacy cursor, resumes at
+    // the item the client shows, and the answer heals the entry.
+    it('rollback: new writes, then an old image writes legacy columns only, then 5a resumes at the legacy item', async () => {
       const planId = await insertPlan(playerId, { slotsPerPart: 3 })
       await answer(planId, false) // s0 wrong (queued)
       const written = await answer(planId, true) // s1 right
@@ -841,15 +846,373 @@ describe('Phase 3a: row version and the flow machine', () => {
       expect(rolledBack.rowVersion).toBe(written.rowVersion) // the old image did not bump it
       expect(rolledBack.partStates['0']).not.toEqual(arithmeticStateOf(rolledBack, 0)) // stale
 
-      // Roll forward: the new code reads the legacy columns, not part_states
+      // 5a reads the legacy cursor: the item the client shows, with a warning
+      const staleWarnings = () =>
+        lostRaces.mock.calls.filter((c) => String(c[0]).startsWith('[partStateOf]'))
       expect(partStateOf(rolledBack, 0)).toEqual(arithmeticStateOf(rolledBack, 0))
+      expect(staleWarnings()).toHaveLength(1)
+      expect(staleWarnings()[0][1]).toEqual({ planId, partIndex: 0 })
+      expect(currentItemOf(rolledBack)).toMatchObject({ slotId: 'p0s0', epochNumber: 1 })
       expect(getCurrentProblemInfo(rolledBack)).toMatchObject({ slotId: 'p0s0', epochNumber: 1 })
+
+      // The client's answer is taken, and the write heals the entry
       const resumed = await answer(planId, true)
       expect(resumed.results.at(-1)).toMatchObject({ slotId: 'p0s0', kind: 'retry', round: 1 })
       expect(resumed).toMatchObject({ currentPartIndex: 1, flowState: 'part_transition' })
       expect(resumed.rowVersion).toBe(rolledBack.rowVersion + 1)
-      // part_states is rewritten from what was read
+      expect(resumed.partStates['0']).toEqual(partStateOf(resumed, 0))
       expect(resumed.partStates['0']).toMatchObject({ slotIndex: 3 })
+      expect((resumed.partStates['0'] as { retry: unknown }).retry).toEqual(resumed.retryState?.[0])
+      expect(staleWarnings()).toHaveLength(1) // healed: no new warning
+    })
+  })
+})
+
+/**
+ * Phase 3a's `partStateOf`, copied verbatim (arithmetic branch; every fixture
+ * part is arithmetic) from `87fea0dd1:apps/web/src/db/schema/session-plan-normalize.ts`:
+ * the part-state reader of every image a rollback from Phase 5a can land on.
+ * It reads the legacy columns only.
+ */
+function phase3aPartStateOf(plan: SessionPlan, partIndex: number): unknown {
+  const part = plan.parts[partIndex]
+  if (partIndex === plan.currentPartIndex) return arithmeticStateOf(plan, partIndex)
+  return {
+    slotIndex: partIndex < plan.currentPartIndex ? (part.slots?.length ?? 0) : 0,
+    retry: plan.retryState?.[partIndex],
+  }
+}
+
+/** A first or retry try of a named slot, built without reading the plan's cursor. */
+function submissionForSlot(
+  plan: SessionPlan,
+  partIndex: number,
+  slotIndex: number,
+  epochNumber = 0
+): SlotResultSubmission {
+  const slot = plan.parts[partIndex].slots[slotIndex]
+  return {
+    tryId: tid(),
+    epochNumber,
+    slotId: slot.slotId,
+    slotIndex,
+    problem: slot.problem!,
+    studentAnswer: slot.problem!.answer,
+    isCorrect: true,
+    responseTimeMs: 3000,
+    skillsExercised: slot.problem!.skillsRequired,
+    usedOnScreenAbacus: false,
+    hadHelp: false,
+    incorrectAttempts: 0,
+  }
+}
+
+describe('Phase 5a: the server reads part_states and breaks', () => {
+  let eph: EphemeralDbResult
+  let playerId: string
+
+  beforeEach(async () => {
+    eph = createEphemeralDatabase()
+    setCurrentEphemeralDb(eph.db)
+    ;({ playerId } = await createTestStudent(eph.db, 'phase5a'))
+  })
+  afterEach(() => {
+    setCurrentEphemeralDb(null)
+    eph.cleanup()
+  })
+
+  /** What Phase 3a reads of a row (legacy position and break columns), and the results. */
+  function legacyView(p: SessionPlan) {
+    const shown = getCurrentProblemInfo(p)
+    return {
+      status: p.status,
+      flowState: p.flowState,
+      flowVersion: p.flowVersion,
+      currentPartIndex: p.currentPartIndex,
+      currentSlotIndex: p.currentSlotIndex,
+      retryState: p.retryState,
+      breakStartedAt: p.breakStartedAt ? '<set>' : null,
+      breakReason: p.breakReason,
+      breakSelectedGame: p.breakSelectedGame,
+      breakResults: p.breakResults,
+      completedAt: p.completedAt ? '<set>' : null,
+      results: p.results.map((r) => ({
+        slotId: r.slotId,
+        slotIndex: r.slotIndex,
+        partNumber: r.partNumber,
+        kind: r.kind,
+        round: r.round,
+        practiceOnly: r.practiceOnly,
+        isCorrect: r.isCorrect,
+        masteryWeight: r.masteryWeight,
+        epochNumber: r.epochNumber,
+        isManualRedo: r.isManualRedo,
+      })),
+      shown: shown && { slotId: shown.slotId, epochNumber: shown.epochNumber },
+    }
+  }
+
+  /**
+   * What the legacy break columns must say, given the row's `breaks` (the
+   * rules the code before Phase 3a followed, restated here):
+   * - `break_pending`: the break's start stamped, nothing else; no open record.
+   * - `break_active`: the open record's game and start.
+   * - `break_results`: the last record's game, reason and results.
+   * - otherwise: cleared (after an ack or a transition), or the last record's
+   *   reason and game carried (after a skip or timeout); `breakResults` null.
+   */
+  function expectLegacyBreakColumnsMatchBreaks(p: SessionPlan, label: string) {
+    const last = p.breaks.at(-1)
+    const legacy = {
+      startedAt: p.breakStartedAt ? new Date(p.breakStartedAt).getTime() : null,
+      game: p.breakSelectedGame ?? null,
+      reason: p.breakReason ?? null,
+      results: p.breakResults ?? null,
+    }
+    switch (p.flowState) {
+      case 'break_pending':
+        expect(last?.endedAt === undefined && last !== undefined, label).toBe(false)
+        expect(legacy.startedAt, label).not.toBeNull()
+        expect({ ...legacy, startedAt: null }, label).toEqual({
+          startedAt: null,
+          game: null,
+          reason: null,
+          results: null,
+        })
+        return
+      case 'break_active':
+        expect(last && last.endedAt === undefined, label).toBe(true)
+        expect(legacy, label).toEqual({
+          startedAt: new Date(last!.startedAt!).getTime(),
+          game: last!.game ?? null,
+          reason: null,
+          results: null,
+        })
+        return
+      case 'break_results':
+        expect({ ...legacy, startedAt: null }, label).toEqual({
+          startedAt: null,
+          game: last?.game ?? null,
+          reason: last?.reason ?? null,
+          results: last?.results ?? null,
+        })
+        return
+      default: {
+        expect(legacy.results, label).toBeNull()
+        const cleared = legacy.reason === null && legacy.game === null
+        const carried =
+          !!last && legacy.reason === (last.reason ?? null) && legacy.game === (last.game ?? null)
+        expect(cleared || carried, `${label}: ${JSON.stringify({ legacy, last })}`).toBe(true)
+      }
+    }
+  }
+
+  it('rollback: every row Phase 5a writes reads the same through Phase 3a’s readers', async () => {
+    // Twin plans take the same steps. "full" keeps what this code writes;
+    // "legacy" has part_states and breaks wiped before every step, so this
+    // code reads it through the legacy fallback alone, which is how Phase
+    // 3a (and 3b–4e) read every row. Identical legacy columns, outcomes and
+    // shown items at every step mean a rollback reads every row the same.
+    const full = await insertPlan(playerId, { breaks: true, slotsPerPart: 3 })
+    const legacy = await insertPlan(playerId, { breaks: true, slotsPerPart: 3 })
+
+    type Step = (plan: SessionPlan) => Promise<unknown>
+    const first =
+      (correct: boolean): Step =>
+      (plan) =>
+        recordSlotResult(plan.id, submissionFor(plan, correct))
+    const redo =
+      (partIndex: number, slotIndex: number, correct: boolean): Step =>
+      (plan) =>
+        recordRedoResult(plan.id, ...doOver(plan, partIndex, slotIndex, correct))
+    const flow =
+      (event: Parameters<typeof applySessionFlowEvent>[1]): Step =>
+      (plan) =>
+        applySessionFlowEvent(plan.id, event)
+    const results = { gameName: 'memory-quiz', score: 7 } as never
+
+    const steps: [string, Step][] = [
+      ['p0 s0 wrong', first(false)],
+      ['p0 s1 right', first(true)],
+      ['p0 s2 wrong -> round 1 [s0, s2]', first(false)],
+      ['p0 r1 s0 right', first(true)],
+      ['redo p0 s2 right: redeems, round empties -> part_transition', redo(0, 2, true)],
+      ['transition completed -> break_pending', flow({ type: 'PART_TRANSITION_COMPLETED' })],
+      ['break started', flow({ type: 'BREAK_STARTED', game: 'memory-quiz' })],
+      ['break started again (repeat)', flow({ type: 'BREAK_STARTED', game: 'memory-quiz' })],
+      ['game changed', flow({ type: 'BREAK_STARTED', game: 'type-racer-jr' })],
+      ['game changed again', flow({ type: 'BREAK_STARTED', game: 'memory-quiz' })],
+      ['break finished', flow({ type: 'BREAK_FINISHED', reason: 'gameFinished', results })],
+      ['break finished again', flow({ type: 'BREAK_FINISHED', reason: 'gameFinished', results })],
+      ['results acked', flow({ type: 'BREAK_RESULTS_ACKED' })],
+      ['results acked again', flow({ type: 'BREAK_RESULTS_ACKED' })],
+      ['p1 s0 right', first(true)],
+      ['redo p0 s0 right (earlier part, practice-only)', redo(0, 0, true)],
+      ['p1 s1 wrong', first(false)],
+      ['p1 s2 right -> round 1 [s1]', first(true)],
+      ['p1 r1 s1 wrong -> round 2', first(false)],
+      ['redo p1 s1 right mid round 2: redeems -> part_transition', redo(1, 1, true)],
+      ['transition completed -> break_pending', flow({ type: 'PART_TRANSITION_COMPLETED' })],
+      ['break skipped before it started', flow({ type: 'BREAK_FINISHED', reason: 'skipped' })],
+      ['break skipped again', flow({ type: 'BREAK_FINISHED', reason: 'skipped' })],
+      ['stray results ack after a skipped break', flow({ type: 'BREAK_RESULTS_ACKED' })],
+      ['p2 s0 right', first(true)],
+      ['p2 s1 right', first(true)],
+      ['p2 s2 right -> completed', first(true)],
+    ]
+
+    const run = async (planId: string, step: Step) => {
+      try {
+        await step(await row(planId))
+        return 'ok'
+      } catch (error) {
+        return (error as Error).name
+      }
+    }
+
+    const outcomes: string[] = []
+    for (const [label, step] of steps) {
+      await writeAsOldImage(legacy, { partStates: {}, breaks: [] })
+      const outcome = await run(full, step)
+      expect(await run(legacy, step), label).toBe(outcome)
+      outcomes.push(`${label}: ${outcome}`)
+
+      const a = await row(full)
+      const b = await row(legacy)
+      expect(legacyView(a), label).toEqual(legacyView(b))
+      // The legacy break columns, derived here from the last breaks record
+      // (independent of the code under test)
+      expectLegacyBreakColumnsMatchBreaks(a, label)
+      // Phase 3a's own readers on the row this code wrote
+      for (let i = 0; i < a.parts.length; i++) {
+        expect(partStateOf(a, i), `${label}: part ${i}`).toEqual(phase3aPartStateOf(a, i))
+      }
+      const item = currentItemOf(a)
+      const shown = getCurrentProblemInfo(a)
+      expect(item && { slotId: item.slotId, epochNumber: item.epochNumber }, label).toEqual(
+        shown && { slotId: shown.slotId, epochNumber: shown.epochNumber }
+      )
+    }
+
+    // The walk reached every reader: repeats were no-ops, the stray ack was refused
+    expect(outcomes.filter((o) => !o.endsWith(': ok'))).toEqual([
+      'stray results ack after a skipped break: InvalidFlowTransitionError',
+    ])
+    const done = await row(full)
+    expect(done).toMatchObject({ status: 'completed', flowState: 'completed' })
+    expect(done.breaks.map((b) => [b.game, b.reason])).toEqual([
+      ['memory-quiz', 'gameFinished'],
+      [null, 'skipped'],
+    ])
+  })
+
+  describe('the try expectation reads part_states', () => {
+    it('where part_states agrees with the legacy cursor, it names the item', async () => {
+      const planId = await insertPlan(playerId, {
+        slotsPerPart: 3,
+        values: { currentSlotIndex: 1, partStates: { '0': { slotIndex: 1 } } },
+      })
+      const plan = await row(planId)
+      const refused = await recordSlotResult(planId, submissionForSlot(plan, 0, 0)).catch(
+        (e: unknown) => e
+      )
+      expect(refused).toBeInstanceOf(SlotResultMismatchError)
+      const after = await recordSlotResult(planId, submissionForSlot(plan, 0, 1))
+      expect(after.results[0]).toMatchObject({ slotId: 'p0s1', slotIndex: 1, kind: 'first' })
+      expect(after.partStates['0']).toEqual({ slotIndex: 2 })
+      expect(after.currentSlotIndex).toBe(2)
+    })
+
+    it('where a stale entry disagrees, the legacy cursor names the item and the answer heals it', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const planId = await insertPlan(playerId, {
+          slotsPerPart: 3,
+          values: { currentSlotIndex: 0, partStates: { '0': { slotIndex: 1 } } },
+        })
+        const plan = await row(planId)
+
+        const staleItem = await recordSlotResult(planId, submissionForSlot(plan, 0, 1)).catch(
+          (e: unknown) => e
+        )
+        expect(staleItem).toBeInstanceOf(SlotResultMismatchError)
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('[partStateOf]'), {
+          planId,
+          partIndex: 0,
+        })
+
+        const after = await recordSlotResult(planId, submissionForSlot(plan, 0, 0))
+        expect(after.results).toHaveLength(1)
+        expect(after.results[0]).toMatchObject({ slotId: 'p0s0', slotIndex: 0, kind: 'first' })
+        // Both columns written from what was read: they agree again
+        expect(after.partStates['0']).toEqual({ slotIndex: 1 })
+        expect(after.currentSlotIndex).toBe(1)
+      } finally {
+        warn.mockRestore()
+      }
+    })
+
+    it('a row without part_states is checked against the legacy cursor', async () => {
+      const planId = await insertPlan(playerId, {
+        slotsPerPart: 3,
+        values: { currentSlotIndex: 1 },
+      })
+      const plan = await row(planId)
+      expect(plan.partStates).toEqual({})
+      const refused = await recordSlotResult(planId, submissionForSlot(plan, 0, 0)).catch(
+        (e: unknown) => e
+      )
+      expect(refused).toBeInstanceOf(SlotResultMismatchError)
+      const after = await recordSlotResult(planId, submissionForSlot(plan, 0, 1))
+      expect(after.results[0]).toMatchObject({ slotId: 'p0s1', kind: 'first' })
+    })
+  })
+
+  describe('a do-over names its item by itemId (for Phase 5b)', () => {
+    async function withWrongS0() {
+      const planId = await insertPlan(playerId, { slotsPerPart: 3 })
+      await answer(planId, false) // s0 wrong
+      await answer(planId, true) // s1 right
+      return planId
+    }
+
+    it('records the do-over against the slot itemId names', async () => {
+      const planId = await withWrongS0()
+      const plan = await row(planId)
+      const [submission] = doOver(plan, 0, 0, true)
+      // itemId alone, as a client could send once the indices go (Phase 6)
+      const after = await recordRedoResult(planId, submission, {
+        itemId: 'p0s0',
+      } as RedoContext)
+      expect(after.results.at(-1)).toMatchObject({
+        kind: 'do_over',
+        slotId: 'p0s0',
+        slotIndex: 0,
+        partIndex: 0,
+        practiceOnly: false,
+        round: 1,
+      })
+    })
+
+    it('accepts indices sent beside it when they name the same slot', async () => {
+      const planId = await withWrongS0()
+      const plan = await row(planId)
+      const [submission, context] = doOver(plan, 0, 0, true)
+      const after = await recordRedoResult(planId, submission, { ...context, itemId: 'p0s0' })
+      expect(after.results.at(-1)).toMatchObject({ kind: 'do_over', slotId: 'p0s0' })
+    })
+
+    it('an itemId the indices disagree with is malformed (400); one no slot has is a mismatch (409)', async () => {
+      const planId = await withWrongS0()
+      const plan = await row(planId)
+      const [submission, context] = doOver(plan, 0, 0, true)
+      const send = (redoContext: RedoContext) =>
+        recordRedoResult(planId, { ...submission, tryId: tid() }, redoContext)
+          .then(() => null)
+          .catch((e: unknown) => e)
+      expect(await send({ ...context, itemId: 'p0s1' })).toBeInstanceOf(MalformedDoOverError)
+      expect(await send({ ...context, itemId: 'nope' })).toBeInstanceOf(SlotResultMismatchError)
+      expect((await row(planId)).results).toHaveLength(2)
     })
   })
 })

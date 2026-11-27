@@ -135,3 +135,163 @@ describe('applyFlowEvent', () => {
     }
   )
 })
+
+/**
+ * Phase 5a: the machine reads `breaks`, falling back to the legacy break
+ * columns for a row without it. Each reader: where the two disagree the new
+ * column wins; with only the legacy columns, the legacy columns are read.
+ */
+describe('applyFlowEvent reads breaks (Phase 5a)', () => {
+  const STARTED = '2026-01-01T00:05:00.000Z'
+
+  describe('BREAK_STARTED in break_active: the running break’s game', () => {
+    it('reads the open record when it disagrees with breakSelectedGame', () => {
+      const plan = buildPlan({
+        flowState: 'break_active',
+        currentPartIndex: 1,
+        breakSelectedGame: 'memory-quiz',
+        breaks: [{ breakIndex: 0, afterPartIndex: 0, startedAt: STARTED, game: 'type-racer-jr' }],
+      })
+      // The open record already has this game: a repeat
+      expect(applyFlowEvent(plan, { type: 'BREAK_STARTED', game: 'type-racer-jr' }).changed).toBe(
+        false
+      )
+      // The legacy column's game is a change of game
+      const changed = applyFlowEvent(plan, { type: 'BREAK_STARTED', game: 'memory-quiz' })
+      expect(changed.changed).toBe(true)
+      expect(changed.patch.breaks?.[0].game).toBe('memory-quiz')
+      expect(changed.patch.breakSelectedGame).toBe('memory-quiz') // legacy still written
+    })
+
+    it('reads breakSelectedGame when the row has no open record', () => {
+      const plan = buildPlan({
+        flowState: 'break_active',
+        currentPartIndex: 1,
+        breakSelectedGame: 'memory-quiz',
+        breaks: [],
+      })
+      expect(applyFlowEvent(plan, { type: 'BREAK_STARTED', game: 'memory-quiz' }).changed).toBe(
+        false
+      )
+      expect(applyFlowEvent(plan, { type: 'BREAK_STARTED', game: 'type-racer-jr' }).changed).toBe(
+        true
+      )
+    })
+  })
+
+  describe('BREAK_FINISHED: whether it already landed', () => {
+    it('reads the last record when it disagrees with the legacy columns', () => {
+      // The record says this break was skipped; the legacy columns say nothing
+      const plan = buildPlan({
+        flowState: 'practicing',
+        currentPartIndex: 1,
+        breakReason: null,
+        breaks: [
+          {
+            breakIndex: 0,
+            afterPartIndex: 0,
+            startedAt: STARTED,
+            endedAt: STARTED,
+            reason: 'skipped',
+            results: null,
+          },
+        ],
+      })
+      expect(applyFlowEvent(plan, { type: 'BREAK_FINISHED', reason: 'skipped' }).changed).toBe(
+        false
+      )
+      // The legacy columns alone would not count it as landed
+      expect(() =>
+        applyFlowEvent({ ...plan, breaks: [] }, { type: 'BREAK_FINISHED', reason: 'skipped' })
+      ).toThrow(InvalidFlowTransitionError)
+    })
+
+    it('reads the legacy columns when the row has no records', () => {
+      const plan = buildPlan({
+        flowState: 'practicing',
+        currentPartIndex: 1,
+        breakReason: 'skipped',
+        breaks: [],
+      })
+      expect(applyFlowEvent(plan, { type: 'BREAK_FINISHED', reason: 'skipped' }).changed).toBe(
+        false
+      )
+    })
+
+    it('compares results from the record too', () => {
+      const plan = buildPlan({
+        flowState: 'break_results',
+        currentPartIndex: 1,
+        breakReason: 'gameFinished',
+        breakResults: { score: 1 } as never,
+        breaks: [
+          {
+            breakIndex: 0,
+            afterPartIndex: 0,
+            startedAt: STARTED,
+            endedAt: STARTED,
+            reason: 'gameFinished',
+            results: { score: 2 } as never,
+          },
+        ],
+      })
+      const repeat = { type: 'BREAK_FINISHED', reason: 'gameFinished' } as const
+      expect(applyFlowEvent(plan, { ...repeat, results: { score: 2 } as never }).changed).toBe(
+        false
+      )
+      // break_results is not a state BREAK_FINISHED leaves, so a mismatch throws
+      expect(() => applyFlowEvent(plan, { ...repeat, results: { score: 1 } as never })).toThrow(
+        InvalidFlowTransitionError
+      )
+    })
+  })
+
+  describe('BREAK_RESULTS_ACKED: whether it already landed', () => {
+    const finished = {
+      breakIndex: 0,
+      afterPartIndex: 0,
+      startedAt: STARTED,
+      endedAt: STARTED,
+      results: null,
+    }
+
+    it('reads the last record when it disagrees with the legacy columns', () => {
+      // Acked per the record (the break ended with results); the legacy
+      // columns still carry the break, so alone they would refuse the ack
+      const plan = buildPlan({
+        flowState: 'practicing',
+        currentPartIndex: 1,
+        breakReason: 'gameFinished',
+        breakSelectedGame: 'memory-quiz',
+        breaks: [{ ...finished, reason: 'gameFinished' }],
+      })
+      expect(applyFlowEvent(plan, { type: 'BREAK_RESULTS_ACKED' }).changed).toBe(false)
+      expect(() =>
+        applyFlowEvent({ ...plan, breaks: [] }, { type: 'BREAK_RESULTS_ACKED' })
+      ).toThrow(InvalidFlowTransitionError)
+
+      // A skipped break has no results to ack, whatever the legacy columns say
+      const skipped = buildPlan({
+        flowState: 'practicing',
+        currentPartIndex: 1,
+        breaks: [{ ...finished, reason: 'skipped' }],
+      })
+      expect(() => applyFlowEvent(skipped, { type: 'BREAK_RESULTS_ACKED' })).toThrow(
+        InvalidFlowTransitionError
+      )
+    })
+
+    it('reads the legacy columns when the row has no records', () => {
+      expect(
+        applyFlowEvent(buildPlan({ flowState: 'practicing', breaks: [] }), {
+          type: 'BREAK_RESULTS_ACKED',
+        }).changed
+      ).toBe(false)
+      expect(() =>
+        applyFlowEvent(buildPlan({ flowState: 'practicing', breakReason: 'skipped', breaks: [] }), {
+          type: 'BREAK_RESULTS_ACKED',
+        })
+      ).toThrow(InvalidFlowTransitionError)
+    })
+  })
+})

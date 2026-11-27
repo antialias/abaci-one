@@ -19,8 +19,9 @@ import { getSkillCategory, type SkillCategoryKey } from '@/constants/skillCatego
 import { db, schema } from '@/db'
 import { appSettings } from '@/db/schema'
 import { isActive, isVisualReady, type PlayerSkillMastery } from '@/db/schema/player-skill-mastery'
-import { isCountedTry, resolveCurrentItem, sameProblem } from '@/db/schema/session-plan-helpers'
+import { isCountedTry, sameProblem } from '@/db/schema/session-plan-helpers'
 import {
+  currentItemOf,
   doOverStamp,
   isClientTryId,
   mintTryId,
@@ -1346,6 +1347,24 @@ export class SlotResultMismatchError extends Error {
 }
 
 /**
+ * A do-over whose `itemId` and indices name different slots: a client bug, not
+ * a stale plan, so the route answers 400 rather than the quiet 409 refetch
+ * that would drop the kid's do-over without a word (§10 P5a-7).
+ */
+export class MalformedDoOverError extends Error {
+  constructor(
+    public readonly itemId: string,
+    public readonly originalPartIndex: number | undefined,
+    public readonly originalSlotIndex: number | undefined
+  ) {
+    super(
+      `Do-over names item ${itemId} but part ${originalPartIndex}, slot ${originalSlotIndex}, which is another slot`
+    )
+    this.name = 'MalformedDoOverError'
+  }
+}
+
+/**
  * A first or retry try reached a live session that is not `practicing` (a part
  * transition or a break owns the next step). Nothing is recorded; the route
  * answers 409 `not_practicing` with this plan in the body, and the client
@@ -1451,8 +1470,10 @@ interface RecordedTryOutcome {
  * that lost a race against the same `tryId` sees it recorded and returns
  * without a second write or a second skill-attempt bump (§10 P1-10).
  *
- * The try is attributed to the item the student is shown (resolveCurrentItem),
- * identified by content: the submitted `problem` and `slotIndex` must be that
+ * The try is attributed to the item the current part's state names
+ * (`currentItemOf`: `part_states` since Phase 5, the legacy cursor for a row
+ * without it or with a stale entry; the item the client shows), identified by
+ * content: the submitted `problem` and `slotIndex` must be that
  * item's (and `epochNumber`, when sent, its round). The submitted `slotId` is
  * not trusted: older clients can send the previous slot's id after an
  * optimistic advance, so the stored `slotId` is always the item's own.
@@ -1510,7 +1531,7 @@ export async function recordSlotResult(
     // Attribute the try to the item the student is shown, by content. Checked
     // before the position checks so a resubmit of a session's final answer is
     // still a no-op.
-    const expected = resolveCurrentItem(plan)
+    const expected = currentItemOf(plan)
     //
     // Transitional gap: clients from before this check send no epochNumber (or
     // partIndex). For them a resubmit of a wrong answer to a part's last slot,
@@ -1691,6 +1712,12 @@ export async function recordSlotResult(
  * Context for a manual redo operation
  */
 export interface RedoContext {
+  /**
+   * The item being redone (its slot id), sent by clients from Phase 5 on. When
+   * present it names the item; the indices, which those clients keep sending
+   * for servers from before it, must name the same slot.
+   */
+  itemId?: string
   /** Part index of the problem being redone */
   originalPartIndex: number
   /** Slot index of the problem being redone */
@@ -1700,6 +1727,39 @@ export interface RedoContext {
    * servers from before Phase 1; this server derives it from the item's tries.
    */
   originalWasCorrect?: boolean
+}
+
+/**
+ * Where the do-over's item is: the slot whose id is `itemId` when sent (null
+ * when no slot has it; MalformedDoOverError when indices sent beside it name
+ * another slot), else the slot the indices name.
+ */
+function doOverItemOf(
+  parts: readonly SessionPart[],
+  context: RedoContext
+): { partIndex: number; slotIndex: number } | null {
+  if (context.itemId === undefined) {
+    return { partIndex: context.originalPartIndex, slotIndex: context.originalSlotIndex }
+  }
+  for (let partIndex = 0; partIndex < parts.length; partIndex++) {
+    const slots = parts[partIndex].slots
+    const slotIndex = Array.isArray(slots)
+      ? slots.findIndex((slot) => slot.slotId === context.itemId)
+      : -1
+    if (slotIndex < 0) continue
+    const disagrees =
+      (typeof context.originalPartIndex === 'number' && context.originalPartIndex !== partIndex) ||
+      (typeof context.originalSlotIndex === 'number' && context.originalSlotIndex !== slotIndex)
+    if (disagrees) {
+      throw new MalformedDoOverError(
+        context.itemId,
+        context.originalPartIndex,
+        context.originalSlotIndex
+      )
+    }
+    return { partIndex, slotIndex }
+  }
+  return null
 }
 
 /**
@@ -1719,8 +1779,10 @@ export interface RedoContext {
  *   practicing; anywhere else the kind records it aside.
  * - Never steps the session position past an item.
  *
- * The item is the slot `redoContext` names; a do-over of a slot with no try
- * yet, or whose problem is not the submitted one, throws SlotResultMismatchError.
+ * The item is the slot `redoContext` names: by `itemId` when sent (indices sent
+ * beside it must agree, else MalformedDoOverError, a 400), else by its
+ * indices. A do-over of an unknown item, of a slot with no try yet, or whose
+ * problem is not the submitted one, throws SlotResultMismatchError.
  */
 export async function recordRedoResult(
   planId: string,
@@ -1742,15 +1804,18 @@ export async function recordRedoResult(
       return noWrite(null)
     }
 
+    const located = doOverItemOf(plan.parts, redoContext)
+    if (!located) throw new SlotResultMismatchError(result.slotId, null)
+    const { partIndex, slotIndex } = located
+
     // Validate part index
-    if (redoContext.originalPartIndex < 0 || redoContext.originalPartIndex >= plan.parts.length) {
-      throw new Error(`Invalid part index: ${redoContext.originalPartIndex}`)
+    if (partIndex < 0 || partIndex >= plan.parts.length) {
+      throw new Error(`Invalid part index: ${partIndex}`)
     }
 
-    const partIndex = redoContext.originalPartIndex
     const part = plan.parts[partIndex]
     const kind = partKindOf(part)
-    const slot = part.slots?.[redoContext.originalSlotIndex]
+    const slot = part.slots?.[slotIndex]
     const tries = normalizeTries(plan.id, plan.parts, plan.results || [])
     if (
       !slot ||
@@ -1765,14 +1830,14 @@ export async function recordRedoResult(
     const answerWasDivulged = (plan.results || []).some(
       (r) =>
         r.partNumber === part.partNumber &&
-        (r.originalSlotIndex ?? r.slotIndex) === redoContext.originalSlotIndex &&
+        (r.originalSlotIndex ?? r.slotIndex) === slotIndex &&
         !r.isCorrect &&
         !r.isManualRedo &&
         (r.epochNumber ?? 0) >= MAX_RETRY_EPOCHS
     )
     if (answerWasDivulged) {
       throw new Error(
-        `Cannot redo slot ${redoContext.originalSlotIndex} in part ${redoContext.originalPartIndex}: answer was already revealed after exhausting retries`
+        `Cannot redo slot ${slotIndex} in part ${partIndex}: answer was already revealed after exhausting retries`
       )
     }
 
@@ -1785,7 +1850,7 @@ export async function recordRedoResult(
       practiceOnly,
       partIndex,
       slotId: slot.slotId,
-      slotIndex: redoContext.originalSlotIndex,
+      slotIndex,
       partNumber: part.partNumber,
       timestamp: new Date(),
       isManualRedo: true,
@@ -1799,7 +1864,7 @@ export async function recordRedoResult(
       // retry-round try. Its round is `round`.
       epochNumber: 0,
       isRetry: false,
-      originalSlotIndex: redoContext.originalSlotIndex,
+      originalSlotIndex: slotIndex,
     }
 
     return {
