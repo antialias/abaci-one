@@ -13,8 +13,13 @@
  *
  * Expand/contract (D5): the patch writes the new columns (`breaks`,
  * `partStates`) and the legacy ones (`break_*`, `currentSlotIndex`,
- * `retryState`) exactly as the code before Phase 3a did; readers stay on the
- * legacy columns until Phase 5.
+ * `retryState`) exactly as the code before Phase 3a did. Since Phase 5 the
+ * machine reads the new ones (`partStateOf`, `runningBreakGame`,
+ * `lastBreakOutcome`), falling back to the legacy ones for a row written
+ * before them. What only the legacy columns hold still comes from them: a
+ * pending break's start (its record is appended at BREAK_STARTED) and whether
+ * a try's clearing of `breakStartedAt`/`breakResults` bumps `flowVersion`
+ * (§10 P5a-3).
  */
 
 import { isCountedTry } from '@/db/schema/session-plan-helpers'
@@ -128,6 +133,33 @@ function breaksOf(plan: SessionPlan): BreakRecord[] {
   return Array.isArray(plan.breaks) ? plan.breaks : []
 }
 
+/**
+ * The game of the break running now: the open record's (Phase 5), else, for a
+ * row without one (a break opened before Phase 3a), `breakSelectedGame`.
+ */
+function runningBreakGame(plan: SessionPlan): string | null {
+  const breaks = breaksOf(plan)
+  const open = openBreakIndex(breaks)
+  if (open >= 0) return breaks[open].game ?? null
+  return plan.breakSelectedGame ?? null
+}
+
+/**
+ * How the latest break ended: the last record's reason and results (Phase 5;
+ * an open record has neither). A row whose `breaks` is empty (written before
+ * Phase 3a, or with no break yet) reads the legacy columns, which hold the
+ * latest break's until a transition or an ack clears them.
+ */
+function lastBreakOutcome(plan: SessionPlan): {
+  reason: GameBreakEndReason | null
+  results: GameResultsReport | null
+} {
+  const breaks = breaksOf(plan)
+  const last = breaks[breaks.length - 1]
+  if (!last) return { reason: plan.breakReason ?? null, results: plan.breakResults ?? null }
+  return { reason: last.reason ?? null, results: last.results ?? null }
+}
+
 /** Index of the open break (started, not ended), or -1. */
 function openBreakIndex(breaks: readonly BreakRecord[]): number {
   const last = breaks.length - 1
@@ -236,7 +268,7 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
       const breaks = breaksOf(plan)
 
       if (current === 'break_active') {
-        if ((plan.breakSelectedGame ?? null) === selectedGame || event.game === undefined) {
+        if (runningBreakGame(plan) === selectedGame || event.game === undefined) {
           return noChange()
         }
         const open = openBreakIndex(breaks)
@@ -278,10 +310,11 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
         event.reason === 'gameFinished' ? 'break_results' : 'practicing'
       const targetResults = event.reason === 'gameFinished' ? (event.results ?? null) : null
 
+      const latest = lastBreakOutcome(plan)
       const alreadyApplied =
         current === targetState &&
-        (plan.breakReason ?? null) === event.reason &&
-        sameResults(plan.breakResults, targetResults)
+        latest.reason === event.reason &&
+        sameResults(latest.results, targetResults)
       if (alreadyApplied) return noChange()
 
       if (current !== 'break_active' && current !== 'break_pending') {
@@ -324,11 +357,16 @@ export function applyFlowEvent(plan: SessionPlan, event: SessionFlowEvent): Appl
     }
 
     case 'BREAK_RESULTS_ACKED': {
+      // Already acked: practicing, and the latest break, if any, ended with
+      // results (a break skipped or timed out has none to ack). Rows without
+      // `breaks` read it from the legacy columns, which the ack cleared.
       const alreadyApplied =
         current === 'practicing' &&
-        plan.breakReason === null &&
-        (plan.breakSelectedGame ?? null) === null &&
-        plan.breakResults == null
+        (breaksOf(plan).length > 0
+          ? lastBreakOutcome(plan).reason === 'gameFinished'
+          : plan.breakReason === null &&
+            (plan.breakSelectedGame ?? null) === null &&
+            plan.breakResults == null)
       if (alreadyApplied) return noChange()
 
       if (current !== 'break_results') {

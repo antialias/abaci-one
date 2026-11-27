@@ -27,7 +27,7 @@ import {
 } from '@/lib/curriculum'
 import { WriteContentionError } from '@/lib/curriculum/row-cas'
 import { InvalidFlowTransitionError } from '@/lib/curriculum/session-flow'
-import { NotPracticingError } from '@/lib/curriculum/session-planner'
+import { MalformedDoOverError, NotPracticingError } from '@/lib/curriculum/session-planner'
 import { getUserId } from '@/lib/viewer'
 
 /**
@@ -299,6 +299,9 @@ export const PATCH = withAuth(async (request, { params }) => {
         },
         { status: 409 }
       )
+    }
+    if (error instanceof MalformedDoOverError) {
+      return NextResponse.json({ error: error.message, code: 'MALFORMED_DO_OVER' }, { status: 400 })
     }
     if (error instanceof SlotResultMismatchError) {
       return NextResponse.json(

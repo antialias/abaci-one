@@ -1,14 +1,24 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   adjustmentsOf,
+  currentItemOf,
   doOverStamp,
   findTryIndex,
+  legacyPartStateOf,
   legacyTryId,
   mintTryId,
   normalizeTries,
+  type PartStateSource,
+  partStateOf,
   resolveItemId,
 } from '../session-plan-normalize'
-import type { GeneratedProblem, ProblemSlot, SessionPart, SlotResult } from '../session-plans'
+import type {
+  GeneratedProblem,
+  PartRetryState,
+  ProblemSlot,
+  SessionPart,
+  SlotResult,
+} from '../session-plans'
 
 /** Fixtures for read-time normalization (plan §2, §5). Rows are never rewritten. */
 
@@ -268,5 +278,102 @@ describe('adjustmentsOf', () => {
 
   it('drops the characters an early end spread into a string row, keeping the adjustment', () => {
     expect(of(['[', ']', ended])).toEqual([ended])
+  })
+})
+
+/**
+ * Phase 5a: a part's state is read from `part_states`, with the legacy cursor
+ * (`currentSlotIndex` + `retryState`) as the fallback for a part the row has
+ * no entry for. Where the two disagree the entry is stale and the legacy
+ * columns win (P5a-8).
+ */
+describe('part states (Phase 5a)', () => {
+  const round1 = (slotIndex: number): PartRetryState => ({
+    currentEpoch: 1,
+    pendingRetries: [],
+    currentEpochItems: [
+      {
+        slotId: `s${slotIndex}`,
+        originalSlotIndex: slotIndex,
+        problem: P[slotIndex],
+        epochNumber: 1,
+        originalPurpose: 'focus',
+      },
+    ],
+    currentRetryIndex: 0,
+  })
+  const plan = (over: Partial<PartStateSource>): PartStateSource => ({
+    parts,
+    currentPartIndex: 0,
+    currentSlotIndex: 0,
+    retryState: null,
+    partStates: {},
+    ...over,
+  })
+
+  it('reads part_states where it agrees with the legacy columns', () => {
+    // The current part: same cursor and retry state, the entry is read
+    const entry = { slotIndex: 3, retry: round1(1) }
+    const p = plan({
+      currentSlotIndex: 3,
+      retryState: { 0: round1(1) },
+      partStates: { '0': entry },
+    })
+    expect(partStateOf(p, 0)).toBe(entry)
+    // An earlier part: legacy stores only its retry state; the entry's matches
+    const earlier = plan({
+      currentPartIndex: 1,
+      retryState: { 0: round1(0) },
+      partStates: { '0': { retry: round1(0), slotIndex: 3 } },
+    })
+    expect(partStateOf(earlier, 0)).toEqual({ slotIndex: 3, retry: round1(0) })
+  })
+
+  it('reads the legacy columns, and warns once, where a stale entry disagrees (§10 P5a-8)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      // The cursor: the entry says s2, the legacy columns (written last) say s1
+      const p = {
+        ...plan({ currentSlotIndex: 1, partStates: { '0': { slotIndex: 2 } } }),
+        id: 'pl-1',
+      }
+      expect(partStateOf(p, 0)).toEqual({ slotIndex: 1, retry: undefined })
+      expect(currentItemOf(p)).toMatchObject({ partIndex: 0, slotId: 's1', epochNumber: 0 })
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(warn.mock.calls[0][1]).toEqual({ planId: 'pl-1', partIndex: 0 })
+
+      // An earlier part's retry state
+      const earlier = {
+        ...plan({
+          currentPartIndex: 1,
+          retryState: { 0: round1(0) },
+          partStates: { '0': { slotIndex: 3, retry: round1(1) } },
+        }),
+        id: 'pl-2',
+      }
+      expect(partStateOf(earlier, 0)).toEqual(legacyPartStateOf(earlier, 0))
+      expect(partStateOf(earlier, 0)).toEqual({ slotIndex: 3, retry: round1(0) })
+      expect(warn).toHaveBeenCalledTimes(2) // once per plan and part
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it('reads the legacy cursor for a part without an entry', () => {
+    const p = plan({ currentSlotIndex: 3, retryState: { 0: round1(1) } })
+    expect(partStateOf(p, 0)).toEqual({ slotIndex: 3, retry: round1(1) })
+    expect(currentItemOf(p)).toMatchObject({ slotId: 's1', epochNumber: 1, retryIndex: 0 })
+    // the next part: not started
+    expect(partStateOf(p, 1)).toEqual({ slotIndex: 0, retry: undefined })
+    // an entry for another part does not stand in for this one
+    const other = plan({ currentSlotIndex: 1, partStates: { '1': { slotIndex: 1 } } })
+    expect(partStateOf(other, 0)).toEqual({ slotIndex: 1, retry: undefined })
+    // a row whose part_states did not decode to an object reads as having none
+    const odd = plan({ currentSlotIndex: 2, partStates: '{}' as never })
+    expect(partStateOf(odd, 0)).toEqual({ slotIndex: 2, retry: undefined })
+  })
+
+  it('has no current item past the last part', () => {
+    expect(currentItemOf(plan({ currentPartIndex: 2 }))).toBeNull()
   })
 })

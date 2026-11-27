@@ -9,7 +9,12 @@
  * Drizzle-free (only `import type` from schema files): client-safe.
  */
 
-import { type ArithmeticState, arithmeticStateOf } from '@/lib/curriculum/parts/arithmetic/state'
+import {
+  type ArithmeticState,
+  arithmeticStateOf,
+  type CurrentPlanItem,
+  expectedArithmeticItem,
+} from '@/lib/curriculum/parts/arithmetic/state'
 import { kindIdOf, partKindOf } from '@/lib/curriculum/parts/registry'
 import { sameProblem } from './session-plan-helpers'
 import type {
@@ -201,25 +206,106 @@ export function normalizeTries(
 }
 
 // ============================================================================
-// Part states (Phase 3a: written to `part_states` and the legacy columns, read
-// from the legacy columns until Phase 5; plan of record §5, D5)
+// Part states (written to `part_states` and the legacy columns since Phase 3a;
+// read from `part_states` since Phase 5, legacy fallback; plan of record §5, D5)
 // ============================================================================
 
-/** The plan fields a part's state is read from. */
+/** The plan fields a part's state is read from (`id` names a stale entry in the warning). */
 export type PartStateSource = Pick<
   SessionPlan,
   'parts' | 'currentPartIndex' | 'currentSlotIndex' | 'retryState' | 'partStates'
->
+> &
+  Partial<Pick<SessionPlan, 'id'>>
+
+/** The part's entry in `part_states`, or undefined when the row has none. */
+function storedPartStateOf(plan: PartStateSource, partIndex: number): unknown {
+  const states: unknown = plan.partStates
+  if (!states || typeof states !== 'object' || Array.isArray(states)) return undefined
+  return (states as Record<string, unknown>)[String(partIndex)] ?? undefined
+}
+
+/** JSON with sorted keys and undefined members dropped: equality as the column stores it. */
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`
+  }
+  return JSON.stringify(value ?? null)
+}
 
 /**
- * A part's state (its kind's cursor). Arithmetic parts decode the legacy
+ * Whether an arithmetic part's stored entry disagrees with the legacy columns
+ * on what they can express: the current part's cursor and retry state; another
+ * part's retry state (its slot index is not stored, only inferred).
+ */
+function contradictsLegacy(
+  plan: PartStateSource,
+  partIndex: number,
+  stored: unknown,
+  legacy: ArithmeticState
+): boolean {
+  const entry = stored as Partial<ArithmeticState> | null
+  if (!entry || typeof entry !== 'object') return true
+  if (partIndex === plan.currentPartIndex && entry.slotIndex !== legacy.slotIndex) return true
+  return canonicalJson(entry.retry) !== canonicalJson(legacy.retry)
+}
+
+const warnedStaleParts = new Set<string>()
+
+function warnStalePart(plan: PartStateSource, partIndex: number): void {
+  const key = `${plan.id ?? '?'}:${partIndex}`
+  if (warnedStaleParts.has(key)) return
+  if (warnedStaleParts.size >= 500) warnedStaleParts.clear()
+  warnedStaleParts.add(key)
+  console.warn(
+    '[partStateOf] part_states entry disagrees with the legacy columns; reading legacy',
+    {
+      planId: plan.id,
+      partIndex,
+    }
+  )
+}
+
+/**
+ * A part's state (its kind's cursor): its `part_states` entry (Phase 5). A
+ * part without one (a row written before Phase 3a, or a part no try has moved
+ * since) falls back to `legacyPartStateOf`, which is how Phase 3a read every
+ * part.
+ *
+ * Until Phase 6 an arithmetic entry that disagrees with the legacy columns is
+ * stale, and the legacy decode wins (with a warning, once per plan and part).
+ * Every writer from 3a on writes both from one state under the row CAS
+ * (`partStatePatch`), so a disagreement can only come from an image before 3a,
+ * which writes the legacy columns alone and without the CAS: its write was the
+ * last, alongside `results`. Trusting the entry there would expect an item the
+ * client (which shows the legacy item) never sends: 409 after 409, no heal.
+ * The next try rewrites the entry from the legacy state, which heals it.
+ * Phase 6 deletes this check with the legacy decode (§10 P5a-8).
+ */
+export function partStateOf(plan: PartStateSource, partIndex: number): unknown {
+  const stored = storedPartStateOf(plan, partIndex)
+  if (stored === undefined) return legacyPartStateOf(plan, partIndex)
+  if (kindIdOf(plan.parts[partIndex]) !== 'arithmetic') return stored
+  const legacy = legacyPartStateOf(plan, partIndex) as ArithmeticState
+  if (contradictsLegacy(plan, partIndex, stored, legacy)) {
+    warnStalePart(plan, partIndex)
+    return legacy
+  }
+  return stored
+}
+
+/**
+ * A part's state as Phase 3a read it. Arithmetic parts decode the legacy
  * columns, which every image writes: the current part's cursor is
  * `currentSlotIndex` + `retryState[i]`; a part before it is finished (cursor
  * parked at its end), a part after it not started. Other kinds read
- * `partStates[i]`, else their initial state. Phase 5 flips arithmetic onto
- * `partStates` with this as the fallback for in-flight rows.
+ * `partStates[i]`, else their initial state. The fallback of `partStateOf`;
+ * goes with the legacy columns in Phase 6.
  */
-export function partStateOf(plan: PartStateSource, partIndex: number): unknown {
+export function legacyPartStateOf(plan: PartStateSource, partIndex: number): unknown {
   const part = plan.parts[partIndex]
   if (kindIdOf(part) === 'arithmetic') {
     if (partIndex === plan.currentPartIndex) return arithmeticStateOf(plan, partIndex)
@@ -230,7 +316,25 @@ export function partStateOf(plan: PartStateSource, partIndex: number): unknown {
     return state
   }
   const kind = partKindOf(part)
-  return plan.partStates?.[String(partIndex)] ?? kind.initialState(kind.contentOf(part))
+  return storedPartStateOf(plan, partIndex) ?? kind.initialState(kind.contentOf(part))
+}
+
+/**
+ * The item the student is on in the plan's current arithmetic part, from that
+ * part's state (`partStateOf`: `part_states`, the legacy cursor for a row
+ * without it or with a stale entry): what a first or retry
+ * try must answer (`recordSlotResult`). The same decision as
+ * `resolveCurrentItem`, which the client still feeds from the legacy columns.
+ * Null past the last part, when the part has nothing to show, or when the
+ * current part is not arithmetic.
+ */
+export function currentItemOf(plan: PartStateSource): CurrentPlanItem | null {
+  const partIndex = plan.currentPartIndex
+  const part = plan.parts[partIndex]
+  if (!part || kindIdOf(part) !== 'arithmetic') return null
+  const state = partStateOf(plan, partIndex) as ArithmeticState
+  const item = expectedArithmeticItem(part.slots, state)
+  return item ? { partIndex, ...item } : null
 }
 
 /** The row fields that store a part's state: `part_states` and its legacy encoding. */
@@ -318,10 +422,10 @@ function isoOf(value: Date | string | number | null | undefined): string | null 
 }
 
 /**
- * A session's breaks by the legacy path (§3.1; every reader until Phase 5):
- * one estimated record per `practice-break` game result (in played order),
- * else the four legacy break columns as at most one break. `plan.breaks`
- * (written from Phase 3a) is read from Phase 5 on, with this as its fallback.
+ * A session's breaks by the legacy path (§3.1): one estimated record per
+ * `practice-break` game result (in played order), else the four legacy break
+ * columns as at most one break. The session report and the song still read
+ * this; their move to `plan.breaks` is outside Phase 5a's files (§10 P5a-4).
  */
 export function legacyBreaksOf(
   plan: Pick<
