@@ -2,8 +2,9 @@
  * The gate on the six legacy session columns (`break_started_at`,
  * `break_reason`, `break_selected_game`, `break_results`,
  * `current_slot_index`, `retry_state`; session architecture §7 Phase 6, §10
- * P6b-8, P6b1-7, P6b2a-1). 6b-0 stopped reading them, 6b-1 stopped writing
- * them, 6b-2a stopped checking them after migrating, 6b-2 drops them.
+ * P6b-8, P6b1-7, P6b2a-1, P6b2-2). 6b-0 stopped reading them, 6b-1 stopped
+ * writing them, 6b-2a stopped checking them after migrating, and migration
+ * 0149 (6b-2) dropped them.
  *
  * Since 6b-1 they are out of the drizzle schema, so `tsc` rejects any typed
  * read or write of `breakStartedAt`, `retryState`, … on a session row. Until
@@ -11,7 +12,8 @@
  * by enclosing function (§10 P6b-12 (4)); `tsc` now does that job without the
  * allowances. What `tsc` cannot see stays here: SQL. No string or template
  * literal in `src` names the columns (the post-migration check in
- * `db/migrate.ts` listed the four `break_*` ones until 6b-2a, P6b-10).
+ * `db/migrate.ts` listed the four `break_*` ones until 6b-2a, P6b-10). And the
+ * table the real migration chain builds has none of them.
  */
 
 import fs from 'node:fs'
@@ -20,6 +22,7 @@ import { getTableColumns } from 'drizzle-orm'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { sessionPlans } from '@/db/schema/session-plans'
+import { createEphemeralDatabase } from './journey-simulator/EphemeralDatabase'
 
 const SRC = path.resolve(__dirname, '..')
 const COLUMNS = [
@@ -96,7 +99,20 @@ function scan(): { relative: string; hits: string[] }[] {
     }))
 }
 
-describe('Phase 6b-1 gate: the six legacy session columns', () => {
+describe('Phase 6b gate: the six legacy session columns', () => {
+  it('are gone from the table the migration chain builds (0149)', () => {
+    const eph = createEphemeralDatabase()
+    try {
+      const names = (
+        eph.sqlite.prepare('PRAGMA table_info(session_plans)').all() as { name: string }[]
+      ).map((c) => c.name)
+      expect(names).toEqual(expect.not.arrayContaining(COLUMNS))
+      expect(names).toEqual(expect.arrayContaining(['current_part_index', 'part_states', 'breaks']))
+    } finally {
+      eph.cleanup()
+    }
+  })
+
   it('are out of the drizzle schema, so tsc rejects any read or write of them', () => {
     const columns = getTableColumns(sessionPlans)
     expect(Object.keys(columns)).toEqual(expect.not.arrayContaining(PROPERTIES))

@@ -13,8 +13,8 @@
  *
  * Expand/contract (D5): the patch writes only the new columns (`breaks`,
  * `partStates`) since Phase 6b-1; the legacy ones (`break_*`,
- * `current_slot_index`, `retry_state`) are neither read nor written, and 6b-2
- * drops them. A pending break's start is `flowUpdatedAt` (§10 P6b-3). When the
+ * `current_slot_index`, `retry_state`) are neither read nor written, and
+ * migration 0149 dropped them (6b-2). A pending break's start is `flowUpdatedAt` (§10 P6b-3). When the
  * cursor moves into a part, that part's initial entry is written
  * (`partStatesPatch`), so a 6b-0 pod beside this one never decodes the stale
  * legacy cursor (§10 P6b-1 (1)).

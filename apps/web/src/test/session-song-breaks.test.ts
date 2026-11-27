@@ -87,15 +87,7 @@ async function insertPlan(
   status: 'in_progress' | 'completed',
   createdAt: Date,
   results: SlotResult[],
-  {
-    breakSelectedGame,
-    breakReason,
-    ...row
-  }: Partial<typeof schema.sessionPlans.$inferInsert> & {
-    /** legacy break columns, out of the schema since 6b-1: written with SQL */
-    breakSelectedGame?: string
-    breakReason?: string
-  } = {}
+  row: Partial<typeof schema.sessionPlans.$inferInsert> = {}
 ) {
   await eph.db.insert(schema.sessionPlans).values({
     id,
@@ -113,11 +105,6 @@ async function insertPlan(
     createdAt,
     ...row,
   })
-  if (breakSelectedGame !== undefined || breakReason !== undefined) {
-    eph.sqlite
-      .prepare('UPDATE session_plans SET break_selected_game = ?, break_reason = ? WHERE id = ?')
-      .run(breakSelectedGame ?? null, breakReason ?? null, id)
-  }
 }
 
 function report(gameDisplayName: string, headline: string, endedAt?: Date): GameResultsReport {
@@ -207,10 +194,7 @@ describe('song input: game breaks (Phase 3b)', () => {
   })
 
   it('one break: the one game, as before', async () => {
-    await insertPlan('current', 'in_progress', new Date(T0), tries(4, 5), {
-      breakSelectedGame: 'memory-match',
-      breakReason: 'gameFinished',
-    })
+    await insertPlan('current', 'in_progress', new Date(T0), tries(4, 5))
     await insertBreakResult('current', 'Memory Match', 'Great memory!', new Date(T0 + 8 * 60_000))
 
     const input = await songInput()
@@ -230,20 +214,17 @@ describe('song input: game breaks (Phase 3b)', () => {
     ])
   })
 
-  it('one skipped break before Phase 3a (no record, no game_results row): not read from the legacy columns since 6b-0', async () => {
-    await insertPlan('current', 'in_progress', new Date(T0), tries(4, 5), {
-      breakSelectedGame: 'matching-pairs',
-      breakReason: 'skipped',
-    })
+  it('one skipped break before Phase 3a (no record, no game_results row): not named', async () => {
+    await insertPlan('current', 'in_progress', new Date(T0), tries(4, 5))
 
     const input = await songInput()
 
-    // Until 6b-0 the legacy columns named it, 'Played matching-pairs (ended
-    // early)'; 6b-2 drops them (§10 P6b-4)
+    // Until 6b-0 the legacy break columns named it, 'Played matching-pairs
+    // (ended early)'; 6b-0 stopped reading them and 0149 dropped them (§10 P6b-4)
     expect(input).not.toHaveProperty('gameBreaks')
   })
 
-  it('one skipped break recorded in `breaks`, legacy columns at their defaults (6b-1 shape): named', async () => {
+  it('one skipped break recorded in `breaks`, no legacy columns (6b-2 shape): named', async () => {
     await insertPlan('current', 'in_progress', new Date(T0), tries(4, 5), {
       breaks: [
         {

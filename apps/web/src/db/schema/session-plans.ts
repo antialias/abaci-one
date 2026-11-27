@@ -677,10 +677,9 @@ export const sessionPlans = sqliteTable(
 
     // The legacy position and break columns (`current_slot_index`,
     // `break_started_at`, `break_reason`, `break_selected_game`,
-    // `break_results`, `retry_state`) are no longer written or read (Phase
-    // 6b-1); they stay in the database until 6b-2 drops them. Each has a
-    // default or is nullable, so inserts without them succeed. Position is
-    // `partStates`, breaks are `breaks`.
+    // `break_results`, `retry_state`) were last written by Phase 6b-0 and
+    // dropped by migration 0149 (Phase 6b-2). Position is `partStates`,
+    // breaks are `breaks`.
 
     /** Real-time health metrics */
     sessionHealth: text('session_health', {

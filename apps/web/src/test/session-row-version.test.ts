@@ -13,10 +13,10 @@
  * (the "lost a write race" log), not just the end state.
  */
 
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest'
 import * as schema from '@/db/schema'
-import { currentItemOf, legacyBreaksOf, partStateOf } from '@/db/schema/session-plan-normalize'
+import { legacyBreaksOf } from '@/db/schema/session-plan-normalize'
 import type {
   GeneratedProblem,
   ProblemSlot,
@@ -25,7 +25,6 @@ import type {
   SlotResult,
   SlotResultSubmission,
 } from '@/db/schema/session-plans'
-import { arithmeticKind } from '@/lib/curriculum/parts/arithmetic/server'
 import {
   arithmeticPartStateOf,
   getCurrentProblemInfo,
@@ -211,46 +210,6 @@ async function answer(planId: string, correct: boolean): Promise<SessionPlan> {
 
 async function row(planId: string): Promise<SessionPlan> {
   return (await getSessionPlan(planId))!
-}
-
-const LEGACY_COLUMNS = [
-  'current_slot_index',
-  'retry_state',
-  'break_started_at',
-  'break_reason',
-  'break_selected_game',
-  'break_results',
-] as const
-
-/**
- * The six legacy columns as stored. Out of the drizzle schema since 6b-1
- * (nothing reads or writes them, §10 P6b1-1); they stay in the table until
- * 6b-2, so a test reaches them through SQL.
- */
-function legacyColumnsOf(planId: string): Record<(typeof LEGACY_COLUMNS)[number], unknown> {
-  return getCurrentEphemeralDb().get(
-    sql.raw(`SELECT ${LEGACY_COLUMNS.join(', ')} FROM session_plans WHERE id = '${planId}'`)
-  )
-}
-
-/** Write legacy columns (SQL values: JSON as text), as an older image would. */
-async function writeLegacyColumns(
-  planId: string,
-  columns: Partial<Record<(typeof LEGACY_COLUMNS)[number], string | number | null>>
-) {
-  const set = Object.entries(columns).map(([c, v]) => sql`${sql.raw(c)} = ${v}`)
-  await getCurrentEphemeralDb().run(
-    sql`UPDATE session_plans SET ${sql.join(set, sql`, `)} WHERE id = ${planId}`
-  )
-}
-
-const DEFAULT_LEGACY_COLUMNS = {
-  current_slot_index: 0,
-  retry_state: null,
-  break_started_at: null,
-  break_reason: null,
-  break_selected_game: null,
-  break_results: null,
 }
 
 /** Write raw columns, bypassing the CAS, as an image from before Phase 3a would. */
@@ -735,8 +694,6 @@ describe('Phase 3a: row version and the flow machine', () => {
         await applySessionFlowEvent(planId, { type: 'BREAK_RESULTS_ACKED' })
       }
       const after = await row(planId)
-      // 6b-1: the legacy break columns are never written (§10 P6b1-1)
-      expect(legacyColumnsOf(planId)).toEqual(DEFAULT_LEGACY_COLUMNS)
       expect(after.breaks.map((b) => [b.afterPartIndex, b.game, b.reason])).toEqual([
         [0, 'game-0', 'gameFinished'],
         [1, 'game-1', 'gameFinished'],
@@ -760,14 +717,14 @@ describe('Phase 3a: row version and the flow machine', () => {
       expect([a.flowVersion, b.flowVersion]).toEqual([0, 0])
     })
 
-    it('part_states holds the cursor and the retry round; the legacy columns are not written (6b-1)', async () => {
+    it('part_states holds the cursor and the retry round', async () => {
       const planId = await insertPlan(playerId, { slotsPerPart: 3 })
       await answer(planId, false)
       await answer(planId, true)
       const after = await answer(planId, true) // -> retry round 1 [s0]
       expect(after.partStates['0']).toMatchObject({ slotIndex: 3, retry: { currentEpoch: 1 } })
-      // Until 6b-1 current_slot_index (3) and retry_state were written beside it
-      expect(legacyColumnsOf(planId)).toEqual(DEFAULT_LEGACY_COLUMNS)
+      // Until 6b-1 current_slot_index (3) and retry_state were written beside
+      // it; 0149 dropped them (6b-2)
     })
   })
 
@@ -776,29 +733,8 @@ describe('Phase 3a: row version and the flow machine', () => {
     // the legacy columns. Migration 0148 closed every such row still in
     // progress (§10 P6b-7), and 6b-1 stopped reading them (§10 P6b1-3): a
     // part without an entry reads its start (or, before the cursor, its end).
-    it('a row with legacy columns but no part_states entry reads the part from its start (6b-1)', async () => {
-      const parts = fixtureParts(3)
-      const s1 = parts[0].slots[1]
+    it('a row with no part_states entry reads the part from its start (6b-1)', async () => {
       const planId = await insertPlan(playerId, { slotsPerPart: 3 })
-      await writeLegacyColumns(planId, {
-        current_slot_index: 3,
-        retry_state: JSON.stringify({
-          0: {
-            currentEpoch: 1,
-            pendingRetries: [],
-            currentEpochItems: [
-              {
-                slotId: s1.slotId,
-                originalSlotIndex: 1,
-                problem: s1.problem!,
-                epochNumber: 1,
-                originalPurpose: 'focus',
-              },
-            ],
-            currentRetryIndex: 0,
-          },
-        }),
-      })
       const legacy = await row(planId)
       expect(legacy.partStates).toEqual({})
       expect(getCurrentProblemInfo(legacy)).toMatchObject({ slotId: 'p0s0', epochNumber: 0 })
@@ -806,7 +742,6 @@ describe('Phase 3a: row version and the flow machine', () => {
       const after = await answer(planId, true)
       expect(after.results[0]).toMatchObject({ slotId: 'p0s0', kind: 'first', round: 0 })
       expect(after.partStates['0']).toEqual({ slotIndex: 1 })
-      expect(legacyColumnsOf(planId)).toMatchObject({ current_slot_index: 3 }) // not written
     })
 
     it('game results normalize to one break each, in order; the legacy break columns no longer (6b-0, §10 P6b-4)', () => {
@@ -824,71 +759,9 @@ describe('Phase 3a: row version and the flow machine', () => {
       expect(legacyBreaksOf([])).toEqual([])
     })
 
-    // Phase 3a's rollback test, restated for Phase 5a (§10 P5a-6, P5a-8) and
-    // again for 6b-0 (§10 P6b-2): an image from before 3a advances the legacy
-    // columns alone after 3a code wrote both. Until 6b-0 the legacy cursor won
-    // (P5a-8); now the entry does, everywhere, so the server and the client
-    // still agree and nothing wedges. No pre-3a image can run beside 6b-0
-    // (rollback lands on 6a, which writes both under the CAS).
-    it('rollback: new writes, then an old image writes legacy columns only, then 6b-0 resumes at the entry', async () => {
-      const planId = await insertPlan(playerId, { slotsPerPart: 3 })
-      await answer(planId, false) // s0 wrong (queued)
-      const written = await answer(planId, true) // s1 right
-
-      // The old image answers s2 (right): it appends the row and moves the
-      // legacy cursor (here into retry round 1 [s0]); it neither checks nor
-      // bumps row_version and never touches part_states.
-      const info = getCurrentProblemInfo(written)!
-      const oldState = arithmeticKind.applyTry(
-        written.parts[0].slots,
-        arithmeticPartStateOf(written, 0),
-        [],
-        { itemId: info.slotId, kind: 'first', round: 0, practiceOnly: false, isCorrect: true }
-      )
-      await writeAsOldImage(planId, {
-        results: [
-          ...written.results,
-          {
-            ...submissionFor(written, true, undefined),
-            tryId: undefined,
-            partNumber: 1,
-            timestamp: new Date(),
-            epochNumber: 0,
-            masteryWeight: 1,
-          } as SlotResult,
-        ],
-      })
-      await writeLegacyColumns(planId, {
-        current_slot_index: oldState.slotIndex,
-        retry_state: JSON.stringify({ 0: oldState.retry! }),
-      })
-      const rolledBack = await row(planId)
-      expect(rolledBack.rowVersion).toBe(written.rowVersion) // the old image did not bump it
-      expect(rolledBack.partStates['0']).toMatchObject({ slotIndex: 2 }) // stale
-      expect(legacyColumnsOf(planId)).toMatchObject({ current_slot_index: 3 })
-
-      // Since 6b-0 the entry is trusted (§10 P6b-2): server and client both
-      // read it, so they agree on the item, and nothing warns
-      const staleWarnings = () =>
-        lostRaces.mock.calls.filter((c) => String(c[0]).startsWith('[partStateOf]'))
-      expect(partStateOf(rolledBack, 0)).toEqual(rolledBack.partStates['0'])
-      expect(currentItemOf(rolledBack)).toMatchObject({ slotId: 'p0s2', epochNumber: 0 })
-      expect(getCurrentProblemInfo(rolledBack)).toMatchObject({ slotId: 'p0s2', epochNumber: 0 })
-      expect(staleWarnings()).toHaveLength(0)
-
-      const resumed = await answer(planId, true)
-      // Taken: the item answered again (the pre-3a write's progress is not
-      // read; no pre-3a image runs beside 6b-0), then retry round 1 as before
-      expect(resumed.results).toHaveLength(rolledBack.results.length + 1)
-      expect(resumed.results.at(-1)).toMatchObject({ slotId: 'p0s2', kind: 'first', round: 0 })
-      expect(resumed.rowVersion).toBe(rolledBack.rowVersion + 1)
-      expect(resumed).toMatchObject({ currentPartIndex: 0, flowState: 'practicing' })
-      expect(currentItemOf(resumed)).toMatchObject({ slotId: 'p0s0', epochNumber: 1 })
-      expect(getCurrentProblemInfo(resumed)).toMatchObject({ slotId: 'p0s0', epochNumber: 1 })
-      expect(resumed.partStates['0']).toMatchObject({ slotIndex: 3, retry: { currentEpoch: 1 } })
-      // 6b-1 leaves what the old image wrote in the legacy columns
-      expect(legacyColumnsOf(planId)).toMatchObject({ current_slot_index: 3 })
-    })
+    // Phase 3a's rollback test (an image from before 3a advancing the legacy
+    // columns alone, restated for 5a and 6b-0) is retired in 6b-2: no image
+    // without `part_states` can run on the table 0149 left (§10 P6b2-4).
   })
 })
 
@@ -932,12 +805,13 @@ describe('Phase 5a: the server reads part_states and breaks', () => {
 
   // Phase 5a's rollback test (every row it wrote read the same through Phase
   // 3a's readers) is retired in 6b-1: a rollback from 6b-1 lands on 6b-0,
-  // never on 3a–5a, and src/test/session-phase6b1-mixed-pod.test.ts walks
-  // the same steps through the real 6b-1 writers against 6b-0's readers
-  // (§10 P6b1-6).
+  // never on 3a–5a; the 6b-1 mixed-pod walk (§10 P6b1-6) took the same
+  // steps through the real 6b-1 writers against 6b-0's readers, and since
+  // 0149 src/test/session-phase6b2-dropped-columns.test.ts walks them on the
+  // dropped table (§10 P6b2-3).
 
   describe('the try expectation reads part_states', () => {
-    it('the entry names the item; a stale legacy cursor is neither read nor written (6b-1 shape)', async () => {
+    it('the entry names the item (6b-1 shape)', async () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
       try {
         const planId = await insertPlan(playerId, {
@@ -945,7 +819,6 @@ describe('Phase 5a: the server reads part_states and breaks', () => {
           values: { partStates: { '0': { slotIndex: 1 } } },
         })
         const plan = await row(planId)
-        expect(legacyColumnsOf(planId)).toMatchObject({ current_slot_index: 0 })
 
         // Until 6b-0 the legacy cursor (s0) won here (§10 P5a-8)
         const legacyItem = await recordSlotResult(planId, submissionForSlot(plan, 0, 0)).catch(
@@ -957,8 +830,6 @@ describe('Phase 5a: the server reads part_states and breaks', () => {
         expect(after.results).toHaveLength(1)
         expect(after.results[0]).toMatchObject({ slotId: 'p0s1', slotIndex: 1, kind: 'first' })
         expect(after.partStates['0']).toEqual({ slotIndex: 2 })
-        // Until 6b-1 the legacy write followed the entry (2)
-        expect(legacyColumnsOf(planId)).toMatchObject({ current_slot_index: 0 })
         expect(warn).not.toHaveBeenCalledWith(
           expect.stringContaining('[partStateOf]'),
           expect.anything()
@@ -968,12 +839,11 @@ describe('Phase 5a: the server reads part_states and breaks', () => {
       }
     })
 
-    it('a part without an entry expects its first item, whatever the legacy cursor says (6b-1, §10 P6b1-3)', async () => {
+    it('a part without an entry expects its first item (6b-1, §10 P6b1-3)', async () => {
       const planId = await insertPlan(playerId, { slotsPerPart: 3 })
-      await writeLegacyColumns(planId, { current_slot_index: 1 })
       const plan = await row(planId)
       expect(plan.partStates).toEqual({})
-      // Until 6b-1 the legacy cursor named s1 here
+      // Until 6b-1 a legacy cursor at s1 named s1 here
       const refused = await recordSlotResult(planId, submissionForSlot(plan, 0, 1)).catch(
         (e: unknown) => e
       )
