@@ -1,8 +1,9 @@
-import { readFileSync, readdirSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { createClient } from '@libsql/client'
+import { sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/libsql'
 import { migrate } from 'drizzle-orm/libsql/migrator'
-import { sql } from 'drizzle-orm'
+import { validateCriticalSessionPlanColumns } from './migrate-checks'
 
 /**
  * Migration runner
@@ -56,32 +57,6 @@ function validateMigrationStatementBreakpoints(entries: JournalEntry[]): void {
         'This prevents partial apply + false "applied" records in __drizzle_migrations.',
         '',
         ...badFiles.map((f) => `  - ${f}`),
-      ].join('\n')
-    )
-  }
-}
-
-async function validateCriticalSessionPlanColumns(db: ReturnType<typeof drizzle>): Promise<void> {
-  const columns = await db.all<{ name: string }>(sql`PRAGMA table_info(session_plans)`)
-  const existing = new Set(columns.map((c) => c.name))
-  const required = [
-    'flow_state',
-    'flow_updated_at',
-    'flow_version',
-    'break_started_at',
-    'break_reason',
-    'break_selected_game',
-    'break_results',
-  ]
-
-  const missing = required.filter((name) => !existing.has(name))
-  if (missing.length > 0) {
-    throw new Error(
-      [
-        'Post-migration schema verification failed: session_plans is missing required columns.',
-        ...missing.map((name) => `  - ${name}`),
-        '',
-        'A migration may have been partially applied or skipped.',
       ].join('\n')
     )
   }

@@ -2,16 +2,16 @@
  * The gate on the six legacy session columns (`break_started_at`,
  * `break_reason`, `break_selected_game`, `break_results`,
  * `current_slot_index`, `retry_state`; session architecture §7 Phase 6, §10
- * P6b-8, P6b1-7). 6b-0 stopped reading them, 6b-1 stopped writing them, 6b-2
- * drops them.
+ * P6b-8, P6b1-7, P6b2a-1). 6b-0 stopped reading them, 6b-1 stopped writing
+ * them, 6b-2a stopped checking them after migrating, 6b-2 drops them.
  *
  * Since 6b-1 they are out of the drizzle schema, so `tsc` rejects any typed
  * read or write of `breakStartedAt`, `retryState`, … on a session row. Until
  * 6b-1 this gate also scanned the source for property reads, with allowances
  * by enclosing function (§10 P6b-12 (4)); `tsc` now does that job without the
  * allowances. What `tsc` cannot see stays here: SQL. No string or template
- * literal in `src` names the columns, outside the post-migration schema check
- * in `db/migrate.ts`, which keeps them until 6b-2 (§10 P6b-10).
+ * literal in `src` names the columns (the post-migration check in
+ * `db/migrate.ts` listed the four `break_*` ones until 6b-2a, P6b-10).
  */
 
 import fs from 'node:fs'
@@ -41,10 +41,6 @@ const PROPERTIES = [
 // `break_results` is also a flow state, so the SQL check cannot tell it apart
 const SQL_NAMES =
   /\b(break_started_at|break_reason|break_selected_game|current_slot_index|retry_state)\b/
-/** file → why its SQL may name the columns */
-const SQL_ALLOWED: Record<string, string> = {
-  'db/migrate.ts': "the post-migration schema check lists session_plans' columns until 6b-2",
-}
 
 function isTestFile(relative: string): boolean {
   return (
@@ -126,16 +122,12 @@ describe('Phase 6b-1 gate: the six legacy session columns', () => {
     ])
   })
 
-  it('no SQL in src names the columns (the schema check in db/migrate.ts aside)', () => {
+  it('no SQL in src names the columns', () => {
     const files = scan()
     expect(files.length).toBeGreaterThan(1000)
     const offenders = files
-      .filter(({ relative, hits }) => hits.length > 0 && !(relative in SQL_ALLOWED))
+      .filter(({ hits }) => hits.length > 0)
       .map(({ relative, hits }) => `${relative} ${hits.join(' ')}`)
     expect(offenders).toEqual([])
-    // the allowance still names the columns (it goes with them in 6b-2)
-    for (const file of Object.keys(SQL_ALLOWED)) {
-      expect(files.find((f) => f.relative === file)?.hits.length, file).toBeGreaterThan(0)
-    }
   })
 })

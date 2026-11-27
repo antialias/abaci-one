@@ -9,6 +9,7 @@
 5. **Never run raw SQL against the database** - Use migrations for ALL schema changes
 6. **Always add statement breakpoints** - Between multiple SQL statements
 7. **Always verify timestamp ordering** - After generating a migration
+8. **Retire a `migrate.ts` check before its column** - A post-migration check that names a column leaves one release before the migration that drops it (Rule 6)
 
 ## The Workflow
 
@@ -151,6 +152,23 @@ tail -20 drizzle/meta/_journal.json | grep -E '"when"|"tag"'
 ```
 
 Then run `npm run db:migrate` again.
+
+---
+
+## Rule 6: Post-Migration Checks Gate Every Deploy
+
+**On prod, migrations run in the Argo PreSync Job** (`infra/k8s/abaci-app/migration-job.yaml`, `node dist/db/migrate.js`), from the image being deployed, rollbacks included. `server.js`'s own migrate is the fallback; it finds nothing left to do.
+
+So `migrate.ts`'s post-migration checks (`src/db/migrate-checks.ts`) gate every deploy: if one throws, the Job fails, the sync aborts, and Argo stays on the release it had.
+
+**A check that names a column must be removed one release before the migration that drops it.** Otherwise a rollback past the drop runs the older image's check against the dropped table, fails the Job, and Argo stays put.
+
+```
+release N    : check stops naming the column   (passes with or without it)
+release N+1  : migration drops the column       (rollback target: N)
+```
+
+**Example (Nov 2026):** Phase 6b-2a took the four `break_*` columns out of `validateCriticalSessionPlanColumns` so that migration 0149 (6b-2) could drop them; 6b-1's check still required them, so 6b-1 could not be a rollback target for 6b-2.
 
 ---
 
