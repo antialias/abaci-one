@@ -90,6 +90,22 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
                 value = "http://${kubernetes_service.pushgateway.metadata[0].name}.${kubernetes_service.pushgateway.metadata[0].namespace}.svc.cluster.local:9091"
               }
 
+              env {
+                # auth.setup.ts signs the admin session with prod's AUTH_SECRET
+                # and, since #261, reads it only from this variable. It comes
+                # from the app's own secret by reference, so a rotation
+                # reaches the next run. The secret is named, not referenced as
+                # kubernetes_secret.app_env, so a -target apply of this CronJob
+                # never pulls the app's secret into the plan.
+                name = "E2E_PROD_AUTH_SECRET"
+                value_from {
+                  secret_key_ref {
+                    name = "app-env"
+                    key  = "AUTH_SECRET"
+                  }
+                }
+              }
+
               resources {
                 requests = {
                   memory = "512Mi"

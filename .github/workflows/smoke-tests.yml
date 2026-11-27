@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - 'apps/web/e2e/smoke/**'
+      # The image also carries the two setup files the smoke tests depend on.
+      - 'apps/web/e2e/auth.setup.ts'
+      - 'apps/web/e2e/tier.setup.ts'
       - 'apps/web/scripts/smoke-test-runner.ts'
       - 'apps/web/Dockerfile.smoke-tests'
       - 'apps/web/playwright.config.ts'
