@@ -22,6 +22,12 @@
  * Client-safe: no server imports.
  */
 
+import {
+  isUnstampedDoOver,
+  type TryKindFields,
+  tryKindOfRow,
+  tryRoundOfRow,
+} from '@/db/schema/legacy-try-fields'
 import type { SlotResult, TryKind } from '@/db/schema/session-plans'
 
 export interface TryWeightInput {
@@ -41,17 +47,8 @@ export function weightOfTry(t: TryWeightInput): number {
 }
 
 /** The fields of a stored row that its evidence weight reads */
-export type WeighedRow = Pick<
-  SlotResult,
-  | 'isCorrect'
-  | 'masteryWeight'
-  | 'kind'
-  | 'round'
-  | 'practiceOnly'
-  | 'isRetry'
-  | 'epochNumber'
-  | 'isManualRedo'
->
+export type WeighedRow = Pick<SlotResult, 'isCorrect' | 'masteryWeight' | 'practiceOnly'> &
+  TryKindFields
 
 /**
  * The weight a stored row carries as evidence, read from the row alone (BKT,
@@ -62,9 +59,10 @@ export type WeighedRow = Pick<
  *   Phase 1w keep theirs, so a pre-Phase-1 correct do-over stays 1.0: its
  *   round needs the item's earlier tries, which a row does not hold;
  * - wrong: `weightOfTry` of the row's kind and round, whatever was stored. A
- *   row without the Phase 1 stamps takes its kind from the legacy fields
- *   (`isRetry`/`epochNumber` retry, else first) and its round from
- *   `epochNumber`. The exception: a wrong do-over without the Phase 1 stamps
+ *   row without the Phase 1 stamps takes its kind and round from the legacy
+ *   fields, read by the normalizer (`tryKindOfRow`/`tryRoundOfRow`: a retry
+ *   flag or round > 0 is a retry of that round, else a first try). The
+ *   exception: a wrong do-over without the Phase 1 stamps
  *   stays 0. Before Phase 1, a redo of an item already answered right was
  *   recorded like any other redo, unstamped, so a row alone cannot tell it
  *   from a failed redemption, and today's rule makes that redo practice-only
@@ -74,9 +72,11 @@ export type WeighedRow = Pick<
 export function evidenceWeightOf(r: WeighedRow): number {
   if (r.practiceOnly === true) return 0
   if (r.isCorrect) return r.masteryWeight ?? 1.0
-  if (r.kind == null && r.isManualRedo === true) return 0
-  const kind: TryKind =
-    r.kind ?? (r.isRetry === true || (r.epochNumber ?? 0) > 0 ? 'retry' : 'first')
-  const round = r.round ?? r.epochNumber ?? 0
-  return weightOfTry({ kind, round, isCorrect: false, practiceOnly: false })
+  if (isUnstampedDoOver(r)) return 0
+  return weightOfTry({
+    kind: tryKindOfRow(r),
+    round: tryRoundOfRow(r),
+    isCorrect: false,
+    practiceOnly: false,
+  })
 }

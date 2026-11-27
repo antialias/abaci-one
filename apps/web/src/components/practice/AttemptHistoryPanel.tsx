@@ -10,6 +10,7 @@
 'use client'
 
 import { useState } from 'react'
+import { retryRoundOfRow } from '@/db/schema/legacy-try-fields'
 import type { SlotResult } from '@/db/schema/session-plans'
 import { evidenceWeightOf, type WeighedRow } from '@/lib/curriculum/try-weight'
 import { css } from '../../../styled-system/css'
@@ -38,13 +39,14 @@ export interface AttemptHistoryPanelProps {
 }
 
 /**
- * Get attempt label based on epoch number
+ * Get attempt label from the retry round the try was answered in (0 outside a
+ * retry round, so a do-over reads 'Original', as it always has)
  */
-function getAttemptLabel(epochNumber: number | undefined): string {
-  if (epochNumber === undefined || epochNumber === 0) return 'Original'
-  if (epochNumber === 1) return 'Retry 1'
-  if (epochNumber === 2) return 'Retry 2'
-  return `Retry ${epochNumber}`
+function getAttemptLabel(retryRound: number | undefined): string {
+  if (retryRound === undefined || retryRound === 0) return 'Original'
+  if (retryRound === 1) return 'Retry 1'
+  if (retryRound === 2) return 'Retry 2'
+  return `Retry ${retryRound}`
 }
 
 /**
@@ -85,9 +87,9 @@ export function AttemptHistoryPanel({
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Sort results by epochNumber
+  // Sort results by retry round (stable: recorded order within a round)
   const sortedResults = [...results].sort(
-    (a, b) => (a.result.epochNumber ?? 0) - (b.result.epochNumber ?? 0)
+    (a, b) => (retryRoundOfRow(a.result) ?? 0) - (retryRoundOfRow(b.result) ?? 0)
   )
 
   const handleMarkCorrect = async (resultIndex: number) => {
@@ -241,12 +243,17 @@ export function AttemptHistoryPanel({
           const isExcluded = result.source === 'teacher-excluded'
           const masteryWeight = getMasteryWeightDisplay(result, isExcluded)
           const isEditing = editingIndex === globalIndex
+          const retryRound = retryRoundOfRow(result)
+          // A do-over of a problem already answered right (the server's stamp):
+          // a try, listed, that counts toward nothing
+          const isPracticeOnly = result.practiceOnly === true
 
           return (
             <div
               key={idx}
               data-element="attempt-row"
-              data-epoch={result.epochNumber ?? 0}
+              data-epoch={retryRound ?? 0}
+              data-practice-only={isPracticeOnly || undefined}
               data-correct={result.isCorrect}
               data-excluded={isExcluded || undefined}
               className={css({
@@ -306,8 +313,25 @@ export function AttemptHistoryPanel({
                       color: isDark ? 'gray.300' : 'gray.700',
                     })}
                   >
-                    {getAttemptLabel(result.epochNumber)}
+                    {getAttemptLabel(retryRound)}
                   </span>
+
+                  {isPracticeOnly && (
+                    <span
+                      data-element="practice-tag"
+                      title="A do-over of a problem already answered correctly: it does not count toward progress"
+                      className={css({
+                        padding: '0.125rem 0.375rem',
+                        borderRadius: '4px',
+                        fontSize: '0.625rem',
+                        fontWeight: 'bold',
+                        backgroundColor: isDark ? 'blue.900' : 'blue.50',
+                        color: isDark ? 'blue.300' : 'blue.700',
+                      })}
+                    >
+                      practice
+                    </span>
+                  )}
 
                   {/* Status badge */}
                   {isExcluded ? (

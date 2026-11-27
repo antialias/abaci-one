@@ -14,6 +14,7 @@
  * No new metrics are tracked — just smarter analysis of what's already there.
  */
 
+import { tryKindOfRow } from '@/db/schema/legacy-try-fields'
 import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import type { SkillBktResult } from '@/lib/curriculum/bkt/types'
 import { READINESS_THRESHOLDS } from '@/lib/curriculum/config/readiness-thresholds'
@@ -69,6 +70,7 @@ export interface SkillReadinessResult {
 /**
  * Filter results to those relevant for a skill's readiness assessment.
  * Excludes retries, practice-only do-overs and sentinel records (recency-refresh).
+ * A do-over is not a retry: it counts unless stamped practice-only (§10 P1-1).
  */
 export function filterResultsForSkill(
   allResults: ProblemResultWithContext[],
@@ -78,7 +80,7 @@ export function filterResultsForSkill(
     (r) =>
       r.skillsExercised.includes(skillId) &&
       r.source !== 'recency-refresh' &&
-      r.isRetry !== true &&
+      tryKindOfRow(r) !== 'retry' &&
       isCountedTry(r)
   )
 }

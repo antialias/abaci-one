@@ -17,6 +17,7 @@
  *   change, since `SlotResult` has no other per-attempt reviewer field.
  */
 
+import { retryRoundOfRow } from '@/db/schema/legacy-try-fields'
 import { calculateMasteryWeight } from '@/db/schema/session-plan-helpers'
 import { findTryIndex, normalizeTries } from '@/db/schema/session-plan-normalize'
 import type {
@@ -173,7 +174,7 @@ export function computeReviewedResult(
   action: SlotResultReviewAction,
   reviewerUserId: string,
   now: Date = new Date(),
-  /** The try as normalized (kind, round, practice-only); legacy rows weigh by epochNumber */
+  /** The try as normalized (kind, round, practice-only); legacy rows weigh by their retry round */
   tryRecord?: { kind: NonNullable<SlotResult['kind']>; round: number; practiceOnly: boolean }
 ): SlotResult {
   switch (action.action) {
@@ -182,11 +183,11 @@ export function computeReviewedResult(
         throw new SessionReviewError('Result is already correct', 400)
       }
       // A try recorded from Phase 1 on weighs as its stamped kind/round says (a
-      // practice-only do-over stays 0); a legacy row as before, by epochNumber.
+      // practice-only do-over stays 0); a legacy row as before, by its retry round.
       const masteryWeight =
         result.kind && tryRecord
           ? weightOfTry({ ...tryRecord, isCorrect: true })
-          : calculateMasteryWeight(true, result.epochNumber ?? 0)
+          : calculateMasteryWeight(true, retryRoundOfRow(result) ?? 0)
       return {
         ...result,
         isCorrect: true,

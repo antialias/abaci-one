@@ -24,6 +24,7 @@
  */
 
 import { getSkillCategory, type SkillCategoryKey } from '@/constants/skillCategories'
+import { tryKindOfRow } from '@/db/schema/legacy-try-fields'
 import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import { READINESS_THRESHOLDS } from '@/lib/curriculum/config/readiness-thresholds'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
@@ -83,13 +84,13 @@ export function resolveLinearGateThresholds(config: unknown): LinearGateThreshol
 /**
  * A result counts toward the gate only if it is a genuine first-attempt LINEAR result:
  * linear mode, not a retry, not a practice-only do-over, and not a sentinel/excluded record.
+ * A do-over is not a retry: it counts unless stamped practice-only (§10 P1-1).
  */
 function isGateEligible(r: ProblemResultWithContext): boolean {
   return (
     r.partType === 'linear' &&
-    r.isRetry !== true &&
+    tryKindOfRow(r) !== 'retry' &&
     isCountedTry(r) &&
-    (r.epochNumber ?? 0) === 0 &&
     r.source !== 'recency-refresh' &&
     r.source !== 'teacher-excluded'
   )

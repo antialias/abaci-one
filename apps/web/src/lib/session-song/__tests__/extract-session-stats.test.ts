@@ -368,3 +368,93 @@ describe('extractSessionStats — core fields', () => {
     expect(stats.practiceDrama.skillSpotlights[0].skill).toBe('+6 = +10 - 4')
   })
 })
+
+// ============================================================================
+// Legacy try fields (Phase 6a): a problem's retry rounds read through the
+// normalizer, so rows written without the legacy fields pick the same moments
+// ============================================================================
+
+describe('extractSessionStats - rows without legacy fields', () => {
+  const problemOf = (a: number) => ({ terms: [a, 1], answer: a + 1, skillsRequired: ['addition'] })
+
+  function planWith(results: Record<string, unknown>[]): SessionPlan {
+    return {
+      id: 'plan-legacy',
+      parts: [
+        {
+          partNumber: 1,
+          type: 'abacus',
+          format: 'vertical',
+          useAbacus: true,
+          estimatedMinutes: 5,
+          slots: [0, 1].map((i) => ({
+            slotId: `s${i}`,
+            index: i,
+            purpose: 'focus',
+            constraints: {},
+            problem: problemOf(i + 2),
+          })),
+        },
+      ],
+      results: results.map((over, i) => ({
+        partNumber: 1,
+        problem: problemOf(i + 2),
+        studentAnswer: i + 3,
+        isCorrect: true,
+        responseTimeMs: 3000,
+        skillsExercised: ['addition'],
+        usedOnScreenAbacus: false,
+        hadHelp: false,
+        incorrectAttempts: 0,
+        timestamp: new Date('2026-11-01T10:00:00Z'),
+        ...over,
+      })),
+      targetDurationMinutes: 5,
+    } as unknown as SessionPlan
+  }
+
+  const written = [
+    {
+      slotId: 's0',
+      slotIndex: 0,
+      kind: 'first',
+      round: 0,
+      practiceOnly: false,
+      isRetry: false,
+      epochNumber: 0,
+      originalSlotIndex: 0,
+    },
+    {
+      slotId: 's1',
+      slotIndex: 1,
+      kind: 'first',
+      round: 0,
+      practiceOnly: false,
+      isRetry: false,
+      epochNumber: 0,
+      originalSlotIndex: 1,
+    },
+  ]
+  const strip = ({
+    isRetry: _r,
+    epochNumber: _e,
+    isManualRedo: _m,
+    originalSlotIndex: _o,
+    ...rest
+  }: Record<string, unknown>) => rest
+
+  it('picks the same problem moments with or without the fields', () => {
+    const withFields = extractSessionStats(planWith(written), minimalPlayer, [])
+    const without = extractSessionStats(planWith(written.map(strip)), minimalPlayer, [])
+    expect(without.practiceDrama).toEqual(withFields.practiceDrama)
+    // Each problem has a retry round (0) and so a moment of its own, as before
+    expect(withFields.practiceDrama.problemMoments).toHaveLength(2)
+  })
+
+  it('a row from before the retry system has no retry round (one fallback moment, as before)', () => {
+    const legacy = written.map(({ slotId, slotIndex }) => ({ slotId, slotIndex }))
+    expect(
+      extractSessionStats(planWith(legacy), minimalPlayer, []).practiceDrama.problemMoments
+    ).toHaveLength(1)
+  })
+})

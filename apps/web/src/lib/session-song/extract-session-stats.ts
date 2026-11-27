@@ -8,6 +8,7 @@
 
 import { PRACTICE_TYPES } from '@/constants/practiceTypes'
 import type { GameResult } from '@/db/schema/game-results'
+import { retryRoundOfRow } from '@/db/schema/legacy-try-fields'
 import type { Player } from '@/db/schema/players'
 import { countedTries } from '@/db/schema/session-plan-helpers'
 import { distinctBreakResults } from '@/db/schema/session-plan-normalize'
@@ -440,7 +441,10 @@ function summarizeProblemAttempts(plan: SessionPlan): ProblemAttemptSummary[] {
       problem,
       group.flatMap(({ result }) => result.skillsExercised ?? [])
     )
-    const retryEpochs = uniqueNumbers(group.map(({ result }) => result.epochNumber))
+    // A row's retry round as `epochNumber` read it: 0 outside a retry round, so
+    // nearly every problem has one (only rows from before the retry system
+    // have none); kept as it was (§10 P6a-3)
+    const retryEpochs = uniqueNumbers(group.map(({ result }) => retryRoundOfRow(result)))
     const totalResponseTimeMs = group.reduce(
       (sum, { result }) => sum + (result.responseTimeMs ?? 0),
       0
