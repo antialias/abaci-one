@@ -1,50 +1,49 @@
 /**
  * @vitest-environment node
  *
- * Phase 6b-1's rollout and rollback check (session architecture §7 Phase 6,
- * §10 P6b-1, P6b-9, P6b1-6): 6b-0 pods serve beside 6b-1 pods, and a rollback
- * lands on 6b-0, so a 6b-0 pod must read every row 6b-1 writes as 6b-1 does.
+ * Phase 6b-2's rollout and rollback check (session architecture §7 Phase 6,
+ * §10 P6b2-3): migration 0149 drops the six legacy columns
+ * (`current_slot_index`, `retry_state`, `break_started_at`, `break_reason`,
+ * `break_selected_game`, `break_results`). On prod the Argo PreSync Job
+ * (`node dist/db/migrate.js`, from the image being deployed) applies 0149
+ * before any 6b-2 pod exists, so while 6b-2 rolls out 6b-2a pods serve the
+ * dropped table; a rollback from 6b-2 goes to 6b-2a, not 6b-1, because 6b-2a
+ * is the newest release whose Job passes on it (6b-1's post-migration check
+ * still requires the `break_*` columns; §10 P6b2a-1). 6b-2a's application
+ * code is 6b-1's and 6b-2's is 6b-2a's, so the writers and readers here are
+ * the ones both serve with.
  *
- * One session takes every step through the real 6b-1 writers
- * (`recordSlotResult`, `recordRedoResult`, `applySessionFlowEvent`) at a fixed
- * clock. Before every step it is copied twice:
- * - "seen by 6b-0": its `part_states` completed the way a 6b-0 pod reads a
- *   part without an entry, by a verbatim copy of 6b-0's legacy decode over the
- *   row's raw `current_slot_index`/`retry_state` (read through SQL: they are
- *   out of the schema). Every other 6b-0 reader is the code 6b-1 runs (6b-0
- *   read no legacy column but these two, P6b-2..P6b-6), so this twin read by
- *   this code is the row as a 6b-0 pod sees it.
- * - "left by 6b-0": the move-on entry of a part no try has reached taken out,
- *   as a 6b-0 write leaves the row (6b-0 wrote the entry on a part's first
- *   try only): 6b-1 reads that row the same (the reverse direction).
- * Before the step and after it, the views agree: outcome, position, retries,
- * tries (do-overs, resubmits and duplicates), breaks, the session report
- * (single and list), the song's input. Each twin takes the step too, and its
- * outcome agrees. `flowVersion` and `flowUpdatedAt` are not compared (P6b-5).
- *
- * A handover (a session a 6b-0 pod wrote until step k) writes the six legacy
- * columns as 6b-0 would have left them at step k; 6b-1 never writes them
- * again, so each goes stale (checked against that encoding at every step).
- * The plan routes' `breakStartedAt` wire value (`legacyWireFieldsOf`) is the
- * 6b-0 column's instant wherever an old bundle reads it (P6b1-2).
+ * The table is migrated through 0149 (checked: none of the six is left, and
+ * the post-migration check 6b-2a and 6b-2 share passes on it). One
+ * session takes every step through the real writers (`recordSlotResult`,
+ * `recordRedoResult`, `applySessionFlowEvent`) at a fixed clock; every write
+ * and read succeeds where it did on the full table (the outcomes). Before
+ * every step it is also copied to a twin "left by 6b-0": the move-on entry of
+ * a part no try has reached taken out, as a 6b-0 write left the row (6b-0
+ * wrote the entry on a part's first try only), for sessions 6b-0 wrote before
+ * 6b-1 took over. Before and after each step the two agree: outcome,
+ * position, retries, tries (do-overs, resubmits and duplicates), breaks, the
+ * session report (single and list), the song's input. `flowVersion` and
+ * `flowUpdatedAt` are not compared (P6b-5).
  *
  * Old bundles (D9, P6b1-16): at every point of the walk (from before the first
  * try, through each break state) the plan as the routes send it
  * (`serializePlan`, through JSON) is fed to verbatim copies of the 6a and 6b-0
  * clients' position and break logic (`./old-bundles/`); each shows the item,
- * part states and break state that 6b-1's client logic shows.
+ * part states and break state that this image's client logic shows. The
+ * derived wire fields need no column.
+ *
+ * This file was `session-phase6b1-mixed-pod.test.ts` (P6b1-6). Its 6b-0 twin,
+ * which read the raw legacy columns, and its handovers, which wrote them, are
+ * gone with the columns: 6b-0 cannot run on this table (P6b2-4, P6b2-5).
  */
 
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { validateCriticalSessionPlanColumns } from '@/db/migrate-checks'
 import * as schema from '@/db/schema'
 import { getNextSlot, isSessionComplete } from '@/db/schema/session-plan-helpers'
-import {
-  currentBreakOf,
-  currentItemOf,
-  legacyWireFieldsOf,
-  partStateOf,
-} from '@/db/schema/session-plan-normalize'
+import { currentBreakOf, currentItemOf, partStateOf } from '@/db/schema/session-plan-normalize'
 import type {
   GeneratedProblem,
   ProblemSlot,
@@ -54,7 +53,6 @@ import type {
   SlotResultSubmission,
 } from '@/db/schema/session-plans'
 import { calculateTotalProblemsWithRetries } from '@/lib/curriculum/parts/arithmetic/report'
-import type { ArithmeticState } from '@/lib/curriculum/parts/arithmetic/state'
 import { getCurrentProblemInfo } from '@/lib/curriculum/parts/arithmetic/state'
 import { serializePlan } from '@/lib/curriculum/plan-wire'
 import { readTriesSync } from '@/lib/curriculum/read-tries'
@@ -107,7 +105,7 @@ const PART_TYPES = [
   { type: 'visualization', format: 'vertical', useAbacus: false },
   { type: 'linear', format: 'linear', useAbacus: false },
 ] as const
-/** The six legacy columns, as SQL names (out of the drizzle schema since 6b-1) */
+/** The six legacy columns, as SQL names (dropped by migration 0149) */
 const LEGACY_COLUMNS = [
   'current_slot_index',
   'retry_state',
@@ -116,7 +114,6 @@ const LEGACY_COLUMNS = [
   'break_selected_game',
   'break_results',
 ] as const
-type LegacyColumns = Record<(typeof LEGACY_COLUMNS)[number], unknown>
 const LEGACY_TRY_FIELDS = ['isRetry', 'epochNumber', 'isManualRedo', 'originalSlotIndex'] as const
 
 function problem(p: number, s: number): GeneratedProblem {
@@ -317,107 +314,7 @@ const STEPS: [string, Step][] = [
   ['p2 r1 s1 right -> completed', first(true)],
 ]
 
-const NAMES = { next: 'mixed-6b1', seen: 'mixed-seen-by-6b0', left: 'mixed-left-by-6b0' }
-
-/** The legacy columns as stored (JSON columns parsed; an empty retry map reads as none). */
-function rawLegacyColumns(planId: string): LegacyColumns {
-  const raw = eph.sqlite
-    .prepare(`SELECT ${LEGACY_COLUMNS.join(', ')} FROM session_plans WHERE id = ?`)
-    .get(planId) as Record<string, unknown>
-  const json = (v: unknown) => (typeof v === 'string' ? JSON.parse(v) : (v ?? null))
-  const retry = json(raw.retry_state)
-  return {
-    ...(raw as LegacyColumns),
-    retry_state: retry && Object.keys(retry).length > 0 ? retry : null,
-    break_results: json(raw.break_results),
-  }
-}
-
-function writeLegacyColumns(planId: string, columns: LegacyColumns) {
-  const json = (v: unknown) => (v === null ? null : JSON.stringify(v))
-  eph.sqlite
-    .prepare(
-      `UPDATE session_plans SET ${LEGACY_COLUMNS.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`
-    )
-    .run(
-      columns.current_slot_index,
-      json(columns.retry_state),
-      columns.break_started_at,
-      columns.break_reason,
-      columns.break_selected_game,
-      json(columns.break_results),
-      planId
-    )
-}
-
-/**
- * The legacy columns as 6b-0 writes them for this row (its `partStatePatch`
- * and break writes, 5bf8a911d): the current part's cursor; every part's
- * retry round; the break columns by flow state (pending: the start; active:
- * the open break's start and game; results: the last break's game, reason
- * and results; otherwise cleared). Seconds, as drizzle's timestamp mode.
- */
-function legacyEncodingOf(p: SessionPlan): LegacyColumns {
-  const states = p.parts.map((_, i) => partStateOf(p, i) as ArithmeticState)
-  const retry = Object.fromEntries(
-    states.flatMap((s, i) => (s.retry ? [[String(i), s.retry]] : []))
-  )
-  const last = p.breaks.at(-1)
-  const seconds = (at: string | Date | null | undefined) =>
-    at ? Math.floor(new Date(at).getTime() / 1000) : null
-  const none = {
-    break_started_at: null,
-    break_reason: null,
-    break_selected_game: null,
-    break_results: null,
-  }
-  const breaks =
-    p.flowState === 'break_pending'
-      ? { ...none, break_started_at: seconds(p.flowUpdatedAt) }
-      : p.flowState === 'break_active'
-        ? {
-            ...none,
-            break_started_at: seconds(last?.startedAt),
-            break_selected_game: last?.game ?? null,
-          }
-        : p.flowState === 'break_results'
-          ? {
-              ...none,
-              break_selected_game: last?.game ?? null,
-              break_reason: last?.reason ?? null,
-              break_results: last?.results ?? null,
-            }
-          : none
-  return {
-    current_slot_index: states[p.currentPartIndex]?.slotIndex ?? 0,
-    retry_state: Object.keys(retry).length > 0 ? JSON.parse(JSON.stringify(retry)) : null,
-    ...breaks,
-  }
-}
-
-/**
- * Phase 6b-0's position read for an arithmetic part, copied verbatim
- * (`arithmeticPartStateOf`, `legacyArithmeticStateOf`, `arithmeticStateOf`
- * from 5bf8a911d:apps/web/src/lib/curriculum/parts/arithmetic/state.ts), the
- * two legacy columns passed in as read raw. Every fixture part is arithmetic.
- */
-function phase6b0ArithmeticPartStateOf(
-  plan: SessionPlan,
-  legacy: { currentSlotIndex: number; retryState: Record<string, ArithmeticState['retry']> | null },
-  partIndex: number
-): ArithmeticState {
-  const states: unknown = plan.partStates
-  if (states && typeof states === 'object' && !Array.isArray(states)) {
-    const entry: unknown = (states as Record<string, unknown>)[String(partIndex)]
-    if (entry && typeof entry === 'object' && !Array.isArray(entry)) return entry as ArithmeticState
-  }
-  if (partIndex === plan.currentPartIndex)
-    return { slotIndex: legacy.currentSlotIndex, retry: legacy.retryState?.[partIndex] }
-  return {
-    slotIndex: partIndex < plan.currentPartIndex ? (plan.parts[partIndex]?.slots?.length ?? 0) : 0,
-    retry: legacy.retryState?.[partIndex],
-  }
-}
+const NAMES = { next: 'session-6b2', left: 'session-left-by-6b0' }
 
 /** Copy the session's row onto a twin (its own student), its `part_states` replaced. */
 async function copyRow(
@@ -432,7 +329,7 @@ async function copyRow(
   await writeRaw(to, { ...fields, partStates: partStates(src as SessionPlan) })
 }
 
-/** Everything a 6b-0 reader derives from a row, the twin's ids replaced */
+/** Everything a reader derives from a row, the twin's ids replaced */
 async function readView(planId: string, now: number) {
   const p = await row(planId)
   const item = currentItemOf(p)
@@ -501,12 +398,12 @@ function diffPaths(a: unknown, b: unknown, at = ''): string[] {
 }
 
 let eph: EphemeralDbResult
-const players = { next: '', seen: '', left: '' }
+const players = { next: '', left: '' }
 
 beforeEach(async () => {
   eph = createEphemeralDatabase()
   setCurrentEphemeralDb(eph.db)
-  for (const twin of ['next', 'seen', 'left'] as const) {
+  for (const twin of ['next', 'left'] as const) {
     ;({ playerId: players[twin] } = await createTestStudent(eph.db, `twin-${twin}`))
     await insertPlan(NAMES[twin], players[twin])
   }
@@ -521,16 +418,6 @@ afterEach(() => {
   setCurrentEphemeralDb(null)
   eph.cleanup()
 })
-
-interface Walk {
-  /** Step index at which a 6b-0 pod hands the session over (0: 6b-1 created it) */
-  handover: number
-  /**
-   * The negative case: take out the entry 6b-1 writes when the cursor moves
-   * into a part, as if it did not write it
-   */
-  dropMoveOnEntry?: boolean
-}
 
 interface OldBundleCoverage {
   points: number
@@ -587,27 +474,12 @@ function checkOldBundles(label: string, plan: SessionPlan, coverage: OldBundleCo
   if (view.persistedResults) coverage.results++
 }
 
-/** Walk the session; the first step at which a twin's view or outcome differs, or null. */
-async function walk({ handover, dropMoveOnEntry = false }: Walk) {
+/** Walk the session; the first step at which the twin's view or outcome differs, or null. */
+async function walk() {
   const outcomes: string[] = []
-  /** Legacy columns that differed from 6b-0's encoding of the row at some step */
-  const staleColumns = new Set<string>()
-  let frozen: LegacyColumns | null = null
   let entriesLeftOut = 0
-  let wireChecked = 0
   const oldBundles: OldBundleCoverage = { points: 0, flowStates: new Set(), retries: 0, results: 0 }
 
-  const seenBy6b0 = () =>
-    copyRow(NAMES.seen, (p) => {
-      const raw = rawLegacyColumns(NAMES.next)
-      const legacy = {
-        currentSlotIndex: raw.current_slot_index as number,
-        retryState: raw.retry_state as Record<string, ArithmeticState['retry']> | null,
-      }
-      return Object.fromEntries(
-        p.parts.map((_, i) => [String(i), phase6b0ArithmeticPartStateOf(p, legacy, i)])
-      )
-    })
   const leftBy6b0 = () =>
     copyRow(NAMES.left, (p) => {
       const states = { ...(p.partStates ?? {}) }
@@ -630,30 +502,11 @@ async function walk({ handover, dropMoveOnEntry = false }: Walk) {
   }
 
   const compare = async (label: string, now: number) => {
-    const p = await row(NAMES.next)
-    if (frozen) {
-      const raw = rawLegacyColumns(NAMES.next)
-      const encoding = legacyEncodingOf(p)
-      for (const column of LEGACY_COLUMNS) {
-        if (JSON.stringify(raw[column]) !== JSON.stringify(encoding[column]))
-          staleColumns.add(column)
-      }
-      // 6b-1 never writes them: still what the handover left
-      expect(raw, label).toEqual(frozen)
-      if (p.flowState === 'break_pending' || p.flowState === 'break_active') {
-        expect(Math.floor(legacyWireFieldsOf(p).breakStartedAt! / 1000), label).toBe(
-          encoding.break_started_at
-        )
-        wireChecked++
-      }
-    }
-    checkOldBundles(label, p, oldBundles)
+    checkOldBundles(label, await row(NAMES.next), oldBundles)
     const nextView = await readView(NAMES.next, now)
-    for (const twin of ['seen', 'left'] as const) {
-      const view = await readView(NAMES[twin], now)
-      if (JSON.stringify(view) !== JSON.stringify(nextView)) {
-        return { divergedAt: `${label} (${twin})`, diff: diffPaths(nextView, view), view }
-      }
+    const view = await readView(NAMES.left, now)
+    if (JSON.stringify(view) !== JSON.stringify(nextView)) {
+      return { divergedAt: `${label} (left)`, diff: diffPaths(nextView, view), view }
     }
     return null
   }
@@ -661,11 +514,6 @@ async function walk({ handover, dropMoveOnEntry = false }: Walk) {
   for (let k = 0; k <= STEPS.length; k++) {
     const now = T0 + k * 60_000
     vi.setSystemTime(now)
-    if (k === handover) {
-      if (k > 0) writeLegacyColumns(NAMES.next, legacyEncodingOf(await row(NAMES.next)))
-      frozen = rawLegacyColumns(NAMES.next)
-    }
-    await seenBy6b0()
     await leftBy6b0()
     const label = k === 0 ? 'start' : STEPS[k - 1][0]
     const before = await compare(label, now)
@@ -674,17 +522,14 @@ async function walk({ handover, dropMoveOnEntry = false }: Walk) {
 
     const [stepLabel, step] = STEPS[k]
     const call = step(await row(NAMES.next))
-    const movedFrom = (await row(NAMES.next)).currentPartIndex
     const outcome = await run(call, NAMES.next)
-    for (const twin of ['seen', 'left'] as const) {
-      const twinOutcome = await run(call, NAMES[twin])
-      if (twinOutcome !== outcome) {
-        return {
-          divergedAt: `${stepLabel} (${twin} outcome)`,
-          diff: [`outcome: ${outcome} | ${twinOutcome}`],
-          view: null,
-          outcomes,
-        }
+    const twinOutcome = await run(call, NAMES.left)
+    if (twinOutcome !== outcome) {
+      return {
+        divergedAt: `${stepLabel} (left outcome)`,
+        diff: [`outcome: ${outcome} | ${twinOutcome}`],
+        view: null,
+        outcomes,
       }
     }
     outcomes.push(`${stepLabel}: ${outcome}`)
@@ -694,7 +539,7 @@ async function walk({ handover, dropMoveOnEntry = false }: Walk) {
 
     if (stepLabel === 'break finished with results') {
       // The client stores the game's result beside the break (the same for each twin)
-      for (const twin of ['next', 'seen', 'left'] as const) {
+      for (const twin of ['next', 'left'] as const) {
         await getCurrentEphemeralDb()
           .insert(schema.gameResults)
           .values({
@@ -711,30 +556,29 @@ async function walk({ handover, dropMoveOnEntry = false }: Walk) {
           })
       }
     }
-    const p = await row(NAMES.next)
-    if (dropMoveOnEntry && p.currentPartIndex !== movedFrom) {
-      const { [String(p.currentPartIndex)]: _, ...rest } = p.partStates
-      await writeRaw(NAMES.next, { partStates: rest })
-    }
   }
-  return {
-    divergedAt: null,
-    outcomes,
-    staleColumns: [...staleColumns].sort(),
-    entriesLeftOut,
-    wireChecked,
-    oldBundles,
-  }
+  return { divergedAt: null, outcomes, entriesLeftOut, oldBundles }
 }
 
-describe('Phase 6b-1: a 6b-0 pod reads every row 6b-1 writes as 6b-1 does', () => {
-  it.each([
-    ['a session 6b-1 created (legacy columns at their defaults)', 0],
-    ['a session handed over mid-part (cursor frozen at s2)', 2],
-    ['a session handed over in retry round 1 (retry state frozen)', 4],
-    ['a session handed over in a break (break columns frozen)', 13],
-  ])('%s', async (_, handover) => {
-    const result = await walk({ handover })
+describe('Phase 6b-2: 6b-1 writes and reads a session on the table 0149 dropped the columns from', () => {
+  it('the migrated table has none of the six columns; naming one fails; the PreSync check passes', async () => {
+    const columns = (
+      eph.sqlite.prepare('PRAGMA table_info(session_plans)').all() as { name: string }[]
+    ).map((c) => c.name)
+    expect(columns).toEqual(expect.not.arrayContaining([...LEGACY_COLUMNS]))
+    expect(columns).toEqual(expect.arrayContaining(['part_states', 'breaks', 'flow_state']))
+    // what a pod naming one would meet (why the walk below shows none does)
+    for (const column of LEGACY_COLUMNS) {
+      expect(() => eph.sqlite.prepare(`UPDATE session_plans SET ${column} = NULL`).run()).toThrow(
+        /no such column/
+      )
+    }
+    // the post-migration check 6b-2a and 6b-2 run in the PreSync Job (P6b2a-1)
+    await expect(validateCriticalSessionPlanColumns(eph.db)).resolves.toBeUndefined()
+  })
+
+  it('every step of the walk: the same outcomes, views and old-bundle reads', async () => {
+    const result = await walk()
     expect(result.divergedAt, JSON.stringify(result.diff?.slice(0, 30), null, 1)).toBeNull()
     // The walk reached every reader: repeats were no-ops, the refusals were refused
     expect(result.outcomes.filter((o) => !o.endsWith(': ok'))).toEqual([
@@ -745,19 +589,19 @@ describe('Phase 6b-1: a 6b-0 pod reads every row 6b-1 writes as 6b-1 does', () =
     ])
     const done = await row(NAMES.next)
     expect(done).toMatchObject({ status: 'completed', flowState: 'completed' })
-    // The rows really were in 6b-1 shape: every legacy column went stale
-    // against 6b-0's encoding, no try carries a legacy field, the reverse
-    // direction was exercised (parts 1 and 2), and the wire value was checked
-    expect(result.staleColumns).toEqual([...LEGACY_COLUMNS].sort())
     for (const r of done.results) {
       for (const field of LEGACY_TRY_FIELDS) expect(r).not.toHaveProperty(field)
     }
+    // the reverse direction was exercised (parts 1 and 2)
     expect(result.entriesLeftOut).toBeGreaterThanOrEqual(2)
-    expect(result.wireChecked).toBeGreaterThan(0)
+    expect(done.breaks.map((b) => [b.game, b.reason])).toEqual([
+      ['memory-quiz', 'gameFinished'],
+      [null, 'skipped'],
+    ])
     // Old bundles were checked at every point, through every break state, a
     // retry round and a restored results screen
-    expect(result.oldBundles.points).toBe(2 * STEPS.length + 1)
-    expect([...result.oldBundles.flowStates].sort()).toEqual([
+    expect(result.oldBundles!.points).toBe(2 * STEPS.length + 1)
+    expect([...result.oldBundles!.flowStates].sort()).toEqual([
       'break_active',
       'break_pending',
       'break_results',
@@ -765,23 +609,7 @@ describe('Phase 6b-1: a 6b-0 pod reads every row 6b-1 writes as 6b-1 does', () =
       'part_transition',
       'practicing',
     ])
-    expect(result.oldBundles.retries).toBeGreaterThan(0)
-    expect(result.oldBundles.results).toBeGreaterThan(0)
-    expect(done.breaks.map((b) => [b.game, b.reason])).toEqual([
-      ['memory-quiz', 'gameFinished'],
-      [null, 'skipped'],
-    ])
-  })
-
-  it('without the initial entry when the cursor moves into a part, 6b-0 reads the stale cursor (why 6b-1 writes it, P6b-1 (1))', async () => {
-    const result = await walk({ handover: 2, dropMoveOnEntry: true })
-    // the try that ends part 0 moves the cursor into part 1, whose position a
-    // 6b-0 pod then takes from the frozen cursor (s2) instead of its start
-    expect(result.divergedAt).toBe(
-      'p0 r2 s0 wrong: answer divulged, part ends -> part_transition (seen)'
-    )
-    expect(result.view).toMatchObject({
-      partStates: [expect.anything(), { slotIndex: 2 }, expect.anything()],
-    })
+    expect(result.oldBundles!.retries).toBeGreaterThan(0)
+    expect(result.oldBundles!.results).toBeGreaterThan(0)
   })
 })

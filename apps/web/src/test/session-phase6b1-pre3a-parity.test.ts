@@ -1,18 +1,21 @@
 /**
  * @vitest-environment node
  *
- * Phase 6b-1 (session architecture §7 Phase 6, §10 P6b1-3): finished sessions
- * from before Phase 3a render exactly as they did under 6b-0.
+ * Phase 6b-1 and 6b-2 (session architecture §7 Phase 6, §10 P6b1-3, P6b2-2):
+ * finished sessions from before Phase 3a render exactly as they did under
+ * 6b-0, now that migration 0149 has dropped their legacy columns.
  *
  * A pre-3a row has no `part_states` entry and no `breaks` record; 6b-0 read a
  * part without an entry through the legacy decode of `current_slot_index` and
- * `retry_state`, which 6b-1 no longer reads (6b-2 drops them). Every view of a
- * finished session (the report, single and list, its summary, the result
- * grids and plan overview, the song's input, history, the MCP tools) is built
- * here from such rows, with the legacy columns set as a pre-3a pod left them,
- * and compared with the snapshot recorded on 6b-0 (`5bf8a911d`). The rows are
- * written with raw SQL, so the test runs the same against a schema with or
- * without the six columns.
+ * `retry_state`, and 6b-1 no longer reads them. Every view of a finished
+ * session (the report, single and list, its summary, the result grids and plan
+ * overview, the song's input, history, the MCP tools) is built here from such
+ * rows and compared with the snapshot recorded on 6b-0 (`5bf8a911d`), when the
+ * rows still carried the legacy columns as a pre-3a pod left them (cursor,
+ * retry rounds, break game and reason; see the test's history). Since 0149 the
+ * table has no such columns, so the rows are written without them: the views
+ * did not read them, and the snapshot is unchanged. These views never reach a
+ * part's state, so this does not test `unenteredArithmeticStateOf` (P6b1-3).
  */
 
 import { eq } from 'drizzle-orm'
@@ -125,15 +128,6 @@ const roundItem = (p: number, s: number, epoch: number) => ({
   originalPurpose: 'focus',
 })
 
-interface LegacyColumns {
-  currentSlotIndex: number
-  retryState: unknown
-  breakStartedAt: number | null
-  breakReason: string | null
-  breakSelectedGame: string | null
-  breakResults: unknown
-}
-
 interface Pre3aRow {
   id: string
   status: string
@@ -142,7 +136,6 @@ interface Pre3aRow {
   completedAt: number | null
   withKind: boolean
   tries: LegacyTry[]
-  legacy: LegacyColumns
   adjustments?: unknown[]
   /** a `practice-break` game result: [played at (s), duration (s)] */
   game?: [number, number]
@@ -179,17 +172,6 @@ const ROWS: Pre3aRow[] = [
       { p: 2, s: 1, correct: true, at: 830 },
       { p: 2, s: 2, correct: true, at: 860 },
     ],
-    legacy: {
-      currentSlotIndex: 0,
-      retryState: {
-        0: { currentEpoch: 1, pendingRetries: [], currentEpochItems: [], currentRetryIndex: 0 },
-        1: { currentEpoch: 2, pendingRetries: [], currentEpochItems: [], currentRetryIndex: 0 },
-      },
-      breakStartedAt: null,
-      breakReason: 'gameFinished',
-      breakSelectedGame: 'memory-quiz',
-      breakResults: GAME_REPORT,
-    },
     game: [420, 240],
   },
   {
@@ -209,21 +191,6 @@ const ROWS: Pre3aRow[] = [
       { p: 1, s: 2, correct: false, at: 210 },
       { p: 1, s: 0, correct: true, at: 240, epoch: 1 },
     ],
-    legacy: {
-      currentSlotIndex: 3,
-      retryState: {
-        1: {
-          currentEpoch: 1,
-          pendingRetries: [],
-          currentEpochItems: [roundItem(1, 0, 1), roundItem(1, 2, 1)],
-          currentRetryIndex: 1,
-        },
-      },
-      breakStartedAt: Math.floor((T0 + 100 * S) / 1000),
-      breakReason: 'skipped',
-      breakSelectedGame: null,
-      breakResults: null,
-    },
   },
   {
     // `in_progress` with `completedAt` set: abandoned by the legacy repair, mid part 1
@@ -237,21 +204,6 @@ const ROWS: Pre3aRow[] = [
       { p: 0, s: 0, correct: true, at: 30 },
       { p: 0, s: 1, correct: false, at: 60 },
     ],
-    legacy: {
-      currentSlotIndex: 2,
-      retryState: {
-        0: {
-          currentEpoch: 0,
-          pendingRetries: [roundItem(0, 1, 1)],
-          currentEpochItems: [],
-          currentRetryIndex: 0,
-        },
-      },
-      breakStartedAt: null,
-      breakReason: null,
-      breakSelectedGame: null,
-      breakResults: null,
-    },
   },
   {
     // Ended early by an adult mid part 2, parts from before Phase 2 (no `kind`)
@@ -267,21 +219,6 @@ const ROWS: Pre3aRow[] = [
       { p: 0, s: 2, correct: true, at: 90 },
       { p: 1, s: 0, correct: false, at: 300 },
     ],
-    legacy: {
-      currentSlotIndex: 1,
-      retryState: {
-        1: {
-          currentEpoch: 0,
-          pendingRetries: [roundItem(1, 0, 1)],
-          currentEpochItems: [],
-          currentRetryIndex: 0,
-        },
-      },
-      breakStartedAt: Math.floor((T0 + 120 * S) / 1000),
-      breakReason: 'timeout',
-      breakSelectedGame: 'type-racer-jr',
-      breakResults: null,
-    },
     adjustments: [
       {
         timestamp: new Date(T0 + 400 * S),
@@ -302,20 +239,18 @@ const ROWS: Pre3aRow[] = [
 let eph: EphemeralDbResult
 let playerId: string
 
-/** Insert a row exactly as a pre-3a pod left it (raw SQL: the schema may lack the legacy columns) */
+/** Insert a row as a pre-3a pod left it, after 0149 dropped its legacy columns (raw SQL) */
 function insertPre3a(r: Pre3aRow) {
   const sec = (ms: number | null) => (ms == null ? null : Math.floor(ms / 1000))
-  const json = (v: unknown) => (v == null ? null : JSON.stringify(v))
   eph.sqlite
     .prepare(
       `INSERT INTO session_plans (
         id, player_id, target_duration_minutes, estimated_problem_count,
         avg_time_per_problem_seconds, game_break_settings, parts, summary, mastered_skill_ids,
-        status, flow_state, flow_updated_at, flow_version, current_part_index, current_slot_index,
-        break_started_at, break_reason, break_selected_game, break_results,
-        adjustments, results, retry_state, row_version, breaks, part_states, pauses,
+        status, flow_state, flow_updated_at, flow_version, current_part_index,
+        adjustments, results, row_version, breaks, part_states, pauses,
         is_paused, created_at, approved_at, started_at, completed_at
-      ) VALUES (?, ?, 6, 9, 20, ?, ?, '{}', '[]', ?, ?, ?, 4, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, '[]', '{}', '[]', 0, ?, ?, ?, ?)`
+      ) VALUES (?, ?, 6, 9, 20, ?, ?, '{}', '[]', ?, ?, ?, 4, ?, ?, ?, 0, '[]', '{}', '[]', 0, ?, ?, ?, ?)`
     )
     .run(
       r.id,
@@ -331,14 +266,8 @@ function insertPre3a(r: Pre3aRow) {
       r.flowState,
       sec(r.completedAt ?? T0),
       r.currentPartIndex,
-      r.legacy.currentSlotIndex,
-      r.legacy.breakStartedAt,
-      r.legacy.breakReason,
-      r.legacy.breakSelectedGame,
-      json(r.legacy.breakResults),
       JSON.stringify(r.adjustments ?? []),
       JSON.stringify(r.tries.map(legacyRow)),
-      json(r.legacy.retryState),
       sec(T0 - 300 * S),
       sec(T0 - 60 * S),
       sec(T0),

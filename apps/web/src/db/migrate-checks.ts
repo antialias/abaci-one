@@ -1,5 +1,4 @@
-import { sql } from 'drizzle-orm'
-import type { LibSQLDatabase } from 'drizzle-orm/libsql'
+import { type SQL, sql } from 'drizzle-orm'
 
 /**
  * Post-migration checks run by `db/migrate.ts`.
@@ -20,9 +19,12 @@ import type { LibSQLDatabase } from 'drizzle-orm/libsql'
  */
 export const REQUIRED_SESSION_PLAN_COLUMNS = ['flow_state', 'flow_updated_at', 'flow_version']
 
-export async function validateCriticalSessionPlanColumns(
-  db: Pick<LibSQLDatabase, 'all'>
-): Promise<void> {
+/** What the check reads through: libsql's drizzle (the Job) or better-sqlite3's (tests) */
+interface RowReader {
+  all<T = unknown>(query: SQL): Promise<T[]> | T[]
+}
+
+export async function validateCriticalSessionPlanColumns(db: RowReader): Promise<void> {
   const columns = await db.all<{ name: string }>(sql`PRAGMA table_info(session_plans)`)
   const existing = new Set(columns.map((c) => c.name))
 
