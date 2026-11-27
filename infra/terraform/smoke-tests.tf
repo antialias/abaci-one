@@ -30,6 +30,14 @@ resource "kubernetes_cron_job_v1" "smoke_tests" {
         # Retry once on failure
         backoff_limit = 1
 
+        # A run, retry included, gets an hour: good runs take 3-4 min and the
+        # slowest took 32 (30 days to 2026-11-27). Without a limit, a run whose
+        # pod sat Pending (no CPU left to schedule it) held the Job open for 16
+        # days, and concurrency_policy Forbid skipped every night after it.
+        # Past the hour the Job fails, the next night starts fresh, and
+        # KubeJobFailed says once that a night was missed.
+        active_deadline_seconds = 3600
+
         # Clean up completed/failed jobs after 1 hour
         ttl_seconds_after_finished = 3600
 
