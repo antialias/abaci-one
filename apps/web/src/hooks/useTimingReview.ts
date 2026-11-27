@@ -18,6 +18,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { type ReviewTryTarget, reviewAttemptPath } from '@/lib/curriculum/review-try-path'
 import { api } from '@/lib/queryClient'
 import {
   curriculumKeys,
@@ -75,10 +76,9 @@ async function throwOnError(res: Response, fallback: string): Promise<unknown> {
   return res.json()
 }
 
-export interface ReviewSlotResultVars {
+export interface ReviewSlotResultVars extends ReviewTryTarget {
   playerId: string
   planId: string
-  resultIndex: number
   action: SlotResultReviewAction
 }
 
@@ -90,10 +90,11 @@ export interface ReviewSlotResultVars {
 function patchReviewAction({
   playerId,
   planId,
+  tryId,
   resultIndex,
   action,
 }: ReviewSlotResultVars): Promise<unknown> {
-  return api(`curriculum/${playerId}/sessions/plans/${planId}/results/${resultIndex}`, {
+  return api(reviewAttemptPath(playerId, planId, { tryId, resultIndex }), {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(action),
@@ -111,10 +112,9 @@ export function useReviewSlotResult() {
 }
 
 /** Target for a fixed-action review mutation (the action is baked in). */
-export interface TimingReviewTarget {
+export interface TimingReviewTarget extends ReviewTryTarget {
   playerId: string
   planId: string
-  resultIndex: number
 }
 
 /**

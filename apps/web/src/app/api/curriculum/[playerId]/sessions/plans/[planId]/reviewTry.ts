@@ -14,7 +14,8 @@ const toMs = (d: Date | null | undefined) => (d instanceof Date ? d.getTime() : 
 
 /**
  * Review/repair one try (#158), addressed by `tryId` (`tries/[tryId]`) or by
- * its position in `results` (`results/[resultIndex]`, kept until Phase 6).
+ * its position in `results` (`results/[resultIndex]`, kept for older bundles
+ * until P6b1-12b).
  * Both routes share this so they answer identically.
  */
 export async function reviewTry(

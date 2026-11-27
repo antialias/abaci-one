@@ -86,7 +86,7 @@ describe('useTimingReview (read)', () => {
 })
 
 describe('useReviewSlotResult (write) invalidates the review cache', () => {
-  it('PATCHes the results route and invalidates timingReviewKeys.detail', async () => {
+  it('PATCHes the tries route (by tryId, §10 P6b1-12) and invalidates timingReviewKeys.detail', async () => {
     vi.mocked(global.fetch).mockResolvedValue({ ok: true, json: async () => ({}) } as Response)
     const spy = vi.spyOn(queryClient, 'invalidateQueries')
 
@@ -95,16 +95,65 @@ describe('useReviewSlotResult (write) invalidates the review cache', () => {
     result.current.mutate({
       playerId: 'player-1',
       planId: 'session-1',
-      resultIndex: 2,
+      tryId: '0b6f6c1e-2f9a-4c3e-9d8a-1f2e3d4c5b6a',
       action: { action: 'confirm_timing' },
     })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/2',
+      '/api/curriculum/player-1/sessions/plans/session-1/tries/0b6f6c1e-2f9a-4c3e-9d8a-1f2e3d4c5b6a',
       expect.objectContaining({ method: 'PATCH' })
     )
     expect(spy).toHaveBeenCalledWith({ queryKey: timingReviewKeys.detail('player-1') })
+  })
+
+  it('an attempt from an older server (no tryId) goes to the index route, never tries/undefined (D9, §10 P6b1-12a)', async () => {
+    vi.mocked(global.fetch).mockResolvedValue({ ok: true, json: async () => ({}) } as Response)
+
+    const { result } = renderHook(() => useReviewSlotResult(), { wrapper })
+
+    // What a pod from before P6b1-12 sends: resultIndex only
+    result.current.mutate({
+      playerId: 'player-1',
+      planId: 'session-1',
+      tryId: undefined,
+      resultIndex: 3,
+      action: { action: 'confirm_timing' },
+    })
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/curriculum/player-1/sessions/plans/session-1/results/3',
+      expect.objectContaining({ method: 'PATCH' })
+    )
+  })
+
+  it('with both, the id wins; with neither, nothing is sent', async () => {
+    vi.mocked(global.fetch).mockResolvedValue({ ok: true, json: async () => ({}) } as Response)
+
+    const { result } = renderHook(() => useReviewSlotResult(), { wrapper })
+    result.current.mutate({
+      playerId: 'player-1',
+      planId: 'session-1',
+      tryId: 'legacy:session-1:3',
+      resultIndex: 3,
+      action: { action: 'confirm_timing' },
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(global.fetch).toHaveBeenLastCalledWith(
+      '/api/curriculum/player-1/sessions/plans/session-1/tries/legacy%3Asession-1%3A3',
+      expect.objectContaining({ method: 'PATCH' })
+    )
+
+    vi.mocked(global.fetch).mockClear()
+    const { result: bare } = renderHook(() => useReviewSlotResult(), { wrapper })
+    bare.current.mutate({
+      playerId: 'player-1',
+      planId: 'session-1',
+      action: { action: 'confirm_timing' },
+    })
+    await waitFor(() => expect(bare.current.isError).toBe(true))
+    expect(global.fetch).not.toHaveBeenCalled()
   })
 })
 
@@ -114,11 +163,15 @@ describe('useConfirmTiming / useUnconfirmTiming (write)', () => {
     const spy = vi.spyOn(queryClient, 'invalidateQueries')
 
     const { result } = renderHook(() => useConfirmTiming(), { wrapper })
-    result.current.mutate({ playerId: 'player-1', planId: 'session-1', resultIndex: 2 })
+    result.current.mutate({
+      playerId: 'player-1',
+      planId: 'session-1',
+      tryId: '0b6f6c1e-2f9a-4c3e-9d8a-1f2e3d4c5b6a',
+    })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/2',
+      '/api/curriculum/player-1/sessions/plans/session-1/tries/0b6f6c1e-2f9a-4c3e-9d8a-1f2e3d4c5b6a',
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ action: 'confirm_timing' }),
@@ -132,11 +185,15 @@ describe('useConfirmTiming / useUnconfirmTiming (write)', () => {
     vi.mocked(global.fetch).mockResolvedValue({ ok: true, json: async () => ({}) } as Response)
 
     const { result } = renderHook(() => useUnconfirmTiming(), { wrapper })
-    result.current.mutate({ playerId: 'player-1', planId: 'session-1', resultIndex: 2 })
+    result.current.mutate({
+      playerId: 'player-1',
+      planId: 'session-1',
+      tryId: '0b6f6c1e-2f9a-4c3e-9d8a-1f2e3d4c5b6a',
+    })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
     expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/2',
+      '/api/curriculum/player-1/sessions/plans/session-1/tries/0b6f6c1e-2f9a-4c3e-9d8a-1f2e3d4c5b6a',
       expect.objectContaining({
         method: 'PATCH',
         body: JSON.stringify({ action: 'unconfirm_timing' }),

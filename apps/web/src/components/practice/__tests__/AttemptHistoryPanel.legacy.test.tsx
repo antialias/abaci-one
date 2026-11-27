@@ -76,12 +76,12 @@ function writtenTries(): ResultWithGlobalIndex[] {
       epochNumber: 0,
       originalSlotIndex: 0,
     }),
-  ].map((result, globalIndex) => ({ result, globalIndex }))
+  ].map((result, globalIndex) => ({ result, globalIndex, tryId: `legacy:plan-1:${globalIndex}` }))
 }
 
-function stripLegacy({ result, globalIndex }: ResultWithGlobalIndex): ResultWithGlobalIndex {
+function stripLegacy({ result, globalIndex, tryId }: ResultWithGlobalIndex): ResultWithGlobalIndex {
   const { isRetry: _r, epochNumber: _e, isManualRedo: _m, originalSlotIndex: _o, ...rest } = result
-  return { result: rest as SlotResult, globalIndex }
+  return { result: rest as SlotResult, globalIndex, tryId }
 }
 
 function renderedRows(results: ResultWithGlobalIndex[]) {
@@ -114,7 +114,7 @@ describe('AttemptHistoryPanel (Phase 6a)', () => {
   })
 
   it('keeps a legacy row from before the retry system as an original', () => {
-    const legacy = [{ result: row({}), globalIndex: 0 }]
+    const legacy = [{ result: row({}), globalIndex: 0, tryId: 'legacy:plan-1:0' }]
     const [only] = renderedRows(legacy)
     expect(only.epoch).toBe('0')
     expect(only.text).toContain('Original')

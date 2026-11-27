@@ -23,13 +23,20 @@ export type SerializedSlotResult = Omit<SlotResult, 'timestamp'> & { timestamp: 
 
 /**
  * One flagged attempt (Tier-1 or Tier-2) with enough context for the review
- * card to render it and target the per-attempt PATCH route (`resultIndex` is the
- * index into the plan's `results` array).
+ * card to render it and target the per-attempt PATCH route (`tries/[tryId]`).
  */
 export interface FlaggedAttempt {
   sessionId: string
   completedAt: string | null
-  /** Index into the session plan's `results` array (PATCH target). */
+  /**
+   * The try's id (`tryIdOf`: its stored id, else `legacy:<planId>:<index>`),
+   * the `tries/[tryId]` PATCH target (§10 P6b1-12).
+   */
+  tryId: string
+  /**
+   * Index into the session plan's `results` array: the `results/[resultIndex]`
+   * target of bundles from before P6b1-12, still sent for their open tabs (D9).
+   */
   resultIndex: number
   tier: 'tier1' | 'tier2'
   reason?: AttemptTimingReason

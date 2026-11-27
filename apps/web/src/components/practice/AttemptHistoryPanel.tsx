@@ -12,15 +12,18 @@
 import { useState } from 'react'
 import { retryRoundOfRow } from '@/db/schema/legacy-try-fields'
 import type { SlotResult } from '@/db/schema/session-plans'
+import { reviewTryPath } from '@/lib/curriculum/review-try-path'
 import { evidenceWeightOf, type WeighedRow } from '@/lib/curriculum/try-weight'
 import { css } from '../../../styled-system/css'
 
 /**
- * Result with its global index in the plan.results array
+ * Result with its global index in the plan.results array and its try id
  */
 export interface ResultWithGlobalIndex {
   result: SlotResult
   globalIndex: number
+  /** `tryIdOf(result, globalIndex, planId)`: what review edits address */
+  tryId: string
 }
 
 export interface AttemptHistoryPanelProps {
@@ -92,71 +95,23 @@ export function AttemptHistoryPanel({
     (a, b) => (retryRoundOfRow(a.result) ?? 0) - (retryRoundOfRow(b.result) ?? 0)
   )
 
-  const handleMarkCorrect = async (resultIndex: number) => {
+  /** Review one try by its id (`tries/[tryId]`, §10 P6b1-12) */
+  const review = async (
+    tryId: string,
+    action: 'mark_correct' | 'exclude' | 'include',
+    failure: string
+  ) => {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await fetch(
-        `/api/curriculum/${studentId}/sessions/plans/${planId}/results/${resultIndex}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'mark_correct' }),
-        }
-      )
+      const response = await fetch(`/api/${reviewTryPath(studentId, planId, tryId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.error || 'Failed to mark as correct')
-      }
-      onResultEdited?.()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
-    } finally {
-      setIsLoading(false)
-      setEditingIndex(null)
-    }
-  }
-
-  const handleExclude = async (resultIndex: number) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await fetch(
-        `/api/curriculum/${studentId}/sessions/plans/${planId}/results/${resultIndex}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'exclude' }),
-        }
-      )
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to exclude')
-      }
-      onResultEdited?.()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
-    } finally {
-      setIsLoading(false)
-      setEditingIndex(null)
-    }
-  }
-
-  const handleInclude = async (resultIndex: number) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const response = await fetch(
-        `/api/curriculum/${studentId}/sessions/plans/${planId}/results/${resultIndex}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'include' }),
-        }
-      )
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to include')
+        throw new Error(data.error || failure)
       }
       onResultEdited?.()
     } catch (err) {
@@ -239,7 +194,7 @@ export function AttemptHistoryPanel({
         })}
       >
         {sortedResults.map((item, idx) => {
-          const { result, globalIndex } = item
+          const { result, globalIndex, tryId } = item
           const isExcluded = result.source === 'teacher-excluded'
           const masteryWeight = getMasteryWeightDisplay(result, isExcluded)
           const isEditing = editingIndex === globalIndex
@@ -473,7 +428,7 @@ export function AttemptHistoryPanel({
                 {!result.isCorrect && !isExcluded && (
                   <button
                     type="button"
-                    onClick={() => handleMarkCorrect(globalIndex)}
+                    onClick={() => review(tryId, 'mark_correct', 'Failed to mark as correct')}
                     disabled={isLoading}
                     className={css({
                       display: 'flex',
@@ -502,7 +457,7 @@ export function AttemptHistoryPanel({
                 {isExcluded ? (
                   <button
                     type="button"
-                    onClick={() => handleInclude(globalIndex)}
+                    onClick={() => review(tryId, 'include', 'Failed to include')}
                     disabled={isLoading}
                     className={css({
                       display: 'flex',
@@ -528,7 +483,7 @@ export function AttemptHistoryPanel({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => handleExclude(globalIndex)}
+                    onClick={() => review(tryId, 'exclude', 'Failed to exclude')}
                     disabled={isLoading}
                     className={css({
                       display: 'flex',
