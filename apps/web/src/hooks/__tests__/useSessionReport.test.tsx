@@ -88,6 +88,28 @@ describe('useSessionReport', () => {
     await waitFor(() => expect(result.current.data?.rowVersion).toBe(15))
   })
 
+  it('fetches before the viewer id is known and joins the push room once it is (Phase 5b)', async () => {
+    api.mockResolvedValue(respond(at(14)))
+    const { wrapper } = setup()
+    const { result, rerender } = renderHook(
+      ({ viewerId }: { viewerId: string | null }) =>
+        useSessionReport({ playerId: 'fx-player', planId: base.sessionId, viewerId }),
+      { wrapper, initialProps: { viewerId: null as string | null } }
+    )
+    await waitFor(() => expect(result.current.data?.rowVersion).toBe(14))
+    // No room without a credential
+    expect(sockets).toHaveLength(0)
+
+    rerender({ viewerId: 'parent-1' })
+    expect(sockets).toHaveLength(1)
+    act(() => sockets[0].fire('connect'))
+    expect(sockets[0].emit).toHaveBeenCalledWith('subscribe-session-report', {
+      sessionId: base.sessionId,
+      viewerId: 'parent-1',
+      playerId: 'fx-player',
+    })
+  })
+
   it('applies a pushed report only when its rowVersion is newer', async () => {
     api.mockResolvedValue(respond(at(14)))
     const { client, wrapper } = setup()

@@ -344,6 +344,12 @@ async function applySessionFlowEvent({
  * Context for recording a redo result
  */
 export interface RedoContext {
+  /**
+   * The item being redone (Phase 5b). A server from Phase 5a on matches the
+   * do-over by it (the indices beside it must agree); the indices stay for
+   * servers before it during the rollout.
+   */
+  itemId?: string
   /** Part index of the problem being redone */
   originalPartIndex: number
   /** Slot index of the problem being redone */

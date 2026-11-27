@@ -13,10 +13,12 @@ import {
   PracticeSubNav,
   type SessionHudData,
 } from '@/components/practice'
+import type { ActiveRedo, RecordRedoParams } from '@/components/practice/ActiveSession'
 import { GameBreakResultsScreen } from '@/components/practice/GameBreakResultsScreen'
 import { GameBreakScreen } from '@/components/practice/GameBreakScreen'
 import {
   PartTransitionScreen,
+  partTransitionViewOf,
   TRANSITION_COUNTDOWN_MS,
 } from '@/components/practice/PartTransitionScreen'
 import {
@@ -25,40 +27,62 @@ import {
   type TransitionCompletionRequest,
   transitionCompletionToSend,
 } from '@/components/practice/partTransitionFlow'
+import type { RedoTarget } from '@/components/practice/SessionProgressIndicator'
 import { createWriteQueue } from '@/components/practice/writeQueue'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import type { Player } from '@/db/schema/players'
-import { getSlotRetryStatus } from '@/db/schema/session-plan-helpers'
 import type {
   GameBreakSettings,
   SessionHealth,
   SessionPart,
   SessionPlan,
-  SessionRetryState,
   SlotResult,
   SlotResultSubmission,
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
+import {
+  arithmeticDotsPosition,
+  arithmeticItemNumber,
+  arithmeticLinearIndex,
+  arithmeticObserverPosition,
+  arithmeticSlotOf,
+  arithmeticTryCount,
+} from '@/lib/curriculum/parts/arithmetic/session-view'
+import type { SessionReport } from '@/lib/curriculum/session-report'
 
 /**
- * State for redoing a previously completed problem
- * Allows students to tap any completed problem dot to practice it again
+ * State for redoing a previously completed problem: the item the kid tapped,
+ * by its id (Phase 5b). Where the session goes after it is the server's plan;
+ * nothing remembers where the kid was.
  */
-export interface RedoState {
-  /** Whether redo mode is currently active */
-  isActive: boolean
-  /** Linear index of the problem being redone (flat across all parts) */
-  linearIndex: number
-  /** Part index containing the redo problem */
-  originalPartIndex: number
-  /** Slot index within the part */
-  originalSlotIndex: number
-  /** The original result (to check if it was correct) */
-  originalResult: SlotResult
-  /** Part index to return to after redo */
-  returnToPartIndex: number
-  /** Slot index to return to after redo */
-  returnToSlotIndex: number
+export type RedoState = ActiveRedo
+
+/**
+ * The HUD's counts, read from the session report alone: its progress, and
+ * the planned items of the parts after the report's own part (both from one
+ * report, so a push that lands before or after the answer's reply never mixes
+ * two positions). An ended report has no position: the HUD shows its final
+ * count (nothing left, no later part) for the frame before the summary.
+ * Nothing until a report has loaded.
+ */
+export function hudCountsOf(
+  report: SessionReport | null | undefined
+): Pick<SessionHudData, 'progress' | 'laterPartItems'> {
+  if (!report) return {}
+  const position = report.position
+  if (!position) {
+    if (report.outcome === 'in_progress') return {}
+    const planned = report.totals.plannedProblems
+    return { progress: { done: planned, total: planned }, laterPartItems: 0 }
+  }
+  const segment = position.segment
+  const laterPartItems =
+    segment.kind === 'part'
+      ? report.parts
+          .filter((row) => row.partIndex > segment.partIndex)
+          .reduce((sum, row) => sum + row.plannedProblems, 0)
+      : 0
+  return { progress: position.progress, laterPartItems }
 }
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -84,7 +108,9 @@ import {
   useRecordSlotResult,
   useStartGameBreak,
 } from '@/hooks/useSessionPlan'
+import { useSessionReport } from '@/hooks/useSessionReport'
 import { useSessionSongTrigger } from '@/hooks/useSessionSongTrigger'
+import { useUserId } from '@/hooks/useUserId'
 import { css } from '../../../../styled-system/css'
 
 interface PracticeClientProps {
@@ -136,8 +162,6 @@ export function PracticeClient({
   const [gameBreakStartTime, setGameBreakStartTime] = useState<number>(Date.now())
   // Game break results - captured when game completes to show on interstitial screen
   const [gameBreakResults, setGameBreakResults] = useState<GameResultsReport | null>(null)
-  // Track previous part index to detect part transitions
-  const previousPartIndexRef = useRef<number>(initialSession.currentPartIndex)
   // Ref to store stopVisionRecording - populated later when useSessionBroadcast is called
   // This allows early-defined callbacks to access the function
   const stopRecordingRef = useRef<(() => void) | undefined>(undefined)
@@ -289,40 +313,30 @@ export function PracticeClient({
   const currentPart = currentPlan.parts[currentPlan.currentPartIndex] as SessionPart | undefined
   const sessionHealth = currentPlan.sessionHealth as SessionHealth | null
 
-  // Calculate totals
-  const { totalProblems, completedProblems } = useMemo(() => {
-    const total = currentPlan.parts.reduce((sum, part) => sum + part.slots.length, 0)
-    let completed = 0
-    for (let i = 0; i < currentPlan.currentPartIndex; i++) {
-      completed += currentPlan.parts[i].slots.length
-    }
-    completed += currentPlan.currentSlotIndex
-    return { totalProblems: total, completedProblems: completed }
-  }, [currentPlan.parts, currentPlan.currentPartIndex, currentPlan.currentSlotIndex])
+  // The session report: the counts the HUD shows and the song trigger reads
+  // (`position.progress`, §4), kept current by its pushes. It shares its
+  // cache entry with the paused modal's.
+  // The fetch needs only the cookie; the viewer id joins the push room
+  const { data: viewerId } = useUserId()
+  const { data: report } = useSessionReport({
+    playerId: studentId,
+    planId: currentPlan.id,
+    viewerId: viewerId ?? null,
+  })
 
-  // Helper to compute retry context for video recording
+  // Retry context for the video timeline, from the item itself: its round,
+  // whether it is a do-over, and the tries it already has
   const getRetryContext = useCallback(
-    (partIndex: number, slotIndex: number) => {
-      // Check if we're in a manual redo
-      const isManualRedo = redoState?.isActive && redoState?.originalSlotIndex === slotIndex
-
-      // Get epoch from retry state
-      const retryState = currentPlan.retryState as SessionRetryState | null
-      const epochNumber = retryState?.[partIndex]?.currentEpoch ?? 0
-
-      // Count attempts for this slot to determine attemptNumber
-      const { attemptCount } = getSlotRetryStatus(currentPlan, partIndex, slotIndex)
-      // attemptNumber is the next attempt (current attempt count + 1)
-      const attemptNumber = attemptCount + 1
-
+    (item: { partIndex: number; itemId: string; round: number; doOver: boolean }) => {
+      const attemptNumber = arithmeticTryCount(currentPlan, item.partIndex, item.itemId) + 1
       return {
-        epochNumber,
+        epochNumber: item.round,
         attemptNumber,
-        isRetry: epochNumber > 0,
-        isManualRedo: isManualRedo ?? false,
+        isRetry: item.round > 0,
+        isManualRedo: item.doOver,
       }
     },
-    [currentPlan, redoState]
+    [currentPlan]
   )
 
   // Pause handler - triggers manual pause in ActiveSession
@@ -370,28 +384,32 @@ export function PracticeClient({
   // Handle recording an answer
   const handleAnswer = useCallback(
     (result: SlotResultSubmission): Promise<void> => {
-      // Synchronous work: problem markers + trace logging happen immediately
-      const currentProblemNumber = currentPlan.currentSlotIndex + 1
-      const retryContext = getRetryContext(
-        currentPlan.currentPartIndex,
-        currentPlan.currentSlotIndex
-      )
+      // Synchronous work: problem markers + trace logging happen immediately.
+      // The marker names the answered item (its own part, id and round), not
+      // the plan's cursor, which lags an optimistic advance
+      const item = {
+        partIndex: result.partIndex ?? currentPlan.currentPartIndex,
+        itemId: result.slotId,
+        round: result.epochNumber ?? 0,
+        doOver: false,
+      }
+      // (an item the plan does not name still gets its marker, numbered by its slot)
+      const problemNumber =
+        arithmeticItemNumber(currentPlan.parts, item.partIndex, item.itemId) ??
+        arithmeticLinearIndex(currentPlan.parts, item.partIndex, result.slotIndex) + 1
       sendProblemMarkerRef.current?.(
-        currentProblemNumber,
-        currentPlan.currentPartIndex,
+        problemNumber,
+        item.partIndex,
         'answer-submitted',
         result.isCorrect,
-        retryContext
+        getRetryContext(item)
       )
       logGameBreakTrace('answer-submit-start', {
-        currentProblemNumber,
-        currentPartIndex: currentPlan.currentPartIndex,
-        currentSlotIndex: currentPlan.currentSlotIndex,
+        problemNumber,
+        partIndex: item.partIndex,
+        itemId: item.itemId,
         isCorrect: result.isCorrect,
       })
-
-      // Capture values that the mutation closure needs
-      const capturedPreviousPartIndex = previousPartIndexRef.current
 
       // Chain this mutation onto the queue so mutations execute in order
       const mutationPromise = (async () => {
@@ -405,44 +423,20 @@ export function PracticeClient({
           )
           // Dropped: an answer queued before this one failed; the screen resyncs
           if (!updatedPlan) return
+          // The server's flow says where the session went (a transition, a
+          // break, the end); the screens follow it from the plan
           logGameBreakTrace('answer-submit-resolved', {
-            previousPartIndex: capturedPreviousPartIndex,
+            updatedFlowState: updatedPlan.flowState,
             updatedPartIndex: updatedPlan.currentPartIndex,
-            updatedSlotIndex: updatedPlan.currentSlotIndex,
             updatedStatus: updatedPlan.status,
             completedAt: updatedPlan.completedAt ? String(updatedPlan.completedAt) : null,
           })
-
-          // Update previous part index tracking
-          previousPartIndexRef.current = updatedPlan.currentPartIndex
 
           // If session just completed, redirect to summary with completed flag
           if (updatedPlan.completedAt) {
             stopRecordingRef.current?.()
             router.push(`/practice/${studentId}/summary?completed=1`, {
               scroll: false,
-            })
-            return
-          }
-
-          // Check for part transition for trace visibility
-          const partTransitioned = updatedPlan.currentPartIndex > capturedPreviousPartIndex
-          const hasMoreParts = updatedPlan.currentPartIndex < updatedPlan.parts.length
-          const gameBreakEnabled =
-            (updatedPlan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
-
-          if (partTransitioned && hasMoreParts && gameBreakEnabled) {
-            logGameBreakTrace('queue-break-after-part-transition', {
-              previousPartIndex: capturedPreviousPartIndex,
-              updatedPartIndex: updatedPlan.currentPartIndex,
-              hasMoreParts,
-              gameBreakEnabled,
-            })
-          } else {
-            logGameBreakTrace('no-break-queue-after-answer', {
-              partTransitioned,
-              hasMoreParts,
-              gameBreakEnabled,
             })
           }
         } catch (err) {
@@ -456,7 +450,7 @@ export function PracticeClient({
       studentId,
       currentPlan.id,
       currentPlan.currentPartIndex,
-      currentPlan.currentSlotIndex,
+      currentPlan.parts,
       recordResult,
       writeQueue,
       router,
@@ -497,50 +491,20 @@ export function PracticeClient({
     [studentId, currentPlan.id, endEarly, router, showError]
   )
 
-  // Handle session completion (called by ActiveSession when all problems done)
-  const handleSessionComplete = useCallback(() => {
-    // Stop vision recording if it was started
-    stopRecordingRef.current?.()
-    // Redirect to summary with completed flag
-    router.push(`/practice/${studentId}/summary?completed=1`, {
-      scroll: false,
-    })
-  }, [studentId, router])
+  // Session completion: the planEnded effect below leaves for the summary when
+  // the server's plan ends (Phase 5b removed the screen's own completion call)
 
   // Handle redoing a previously completed problem
   // Called when student taps a completed problem dot in the progress indicator
   const handleRedoProblem = useCallback(
-    (linearIndex: number, originalResult: SlotResult) => {
-      // Find the part and slot for this linear index
-      let partIndex = 0
-      let remaining = linearIndex
-      for (let i = 0; i < currentPlan.parts.length; i++) {
-        const partSlotCount = currentPlan.parts[i].slots.length
-        if (remaining < partSlotCount) {
-          partIndex = i
-          break
-        }
-        remaining -= partSlotCount
-      }
-      const slotIndex = remaining
-
+    ({ linearIndex, partIndex, itemId, originalResult }: RedoTarget) => {
       // Exit browse mode if active
       if (isBrowseMode) {
         setIsBrowseMode(false)
       }
-
-      // Set redo state
-      setRedoState({
-        isActive: true,
-        linearIndex,
-        originalPartIndex: partIndex,
-        originalSlotIndex: slotIndex,
-        originalResult,
-        returnToPartIndex: currentPlan.currentPartIndex,
-        returnToSlotIndex: currentPlan.currentSlotIndex,
-      })
+      setRedoState({ isActive: true, partIndex, itemId, linearIndex, originalResult })
     },
-    [currentPlan.parts, currentPlan.currentPartIndex, currentPlan.currentSlotIndex, isBrowseMode]
+    [isBrowseMode]
   )
 
   // Handle canceling a redo - exit without recording
@@ -550,29 +514,24 @@ export function PracticeClient({
 
   // Handle redo result recording - wraps recordRedo to send answer-submitted marker
   const handleRecordRedo = useCallback(
-    async (params: {
-      playerId: string
-      planId: string
-      result: Omit<SlotResult, 'timestamp' | 'partNumber'>
-      redoContext: {
-        originalPartIndex: number
-        originalSlotIndex: number
-        originalWasCorrect: boolean
-      }
-    }): Promise<SessionPlan | null> => {
-      // Send the answer-submitted marker for the redo
+    async (params: RecordRedoParams): Promise<SessionPlan | null> => {
+      // Send the answer-submitted marker for the redo, naming its item
       const { redoContext, result } = params
-      const retryContext = getRetryContext(
-        redoContext.originalPartIndex,
-        redoContext.originalSlotIndex
-      )
-      const currentProblemNumber = redoContext.originalSlotIndex + 1
+      const item = {
+        partIndex: redoContext.originalPartIndex,
+        itemId: redoContext.itemId,
+        round: 0,
+        doOver: true,
+      }
+      const problemNumber =
+        arithmeticItemNumber(currentPlan.parts, item.partIndex, item.itemId) ??
+        arithmeticLinearIndex(currentPlan.parts, item.partIndex, redoContext.originalSlotIndex) + 1
       sendProblemMarkerRef.current?.(
-        currentProblemNumber,
-        redoContext.originalPartIndex,
+        problemNumber,
+        item.partIndex,
         'answer-submitted',
         result.isCorrect,
-        retryContext
+        getRetryContext(item)
       )
 
       // Queued behind any pending answers: a do-over can move the session on
@@ -583,7 +542,7 @@ export function PracticeClient({
         return null
       }
     },
-    [getRetryContext, recordRedo, writeQueue, reportTryWriteFailure]
+    [currentPlan.parts, getRetryContext, recordRedo, writeQueue, reportTryWriteFailure]
   )
 
   // Handle game break end - show results screen if game finished normally
@@ -698,6 +657,21 @@ export function PracticeClient({
     showError,
   ])
 
+  // What observers are told: the screen's live problem and answer, with the
+  // position fields computed from the server's plan and the item on screen
+  // (Phase 5b), never from copies the screen keeps
+  const broadcastPosition = useMemo(
+    () => (broadcastState ? arithmeticObserverPosition(currentPlan, broadcastState.item) : null),
+    [broadcastState, currentPlan]
+  )
+  const practiceBroadcast = useMemo(
+    () =>
+      broadcastState && broadcastPosition
+        ? { ...broadcastState, position: broadcastPosition }
+        : null,
+    [broadcastState, broadcastPosition]
+  )
+
   // Broadcast session state if student is in a classroom
   // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
   // onAbacusControl receives control events from observing teacher
@@ -714,14 +688,20 @@ export function PracticeClient({
     stopVisionRecording,
     sendProblemMarker,
     readyObservers,
-  } = useSessionBroadcast(currentPlan.id, studentId, broadcastState, flowState, breakContext, {
+  } = useSessionBroadcast(currentPlan.id, studentId, practiceBroadcast, flowState, breakContext, {
     onAbacusControl: setTeacherControl,
     onTeacherPause: setTeacherPauseRequest,
     onTeacherResume: () => setTeacherResumeRequest(true),
   })
 
   // Session song smart trigger — fires when conditions are met mid-session
-  useSessionSongTrigger({ studentId, plan: currentPlan, songEnabled })
+  useSessionSongTrigger({
+    studentId,
+    planId: currentPlan.id,
+    report,
+    avgSecondsPerProblem: currentPlan.avgTimePerProblemSeconds,
+    songEnabled,
+  })
 
   // Focus skill banner — show the math rule(s) the student is working on
   const { data: sessionModeData } = useSessionMode(studentId)
@@ -759,68 +739,53 @@ export function PracticeClient({
     wasRecordingRef.current = isRecording
 
     // Detect transition from not-recording to recording
-    if (!wasRecording && isRecording && broadcastState) {
-      const currentProblemNumber = broadcastState.currentProblemNumber
-      const partIndex = broadcastState.currentPartIndex ?? currentPlan.currentPartIndex
-      const slotIndex = broadcastState.currentSlotIndex ?? currentPlan.currentSlotIndex
-      const retryContext = getRetryContext(partIndex, slotIndex)
+    if (!wasRecording && isRecording && broadcastState && broadcastPosition) {
       sendProblemMarker(
-        currentProblemNumber,
-        partIndex,
+        broadcastPosition.currentProblemNumber,
+        broadcastState.item.partIndex,
         'problem-shown',
         undefined,
-        retryContext,
+        getRetryContext(broadcastState.item),
         broadcastState.slotId,
         broadcastState.currentProblem
       )
     }
-  }, [
-    isRecording,
-    broadcastState,
-    currentPlan.currentPartIndex,
-    currentPlan.currentSlotIndex,
-    sendProblemMarker,
-    getRetryContext,
-  ])
+  }, [isRecording, broadcastState, broadcastPosition, sendProblemMarker, getRetryContext])
 
-  // Emit 'problem-shown' marker when a new problem appears (including first problem)
+  // Emit 'problem-shown' marker when a new problem appears (including first problem).
+  // Keyed on the problem number observers are sent (the plan's cursor; a
+  // do-over does not move it, and has its own marker below)
+  const shownProblemNumber = broadcastPosition?.currentProblemNumber ?? null
   useEffect(() => {
-    if (!broadcastState) return
+    if (!broadcastState || shownProblemNumber === null) return
 
-    const currentProblemNumber = broadcastState.currentProblemNumber
     const previousProblemNumber = previousProblemNumberRef.current
 
     // Emit if this is a new problem OR the first problem (previousProblemNumber is null)
-    if (currentProblemNumber !== previousProblemNumber) {
-      // broadcastState contains the correct slot indices (including for redos)
-      const partIndex = broadcastState.currentPartIndex ?? currentPlan.currentPartIndex
-      const slotIndex = broadcastState.currentSlotIndex ?? currentPlan.currentSlotIndex
-      const retryContext = getRetryContext(partIndex, slotIndex)
+    if (shownProblemNumber !== previousProblemNumber) {
       sendProblemMarker(
-        currentProblemNumber,
-        partIndex,
+        shownProblemNumber,
+        broadcastState.item.partIndex,
         'problem-shown',
         undefined,
-        retryContext,
+        getRetryContext(broadcastState.item),
         broadcastState.slotId,
         broadcastState.currentProblem
       )
     }
 
     // Update ref for next comparison
-    previousProblemNumberRef.current = currentProblemNumber
+    previousProblemNumberRef.current = shownProblemNumber
   }, [
-    broadcastState?.currentProblemNumber,
-    broadcastState?.currentPartIndex,
-    broadcastState?.currentSlotIndex,
-    currentPlan.currentPartIndex,
-    currentPlan.currentSlotIndex,
+    shownProblemNumber,
+    broadcastState?.item.partIndex,
+    broadcastState?.item.itemId,
     sendProblemMarker,
     getRetryContext,
   ])
 
   // Emit 'problem-shown' marker when entering redo mode
-  // The regular problem-shown effect won't fire because currentProblemNumber doesn't change during a redo
+  // The regular problem-shown effect won't fire because the problem number doesn't change during a redo
   const wasInRedoModeRef = useRef(false)
   useEffect(() => {
     const wasInRedoMode = wasInRedoModeRef.current
@@ -829,18 +794,20 @@ export function PracticeClient({
 
     // Detect entering redo mode
     if (!wasInRedoMode && isNowInRedoMode && redoState) {
-      const retryContext = getRetryContext(redoState.originalPartIndex, redoState.originalSlotIndex)
-      const problemNumber = redoState.linearIndex + 1 // linearIndex is 0-based
-      // Get problem identity from the plan for the redo slot
-      const redoPart = currentPlan.parts[redoState.originalPartIndex]
-      const redoSlot = redoPart?.slots?.[redoState.originalSlotIndex]
+      const item = {
+        partIndex: redoState.partIndex,
+        itemId: redoState.itemId,
+        round: 0,
+        doOver: true,
+      }
+      const redoSlot = arithmeticSlotOf(currentPlan.parts[item.partIndex], item.itemId)?.slot
       sendProblemMarker(
-        problemNumber,
-        redoState.originalPartIndex,
+        redoState.linearIndex + 1, // the dot's number (linearIndex is 0-based)
+        item.partIndex,
         'problem-shown',
         undefined,
-        retryContext,
-        redoSlot?.slotId,
+        getRetryContext(item),
+        item.itemId,
         redoSlot?.problem
       )
     }
@@ -857,37 +824,45 @@ export function PracticeClient({
     null
   )
   const sentCompletionRef = useRef<string | null>(null)
-  const transitionPartTypes = transitionKey
-    ? {
-        previous: currentPlan.parts[currentPlan.currentPartIndex - 1]?.type ?? null,
-        next: currentPlan.parts[currentPlan.currentPartIndex].type,
-      }
-    : null
+  // The two parts as their kinds show them, asked of the kinds (the plan's
+  // parts on either side of the server's part index)
+  const transitionParts = useMemo(() => {
+    if (!transitionKey) return null
+    const previousPart = currentPlan.parts[currentPlan.currentPartIndex - 1]
+    const nextPart = currentPlan.parts[currentPlan.currentPartIndex]
+    if (!nextPart) return null
+    return {
+      previous: previousPart ? partTransitionViewOf(previousPart) : null,
+      next: partTransitionViewOf(nextPart),
+    }
+  }, [transitionKey, currentPlan.parts, currentPlan.currentPartIndex])
 
-  // Entering a transition: start its countdown and tell observers
+  // Entering a transition starts its countdown during render (React's
+  // "adjust state when a prop changes"): the render is redone before any
+  // paint, so the screen is in the first frame of the server's
+  // part_transition, never a frame of the next part's problem first
+  if (transitionKey && transitionParts && transitionShown?.key !== transitionKey) {
+    setTransitionShown({ key: transitionKey, countdownStartTime: Date.now() })
+  }
+
+  // ...and observers are told once per transition
+  const announcedTransitionRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!transitionKey || !transitionPartTypes || transitionShown?.key === transitionKey) return
-    const countdownStartTime = Date.now()
-    setTransitionShown({ key: transitionKey, countdownStartTime })
+    if (!transitionShown || !transitionParts || transitionShown.key !== transitionKey) return
+    if (announcedTransitionRef.current === transitionShown.key) return
+    announcedTransitionRef.current = transitionShown.key
     logGameBreakTrace('part-transition-start', {
-      previousPartType: transitionPartTypes.previous,
-      nextPartType: transitionPartTypes.next,
-      countdownStartTime,
+      previous: transitionParts.previous?.label ?? null,
+      next: transitionParts.next.label,
+      countdownStartTime: transitionShown.countdownStartTime,
     })
     sendPartTransition(
-      transitionPartTypes.previous,
-      transitionPartTypes.next,
-      countdownStartTime,
+      transitionParts.previous,
+      transitionParts.next,
+      transitionShown.countdownStartTime,
       TRANSITION_COUNTDOWN_MS
     )
-  }, [
-    transitionKey,
-    transitionPartTypes?.previous,
-    transitionPartTypes?.next,
-    transitionShown?.key,
-    sendPartTransition,
-    logGameBreakTrace,
-  ])
+  }, [transitionKey, transitionParts, transitionShown, sendPartTransition, logGameBreakTrace])
 
   // The screen's countdown ran out, or the kid tapped to go on
   const handleTransitionScreenDone = useCallback(() => {
@@ -1009,12 +984,11 @@ export function PracticeClient({
         currentPart: {
           type: currentPart.type,
           partNumber: currentPart.partNumber,
-          totalSlots: currentPart.slots.length,
         },
-        currentSlotIndex: currentPlan.currentSlotIndex,
         results: currentPlan.results,
-        completedProblems,
-        totalProblems,
+        // Counts from the report alone (none until it loads)
+        ...hudCountsOf(report),
+        dots: arithmeticDotsPosition(currentPlan),
         sessionHealth: sessionHealth
           ? {
               overall: sessionHealth.overall,
@@ -1136,7 +1110,6 @@ export function PracticeClient({
               onEndEarly={handleEndEarly}
               onPause={() => setIsPaused(true)}
               onResume={handleResume}
-              onComplete={handleSessionComplete}
               onTimingUpdate={setTimingData}
               onBroadcastStateChange={setBroadcastState}
               isBrowseMode={isBrowseMode}
@@ -1163,12 +1136,12 @@ export function PracticeClient({
               }}
             />
           )}
-          {transitionKey && transitionPartTypes && transitionShown?.key === transitionKey && (
+          {transitionKey && transitionParts && transitionShown?.key === transitionKey && (
             <PartTransitionScreen
               key={transitionShown.key}
               isVisible
-              previousPartType={transitionPartTypes.previous}
-              nextPartType={transitionPartTypes.next}
+              previous={transitionParts.previous}
+              next={transitionParts.next}
               countdownStartTime={transitionShown.countdownStartTime}
               student={{ name: player.name, emoji: player.emoji, color: player.color }}
               onComplete={handleTransitionScreenDone}
@@ -1185,7 +1158,9 @@ export function PracticeClient({
         sessionId={currentPlan.id}
         playerId={studentId}
         recordingId={recordingId}
-        broadcastState={broadcastState}
+        broadcastState={
+          practiceBroadcast ? { ...practiceBroadcast, ...practiceBroadcast.position } : null
+        }
       />
     </PageWithNav>
   )

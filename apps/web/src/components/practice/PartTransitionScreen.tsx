@@ -11,13 +11,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPartType } from '@/db/schema/session-plans'
+import type { PartTransitionSide } from '@/lib/classroom/socket-events'
+import { arithmeticTransitionView } from '@/lib/curriculum/parts/arithmetic/session-view'
+import type { StoredPart } from '@/lib/curriculum/parts/kind'
+import { kindIdOf } from '@/lib/curriculum/parts/registry'
 import { css } from '../../../styled-system/css'
 import { usePartTransitionAudio } from './hooks/usePartTransitionAudio'
-import {
-  requiresAbacusPickUp,
-  requiresAbacusPutAway,
-  selectTransitionMessage,
-} from './partTransitionMessages'
+import { selectTransitionMessage } from './partTransitionMessages'
 
 // ============================================================================
 // Constants
@@ -33,13 +33,34 @@ const COUNTDOWN_UPDATE_INTERVAL_MS = 100
 // Types
 // ============================================================================
 
+/**
+ * How the screen shows a part: what its kind answers (§1.3). The screen never
+ * switches on a kind's own vocabulary; it asks `needsPhysicalAbacus` and shows
+ * the kind's label and emoji. `presentation` is arithmetic's, and picks
+ * arithmetic's messages.
+ */
+export interface PartTransitionView extends PartTransitionSide {
+  emoji: string
+  needsPhysicalAbacus: boolean
+  presentation?: SessionPartType
+}
+
+/** Ask the part's kind how the transition screen shows it. */
+export function partTransitionViewOf(
+  part: Pick<StoredPart, 'kind'> & { type?: SessionPartType }
+): PartTransitionView {
+  const kind = kindIdOf(part)
+  if (kind === 'arithmetic' && part.type) return arithmeticTransitionView({ type: part.type })
+  return { kind, label: 'Next part', emoji: '⭐', needsPhysicalAbacus: false }
+}
+
 export interface PartTransitionScreenProps {
   /** Whether the transition screen is visible */
   isVisible: boolean
-  /** The part type we're transitioning FROM (null if session start) */
-  previousPartType: SessionPartType | null
-  /** The part type we're transitioning TO */
-  nextPartType: SessionPartType
+  /** The part we're transitioning FROM, as its kind shows it (null if session start) */
+  previous: PartTransitionView | null
+  /** The part we're transitioning TO, as its kind shows it */
+  next: PartTransitionView
   /** Countdown duration in ms */
   countdownMs?: number
   /** Timestamp when countdown started (for sync) */
@@ -60,36 +81,14 @@ export interface PartTransitionScreenProps {
 // Helper Functions
 // ============================================================================
 
-function getPartTypeEmoji(type: SessionPartType): string {
-  switch (type) {
-    case 'abacus':
-      return '🧮'
-    case 'visualization':
-      return '🧠'
-    case 'linear':
-      return '✏️'
-  }
-}
-
-function getPartTypeLabel(type: SessionPartType): string {
-  switch (type) {
-    case 'abacus':
-      return 'Abacus'
-    case 'visualization':
-      return 'Visualization'
-    case 'linear':
-      return 'Equations'
-  }
-}
-
 // ============================================================================
 // Component
 // ============================================================================
 
 export function PartTransitionScreen({
   isVisible,
-  previousPartType,
-  nextPartType,
+  previous,
+  next,
   countdownMs = TRANSITION_COUNTDOWN_MS,
   countdownStartTime,
   student,
@@ -105,13 +104,24 @@ export function PartTransitionScreen({
   const hasCompletedRef = useRef(false)
 
   // Select message once when transition starts
-  const message = useMemo(() => {
-    return selectTransitionMessage(previousPartType, nextPartType, messageSeed)
-  }, [previousPartType, nextPartType, messageSeed])
+  // The headline: arithmetic picks from its message pools by presentation;
+  // another kind gets a plain one naming the part. Keyed on the views'
+  // content, so a refetched plan does not re-pick it mid-countdown
+  const previousPresentation = previous?.presentation ?? null
+  const nextPresentation = next.presentation
+  const nextLabel = next.label
+  const message = useMemo(
+    () =>
+      nextPresentation
+        ? selectTransitionMessage(previousPresentation, nextPresentation, messageSeed)
+        : { headline: 'Next Up!', subtitle: nextLabel },
+    [previousPresentation, nextPresentation, nextLabel, messageSeed]
+  )
 
-  // Check if abacus action is needed
-  const showAbacusPutAway = requiresAbacusPutAway(previousPartType, nextPartType)
-  const showAbacusPickUp = requiresAbacusPickUp(previousPartType, nextPartType)
+  // Abacus action: the kinds say whether each part is worked on the physical abacus
+  const previousNeedsAbacus = previous?.needsPhysicalAbacus ?? false
+  const showAbacusPutAway = previousNeedsAbacus && !next.needsPhysicalAbacus
+  const showAbacusPickUp = !previousNeedsAbacus && next.needsPhysicalAbacus
 
   // Compute abacus action text for audio narration
   const abacusActionText = showAbacusPutAway
@@ -186,8 +196,8 @@ export function PartTransitionScreen({
   return (
     <div
       data-component="part-transition-screen"
-      data-previous-part={previousPartType ?? 'start'}
-      data-next-part={nextPartType}
+      data-previous-part={previous ? (previous.presentation ?? previous.kind) : 'start'}
+      data-next-part={next.presentation ?? next.kind}
       className={css({
         position: 'fixed',
         top: 0,
@@ -278,7 +288,7 @@ export function PartTransitionScreen({
             borderRadius: '12px',
           })}
         >
-          {previousPartType && (
+          {previous && (
             <>
               <span
                 className={css({
@@ -286,7 +296,7 @@ export function PartTransitionScreen({
                   opacity: 0.5,
                 })}
               >
-                {getPartTypeEmoji(previousPartType)}
+                {previous.emoji}
               </span>
               <span
                 className={css({
@@ -303,7 +313,7 @@ export function PartTransitionScreen({
               fontSize: '1.5rem',
             })}
           >
-            {getPartTypeEmoji(nextPartType)}
+            {next.emoji}
           </span>
           <span
             className={css({
@@ -312,7 +322,7 @@ export function PartTransitionScreen({
               color: isDark ? 'gray.200' : 'gray.700',
             })}
           >
-            {getPartTypeLabel(nextPartType)}
+            {next.label}
           </span>
         </div>
 

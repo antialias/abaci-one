@@ -264,7 +264,6 @@ const defaultHandlers = {
   },
   onPause: () => console.log('Session paused'),
   onResume: () => console.log('Session resumed'),
-  onComplete: () => alert('Session completed!'),
 }
 
 /**
@@ -418,7 +417,7 @@ function InteractiveSessionDemo() {
       },
     })
   )
-  const [results, setResults] = useState<SlotResult[]>([])
+  const [, setResults] = useState<SlotResult[]>([])
 
   const handleAnswer = useCallback(
     async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>) => {
@@ -456,12 +455,6 @@ function InteractiveSessionDemo() {
     [plan.currentPartIndex]
   )
 
-  const handleComplete = useCallback(() => {
-    alert(
-      `Session complete! Results: ${results.filter((r) => r.isCorrect).length}/${results.length} correct`
-    )
-  }, [results])
-
   return (
     <SessionWrapper>
       <ActiveSession
@@ -469,7 +462,6 @@ function InteractiveSessionDemo() {
         student={createMockStudent('Interactive Demo')}
         onAnswer={handleAnswer}
         onEndEarly={(reason) => alert(`Ended: ${reason}`)}
-        onComplete={handleComplete}
       />
     </SessionWrapper>
   )

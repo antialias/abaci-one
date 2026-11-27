@@ -20,12 +20,13 @@ import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import { type StudentActionData, useStudentActions } from '@/hooks/useStudentActions'
 import { useStudentStakeholders } from '@/hooks/useStudentStakeholders'
 import { getGame } from '@/lib/arcade/game-registry'
+import type { ArithmeticDotsPosition } from '@/lib/curriculum/parts/arithmetic/session-view'
 import { css } from '../../../styled-system/css'
 import { NavBannerSlot } from './BannerSlots'
 import { RelationshipSummary } from './RelationshipBadge'
 import { RelationshipCard } from './RelationshipCard'
 import { SessionMoodIndicator } from './SessionMoodIndicator'
-import { SessionProgressIndicator } from './SessionProgressIndicator'
+import { type RedoTarget, SessionProgressIndicator } from './SessionProgressIndicator'
 import { ACTION_DEFINITIONS } from './studentActions'
 
 /**
@@ -56,16 +57,25 @@ export interface SessionHudData {
   currentPart: {
     type: 'abacus' | 'visualization' | 'linear'
     partNumber: number
-    totalSlots: number
   }
-  /** Current slot index within the part */
-  currentSlotIndex: number
   /** All results so far */
   results: SlotResult[]
-  /** Total problems completed so far */
-  completedProblems: number
-  /** Total problems in session */
-  totalProblems: number
+  /**
+   * The report's progress (`position.progress`): items done and planned
+   * across the session. Undefined until the report has loaded; the counts
+   * that read it are not shown before then.
+   */
+  progress?: { done: number; total: number }
+  /**
+   * Items planned after the current part (the report's later parts), so the
+   * items left before the next break are `total - done - laterPartItems`.
+   */
+  laterPartItems?: number
+  /**
+   * The progress dots' props: the part kind's view of the plan (arithmetic's
+   * dots are its slots; Phase 5b).
+   */
+  dots: ArithmeticDotsPosition
   /** Session health info */
   sessionHealth?: {
     overall: 'good' | 'warning' | 'struggling'
@@ -83,7 +93,7 @@ export interface SessionHudData {
   /** Navigate to specific problem in browse mode */
   onBrowseNavigate?: (linearIndex: number) => void
   /** Redo a previously completed problem (tap on completed dot) */
-  onRedoProblem?: (linearIndex: number, originalResult: SlotResult) => void
+  onRedoProblem?: (target: RedoTarget) => void
   /** Cancel redo and return to current session position */
   onCancelRedo?: () => void
   /** Linear index of the problem currently being redone (undefined = not in redo mode) */
@@ -458,11 +468,11 @@ export function PracticeSubNav({
     const isLastPart = sessionHud.currentPartIndex >= sessionHud.parts.length - 1
     if (isLastPart) return null
 
-    // Calculate problems remaining in current part until game break
-    const currentPart = sessionHud.parts[sessionHud.currentPartIndex]
-    const problemsUntilBreak = currentPart
-      ? currentPart.slots.length - sessionHud.currentSlotIndex
-      : 0
+    // Problems left in the current part until the game break: the report's
+    // items left less those of the later parts (no badge until it loads)
+    const { progress, laterPartItems } = sessionHud
+    const problemsUntilBreak =
+      progress && laterPartItems !== undefined ? progress.total - progress.done - laterPartItems : 0
 
     // Get the specific game icon if a game is selected (not random, not null)
     let gameIcon: string | undefined
@@ -480,7 +490,8 @@ export function PracticeSubNav({
   }, [
     sessionHud?.plan,
     sessionHud?.currentPartIndex,
-    sessionHud?.currentSlotIndex,
+    sessionHud?.progress,
+    sessionHud?.laterPartItems,
     sessionHud?.parts,
   ])
 
@@ -1448,10 +1459,7 @@ export function PracticeSubNav({
               })}
             >
               <SessionProgressIndicator
-                parts={sessionHud.parts}
-                results={sessionHud.results}
-                currentPartIndex={sessionHud.currentPartIndex}
-                currentSlotIndex={sessionHud.currentSlotIndex}
+                {...sessionHud.dots}
                 isBrowseMode={sessionHud.isBrowseMode}
                 onNavigate={sessionHud.onBrowseNavigate}
                 onRedoProblem={sessionHud.onRedoProblem}
@@ -1463,16 +1471,17 @@ export function PracticeSubNav({
               />
             </div>
 
-            {/* Session Mood Indicator - unified timing + health display */}
-            {timingStats && (
+            {/* Session Mood Indicator - unified timing + health display (its
+                "N left" is the report's progress, so it waits for the report) */}
+            {timingStats && sessionHud.progress && (
               <SessionMoodIndicator
                 currentElapsedMs={currentElapsedMs}
                 meanMs={timingStats.mean}
                 stdDevMs={timingStats.stdDev}
                 thresholdMs={timingStats.threshold}
                 hasEnoughData={timingStats.hasEnoughData}
-                problemsRemaining={sessionHud.totalProblems - sessionHud.completedProblems}
-                totalProblems={sessionHud.totalProblems}
+                problemsRemaining={sessionHud.progress.total - sessionHud.progress.done}
+                totalProblems={sessionHud.progress.total}
                 recentResults={recentResults}
                 accuracy={sessionHud.sessionHealth?.accuracy ?? 1}
                 healthStatus={sessionHud.sessionHealth?.overall ?? 'good'}

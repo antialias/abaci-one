@@ -9,8 +9,10 @@ import type {
   AbacusControlEvent,
   ObserverCoPlayLeaveEvent,
   ObserverCoPlayReadyEvent,
+  ObserverPosition,
   PartTransitionCompleteEvent,
   PartTransitionEvent,
+  PartTransitionSide,
   PracticeStateEvent,
   SessionFlowStateEvent,
   SessionPausedEvent,
@@ -18,6 +20,26 @@ import type {
   VisionFrameEvent,
 } from '@/lib/classroom/socket-events'
 import { createSocket } from '@/lib/socket'
+
+/**
+ * What the kid's screen broadcasts: the live problem and answer from
+ * `ActiveSession` (sub-second state the server does not have), and the
+ * position fields observers read, which the page computes from the server's
+ * plan (`arithmeticObserverPosition`, Phase 5b), never from copies the screen
+ * keeps.
+ */
+export interface BroadcastPracticeState extends BroadcastState {
+  position: ObserverPosition
+}
+
+/**
+ * A part as the transition broadcast names it: the kind's `{ kind, label }`,
+ * plus arithmetic's presentation for the legacy `previousPartType` /
+ * `nextPartType` fields.
+ */
+export interface BroadcastTransitionPart extends PartTransitionSide {
+  presentation?: SessionPartType
+}
 
 /**
  * Abacus control action received from teacher
@@ -69,8 +91,8 @@ export interface UseSessionBroadcastResult {
   readyObservers: ReadyObserver[]
   /** Send part transition event to observers */
   sendPartTransition: (
-    previousPartType: SessionPartType | null,
-    nextPartType: SessionPartType,
+    previous: BroadcastTransitionPart | null,
+    next: BroadcastTransitionPart,
     countdownStartTime: number,
     countdownDurationMs: number
   ) => void
@@ -128,7 +150,7 @@ export interface BreakContext {
 export function useSessionBroadcast(
   sessionId: string | undefined,
   playerId: string | undefined,
-  state: BroadcastState | null,
+  state: BroadcastPracticeState | null,
   flowState: SessionFlowState,
   breakContext: BreakContext | null,
   options?: UseSessionBroadcastOptions
@@ -141,7 +163,7 @@ export function useSessionBroadcast(
   const viewerIdRef = useRef<string | null | undefined>(viewerId)
   viewerIdRef.current = viewerId
   // Keep state in a ref so socket event handlers can access current state
-  const stateRef = useRef<BroadcastState | null>(null)
+  const stateRef = useRef<BroadcastPracticeState | null>(null)
   stateRef.current = state
 
   // Keep options in a ref so socket event handlers can access current callbacks
@@ -199,13 +221,8 @@ export function useSessionBroadcast(
       },
       purpose: currentState.purpose,
       complexity: currentState.complexity,
-      currentProblemNumber: currentState.currentProblemNumber,
-      totalProblems: currentState.totalProblems,
-      // Session structure for progress indicator
-      sessionParts: currentState.sessionParts,
-      currentPartIndex: currentState.currentPartIndex,
-      currentSlotIndex: currentState.currentSlotIndex,
-      slotResults: currentState.slotResults,
+      // Position: from the server's plan and the item on screen (Phase 5b)
+      ...currentState.position,
     }
 
     socketRef.current.emit('practice-state', event)
@@ -400,13 +417,15 @@ export function useSessionBroadcast(
     state?.studentAnswer, // Answer submitted
     state?.isCorrect, // Result received
     state?.purpose, // Purpose change
+    state?.item.itemId, // Another item (a do-over of a problem with the same answer)
+    state?.item.doOver,
   ])
 
   // Broadcast part transition to observers
   const sendPartTransition = useCallback(
     (
-      previousPartType: SessionPartType | null,
-      nextPartType: SessionPartType,
+      previous: BroadcastTransitionPart | null,
+      next: BroadcastTransitionPart,
       countdownStartTime: number,
       countdownDurationMs: number
     ) => {
@@ -416,16 +435,21 @@ export function useSessionBroadcast(
 
       const event: PartTransitionEvent = {
         sessionId,
-        previousPartType,
-        nextPartType,
+        // The kinds' names for the parts (Phase 5b)
+        previous: previous ? { kind: previous.kind, label: previous.label } : null,
+        next: { kind: next.kind, label: next.label },
+        // Legacy fields for observers that still read them (one release, D9);
+        // only arithmetic has a presentation, and only arithmetic exists
+        previousPartType: previous?.presentation ?? null,
+        nextPartType: next.presentation ?? 'linear',
         countdownStartTime,
         countdownDurationMs,
       }
 
       socketRef.current.emit('part-transition', event)
       console.log('[SessionBroadcast] Emitted part-transition:', {
-        previousPartType,
-        nextPartType,
+        previous: event.previous,
+        next: event.next,
         countdownDurationMs,
       })
     },

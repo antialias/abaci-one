@@ -3,9 +3,8 @@
  */
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { BroadcastState } from '@/components/practice'
 import type { BreakContext } from '../useSessionBroadcast'
-import { useSessionBroadcast } from '../useSessionBroadcast'
+import { type BroadcastPracticeState, useSessionBroadcast } from '../useSessionBroadcast'
 
 // Mock socket.io-client
 const mockSocket = {
@@ -41,7 +40,7 @@ describe('useSessionBroadcast - flow state + break context broadcasting', () => 
   const SESSION_ID = 'session-123'
   const PLAYER_ID = 'player-456'
 
-  const createMockBroadcastState = (): BroadcastState => ({
+  const createMockBroadcastState = (): BroadcastPracticeState => ({
     currentProblem: { terms: [5, 3], answer: 8 },
     slotId: 'test-slot-0',
     phase: 'problem',
@@ -50,12 +49,16 @@ describe('useSessionBroadcast - flow state + break context broadcasting', () => 
     startedAt: Date.now(),
     purpose: 'focus',
     complexity: undefined,
-    currentProblemNumber: 1,
-    totalProblems: 10,
-    sessionParts: [],
-    currentPartIndex: 0,
-    currentSlotIndex: 0,
-    slotResults: [],
+    item: { partIndex: 0, itemId: 'test-slot-0', doOver: false, round: 0 },
+    position: {
+      currentProblemNumber: 1,
+      totalProblems: 10,
+      sessionParts: [],
+      currentPartIndex: 0,
+      currentSlotIndex: 0,
+      slotResults: [],
+      currentItem: { partIndex: 0, itemId: 'test-slot-0' },
+    },
   })
 
   function renderAndConnect(breakContext: BreakContext | null = null) {

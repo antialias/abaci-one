@@ -3,8 +3,7 @@
  */
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { BroadcastState } from '@/components/practice'
-import { useSessionBroadcast } from '../useSessionBroadcast'
+import { type BroadcastPracticeState, useSessionBroadcast } from '../useSessionBroadcast'
 
 // Mock socket.io-client
 const mockSocket = {
@@ -29,7 +28,7 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
     mockSocket.emit.mockReset()
   })
 
-  const createMockBroadcastState = (): BroadcastState => ({
+  const createMockBroadcastState = (): BroadcastPracticeState => ({
     currentProblem: { terms: [5, 3], answer: 8 },
     slotId: 'test-slot-0',
     phase: 'problem',
@@ -38,12 +37,16 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
     startedAt: Date.now(),
     purpose: 'focus',
     complexity: undefined,
-    currentProblemNumber: 1,
-    totalProblems: 10,
-    sessionParts: [],
-    currentPartIndex: 0,
-    currentSlotIndex: 0,
-    slotResults: [],
+    item: { partIndex: 0, itemId: 'test-slot-0', doOver: false, round: 0 },
+    position: {
+      currentProblemNumber: 1,
+      totalProblems: 10,
+      sessionParts: [],
+      currentPartIndex: 0,
+      currentSlotIndex: 0,
+      slotResults: [],
+      currentItem: { partIndex: 0, itemId: 'test-slot-0' },
+    },
   })
 
   it('warns once when the server refuses the live-room join (no retry)', () => {

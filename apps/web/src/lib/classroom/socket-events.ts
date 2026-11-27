@@ -211,19 +211,46 @@ export interface PracticeStateEvent {
   purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
   /** Complexity data for tooltip display */
   complexity?: BroadcastComplexity
-  /** Current problem number (1-indexed for display) */
+  /**
+   * The position fields below come from the server's plan and the item on the
+   * kid's screen (Phase 5b), computed by the arithmetic kind's view
+   * (`parts/arithmetic/session-view.ts`, `arithmeticObserverPosition`), not
+   * from copies the kid's screen keeps. They are the fields observers read
+   * today; counts come from the session report (Phase 4).
+   */
+  /** The dots' number of the plan's cursor (1-indexed; a do-over does not move it) */
   currentProblemNumber: number
-  /** Total problems in the session */
+  /** Problems planned (the dots' count) */
   totalProblems: number
   /** Session structure for progress indicator */
   sessionParts?: unknown[] // SessionPart[] - sent for observer progress display
-  /** Current part index for progress indicator */
+  /** Part of the dot shown as current: a do-over's own part, else the plan's */
   currentPartIndex?: number
-  /** Current slot index within the part */
+  /** Slot of the dot shown as current: a do-over's own slot, else the plan's cursor */
   currentSlotIndex?: number
-  /** Accumulated results for progress indicator */
+  /** The plan's tries, for the observer's dots and the stats feed */
   slotResults?: unknown[] // SlotResult[] - for observer progress display
+  /** The item on the kid's screen (Phase 5b; absent from older kid screens) */
+  currentItem?: PracticeItemRef
 }
+
+/** An item of a part, as structure names it (§1.2: `itemId` is today's `slotId`). */
+export interface PracticeItemRef {
+  partIndex: number
+  itemId: string
+}
+
+/** The position fields of a `practice-state` broadcast (Phase 5b). */
+export type ObserverPosition = Pick<
+  PracticeStateEvent,
+  | 'sessionParts'
+  | 'currentPartIndex'
+  | 'currentSlotIndex'
+  | 'slotResults'
+  | 'currentProblemNumber'
+  | 'totalProblems'
+  | 'currentItem'
+>
 
 export interface TutorialStateEvent {
   sessionId: string
@@ -265,14 +292,28 @@ export interface SessionResumedEvent {
  */
 export interface PartTransitionEvent {
   sessionId: string
-  /** Part type we're transitioning FROM (null if session start) */
+  /** The part we're transitioning FROM, as its kind names it (null at session start; Phase 5b) */
+  previous?: PartTransitionSide | null
+  /** The part we're transitioning TO, as its kind names it (Phase 5b) */
+  next?: PartTransitionSide
+  /**
+   * Arithmetic presentation we're transitioning FROM (null if session start).
+   * Kept for observers that read it (`ObserverTransitionView`) and for one
+   * release of older observer bundles (D9); `previous` is the kind's answer.
+   */
   previousPartType: 'abacus' | 'visualization' | 'linear' | null
-  /** Part type we're transitioning TO */
+  /** Arithmetic presentation we're transitioning TO (legacy; see `previousPartType`) */
   nextPartType: 'abacus' | 'visualization' | 'linear'
   /** Timestamp when countdown started (for sync) */
   countdownStartTime: number
   /** Countdown duration in ms */
   countdownDurationMs: number
+}
+
+/** A part as the transition names it: its kind and the label its kind gives it (§1.3). */
+export interface PartTransitionSide {
+  kind: string
+  label: string
 }
 
 /**

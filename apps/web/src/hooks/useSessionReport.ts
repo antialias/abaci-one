@@ -34,8 +34,13 @@ import { sessionReportKeys } from '@/lib/queryKeys'
 import { createSocket } from '@/lib/socket'
 
 export type SessionReportSource =
-  /** A signed-in viewer; `viewerId` is checked for `observe` on the player to join the push room */
-  | { playerId: string; planId: string; viewerId: string }
+  /**
+   * A signed-in viewer; `viewerId` is checked for `observe` on the player to
+   * join the push room. The fetch needs only the cookie: with `viewerId` still
+   * null (identity loading) the report is fetched and the push room is joined
+   * once it is known.
+   */
+  | { playerId: string; planId: string; viewerId: string | null }
   /** A share-link holder */
   | { token: string }
 
@@ -125,7 +130,9 @@ export function useSessionReport(
   const credential: Omit<SubscribeSessionReportRequest, 'sessionId'> | null = source
     ? 'token' in source
       ? { shareToken: source.token }
-      : { viewerId: source.viewerId, playerId: source.playerId }
+      : source.viewerId
+        ? { viewerId: source.viewerId, playerId: source.playerId }
+        : null
     : null
   const credentialHash = JSON.stringify(credential)
 
