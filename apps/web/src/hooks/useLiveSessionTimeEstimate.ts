@@ -12,7 +12,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
 import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
-import type { PracticeStateEvent } from '@/lib/classroom/socket-events'
+import { useUserId } from '@/hooks/useUserId'
+import type { SessionStatsEvent } from '@/lib/classroom/socket-events'
 import { createSocket } from '@/lib/socket'
 import {
   calculateEstimatedTimeRemainingMs,
@@ -92,6 +93,8 @@ export function useLiveSessionTimeEstimate({
   const [error, setError] = useState<string | null>(null)
 
   const socketRef = useRef<Socket | null>(null)
+  // The credential for the (gated, Phase 4c) session room: the viewer's id
+  const { data: viewerId } = useUserId()
 
   // Update initial data when props change (before WebSocket connects)
   useEffect(() => {
@@ -113,7 +116,7 @@ export function useLiveSessionTimeEstimate({
 
   // WebSocket subscription
   useEffect(() => {
-    if (!sessionId || !enabled) {
+    if (!sessionId || !enabled || !viewerId) {
       cleanup()
       return
     }
@@ -131,8 +134,9 @@ export function useLiveSessionTimeEstimate({
       setIsConnected(true)
       setError(null)
 
-      // Subscribe to session updates (read-only, no observer auth needed)
-      socket.emit('subscribe-session-stats', { sessionId })
+      // Subscribe to the stats feed; the server checks `view` on the
+      // session's player for this viewer (session-room-access.ts)
+      socket.emit('subscribe-session-stats', { sessionId, viewerId })
     })
 
     socket.on('disconnect', () => {
@@ -147,11 +151,15 @@ export function useLiveSessionTimeEstimate({
       setIsConnected(false)
     })
 
-    // Listen for practice state updates
-    socket.on('practice-state', (data: PracticeStateEvent) => {
-      console.log('[LiveSessionTimeEstimate] Received practice-state:', {
-        problemNumber: data.currentProblemNumber,
-        totalProblems: data.totalProblems,
+    // A refused join of the stats feed (Phase 4c): say so; no retry
+    socket.on('session-room-error', (data: { sessionId: string; error: string }) => {
+      console.warn('[LiveSessionTimeEstimate] Stats feed refused:', data.sessionId, data.error)
+    })
+
+    // The stats feed (`session-stats:<id>`, joined at `view`): the kid's parts
+    // and tries from each broadcast, without the live answer (Phase 4c)
+    socket.on('session-stats', (data: SessionStatsEvent) => {
+      console.log('[LiveSessionTimeEstimate] Received session-stats:', {
         resultsCount: (data.slotResults as SlotResult[] | undefined)?.length ?? 0,
       })
 
@@ -182,7 +190,7 @@ export function useLiveSessionTimeEstimate({
       socket.disconnect()
       socketRef.current = null
     }
-  }, [sessionId, enabled, cleanup])
+  }, [sessionId, enabled, viewerId, cleanup])
 
   // Compute time estimates from current data
   // Practice-only do-overs count nowhere

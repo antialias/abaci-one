@@ -4,16 +4,23 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { useMemo } from 'react'
 import { Z_INDEX } from '@/constants/zIndex'
 import type { ObservedResult } from '@/hooks/useSessionObserver'
+import {
+  averageTryMs,
+  formatMinutes,
+  formatPercent,
+  reportProgress,
+  wrongFirstTries,
+} from '@/lib/curriculum/observer-report'
+import type { SessionReport } from '@/lib/curriculum/session-report'
 import { css } from '../../../styled-system/css'
 import { CompactLinearProblem } from './CompactProblemDisplay'
+import { TryMarks } from './LiveResultsPanel'
 
 interface LiveSessionReportContentProps {
-  /** Accumulated results from the session */
+  /** The session report: every count, progress figure and time shown here (Phase 4c) */
+  report: SessionReport
+  /** The report's tries joined to their problems (the lists only) */
   results: ObservedResult[]
-  /** Total problems in the session */
-  totalProblems: number
-  /** Session start time (for duration calculation) */
-  sessionStartTime?: number
   /** Whether dark mode */
   isDark: boolean
 }
@@ -135,6 +142,8 @@ function ReportResultItem({ result, isDark }: { result: ObservedResult; isDark: 
         })}
       >
         #{result.problemNumber}
+        {result.isRetry ? ' ↻' : ''}
+        <TryMarks result={result} />
       </span>
 
       {/* Status indicator */}
@@ -199,31 +208,22 @@ function ReportResultItem({ result, isDark }: { result: ObservedResult; isDark: 
 /**
  * Shared content component for the live session report
  */
-function LiveSessionReportContent({
-  results,
-  totalProblems,
-  sessionStartTime,
-  isDark,
-}: LiveSessionReportContentProps) {
-  // Compute stats
-  const stats = useMemo(() => {
-    const correct = results.filter((r) => r.isCorrect).length
-    const incorrect = results.filter((r) => !r.isCorrect).length
-    const completed = results.length
-    const accuracy = completed > 0 ? correct / completed : 0
-    const totalTimeMs = results.reduce((sum, r) => sum + r.responseTimeMs, 0)
-    const avgTimeMs = completed > 0 ? totalTimeMs / completed : 0
+function LiveSessionReportContent({ report, results, isDark }: LiveSessionReportContentProps) {
+  // Every number from the report
+  const progress = reportProgress(report)
+  const stats = {
+    accuracy: report.totals.firstTryAccuracy ?? 0,
+    accuracyText: formatPercent(report.totals.firstTryAccuracy),
+    finalCorrect: report.totals.finalCorrect,
+    problems: report.totals.problems,
+    avgTimeMs: averageTryMs(report),
+  }
+  const isComplete = report.outcome === 'completed'
+  // Wall time (end − start; now while live, as of the latest report)
+  const sessionMinutes = formatMinutes(report.time.wallMs)
 
-    return { correct, incorrect, completed, accuracy, totalTimeMs, avgTimeMs }
-  }, [results])
-
-  const isComplete = stats.completed === totalProblems
-  const sessionDurationMinutes = sessionStartTime
-    ? (Date.now() - sessionStartTime) / 1000 / 60
-    : stats.totalTimeMs / 1000 / 60
-
-  // Get incorrect results
-  const incorrectResults = useMemo(() => results.filter((r) => !r.isCorrect), [results])
+  // Wrong first tries, by the totals' rule; the heading counts the rows shown
+  const incorrectResults = useMemo(() => wrongFirstTries(results), [results])
 
   return (
     <div
@@ -297,7 +297,7 @@ function LiveSessionReportContent({
           gap: '0.75rem',
         })}
       >
-        {/* Accuracy */}
+        {/* First-try accuracy */}
         <div
           data-element="stat-accuracy"
           className={css({
@@ -327,7 +327,7 @@ function LiveSessionReportContent({
                       : 'orange.600',
             })}
           >
-            {Math.round(stats.accuracy * 100)}%
+            {stats.accuracyText}
           </div>
           <div
             className={css({
@@ -335,11 +335,11 @@ function LiveSessionReportContent({
               color: isDark ? 'gray.400' : 'gray.500',
             })}
           >
-            Accuracy
+            First try
           </div>
         </div>
 
-        {/* Correct/Total */}
+        {/* Final verdicts correct / problems */}
         <div
           data-element="stat-problems"
           className={css({
@@ -358,7 +358,7 @@ function LiveSessionReportContent({
               color: isDark ? 'blue.400' : 'blue.600',
             })}
           >
-            {stats.correct}/{stats.completed}
+            {stats.finalCorrect}/{stats.problems}
           </div>
           <div
             className={css({
@@ -366,7 +366,7 @@ function LiveSessionReportContent({
               color: isDark ? 'gray.400' : 'gray.500',
             })}
           >
-            Correct
+            Final
           </div>
         </div>
 
@@ -389,7 +389,7 @@ function LiveSessionReportContent({
               color: isDark ? 'purple.400' : 'purple.600',
             })}
           >
-            {Math.round(sessionDurationMinutes)}
+            {sessionMinutes.value}
           </div>
           <div
             className={css({
@@ -397,7 +397,7 @@ function LiveSessionReportContent({
               color: isDark ? 'gray.400' : 'gray.500',
             })}
           >
-            Minutes
+            {sessionMinutes.plural ? 'Minutes' : 'Minute'}
           </div>
         </div>
       </div>
@@ -437,7 +437,7 @@ function LiveSessionReportContent({
               color: isDark ? 'gray.400' : 'gray.600',
             })}
           >
-            {stats.completed} / {totalProblems}
+            {progress.done} / {progress.total}
           </span>
         </div>
         <div
@@ -455,7 +455,9 @@ function LiveSessionReportContent({
               borderRadius: '3px',
               transition: 'width 0.3s ease',
             })}
-            style={{ width: `${(stats.completed / totalProblems) * 100}%` }}
+            style={{
+              width: `${progress.total > 0 ? (progress.done / progress.total) * 100 : 0}%`,
+            }}
           />
         </div>
       </div>
@@ -517,7 +519,7 @@ function LiveSessionReportContent({
             })}
           >
             {incorrectResults.map((result) => (
-              <ReportResultItem key={result.problemNumber} result={result} isDark={isDark} />
+              <ReportResultItem key={result.tryId} result={result} isDark={isDark} />
             ))}
           </div>
         </div>
@@ -542,7 +544,7 @@ function LiveSessionReportContent({
             marginBottom: '0.625rem',
           })}
         >
-          All Problems ({results.length})
+          All Tries ({results.length})
         </h3>
         <div
           className={css({
@@ -566,7 +568,7 @@ function LiveSessionReportContent({
             </div>
           ) : (
             results.map((result) => (
-              <ReportResultItem key={result.problemNumber} result={result} isDark={isDark} />
+              <ReportResultItem key={result.tryId} result={result} isDark={isDark} />
             ))
           )}
         </div>
@@ -580,9 +582,8 @@ function LiveSessionReportContent({
  * Used in SessionObserverModal when expanding from the LiveResultsPanel
  */
 export function LiveSessionReportInline({
+  report,
   results,
-  totalProblems,
-  sessionStartTime,
   isDark,
   onBack,
 }: LiveSessionReportInlineProps) {
@@ -624,12 +625,7 @@ export function LiveSessionReportInline({
         ← Back to Problem
       </button>
 
-      <LiveSessionReportContent
-        results={results}
-        totalProblems={totalProblems}
-        sessionStartTime={sessionStartTime}
-        isDark={isDark}
-      />
+      <LiveSessionReportContent report={report} results={results} isDark={isDark} />
     </div>
   )
 }
@@ -641,18 +637,12 @@ export function LiveSessionReportInline({
 export function LiveSessionReportModal({
   isOpen,
   onClose,
+  report,
   results,
-  totalProblems,
   studentName,
-  sessionStartTime,
   isDark,
 }: LiveSessionReportModalProps) {
-  const stats = useMemo(() => {
-    const completed = results.length
-    return { completed }
-  }, [results])
-
-  const isComplete = stats.completed === totalProblems
+  const isComplete = report.outcome === 'completed'
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -751,12 +741,7 @@ export function LiveSessionReportModal({
               justifyContent: 'center',
             })}
           >
-            <LiveSessionReportContent
-              results={results}
-              totalProblems={totalProblems}
-              sessionStartTime={sessionStartTime}
-              isDark={isDark}
-            />
+            <LiveSessionReportContent report={report} results={results} isDark={isDark} />
           </div>
         </Dialog.Content>
       </Dialog.Portal>

@@ -1,13 +1,12 @@
+import { eq } from 'drizzle-orm'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { players, sessionPlans, sessionSongs } from '@/db/schema'
-import { canPerformAction } from '@/lib/classroom'
-import { validateSessionShare } from '@/lib/session-share'
-import { getUserId, getViewer } from '@/lib/viewer'
-import type { ActiveSessionInfo } from '@/hooks/useClassroom'
+import { sessionSongs } from '@/db/schema'
 import type { SessionSongLLMOutput } from '@/db/schema/session-songs'
+import { canPerformAction } from '@/lib/classroom'
+import { loadSharedSession } from '@/lib/curriculum/shared-session-report'
+import { getViewer } from '@/lib/viewer'
 import { PublicObservationClient } from './PublicObservationClient'
 import { SessionEndedClient } from './SessionEndedClient'
 
@@ -20,30 +19,22 @@ interface PublicObservationPageProps {
 export async function generateMetadata({ params }: PublicObservationPageProps): Promise<Metadata> {
   const { token } = await params
 
-  const validation = await validateSessionShare(token)
-  if (!validation.valid || !validation.share) {
+  const shared = await loadSharedSession(token)
+  if (shared.kind !== 'ok') {
     return { title: 'Session Not Found | Abaci.One' }
   }
 
-  const share = validation.share
-
-  const [playerResults, sessions] = await Promise.all([
-    db.select().from(players).where(eq(players.id, share.playerId)).limit(1),
-    db.select().from(sessionPlans).where(eq(sessionPlans.id, share.sessionId)).limit(1),
-  ])
-
-  const player = playerResults[0]
-  const session = sessions[0]
-  const studentName = player?.name ?? 'Student'
-  const studentEmoji = player?.emoji ?? ''
+  const studentName = shared.player?.name ?? 'Student'
+  const studentEmoji = shared.player?.emoji ?? ''
+  const ended = shared.outcome === 'completed' || shared.outcome === 'abandoned'
 
   // Check for a completed song
   let songTitle: string | null = null
-  if (session?.completedAt) {
+  if (ended) {
     const [song] = await db
       .select()
       .from(sessionSongs)
-      .where(eq(sessionSongs.sessionPlanId, share.sessionId))
+      .where(eq(sessionSongs.sessionPlanId, shared.share.sessionId))
       .limit(1)
     if (song?.status === 'completed' && song.llmOutput) {
       songTitle = (song.llmOutput as SessionSongLLMOutput)?.title ?? null
@@ -52,13 +43,13 @@ export async function generateMetadata({ params }: PublicObservationPageProps): 
 
   const title = songTitle
     ? `${studentEmoji} ${studentName}'s Practice Song`
-    : session?.completedAt
+    : ended
       ? `${studentEmoji} ${studentName} finished practicing!`
       : `${studentEmoji} Watch ${studentName} practice`
 
   const description = songTitle
     ? `Listen to "${songTitle}" — a song celebrating ${studentName}'s practice session on Abaci.One`
-    : session?.completedAt
+    : ended
       ? `${studentName} just finished a practice session on Abaci.One!`
       : `Watch ${studentName} practice math on Abaci.One in real time`
 
@@ -74,136 +65,83 @@ export async function generateMetadata({ params }: PublicObservationPageProps): 
   }
 }
 
+/** The signed-in (non-guest) viewer's id, or undefined. */
+async function signedInUserId(): Promise<string | undefined> {
+  try {
+    const viewer = await getViewer()
+    if (viewer.kind === 'user' && viewer.session.user?.id) return viewer.session.user.id
+  } catch {
+    // Not logged in
+  }
+  return undefined
+}
+
 export default async function PublicObservationPage({ params }: PublicObservationPageProps) {
   const { token } = await params
 
-  // Validate the share token
-  const validation = await validateSessionShare(token)
-  if (!validation.valid || !validation.share) {
+  // The share, its session and report (live / ended / not started by outcome)
+  const shared = await loadSharedSession(token)
+  if (shared.kind !== 'ok') {
     notFound()
   }
+  const { share, plan, outcome, report, player } = shared
+  const userId = await signedInUserId()
 
-  const share = validation.share
-
-  // Get the session
-  const sessions = await db
-    .select()
-    .from(sessionPlans)
-    .where(eq(sessionPlans.id, share.sessionId))
-    .limit(1)
-
-  const session = sessions[0]
-  if (!session) {
-    notFound()
-  }
-
-  // Check if session is still active
-  if (session.completedAt || !session.startedAt) {
-    // Session has ended or hasn't started - check if user can view the report
+  if (outcome !== 'in_progress') {
+    // Ended (completed, ended early, abandoned) or not started yet
     let sessionReportUrl: string | undefined
-    let endedUserId: string | undefined
-    try {
-      const viewer = await getViewer()
-      if (viewer.kind === 'user' && viewer.session.user?.id) {
-        endedUserId = viewer.session.user.id
-        const canView = await canPerformAction(endedUserId, share.playerId, 'view')
-        if (canView) {
-          sessionReportUrl = `/practice/${share.playerId}/session/${session.id}`
+    if (userId) {
+      try {
+        if (await canPerformAction(userId, share.playerId, 'view')) {
+          sessionReportUrl = `/practice/${share.playerId}/session/${plan.id}`
         }
+      } catch {
+        // No report link
       }
-    } catch {
-      // Not logged in or error - no report link
     }
 
-    // Get player info for the session ended page
-    const playerResults = await db
-      .select()
-      .from(players)
-      .where(eq(players.id, share.playerId))
-      .limit(1)
-    const player = playerResults[0]
-
-    // Show a friendly "session ended" page with optional link to report
     return (
       <SessionEndedClient
         studentName={player?.name ?? 'Student'}
         studentEmoji={player?.emoji ?? '👤'}
-        sessionCompleted={!!session.completedAt}
+        report={outcome === 'not_started' ? null : report}
         playerId={share.playerId}
-        sessionPlanId={session.id}
+        sessionPlanId={plan.id}
         shareToken={token}
         sessionReportUrl={sessionReportUrl}
-        userId={endedUserId}
+        userId={userId}
       />
     )
   }
 
-  // Get the player
-  const playerResults = await db
-    .select()
-    .from(players)
-    .where(eq(players.id, share.playerId))
-    .limit(1)
-
-  const player = playerResults[0]
   if (!player) {
     notFound()
   }
 
-  // Calculate progress info
-  const parts = session.parts as Array<{ slots: Array<unknown> }>
-  const totalProblems = parts.reduce((sum, part) => sum + part.slots.length, 0)
-  let completedProblems = 0
-  for (let i = 0; i < session.currentPartIndex; i++) {
-    completedProblems += parts[i]?.slots.length ?? 0
-  }
-  completedProblems += session.currentSlotIndex
-
   // Check if the current user can observe this player directly (without the share link)
   let authenticatedObserveUrl: string | undefined
-  let observeUserId: string | undefined
-  try {
-    const viewer = await getViewer()
-    // Only treat real authenticated users (not guests) as having a userId
-    if (viewer.kind === 'user' && viewer.session.user?.id) {
-      observeUserId = viewer.session.user.id
-      const canObserve = await canPerformAction(observeUserId, share.playerId, 'observe')
-      if (canObserve) {
+  if (userId) {
+    try {
+      if (await canPerformAction(userId, share.playerId, 'observe')) {
         authenticatedObserveUrl = `/practice/${share.playerId}/observe`
       }
+    } catch {
+      // Don't show the banner
     }
-  } catch {
-    // Not logged in or error checking permissions - that's fine, just don't show the banner
-  }
-
-  const sessionInfo: ActiveSessionInfo = {
-    sessionId: session.id,
-    playerId: session.playerId,
-    startedAt:
-      session.startedAt instanceof Date
-        ? session.startedAt.toISOString()
-        : String(session.startedAt),
-    currentPartIndex: session.currentPartIndex,
-    currentSlotIndex: session.currentSlotIndex,
-    totalParts: parts.length,
-    totalProblems,
-    completedProblems,
   }
 
   return (
     <PublicObservationClient
-      session={sessionInfo}
+      session={{ sessionId: plan.id, playerId: plan.playerId }}
       shareToken={token}
       student={{
         name: player.name,
         emoji: player.emoji,
         color: player.color,
       }}
-      expiresAt={
-        share.expiresAt instanceof Date ? share.expiresAt.getTime() : Number(share.expiresAt)
-      }
+      expiresAt={share.expiresAt.getTime()}
       authenticatedObserveUrl={authenticatedObserveUrl}
-      userId={observeUserId}
+      userId={userId}
     />
   )
 }

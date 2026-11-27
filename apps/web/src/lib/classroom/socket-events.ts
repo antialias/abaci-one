@@ -184,6 +184,18 @@ export interface BroadcastComplexity {
   targetSkillName?: string
 }
 
+/**
+ * The stats feed's slice of a `practice-state` broadcast (Phase 4c): what the
+ * history list's live time estimate needs, relayed to `session-stats:<id>`
+ * (joined at `view`), without the live problem, answer or feedback that
+ * `session:<id>` (joined at `observe`) carries.
+ */
+export interface SessionStatsEvent {
+  sessionId: string
+  sessionParts?: PracticeStateEvent['sessionParts']
+  slotResults?: PracticeStateEvent['slotResults']
+}
+
 export interface PracticeStateEvent {
   sessionId: string
   currentProblem: unknown // GeneratedProblem type from curriculum
@@ -309,7 +321,8 @@ export interface SessionEndedEvent {
    * The row version of the write that ended the session (Phase 4a; absent
    * from older servers). Sent to the `player:`, `classroom:` and gated
    * `session-report:` rooms on every end, natural completion included, after
-   * the commit (not to `session:` until 4c, §10 P4a-4).
+   * the commit; since Phase 4c also to `session:<id>`, where observers keep
+   * the final report on screen (§10 P4a-4, P4c-1).
    */
   rowVersion?: number
   /** How the session ended (Phase 4a; absent from older servers) */
@@ -524,6 +537,12 @@ export interface ClassroomServerToClientEvents {
   'session-report': (data: SessionReportEvent) => void
   'session-report-subscribed': (data: { sessionId: string }) => void
   'session-report-error': (data: { sessionId: string; error: string }) => void
+  /** A refused join of a session's live room or stats feed (Phase 4c) */
+  'session-room-error': (data: { sessionId: string; error: string }) => void
+  /** The kid's screen was admitted to `session:<id>` (Phase 4c): rebroadcast */
+  'session-room-joined': (data: { sessionId: string }) => void
+  /** The history list's stats feed (`session-stats:<id>`, `view` level): the kid's parts and tries, no live answer */
+  'session-stats': (data: SessionStatsEvent) => void
 
   // Skill tutorial events (classroom channel - for teacher's observation)
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
@@ -549,10 +568,19 @@ export interface ClassroomClientToServerEvents {
   'leave-classroom': (data: { classroomId: string }) => void
   'join-player': (data: { playerId: string }) => void
   'leave-player': (data: { playerId: string }) => void
-  'join-session': (data: { sessionId: string }) => void
+  /** The kid's own screen; checked as `subscribe-session-report` (Phase 4c, session-room-access.ts) */
+  'join-session': (data: SubscribeSessionReportRequest) => void
+  /** The history list's live estimate; same check (`playerId` may be omitted) */
+  'subscribe-session-stats': (data: SubscribeSessionReportRequest) => void
+  'unsubscribe-session-stats': (data: { sessionId: string }) => void
   'subscribe-session-report': (data: SubscribeSessionReportRequest) => void
   'unsubscribe-session-report': (data: { sessionId: string }) => void
-  'observe-session': (data: { sessionId: string; observerId: string }) => void
+  'observe-session': (data: {
+    sessionId: string
+    observerId?: string
+    playerId?: string
+    shareToken?: string
+  }) => void
   'stop-observing': (data: { sessionId: string }) => void
 
   // Session state broadcasts (from student client)

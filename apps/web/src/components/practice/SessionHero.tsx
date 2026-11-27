@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { PRACTICE_TYPES, type PracticeTypeId } from '@/constants/practiceTypes'
+import { formatMinutes } from '@/lib/curriculum/observer-report'
 import type { SessionReport } from '@/lib/curriculum/session-report'
 import { css } from '../../../styled-system/css'
 import { TrendIndicator } from './TrendIndicator'
@@ -16,14 +17,6 @@ export interface SessionHeroProps {
   previousAccuracy: number | null
   /** Dark mode */
   isDark: boolean
-}
-
-/** Whole minutes for display ("< 1" under a minute) and the unit's number. */
-export function formatMinutes(ms: number): { value: string; plural: boolean } {
-  const minutes = ms / 60_000
-  if (minutes < 1) return { value: '< 1', plural: false }
-  const rounded = Math.round(minutes)
-  return { value: String(rounded), plural: rounded !== 1 }
 }
 
 /** The outcome line for a session that did not finish normally, else null. */

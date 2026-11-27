@@ -16,6 +16,9 @@ const mockSocket = {
   connected: true,
 }
 
+// The viewer id that joins the session room (Phase 4c)
+vi.mock('@/hooks/useUserId', () => ({ useUserId: () => ({ data: 'viewer-1' }) }))
+
 vi.mock('socket.io-client', () => ({
   io: vi.fn(() => mockSocket),
 }))

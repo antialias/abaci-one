@@ -6,6 +6,8 @@ import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 // Mocks
 // ============================================================================
 
+// The viewer id that subscribes to the gated session room (Phase 4c)
+vi.mock('@/hooks/useUserId', () => ({ useUserId: () => ({ data: 'viewer-1' }) }))
 vi.mock('socket.io-client', () => ({ io: vi.fn() }))
 
 type SocketHandler = (...args: any[]) => void
@@ -152,6 +154,7 @@ describe('useLiveSessionTimeEstimate', () => {
     expect(result.current.error).toBeNull()
     expect(latestSocket!.emit).toHaveBeenCalledWith('subscribe-session-stats', {
       sessionId: 'session-123',
+      viewerId: 'viewer-1',
     })
   })
 
@@ -197,7 +200,7 @@ describe('useLiveSessionTimeEstimate', () => {
     expect(result.current.isConnected).toBe(false)
   })
 
-  it('updates data when receiving practice-state events', () => {
+  it('updates data when receiving session-stats events', () => {
     const initialParts = [makePart('abacus', 10)]
 
     const { result } = renderHook(() =>
@@ -219,7 +222,7 @@ describe('useLiveSessionTimeEstimate', () => {
     ]
 
     act(() => {
-      latestSocket!.fire('practice-state', {
+      latestSocket!.fire('session-stats', {
         currentProblemNumber: 4,
         totalProblems: 10,
         slotResults: liveResults,
@@ -233,7 +236,7 @@ describe('useLiveSessionTimeEstimate', () => {
     expect(result.current.lastActivityAt).toBeInstanceOf(Date)
   })
 
-  it('updates parts when receiving practice-state with sessionParts', () => {
+  it('updates parts when receiving session-stats with sessionParts', () => {
     const initialParts = [makePart('abacus', 5)]
 
     const { result } = renderHook(() =>
@@ -251,7 +254,7 @@ describe('useLiveSessionTimeEstimate', () => {
     })
 
     act(() => {
-      latestSocket!.fire('practice-state', {
+      latestSocket!.fire('session-stats', {
         currentProblemNumber: 1,
         totalProblems: 8,
         sessionParts: [makePart('abacus', 8)],
@@ -278,7 +281,7 @@ describe('useLiveSessionTimeEstimate', () => {
     })
 
     act(() => {
-      latestSocket!.fire('practice-state', {
+      latestSocket!.fire('session-stats', {
         currentProblemNumber: 1,
         totalProblems: 5,
         slotResults: [makeResult(5000)],
@@ -292,6 +295,31 @@ describe('useLiveSessionTimeEstimate', () => {
     })
 
     expect(result.current.isLive).toBe(false)
+  })
+
+  it('warns once when the stats feed is refused (no retry)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const initialParts = [makePart('abacus', 5)]
+    renderHook(() =>
+      useLiveSessionTimeEstimate({
+        sessionId: 'session-123',
+        initialResults: EMPTY_RESULTS,
+        initialParts,
+      })
+    )
+    act(() => {
+      latestSocket!.fire('connect')
+    })
+    act(() => {
+      latestSocket!.fire('session-room-error', { sessionId: 'session-123', error: 'refused' })
+    })
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(
+      (latestSocket!.emit as any).mock.calls.filter(
+        (c: unknown[]) => c[0] === 'subscribe-session-stats'
+      )
+    ).toHaveLength(1)
+    warn.mockRestore()
   })
 
   it('does not connect when sessionId is undefined', () => {

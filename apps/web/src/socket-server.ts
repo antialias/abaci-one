@@ -1,36 +1,42 @@
-import type { Server as HTTPServer } from 'http'
-import { Server as SocketIOServer } from 'socket.io'
-import type { Server as SocketIOServerType } from 'socket.io'
 import { createAdapter } from '@socket.io/redis-adapter'
+import type { Server as HTTPServer } from 'http'
+import type { Server as SocketIOServerType } from 'socket.io'
+import { Server as SocketIOServer } from 'socket.io'
+import { getGameConfig } from './lib/arcade/game-config-helpers'
+import { getRoomActivePlayers, getRoomPlayerIds } from './lib/arcade/player-manager'
+import { createRoom, getRoomById } from './lib/arcade/room-manager'
+import { getRoomMembers, getUserRooms, setMemberOnline } from './lib/arcade/room-membership'
 import {
   applyGameMove,
   createArcadeSession,
   deleteArcadeSession,
   getArcadeSession,
   getArcadeSessionByRoom,
-  updateSessionActivity,
-  updateSessionActivePlayers,
   getGameStateFromSession,
   setGameStateInNamespace,
+  updateSessionActivePlayers,
+  updateSessionActivity,
 } from './lib/arcade/session-manager'
-import { createRoom, getRoomById } from './lib/arcade/room-manager'
-import { getRoomMembers, getUserRooms, setMemberOnline } from './lib/arcade/room-membership'
-import { getRoomActivePlayers, getRoomPlayerIds } from './lib/arcade/player-manager'
-import { getValidator, type GameName } from './lib/arcade/validators'
 import type { GameMove } from './lib/arcade/validation/types'
-import { getGameConfig } from './lib/arcade/game-config-helpers'
-import { canPerformAction, isParentOf } from './lib/classroom'
+import { type GameName, getValidator } from './lib/arcade/validators'
+import { isParentOf } from './lib/classroom'
+import {
+  registerObserveSession,
+  registerPracticeStateRelay,
+  registerSessionControls,
+  registerSessionRoomJoins,
+} from './lib/classroom/session-room-access'
 import { registerSessionReportJoin } from './lib/curriculum/session-report-access'
 import { registerSessionReportPush } from './lib/curriculum/session-report-server'
-import { incrementShareViewCount, validateSessionShare } from './lib/session-share'
+import { socketConnections, socketConnectionsTotal } from './lib/metrics'
+import { createRedisClient } from './lib/redis'
 import {
   getRemoteCameraSession,
   markPhoneConnected,
   markPhoneDisconnected,
 } from './lib/remote-camera/session-manager'
-import { createRedisClient } from './lib/redis'
-import { VisionRecorder, type VisionFrame, type PracticeStateInput } from './lib/vision/recording'
-import { socketConnections, socketConnectionsTotal } from './lib/metrics'
+import { incrementShareViewCount } from './lib/session-share'
+import { type PracticeStateInput, type VisionFrame, VisionRecorder } from './lib/vision/recording'
 
 // Throttle map for DVR buffer info emissions (sessionId -> last emit timestamp)
 const lastDvrBufferInfoEmit = new Map<string, number>()
@@ -38,12 +44,12 @@ const lastDvrBufferInfoEmit = new Map<string, number>()
 // Server-side mismatch timers for matching game (keyed by roomId or solo-userId)
 const activeMismatchTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
-// Yjs server-side imports
-import * as Y from 'yjs'
+import * as decoding from 'lib0/decoding'
+import * as encoding from 'lib0/encoding'
 import * as awarenessProtocol from 'y-protocols/awareness'
 import * as syncProtocol from 'y-protocols/sync'
-import * as encoding from 'lib0/encoding'
-import * as decoding from 'lib0/decoding'
+// Yjs server-side imports
+import * as Y from 'yjs'
 
 // Use globalThis to store socket.io instance to avoid module isolation issues
 // This ensures the same instance is accessible across dynamic imports
@@ -1005,154 +1011,48 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
-    // Session Observation: Join session channel (for students to receive observer-joined events)
-    socket.on('join-session', async ({ sessionId }: { sessionId: string }) => {
-      try {
-        await socket.join(`session:${sessionId}`)
-        console.log(`📝 Student joined session channel: ${sessionId}`)
-      } catch (error) {
-        console.error('Error joining session channel:', error)
-      }
-    })
-
     // Session report: the gated room that receives `session-report` pushes
     // (Phase 4a; `observe` access or a share token, session-report-access.ts)
     registerSessionReportJoin(socket)
 
-    // Session Stats: Subscribe to session updates (read-only, for time estimates in history list)
-    // This is a lightweight alternative to full observation - just receives practice-state events
-    socket.on('subscribe-session-stats', async ({ sessionId }: { sessionId: string }) => {
-      try {
-        await socket.join(`session:${sessionId}`)
-        console.log(`📊 Stats subscriber joined session channel: ${sessionId}`)
-      } catch (error) {
-        console.error('Error subscribing to session stats:', error)
+    // The live room `session:<id>` (practice-state, vision frames, controls)
+    // is joined by `join-session` (the kid's screen, `observe`) and
+    // `observe-session` below; the history list's estimate joins the stats
+    // feed `session-stats:<id>` (`view`) by `subscribe-session-stats`. Both
+    // are checked as the report room is (Phase 4c, session-room-access.ts).
+    registerSessionRoomJoins(socket)
+
+    // Session Observation: Start observing a practice session. Parents,
+    // present teachers and share holders; one check for every join of the
+    // live room, a share holder recorded view-only for that session
+    // (Phase 4c, session-room-access.ts)
+    registerObserveSession(socket, async ({ sessionId, observerId, shareToken, shared }) => {
+      if (shared && shareToken) {
+        await incrementShareViewCount(shareToken)
+        console.log(
+          `👁️ Shared observer joined session: ${sessionId} (token: ${shareToken.substring(0, 4)}...)`
+        )
+      } else {
+        console.log(`👁️ Observer ${observerId} started watching session: ${sessionId}`)
       }
-    })
 
-    // Session Stats: Unsubscribe from session updates
-    socket.on('unsubscribe-session-stats', async ({ sessionId }: { sessionId: string }) => {
-      try {
-        await socket.leave(`session:${sessionId}`)
-        console.log(`📊 Stats subscriber left session channel: ${sessionId}`)
-      } catch (error) {
-        console.error('Error unsubscribing from session stats:', error)
-      }
-    })
-
-    // Session Observation: Start observing a practice session
-    // Supports both authenticated observers (parent/teacher) and token-based shared observers
-    socket.on(
-      'observe-session',
-      async ({
-        sessionId,
-        observerId,
-        playerId,
-        shareToken,
-      }: {
-        sessionId: string
-        observerId?: string
-        playerId?: string
-        shareToken?: string
-      }) => {
-        try {
-          // Token-based authentication (shareable links - no user login required)
-          if (shareToken) {
-            const validation = await validateSessionShare(shareToken)
-            if (!validation.valid) {
-              console.log(`⚠️ Share token validation failed: ${validation.error}`)
-              socket.emit('observe-error', {
-                error: validation.error || 'Invalid share link',
-              })
-              return
-            }
-
-            // Increment view count
-            await incrementShareViewCount(shareToken)
-
-            // Mark this socket as a shared observer (view-only, no controls)
-            socket.data.isSharedObserver = true
-            socket.data.shareToken = shareToken
-
-            await socket.join(`session:${sessionId}`)
-            console.log(
-              `👁️ Shared observer joined session: ${sessionId} (token: ${shareToken.substring(0, 4)}...)`
-            )
-
-            // Send initial DVR buffer info if recording is active
-            const sharedRecorder = VisionRecorder.getInstance()
-            const isRecording = sharedRecorder.isRecording(sessionId)
-            console.log(`[Socket] Shared observer joined, checking DVR: isRecording=${isRecording}`)
-            if (isRecording) {
-              const bufferInfo = sharedRecorder.getDvrBufferInfo(sessionId)
-              console.log(`[Socket] Initial DVR buffer info for shared observer:`, bufferInfo)
-              if (bufferInfo) {
-                socket.emit('vision-buffer-info', {
-                  sessionId,
-                  ...bufferInfo,
-                })
-              }
-            }
-
-            // Notify session that a guest observer joined
-            socket.to(`session:${sessionId}`).emit('observer-joined', {
-              observerId: 'guest',
-              isGuest: true,
-            })
-            return
-          }
-
-          // Authenticated observer flow (parent or teacher-present)
-          if (!observerId) {
-            socket.emit('observe-error', { error: 'Observer ID required' })
-            return
-          }
-
-          // Authorization check: require 'observe' permission (parent or teacher-present)
-          if (playerId) {
-            const canObserve = await canPerformAction(observerId, playerId, 'observe')
-            if (!canObserve) {
-              console.log(
-                `⚠️ Observation denied - ${observerId} not authorized for player ${playerId}`
-              )
-              socket.emit('observe-error', {
-                error: 'Not authorized to observe this session',
-              })
-              return
-            }
-          }
-
-          // Mark as authenticated observer (has controls)
-          socket.data.isSharedObserver = false
-
-          await socket.join(`session:${sessionId}`)
-          console.log(`👁️ Observer ${observerId} started watching session: ${sessionId}`)
-
-          // Send initial DVR buffer info if recording is active
-          const authRecorder = VisionRecorder.getInstance()
-          const isRecordingAuth = authRecorder.isRecording(sessionId)
-          console.log(`[Socket] Auth observer joined, checking DVR: isRecording=${isRecordingAuth}`)
-          if (isRecordingAuth) {
-            const bufferInfo = authRecorder.getDvrBufferInfo(sessionId)
-            console.log(`[Socket] Initial DVR buffer info for auth observer:`, bufferInfo)
-            if (bufferInfo) {
-              socket.emit('vision-buffer-info', {
-                sessionId,
-                ...bufferInfo,
-              })
-            }
-          }
-
-          // Notify session that an observer joined
-          socket.to(`session:${sessionId}`).emit('observer-joined', { observerId })
-        } catch (error) {
-          console.error('Error starting session observation:', error)
-          socket.emit('observe-error', {
-            error: 'Failed to start observation',
+      // Send initial DVR buffer info if recording is active
+      const recorder = VisionRecorder.getInstance()
+      if (recorder.isRecording(sessionId)) {
+        const bufferInfo = recorder.getDvrBufferInfo(sessionId)
+        if (bufferInfo) {
+          socket.emit('vision-buffer-info', {
+            sessionId,
+            ...bufferInfo,
           })
         }
       }
-    )
+
+      // Notify the session that an observer (or a guest) joined
+      socket
+        .to(`session:${sessionId}`)
+        .emit('observer-joined', shared ? { observerId: 'guest', isGuest: true } : { observerId })
+    })
 
     // Session Observation: Stop observing a practice session
     socket.on('stop-observing', async ({ sessionId }: { sessionId: string }) => {
@@ -1164,39 +1064,24 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
-    // Session Observation: Broadcast practice state (from student's client)
-    socket.on(
-      'practice-state',
-      (data: {
-        sessionId: string
-        currentProblem: { terms: number[]; answer: number } | unknown
-        phase: 'problem' | 'feedback' | 'tutorial'
-        studentAnswer: string
-        isCorrect: boolean | null
-        currentProblemNumber: number
-        timing: { startedAt: number; elapsed: number }
-      }) => {
-        // Forward practice state to VisionRecorder for metadata capture
-        // Only processes if there's an active recording for this session
-        const recorder = VisionRecorder.getInstance()
-        const currentProblem = data.currentProblem as
-          | { terms: number[]; answer: number }
-          | undefined
-        if (currentProblem && 'terms' in currentProblem && 'answer' in currentProblem) {
-          const practiceState: PracticeStateInput = {
-            currentProblem,
-            phase: data.phase,
-            studentAnswer: data.studentAnswer,
-            isCorrect: data.isCorrect,
-            currentProblemNumber: data.currentProblemNumber,
-          }
-          recorder.onPracticeState(data.sessionId, practiceState)
+    // Session Observation: Broadcast practice state (from student's client),
+    // relayed only from the kid's admitted screen: to `session:<id>`, and its
+    // parts and tries to the stats feed (Phase 4c, session-room-access.ts)
+    registerPracticeStateRelay(socket, (data) => {
+      // Forward practice state to VisionRecorder for metadata capture
+      // Only processes if there's an active recording for this session
+      const currentProblem = data.currentProblem as { terms: number[]; answer: number } | undefined
+      if (currentProblem && 'terms' in currentProblem && 'answer' in currentProblem) {
+        const practiceState: PracticeStateInput = {
+          currentProblem,
+          phase: data.phase as PracticeStateInput['phase'],
+          studentAnswer: data.studentAnswer as string,
+          isCorrect: data.isCorrect as boolean | null,
+          currentProblemNumber: data.currentProblemNumber as number,
         }
-
-        // Broadcast to all observers in the session channel
-        socket.to(`session:${data.sessionId}`).emit('practice-state', data)
+        VisionRecorder.getInstance().onPracticeState(data.sessionId, practiceState)
       }
-    )
+    })
 
     // Session Observation: Broadcast part transition (from student's client)
     socket.on(
@@ -1260,66 +1145,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
-    // Session Observation: Tutorial control from observer
-    // Shared observers (via token) are view-only and cannot control
-    socket.on(
-      'tutorial-control',
-      (data: { sessionId: string; action: 'skip' | 'next' | 'previous' }) => {
-        // Reject if shared observer (view-only)
-        if (socket.data.isSharedObserver) {
-          console.log('[Socket] tutorial-control rejected - shared observer is view-only')
-          return
-        }
-        // Send control command to student's client
-        io!.to(`session:${data.sessionId}`).emit('tutorial-control', data)
-      }
-    )
-
-    // Session Observation: Abacus control from observer
-    // Shared observers (via token) are view-only and cannot control
-    socket.on(
-      'abacus-control',
-      (data: {
-        sessionId: string
-        target: 'help' | 'hero'
-        action: 'show' | 'hide' | 'set-value'
-        value?: number
-      }) => {
-        // Reject if shared observer (view-only)
-        if (socket.data.isSharedObserver) {
-          console.log('[Socket] abacus-control rejected - shared observer is view-only')
-          return
-        }
-        // Send control command to student's client
-        io!.to(`session:${data.sessionId}`).emit('abacus-control', data)
-      }
-    )
-
-    // Session Observation: Pause command from observer (teacher pauses student's session)
-    // Shared observers (via token) are view-only and cannot control
-    socket.on('session-pause', (data: { sessionId: string; reason: string; message?: string }) => {
-      // Reject if shared observer (view-only)
-      if (socket.data.isSharedObserver) {
-        console.log('[Socket] session-pause rejected - shared observer is view-only')
-        return
-      }
-      console.log('[Socket] session-pause:', data.sessionId, data.message)
-      // Forward pause command to student's client
-      io!.to(`session:${data.sessionId}`).emit('session-paused', data)
-    })
-
-    // Session Observation: Resume command from observer (teacher resumes student's session)
-    // Shared observers (via token) are view-only and cannot control
-    socket.on('session-resume', (data: { sessionId: string }) => {
-      // Reject if shared observer (view-only)
-      if (socket.data.isSharedObserver) {
-        console.log('[Socket] session-resume rejected - shared observer is view-only')
-        return
-      }
-      console.log('[Socket] session-resume:', data.sessionId)
-      // Forward resume command to student's client
-      io!.to(`session:${data.sessionId}`).emit('session-resumed', data)
-    })
+    // Session Observation: observers' controls (tutorial, abacus, pause,
+    // resume). Only a socket admitted to `session:<id>` that is not a
+    // view-only share holder may send them (Phase 4c, session-room-access.ts)
+    registerSessionControls(socket, io!)
 
     // Session Observation: Broadcast vision frame from student's abacus camera
     socket.on(

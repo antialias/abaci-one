@@ -278,8 +278,8 @@ export async function emitSessionStartedToPlayer(payload: SessionEventPayload): 
 /**
  * The gated room that receives a session's reports (Phase 4a). Joined only
  * through `subscribe-session-report`, which checks the viewer's `observe`
- * access or a share token (`session-report-access.ts`); unlike `session:<id>`,
- * which anyone can join today (§10 P4a-9).
+ * access or a share token (`session-report-access.ts`); `session:<id>` is
+ * gated with the same check since Phase 4c (`session-room-access.ts`).
  */
 export function sessionReportRoom(sessionId: string): string {
   return `session-report:${sessionId}`
@@ -303,12 +303,13 @@ export async function emitSessionReport(report: SessionReport): Promise<void> {
 }
 
 /**
- * Tell parents, the teacher and report subscribers a session ended (Phase
- * 4a): the player's and classroom's rooms and the gated report room, in one
- * emit (a socket in several of them hears it once). Not the `session:<id>`
- * room: the observers there stop on `session-ended` today, so 4c sends it
- * there together with the ended observer view (§10 P4a-4). Every end goes
- * through here from the commit path, natural completion included.
+ * Tell parents, the teacher, observers and report subscribers a session ended
+ * (Phase 4a; the session room since 4c): the player's and classroom's rooms,
+ * the gated report room and the live room `session:<id>`, in one emit (a
+ * socket in several of them hears it once). Observers in the live room keep
+ * the final report on screen and show the ended view (§10 P4a-4, P4c-1).
+ * Every end goes through here from the commit path, natural completion
+ * included.
  */
 export async function emitSessionEndedEverywhere(
   event: SessionEndedEvent,
@@ -316,7 +317,12 @@ export async function emitSessionEndedEverywhere(
 ): Promise<void> {
   const io = await getSocketIO()
   if (!io) return
-  const rooms = [`player:${event.playerId}`, sessionReportRoom(event.sessionId)]
+  const rooms = [
+    `player:${event.playerId}`,
+    sessionReportRoom(event.sessionId),
+    `session:${event.sessionId}`,
+    `session-stats:${event.sessionId}`,
+  ]
   if (classroomId) rooms.push(`classroom:${classroomId}`)
   try {
     io.to(rooms).emit('session-ended', event)

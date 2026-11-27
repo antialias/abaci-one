@@ -1,13 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { SessionObserverView } from '@/components/classroom/SessionObserverModal'
-import type { ActiveSessionInfo } from '@/hooks/useClassroom'
+import {
+  type ObservedSessionRef,
+  SessionObserverView,
+} from '@/components/classroom/SessionObserverModal'
 import { SubscribeButton } from '@/components/notifications/SubscribeButton'
 import { css } from '../../../../styled-system/css'
 
 interface PublicObservationClientProps {
-  session: ActiveSessionInfo
+  /** The shared session; what it shows comes from its report, read with the token */
+  session: ObservedSessionRef
   shareToken: string
   student: {
     name: string

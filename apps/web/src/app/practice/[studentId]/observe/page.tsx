@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
+import { isEndedOutcome, sessionOutcome } from '@/db/schema/session-plan-normalize'
 import { getPlayerAccess, isParentOf } from '@/lib/classroom'
 import { getActiveSessionPlan, getPracticeStudent } from '@/lib/curriculum/server'
-import type { ActiveSessionInfo } from '@/hooks/useClassroom'
 import { getUserId } from '@/lib/viewer'
 import { ObservationClient } from './ObservationClient'
 import { StudentNotPresentPage } from './StudentNotPresentPage'
@@ -48,60 +48,17 @@ export default async function PracticeObservationPage({ params }: ObservationPag
     notFound()
   }
 
-  // If session is completed, show the observation page with a banner linking to the report
-  if (activeSession?.completedAt) {
-    return (
-      <ObservationClient
-        session={{
-          sessionId: activeSession.id,
-          playerId: activeSession.playerId,
-          startedAt: activeSession.startedAt!.toISOString(),
-          currentPartIndex: activeSession.currentPartIndex,
-          currentSlotIndex: activeSession.currentSlotIndex,
-          totalParts: activeSession.parts.length,
-          totalProblems: activeSession.parts.reduce((sum, part) => sum + part.slots.length, 0),
-          completedProblems: activeSession.parts.reduce((sum, part) => sum + part.slots.length, 0),
-        }}
-        observerId={observerId}
-        student={{
-          name: player.name,
-          emoji: player.emoji,
-          color: player.color,
-        }}
-        studentId={studentId}
-        isParent={isParent}
-        sessionReportUrl={`/practice/${studentId}/session/${activeSession.id}`}
-        sessionEnded
-      />
-    )
-  }
-
-  // If no active session or session hasn't started, go to dashboard
-  if (!activeSession || !activeSession.startedAt) {
+  // No session, or not started yet: back to the dashboard
+  const outcome = activeSession ? sessionOutcome(activeSession) : null
+  if (!activeSession || (outcome !== 'in_progress' && !isEndedOutcome(outcome!))) {
     redirect(`/practice/${studentId}/dashboard`)
   }
 
-  const totalProblems = activeSession.parts.reduce((sum, part) => sum + part.slots.length, 0)
-  let completedProblems = 0
-  for (let i = 0; i < activeSession.currentPartIndex; i++) {
-    completedProblems += activeSession.parts[i]?.slots.length ?? 0
-  }
-  completedProblems += activeSession.currentSlotIndex
-
-  const session: ActiveSessionInfo = {
-    sessionId: activeSession.id,
-    playerId: activeSession.playerId,
-    startedAt: activeSession.startedAt!.toISOString(),
-    currentPartIndex: activeSession.currentPartIndex,
-    currentSlotIndex: activeSession.currentSlotIndex,
-    totalParts: activeSession.parts.length,
-    totalProblems,
-    completedProblems,
-  }
-
+  // The view reads everything it shows from the session report (Phase 4c);
+  // an ended session shows the ended view with a link to the full report
   return (
     <ObservationClient
-      session={session}
+      session={{ sessionId: activeSession.id, playerId: activeSession.playerId }}
       observerId={observerId}
       student={{
         name: player.name,
@@ -110,6 +67,7 @@ export default async function PracticeObservationPage({ params }: ObservationPag
       }}
       studentId={studentId}
       isParent={isParent}
+      sessionReportUrl={`/practice/${studentId}/session/${activeSession.id}`}
     />
   )
 }

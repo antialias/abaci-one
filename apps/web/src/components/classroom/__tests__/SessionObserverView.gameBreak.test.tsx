@@ -1,9 +1,10 @@
 /**
  * Unit tests for SessionObserverView game break overlay rendering
  */
-import React from 'react'
+
 import { render, screen } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
+import React from 'react'
+import { describe, expect, it, vi } from 'vitest'
 import type { ObservedGameBreakState } from '@/hooks/useSessionObserver'
 
 // Mock useSessionObserver to return controlled breakState and flowState
@@ -15,7 +16,6 @@ let mockIsConnected = true
 vi.mock('@/hooks/useSessionObserver', () => ({
   useSessionObserver: () => ({
     state: null,
-    results: [],
     transitionState: null,
     flowState: mockFlowState,
     breakState: mockBreakState,
@@ -23,6 +23,7 @@ vi.mock('@/hooks/useSessionObserver', () => ({
     isConnected: mockIsConnected,
     isObserving: mockIsObserving,
     error: null,
+    ended: null,
     stopObserving: vi.fn(),
     sendControl: vi.fn(),
     sendPause: vi.fn(),
@@ -32,6 +33,11 @@ vi.mock('@/hooks/useSessionObserver', () => ({
     scrubTo: vi.fn(),
     goLive: vi.fn(),
   }),
+}))
+
+// The session report (Phase 4c): not loaded in these tests
+vi.mock('@/hooks/useSessionReport', () => ({
+  useSessionReport: () => ({ data: undefined }),
 }))
 
 // Mock ThemeContext

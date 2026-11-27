@@ -21,8 +21,14 @@ import type { SubscribeSessionReportRequest } from '@/lib/classroom/socket-event
 
 export type SessionReportJoinDecision = { ok: true } | { ok: false; error: string }
 
+/**
+ * `action` is the access level a signed-in viewer needs (default `observe`,
+ * the report room's and the live room's; the history list's stats feed asks
+ * `view`, Phase 4c). A share holder is checked the same way at every level.
+ */
 export async function authorizeSessionReportJoin(
-  request: SubscribeSessionReportRequest
+  request: SubscribeSessionReportRequest,
+  action: 'observe' | 'view' = 'observe'
 ): Promise<SessionReportJoinDecision> {
   const { sessionId, viewerId, playerId, shareToken } = request ?? ({} as never)
   if (typeof sessionId !== 'string' || !sessionId) return { ok: false, error: 'Session required' }
@@ -52,8 +58,8 @@ export async function authorizeSessionReportJoin(
   }
   if (plan.playerId !== playerId) return { ok: false, error: 'Session not found' }
   const { canPerformAction } = await import('@/lib/classroom')
-  if (!(await canPerformAction(viewerId, playerId, 'observe'))) {
-    return { ok: false, error: 'Not authorized to observe this session' }
+  if (!(await canPerformAction(viewerId, playerId, action))) {
+    return { ok: false, error: `Not authorized to ${action} this session` }
   }
   return { ok: true }
 }

@@ -16,7 +16,8 @@
  *   live to ended (completed or abandoned: natural completion, end early,
  *   abandon, auto-abandon, worksheet approval), after that write's report,
  *   and even when building the report failed. Rooms: the player's, the
- *   classroom's and the gated report room, not `session:<id>` (§10 P4a-4).
+ *   classroom's, the gated report room and (Phase 4c) the live room
+ *   `session:<id>`, whose observers then show the ended view (§10 P4a-4).
  * - Reports go only to the gated room `session-report:<id>`
  *   (`session-report-access.ts`).
  * No timers, no polling: one push per committed write.

@@ -15,6 +15,9 @@ const mockSocket = {
   connected: true,
 }
 
+// The viewer id that joins the session room (Phase 4c)
+vi.mock('@/hooks/useUserId', () => ({ useUserId: () => ({ data: 'viewer-1' }) }))
+
 vi.mock('socket.io-client', () => ({
   io: vi.fn(() => mockSocket),
 }))
@@ -41,6 +44,58 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
     currentPartIndex: 0,
     currentSlotIndex: 0,
     slotResults: [],
+  })
+
+  it('warns once when the server refuses the live-room join (no retry)', () => {
+    const handlers = new Map<string, (data: unknown) => void>()
+    mockSocket.on.mockImplementation((event: string, handler: unknown) => {
+      handlers.set(event, handler as (data: unknown) => void)
+      return mockSocket
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    renderHook(() =>
+      useSessionBroadcast(
+        'session-123',
+        'player-456',
+        createMockBroadcastState(),
+        'practicing',
+        null
+      )
+    )
+    const joins = mockSocket.emit.mock.calls.filter((c) => c[0] === 'join-session').length
+    act(() => {
+      handlers.get('session-room-error')?.({ sessionId: 'session-123', error: 'Not authorized' })
+    })
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(mockSocket.emit.mock.calls.filter((c) => c[0] === 'join-session')).toHaveLength(joins)
+    warn.mockRestore()
+  })
+
+  it('rebroadcasts its state once the live room admits it (session-room-joined)', () => {
+    const handlers = new Map<string, (data: unknown) => void>()
+    mockSocket.on.mockImplementation((event: string, handler: unknown) => {
+      handlers.set(event, handler as (data: unknown) => void)
+      return mockSocket
+    })
+    renderHook(() =>
+      useSessionBroadcast(
+        'session-123',
+        'player-456',
+        createMockBroadcastState(),
+        'practicing',
+        null
+      )
+    )
+    const sent = () => mockSocket.emit.mock.calls.filter((c) => c[0] === 'practice-state').length
+    const before = sent()
+    act(() => {
+      handlers.get('session-room-joined')?.({ sessionId: 'other-session' })
+    })
+    expect(sent()).toBe(before)
+    act(() => {
+      handlers.get('session-room-joined')?.({ sessionId: 'session-123' })
+    })
+    expect(sent()).toBe(before + 1)
   })
 
   describe('sendVisionFrame', () => {
