@@ -16,7 +16,7 @@ import {
   type CurrentPlanItem,
   expectedArithmeticItem,
 } from '@/lib/curriculum/parts/arithmetic/state'
-import { kindIdOf, partKindOf } from '@/lib/curriculum/parts/registry'
+import { findPartKind, kindIdOf } from '@/lib/curriculum/parts/registry'
 import { itemSlotIndexOfRow, tryKindOfRow, tryRoundOfRow } from './legacy-try-fields'
 import { sameProblem } from './session-plan-helpers'
 import type {
@@ -223,14 +223,18 @@ function storedPartStateOf(plan: PartStateSource, partIndex: number): unknown {
  * stands (Phase 6b-0, §10 P6b-2). A part without one reads the state its
  * place in the session implies: arithmetic through
  * `unenteredArithmeticStateOf` (finished before the cursor, not started at or
- * after it), any other kind its initial state. Since Phase 6b-1 no legacy
- * column is read (§10 P6b1-3).
+ * after it), any other kind its initial state, a kind this image does not
+ * know undefined. Since Phase 6b-1 no legacy column is read (§10 P6b1-3).
  */
 export function partStateOf(plan: PartStateSource, partIndex: number): unknown {
   const part = plan.parts[partIndex]
   if (kindIdOf(part) === 'arithmetic') return arithmeticPartStateOf(plan, partIndex)
-  const kind = partKindOf(part)
-  return storedPartStateOf(plan, partIndex) ?? kind.initialState(kind.contentOf(part))
+  const stored = storedPartStateOf(plan, partIndex)
+  if (stored !== undefined) return stored
+  // A kind this image does not know (a newer image's part, read after a
+  // rollback) has no initial state here: undefined, never a throw (R2).
+  const kind = findPartKind(part)
+  return kind ? kind.initialState(kind.contentOf(part)) : undefined
 }
 
 /**
@@ -268,8 +272,11 @@ export function partStatesPatch(
   if (nextState !== undefined) partStates[String(partIndex)] = nextState
   const next = plan.parts[nextPartIndex]
   if (nextPartIndex !== plan.currentPartIndex && next && !(String(nextPartIndex) in partStates)) {
-    const kind = partKindOf(next)
-    partStates[String(nextPartIndex)] = kind.initialState(kind.contentOf(next))
+    // No entry for a kind this image does not know: the image that knows it
+    // reads a missing entry as its initial state (`partStateOf`), so the part
+    // before it still finishes (R2).
+    const kind = findPartKind(next)
+    if (kind) partStates[String(nextPartIndex)] = kind.initialState(kind.contentOf(next))
   }
   return { partStates }
 }

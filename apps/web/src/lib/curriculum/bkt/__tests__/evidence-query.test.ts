@@ -523,6 +523,38 @@ describe('batchGetRecentBktEvidence', () => {
     expect((await bkt(a))[0].opportunities).toBe(4)
   })
 
+  // Practice kinds K0 (plan of record §4, reviews R1 and S2): the SQL path's
+  // `toBktEvidence` guard (`if (!Array.isArray(raw.skillsExercised)) return
+  // null`) pinned as it stands, beside the same pin on
+  // `batchGetRecentSessionResults`. K1b changes it knowingly (to "has
+  // `evidence` or a `skillsExercised` array") and updates this test with the reason.
+  it('yields no evidence for a row without a skillsExercised array; [] is evidence (pinned before K1b)', async () => {
+    const { playerId } = await createTestStudent(ephemeralDb.db, 'skills-guard')
+    const { skillsExercised: _omitted, ...withoutSkills } = makeSlotResult({
+      responseTimeMs: 1_001,
+    })
+    await insertSession({
+      id: 'skills-guard-session',
+      playerId,
+      results: [
+        makeSlotResult({ responseTimeMs: 1_000, skillsExercised: [] }),
+        withoutSkills as SlotResult,
+        makeSlotResult({ responseTimeMs: 1_002, skillsExercised: null as never }),
+        makeSlotResult({ responseTimeMs: 1_003, skillsExercised: 'basic.directAddition' as never }),
+        // a row carrying only K1's envelope `evidence` yields none today
+        {
+          ...withoutSkills,
+          responseTimeMs: 1_004,
+          evidence: { skills: ['basic.directAddition'], presentation: 'linear' },
+        } as unknown as SlotResult,
+      ],
+    })
+
+    const evidence = (await batchGetRecentBktEvidence([playerId])).get(playerId) ?? []
+    expect(evidence).toHaveLength(1)
+    expect(evidence[0]).toMatchObject({ skillsExercised: [], responseTimeMs: 1_000 })
+  })
+
   describe("the part kind's bktMode decides the mode (Phase 2)", () => {
     afterEach(() => {
       vi.restoreAllMocks()

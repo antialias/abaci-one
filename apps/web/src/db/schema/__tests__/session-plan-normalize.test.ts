@@ -357,6 +357,29 @@ describe('part states (Phase 6b-1)', () => {
     })
   })
 
+  // Practice kinds §3.2 fixture (9), K0 (R2): a newer image's part, read by an
+  // image whose registry does not know its kind.
+  it('fixture (9): the next part is of an unknown kind: no entry, no throw, state undefined', () => {
+    const unknown = { kind: 'zzz', partNumber: 2, content: {} } as unknown as SessionPart
+    const mixed = [parts[0], unknown, parts[1]]
+    const p = plan({ parts: mixed, partStates: { '0': { slotIndex: 2 } } })
+    // the last try of part 0 moves the cursor into the unknown part
+    expect(partStatesPatch(p, 0, { slotIndex: 3, retry: undefined }, 1)).toEqual({
+      partStates: { '0': { slotIndex: 3, retry: undefined } },
+    })
+    expect(partStateOf(p, 1)).toBeUndefined()
+    const inside = plan({
+      parts: mixed,
+      currentPartIndex: 1,
+      partStates: { '0': { slotIndex: 3 } },
+    })
+    expect(partStateOf(inside, 1)).toBeUndefined()
+    expect(currentItemOf(inside)).toBeNull()
+    // an entry the newer image wrote is trusted as it stands
+    const entry = { cursor: 1 }
+    expect(partStateOf(plan({ parts: mixed, partStates: { '1': entry } }), 1)).toBe(entry)
+  })
+
   it('has no current item past the last part', () => {
     expect(currentItemOf(plan({ currentPartIndex: 2 }))).toBeNull()
   })
