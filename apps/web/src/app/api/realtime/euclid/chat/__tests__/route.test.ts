@@ -17,7 +17,7 @@ vi.mock('@/lib/llm', () => ({
   llm: {
     streamText: (...args: unknown[]) => streamText(...args),
     stream: (...args: unknown[]) => stream(...args),
-    getDefaultProvider: () => 'claude_code',
+    getProviderName: () => 'claude_code',
     getDefaultModel: () => 'claude-abaci',
   },
 }))

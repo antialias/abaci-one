@@ -9,7 +9,7 @@ auth_secret       = "generate-with-openssl-rand-base64-32"
 # kid_songs_doorbell_url        = "http://192.168.86.51:9117/v1/abaci-song-sync"
 # kid_songs_doorbell_secret     = "set-a-secret-of-at-least-32-characters"
 
-# Optional - AI features (flowchart generation, etc.)
+# Optional - realtime voice (the only feature still calling OpenAI directly)
 # openai_api_key    = "sk-..."
 
 # Optional - image generation through the switch proxy's Images API (by image class)
@@ -18,7 +18,6 @@ auth_secret       = "generate-with-openssl-rand-base64-32"
 
 # Optional - text and vision calls as `claude -p` through the claude-switch-proxy
 # llm_switch_api_key       = "..."                         # the proxy's client secret (feeds LLM_CLAUDE_CODE_API_KEY)
-# llm_default_provider     = "claude_code"                 # kill switch: "openai"
 # llm_claude_code_model    = "claude-sonnet-5"             # or "claude-abaci" once the brain has that class
 # Optional - ElevenLabs music through the proxy's door
 # elevenlabs_api_base_url  = "http://192.168.86.51:8788/elevenlabs"

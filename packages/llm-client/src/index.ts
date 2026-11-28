@@ -1,8 +1,8 @@
 /**
  * @soroban/llm-client
  *
- * Type-safe LLM client with multi-provider support, Zod schema validation,
- * and retry logic with validation feedback.
+ * Type-safe LLM client for Claude Code (`claude -p`) through the switch
+ * proxy, with Zod schema validation and retry logic with validation feedback.
  *
  * @example
  * ```typescript
@@ -31,12 +31,7 @@
 // Main client
 export { LLMClient } from "./client";
 // Config utilities
-export {
-	getConfiguredProviders,
-	getProviderConfig,
-	isProviderConfigured,
-	loadConfigFromEnv,
-} from "./config";
+export { loadConfigFromEnv, PROVIDER_NAME } from "./config";
 export { Logger } from "./logger";
 // Middleware
 export type { StreamMiddleware } from "./middleware";
@@ -44,7 +39,6 @@ export {
 	createPersistenceMiddleware,
 	type PersistenceOptions,
 } from "./middleware/persistence";
-export { AnthropicProvider } from "./providers/anthropic";
 // Providers (for advanced usage / custom providers)
 export { BaseProvider } from "./providers/base";
 export {
@@ -54,7 +48,6 @@ export {
 	ClaudeCodeProvider,
 	spawnClaudeCli,
 } from "./providers/claude-code";
-export { OpenAIProvider } from "./providers/openai";
 export type { RetryOptions } from "./retry";
 // Retry utilities (for advanced usage)
 export {

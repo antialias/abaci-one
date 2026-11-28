@@ -2,9 +2,10 @@
  * LLM Client Singleton for apps/web
  *
  * This module provides a singleton instance of the LLM client that reads
- * configuration from environment variables. The client supports multiple
- * providers (OpenAI, Anthropic) and provides type-safe LLM calls with
- * Zod schema validation.
+ * configuration from environment variables. Every call runs as Claude Code
+ * (`claude -p`) through the switch proxy, which does any falling back between
+ * upstreams; the client provides type-safe LLM calls with Zod schema
+ * validation.
  *
  * IMPORTANT: This module is transitively imported by client components
  * (via worksheet-parsing). It MUST NOT import any server-only modules
@@ -38,13 +39,8 @@ export const LLM_SNAPSHOT_INTERVAL_MS = 3000
 
 // Create singleton instance
 // Configuration is automatically loaded from environment variables:
-// - LLM_DEFAULT_PROVIDER: 'claude_code' in production (claude -p through the
-//   switch proxy); 'openai' or 'anthropic' are the kill-switch fallbacks,
-//   which answer streamed calls in one piece
-// - LLM_CLAUDE_CODE_BASE_URL / LLM_CLAUDE_CODE_API_KEY /
-//   LLM_CLAUDE_CODE_DEFAULT_MODEL / LLM_CLAUDE_CODE_MAX_CONCURRENCY
-// - LLM_OPENAI_API_KEY: OpenAI key (fallback provider, and embeddings)
-// - LLM_ANTHROPIC_API_KEY: Anthropic key (fallback provider)
+// LLM_CLAUDE_CODE_BASE_URL / LLM_CLAUDE_CODE_API_KEY /
+// LLM_CLAUDE_CODE_DEFAULT_MODEL / LLM_CLAUDE_CODE_MAX_CONCURRENCY
 export const llm = new LLMClient()
 
 /**

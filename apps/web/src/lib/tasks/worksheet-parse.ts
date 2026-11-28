@@ -206,11 +206,11 @@ async function runStreamingParse(
         type: 'parse_llm_started',
         responseId: event.responseId,
         model: llm.getDefaultModel(),
-        provider: llm.getDefaultProvider(),
+        provider: llm.getProviderName(),
       })
     } else if (event.type === 'complete') {
       handle.setProgress(90, 'Validating results...')
-      const provider = event.provider ?? llm.getDefaultProvider()
+      const provider = event.provider ?? llm.getProviderName()
       const model = event.model ?? llm.getDefaultModel()
 
       // Merge preserved bounding boxes

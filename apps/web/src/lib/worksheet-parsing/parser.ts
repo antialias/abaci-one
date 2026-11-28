@@ -16,16 +16,14 @@ import { buildWorksheetParsingPrompt, type PromptOptions } from './prompt-builde
 import { type WorksheetParsingResult, WorksheetParsingResultSchema } from './schemas'
 
 /**
- * Parsing configurations: how hard the model thinks. Provider and model come
- * from the app's default (LLM_DEFAULT_PROVIDER) unless a config names them.
+ * Parsing configurations: how hard the model thinks. The model is the app's
+ * default (LLM_CLAUDE_CODE_DEFAULT_MODEL) unless a config names one.
  */
 export interface ModelConfig {
   /** Unique identifier for this config */
   id: string
   /** Display name for UI */
   name: string
-  /** Provider name (default: the app's default provider) */
-  provider?: string
   /** Model or class id (default: the provider's default) */
   model?: string
   /** Reasoning effort */
@@ -85,8 +83,6 @@ export interface ParseWorksheetOptions {
   maxRetries?: number
   /** Additional prompt customization */
   promptOptions?: PromptOptions
-  /** Specific provider to use (defaults to configured default) */
-  provider?: string
   /** Specific model to use (defaults to configured default) */
   model?: string
   /** Reasoning effort */
@@ -146,28 +142,24 @@ export async function parseWorksheetImage(
     onProgress,
     maxRetries = 2,
     promptOptions = {},
-    provider: explicitProvider,
     model: explicitModel,
     reasoningEffort: explicitReasoningEffort,
     modelConfigId,
   } = options
 
   // Resolve model config
-  let provider = explicitProvider
   let model = explicitModel
   let reasoningEffort = explicitReasoningEffort
 
   if (modelConfigId) {
     const config = getModelConfig(modelConfigId)
     if (config) {
-      provider = provider ?? config.provider
       model = model ?? config.model
       reasoningEffort = reasoningEffort ?? config.reasoningEffort
     }
-  } else if (!provider && !model) {
+  } else if (!model) {
     // Use default config
     const defaultConfig = getDefaultModelConfig()
-    provider = defaultConfig.provider
     model = defaultConfig.model
     reasoningEffort = reasoningEffort ?? defaultConfig.reasoningEffort
   }
@@ -182,7 +174,6 @@ export async function parseWorksheetImage(
     schema: WorksheetParsingResultSchema,
     maxRetries,
     onProgress,
-    provider,
     model,
     reasoningEffort,
   })
@@ -211,8 +202,6 @@ export type WorksheetParseStreamEvent =
 export interface StreamParseWorksheetOptions {
   /** Additional prompt customization */
   promptOptions?: PromptOptions
-  /** Specific provider to use (defaults to configured default) */
-  provider?: string
   /** Specific model to use (defaults to configured default) */
   model?: string
   /** Use a specific model config by ID */
@@ -256,14 +245,12 @@ export async function* streamParseWorksheetImage(
 ): AsyncGenerator<WorksheetParseStreamEvent, void, unknown> {
   const {
     promptOptions = {},
-    provider: explicitProvider,
     model: explicitModel,
     modelConfigId,
     timeoutMs = 300_000, // 5 minutes default for streaming
   } = options
 
   const config = (modelConfigId && getModelConfig(modelConfigId)) || getDefaultModelConfig()
-  const provider = explicitProvider ?? config.provider
   const model = explicitModel ?? config.model
   const effort = config.reasoningEffort ?? 'medium'
 
@@ -282,7 +269,6 @@ export async function* streamParseWorksheetImage(
     prompt,
     images: [await prepareImageForLlm(imageDataUrl)],
     schema: WorksheetParsingResultSchema,
-    provider,
     model,
     reasoning: { effort },
     timeoutMs,

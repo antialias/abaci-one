@@ -1,16 +1,18 @@
 # @soroban/llm-client
 
-Type-safe LLM client with multi-provider support, Zod schema validation, and retry logic with validation feedback.
+Type-safe LLM client for Claude Code (`claude -p`) through the switch proxy, with Zod schema validation and retry logic with validation feedback.
+
+There is one provider, `claude_code`, and no fallback: falling back between
+upstreams is the switch proxy's job, not the application's.
 
 ## Features
 
-- **Multi-provider support**: Claude Code through the switch proxy (`claude_code`, the default in production), with OpenAI and Anthropic as fallbacks
 - **Type-safe responses**: Zod schema validation with full TypeScript inference
 - **Schema-driven prompts**: Zod `.describe()` annotations are automatically included in prompts
 - **Retry with feedback**: Failed validations are fed back to the LLM for correction
 - **Vision support**: Pass images for multimodal requests
 - **Progress callbacks**: Track LLM call progress for UI feedback
-- **Environment-based config**: Configure providers via env vars
+- **Environment-based config**: Configure the provider via env vars
 
 ## Installation
 
@@ -20,20 +22,9 @@ pnpm add @soroban/llm-client zod
 
 ## Configuration
 
-Set environment variables for your providers:
-
 ```bash
-# Default provider
-LLM_DEFAULT_PROVIDER=openai
-LLM_DEFAULT_MODEL=gpt-4o
-
-# OpenAI
-LLM_OPENAI_API_KEY=sk-...
-LLM_OPENAI_BASE_URL=https://api.openai.com/v1  # optional
-
-# Anthropic
-LLM_ANTHROPIC_API_KEY=sk-ant-...
-LLM_ANTHROPIC_BASE_URL=https://api.anthropic.com/v1  # optional
+LLM_DEFAULT_MODEL=claude-abaci                     # optional, overrides the provider's default
+LLM_DEFAULT_MAX_RETRIES=2                          # optional
 
 # Claude Code (`claude -p`) through the claude-switch-proxy
 LLM_CLAUDE_CODE_API_KEY=...                        # the proxy's client secret
@@ -198,10 +189,6 @@ for await (const event of llm.streamText({ system, prompt })) {
 }
 ```
 
-A provider without its own streaming (`openai`, `anthropic`) still serves both:
-the client makes one call and reports its result, so callers keep working when
-`LLM_DEFAULT_PROVIDER` is switched to one of them.
-
 ### Progress Tracking
 
 ```typescript
@@ -215,22 +202,6 @@ const response = await llm.call({
     // 'retrying: Retry 1/2: fixing sentiment'
   },
 });
-```
-
-### Provider Selection
-
-```typescript
-// Use a specific provider
-const response = await llm.call({
-  prompt: "Hello!",
-  schema: ResponseSchema,
-  provider: "anthropic",
-  model: "claude-sonnet-4-20250514",
-});
-
-// Check available providers
-console.log(llm.getProviders()); // ['openai', 'anthropic']
-console.log(llm.isProviderAvailable("openai")); // true
 ```
 
 ### Retry Configuration
@@ -267,10 +238,9 @@ new LLMClient(configOverrides?: Partial<LLMClientConfig>, env?: Record<string, s
 - `vision<T>(request: LLMRequest<T> & { images: string[] }): Promise<LLMResponse<T>>` - Vision call
 - `stream<T>(request: LLMStreamRequest<T>): AsyncGenerator<StreamEvent<T>>` - Streamed structured call
 - `streamText(request: LLMTextStreamRequest): AsyncGenerator<StreamEvent<string>>` - Streamed free-text reply
-- `getProviders(): string[]` - List configured providers
-- `isProviderAvailable(name: string): boolean` - Check if provider is configured
-- `getDefaultProvider(): string` - Get default provider name
-- `getDefaultModel(provider?: string): string` - Get default model
+- `isConfigured(): boolean` - Whether `LLM_CLAUDE_CODE_API_KEY` is set
+- `getProviderName(): string` - Always `"claude_code"` (as recorded with usage)
+- `getDefaultModel(): string` - Get default model
 
 ### Types
 
@@ -279,7 +249,6 @@ interface LLMRequest<T extends z.ZodType> {
   prompt: string;
   images?: string[];
   schema: T;
-  provider?: string;
   model?: string;
   maxRetries?: number;
   onProgress?: (progress: LLMProgress) => void;
@@ -303,35 +272,6 @@ interface LLMProgress {
   maxAttempts: number;
   message: string;
   validationError?: ValidationFeedback;
-}
-```
-
-## Adding Custom Providers
-
-You can extend the `BaseProvider` class to add support for additional LLM providers:
-
-```typescript
-import {
-  BaseProvider,
-  ProviderConfig,
-  ProviderRequest,
-  ProviderResponse,
-} from "@soroban/llm-client";
-
-class MyProvider extends BaseProvider {
-  constructor(config: ProviderConfig) {
-    super(config);
-  }
-
-  async call(request: ProviderRequest): Promise<ProviderResponse> {
-    const prompt = this.buildPrompt(request); // Includes validation feedback
-    // ... make API call
-    return {
-      content: parsedResponse,
-      usage: { promptTokens: 100, completionTokens: 50 },
-      finishReason: "stop",
-    };
-  }
 }
 ```
 

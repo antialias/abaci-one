@@ -79,8 +79,8 @@ function toolTurnSchema(tools: RealtimeTool[]) {
       .array(
         z.object({
           name: z.enum(names).describe('The tool to call'),
-          // A JSON string, not an object: an open-ended object breaks OpenAI
-          // strict mode, which the kill switch would use.
+          // A JSON string, not an object: one schema serves every tool,
+          // whatever its parameters.
           arguments: z
             .string()
             .describe(
@@ -188,7 +188,7 @@ export const POST = withAuth(async (request, { userId }) => {
     const { recordLlmClientStreamUsage } = await import('@/lib/ai-usage/helpers')
     recordLlmClientStreamUsage(
       event.usage,
-      event.provider ?? llm.getDefaultProvider(),
+      event.provider ?? llm.getProviderName(),
       event.model ?? llm.getDefaultModel(),
       { userId, feature: AiFeature.EUCLID_CHAT }
     )

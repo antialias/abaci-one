@@ -7,7 +7,7 @@
  * it, the way songs would pile up in prod. The database is only read.
  *
  *   DATABASE_URL=http://127.0.0.1:18080 \
- *   LLM_DEFAULT_PROVIDER=claude_code LLM_CLAUDE_CODE_DEFAULT_MODEL=claude-abaci \
+ *   LLM_CLAUDE_CODE_DEFAULT_MODEL=claude-abaci \
  *   LLM_CLAUDE_CODE_BASE_URL=... LLM_CLAUDE_CODE_API_KEY=... \
  *   npx tsx scripts/backtest-session-songs.ts --players <id>,<id> --sessions 15 --out /tmp/backtest.json
  *
