@@ -65,6 +65,21 @@ interface PlaywrightReport {
     skipped: number
     duration: number
   }
+  /** Errors outside any test, such as a spec or setup file that fails to load. */
+  errors?: Array<{ message?: string }>
+}
+
+/** Why a run failed, for the results API: the exit, the count, the first load error. */
+function failureMessageOf(
+  exitCode: number,
+  totalTests: number,
+  loadErrors: ReadonlyArray<{ message?: string }>
+): string {
+  const parts = [`Playwright exited with code ${exitCode}`]
+  if (totalTests === 0) parts.push('no tests ran')
+  const first = loadErrors[0]?.message?.split('\n')[0]
+  if (first) parts.push(first.slice(0, 300))
+  return parts.join('; ')
 }
 
 async function reportResults(results: {
@@ -373,7 +388,13 @@ async function runTests(): Promise<void> {
       const totalTests = report.stats.expected + report.stats.unexpected + report.stats.skipped
       const passedTests = report.stats.expected
       const failedTests = report.stats.unexpected
-      const passed = failedTests === 0
+      // A run passes only when Playwright itself succeeded and ran tests. A
+      // file that fails to load (a module missing from the image) gives 0
+      // tests, 0 failures, a top-level error and a non-zero exit: that is a
+      // failure, never a pass (2026-11-28: a missing e2e helper read as green).
+      const loadErrors = report.errors ?? []
+      const passed = exitCode === 0 && failedTests === 0 && totalTests > 0 && loadErrors.length === 0
+      const errorMessage = passed ? undefined : failureMessageOf(exitCode, totalTests, loadErrors)
 
       // Save HTML report to artifacts directory
       const savedReportDir = saveHtmlReport(runId, htmlReportDir, passed)
@@ -390,6 +411,7 @@ async function runTests(): Promise<void> {
         passedTests,
         failedTests,
         durationMs,
+        errorMessage,
         resultsJson: JSON.stringify(report),
       })
 
