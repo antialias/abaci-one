@@ -20,13 +20,17 @@ import {
 import { arcadeActor } from './lib/arcade/socket-actor'
 import type { GameMove } from './lib/arcade/validation/types'
 import { type GameName, getValidator } from './lib/arcade/validators'
+import { registerClassroomChannels } from './lib/classroom/classroom-room-access'
 import {
+  isMemberOnceAdmitted,
+  mayActOnceAdmitted,
   registerObserveSession,
   registerPracticeStateRelay,
+  registerSessionBroadcasts,
   registerSessionControls,
   registerSessionRoomJoins,
+  sessionPlayerOf,
 } from './lib/classroom/session-room-access'
-import type { PartTransitionEvent } from './lib/classroom/socket-events'
 import { registerViewerChannels } from './lib/classroom/viewer-channels'
 import { registerSessionReportJoin } from './lib/curriculum/session-report-access'
 import { registerSessionReportPush } from './lib/curriculum/session-report-server'
@@ -40,6 +44,7 @@ import {
 import { incrementShareViewCount } from './lib/session-share'
 import { resolveSocketViewer } from './lib/socket-identity'
 import { socketViewerId } from './lib/socket-viewer'
+import { mayUseTask } from './lib/task-socket-access'
 import { type PracticeStateInput, type VisionFrame, VisionRecorder } from './lib/vision/recording'
 
 // Throttle map for DVR buffer info emissions (sessionId -> last emit timestamp)
@@ -1024,45 +1029,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
-    // Classroom: Join classroom channel (for teachers to receive presence updates)
-    socket.on('join-classroom', async ({ classroomId }: { classroomId: string }) => {
-      try {
-        await socket.join(`classroom:${classroomId}`)
-        console.log(`🏫 User joined classroom channel: ${classroomId}`)
-      } catch (error) {
-        console.error('Error joining classroom channel:', error)
-      }
-    })
-
-    // Classroom: Leave classroom channel
-    socket.on('leave-classroom', async ({ classroomId }: { classroomId: string }) => {
-      try {
-        await socket.leave(`classroom:${classroomId}`)
-        console.log(`🏫 User left classroom channel: ${classroomId}`)
-      } catch (error) {
-        console.error('Error leaving classroom channel:', error)
-      }
-    })
-
-    // Player: Join player channel (for students to receive their own presence updates)
-    socket.on('join-player', async ({ playerId }: { playerId: string }) => {
-      try {
-        await socket.join(`player:${playerId}`)
-        console.log(`👤 User joined player channel: ${playerId}`)
-      } catch (error) {
-        console.error('Error joining player channel:', error)
-      }
-    })
-
-    // Player: Leave player channel
-    socket.on('leave-player', async ({ playerId }: { playerId: string }) => {
-      try {
-        await socket.leave(`player:${playerId}`)
-        console.log(`👤 User left player channel: ${playerId}`)
-      } catch (error) {
-        console.error('Error leaving player channel:', error)
-      }
-    })
+    // Classroom and player channels, and the skill tutorial's relay through
+    // the classroom channel: members only, by the verified viewer
+    // (classroom-room-access.ts)
+    registerClassroomChannels(socket, io!)
 
     // Session report: the gated room that receives `session-report` pushes
     // (Phase 4a; `observe` access or a share token, session-report-access.ts)
@@ -1135,26 +1105,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
-    // Session Observation: Broadcast part transition (from student's client)
-    socket.on('part-transition', (data: PartTransitionEvent) => {
-      socket.to(`session:${data.sessionId}`).emit('part-transition', data)
-    })
-
-    // Session Observation: Broadcast part transition complete (from student's client)
-    socket.on('part-transition-complete', (data: { sessionId: string }) => {
-      socket.to(`session:${data.sessionId}`).emit('part-transition-complete', data)
-    })
-
-    // Session Observation: Broadcast authoritative flow state (from student's client)
-    socket.on(
-      'session-flow-state',
-      (data: { sessionId: string; flowState: string; breakContext?: unknown }) => {
-        console.log(
-          `[FlowState] Relaying session-flow-state: session=${data.sessionId}, flowState=${data.flowState}, hasBreakContext=${!!data.breakContext}`
-        )
-        socket.to(`session:${data.sessionId}`).emit('session-flow-state', data)
-      }
-    )
+    // Session Observation: the kid's part transitions, flow state and
+    // tutorial state, relayed only from the kid's admitted screen
+    // (session-room-access.ts)
+    registerSessionBroadcasts(socket)
 
     // Observer co-play readiness: relay to session channel
     // Track readiness per socket for disconnect cleanup
@@ -1162,12 +1116,17 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // The observer is the socket's verified viewer, never the payload's
     // `observerId`: the kid's tab makes it a co-player (playerId and userId)
-    // in the game break's room. A socket with no viewer is dropped.
+    // in the game break's room. Only an observer admitted to the session's
+    // room may offer; a socket with no viewer is dropped.
     socket.on(
       'observer-coplay-ready',
-      (data: { sessionId: string; observerId?: string; player: unknown }) => {
+      async (data: { sessionId: string; observerId?: string; player: unknown }) => {
         const observerId = socketViewerId(socket)
         if (!observerId || !data?.sessionId) return
+        if (!(await isMemberOnceAdmitted(socket, data.sessionId))) {
+          console.log(`[CoPlay] Offer dropped: session=${data.sessionId}, not an admitted observer`)
+          return
+        }
         console.log(`[CoPlay] Observer ready: session=${data.sessionId}, observer=${observerId}`)
         coPlayReadySessions.set(data.sessionId, { observerId })
         socket
@@ -1176,22 +1135,17 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
-    socket.on('observer-coplay-leave', (data: { sessionId: string; observerId?: string }) => {
+    // Only a socket that offered may withdraw its offer (decided after the
+    // offer it sent before, which may be waiting on the observer's admission)
+    socket.on('observer-coplay-leave', async (data: { sessionId: string; observerId?: string }) => {
       const observerId = socketViewerId(socket)
       if (!observerId || !data?.sessionId) return
+      await isMemberOnceAdmitted(socket, data.sessionId)
+      if (!coPlayReadySessions.has(data.sessionId)) return
       console.log(`[CoPlay] Observer leaving: session=${data.sessionId}, observer=${observerId}`)
       coPlayReadySessions.delete(data.sessionId)
       socket.to(`session:${data.sessionId}`).emit('observer-coplay-leave', { ...data, observerId })
     })
-
-    // Session Observation: Broadcast tutorial state (from student's client)
-    socket.on(
-      'tutorial-state',
-      (data: { sessionId: string; currentStep: number; totalSteps: number; content: unknown }) => {
-        // Broadcast to all observers in the session channel
-        socket.to(`session:${data.sessionId}`).emit('tutorial-state', data)
-      }
-    )
 
     // Session Observation: observers' controls (tutorial, abacus, pause,
     // resume). Only a socket admitted to `session:<id>` that is not a
@@ -1208,6 +1162,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         confidence: number
         timestamp: number
       }) => {
+        // Only the kid's admitted screen sends frames (the phone's go through
+        // remote-camera:* to that screen, which forwards them as its own)
+        if (!(await mayActOnceAdmitted(socket, String(data?.sessionId ?? '')))) return
+
         // Broadcast to all observers in the session channel
         socket.to(`session:${data.sessionId}`).emit('vision-frame', data)
 
@@ -1252,9 +1210,20 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     )
 
     // Vision Recording: Start recording session (per-problem recording)
+    // From the kid's admitted screen only; filed under the session's own
+    // player, whatever player the payload names
     socket.on(
       'start-vision-recording',
-      async ({ sessionId, playerId }: { sessionId: string; playerId: string }) => {
+      async ({ sessionId }: { sessionId: string; playerId?: string }) => {
+        if (!(await mayActOnceAdmitted(socket, String(sessionId ?? '')))) {
+          console.log(`[Socket] start-vision-recording dropped for ${sessionId}: not admitted`)
+          return
+        }
+        const playerId = sessionPlayerOf(socket, sessionId)
+        if (!playerId) {
+          socket.emit('vision-recording-error', { sessionId, error: 'Session player unknown' })
+          return
+        }
         console.log(
           `[Socket] Received start-vision-recording for session ${sessionId}, player ${playerId}`
         )
@@ -1295,6 +1264,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // Vision Recording: Stop recording session (finalizes last problem)
     socket.on('stop-vision-recording', async ({ sessionId }: { sessionId: string }) => {
+      if (!(await mayActOnceAdmitted(socket, String(sessionId ?? '')))) return
       try {
         const recorder = VisionRecorder.getInstance()
         await recorder.stopSession(sessionId)
@@ -1326,7 +1296,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         attemptNumber,
         isRetry,
         isManualRedo,
-        playerId,
         slotId,
         problem,
       }: {
@@ -1339,11 +1308,15 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         attemptNumber?: number
         isRetry?: boolean
         isManualRedo?: boolean
+        /** Ignored: the session's own player is used */
         playerId?: string
         slotId?: string
         problem?: { terms: number[]; answer: number }
       }) => {
+        // From the kid's admitted screen only
+        if (!(await mayActOnceAdmitted(socket, String(sessionId ?? '')))) return
         const recorder = VisionRecorder.getInstance()
+        const playerId = sessionPlayerOf(socket, sessionId)
 
         // Auto-start a metadata-only session if one doesn't exist
         // This allows capturing student answers even when camera isn't enabled
@@ -1373,9 +1346,11 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     )
 
     // Vision Recording: DVR scrub request (get frame at offset)
+    // Observers admitted to the session's room only (a share holder too)
     socket.on(
       'vision-scrub',
-      ({ sessionId, offsetMs }: { sessionId: string; offsetMs: number }) => {
+      async ({ sessionId, offsetMs }: { sessionId: string; offsetMs: number }) => {
+        if (!(await isMemberOnceAdmitted(socket, String(sessionId ?? '')))) return
         const recorder = VisionRecorder.getInstance()
         const frame = recorder.getDvrFrame(sessionId, offsetMs)
 
@@ -1391,7 +1366,8 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     )
 
     // Vision Recording: Get DVR buffer availability info
-    socket.on('vision-buffer-info', ({ sessionId }: { sessionId: string }) => {
+    socket.on('vision-buffer-info', async ({ sessionId }: { sessionId: string }) => {
+      if (!(await isMemberOnceAdmitted(socket, String(sessionId ?? '')))) return
       const recorder = VisionRecorder.getInstance()
       const info = recorder.getDvrBufferInfo(sessionId)
 
@@ -1401,75 +1377,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         ...(info || {}),
       })
     })
-
-    // Skill Tutorial: Broadcast state from student to classroom (for teacher observation)
-    // The student joins the classroom channel and emits their tutorial state
-    socket.on(
-      'skill-tutorial-state',
-      (data: {
-        playerId: string
-        playerName: string
-        launcherState: 'intro' | 'tutorial' | 'complete'
-        skillId: string
-        skillTitle: string
-        tutorialState?: {
-          currentStepIndex: number
-          totalSteps: number
-          currentMultiStep: number
-          totalMultiSteps: number
-          currentValue: number
-          targetValue: number
-          startValue: number
-          isStepCompleted: boolean
-          problem: string
-          description: string
-          currentInstruction: string
-        }
-      }) => {
-        // Broadcast to all other sockets in the classroom channel (including teacher)
-        // The student is already in the classroom channel, so use socket.rooms to find it
-        for (const room of socket.rooms) {
-          if (room.startsWith('classroom:')) {
-            socket.to(room).emit('skill-tutorial-state', data)
-            console.log(
-              `📚 Skill tutorial state broadcast to ${room}:`,
-              data.playerId,
-              data.launcherState
-            )
-          }
-        }
-      }
-    )
-
-    // Skill Tutorial: Control from teacher to student
-    // Teacher sends control action, we broadcast to the classroom so the student receives it
-    socket.on(
-      'skill-tutorial-control',
-      (data: {
-        playerId: string
-        action:
-          | { type: 'start-tutorial' }
-          | { type: 'skip-tutorial' }
-          | { type: 'next-step' }
-          | { type: 'previous-step' }
-          | { type: 'go-to-step'; stepIndex: number }
-          | { type: 'set-abacus-value'; value: number }
-          | { type: 'advance-multi-step' }
-          | { type: 'previous-multi-step' }
-      }) => {
-        // Broadcast to all sockets in the classroom channel so the target student receives it
-        for (const room of socket.rooms) {
-          if (room.startsWith('classroom:')) {
-            io!.to(room).emit('skill-tutorial-control', data)
-            console.log(
-              `🎮 Skill tutorial control sent to ${room}:`,
-              data.playerId,
-              data.action.type
-            )
-          }
-        }
-      }
-    )
 
     // Remote Camera: Phone joins a remote camera session
     socket.on('remote-camera:join', async ({ sessionId }: { sessionId: string }) => {
@@ -1697,8 +1604,15 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
 
     // Background Tasks: Subscribe to task updates
+    // Its owner, an admin, or (a worksheet's) who may see the worksheet's
+    // player: as the HTTP task routes decide it (task-socket-access.ts). A
+    // refusal reads as a missing task
     socket.on('task:subscribe', async (taskId: string) => {
       console.log(`[SocketServer] task:subscribe received for task ${taskId}`)
+      if (!(await mayUseTask(socket.data.viewer, taskId, 'follow'))) {
+        socket.emit('task:error', { taskId, error: 'Task not found' })
+        return
+      }
       const { getTaskStateForClient, getTaskEvents } = await import('./lib/task-manager')
 
       socket.join(`task:${taskId}`)
@@ -1741,6 +1655,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // Background Tasks: Cancel a running task
     socket.on('task:cancel', async (taskId: string) => {
+      if (!(await mayUseTask(socket.data.viewer, taskId, 'cancel'))) {
+        socket.emit('task:error', { taskId, error: 'Cannot cancel task' })
+        return
+      }
       const { cancelTask } = await import('./lib/task-manager')
       const success = await cancelTask(taskId)
 

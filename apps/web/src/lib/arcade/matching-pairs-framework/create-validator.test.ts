@@ -1,10 +1,10 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { createMatchingPairsValidator } from './create-validator'
 import type {
-  MatchingPairsVariant,
-  MatchingPairsState,
   BaseMatchingCard,
   BaseMatchingConfig,
+  MatchingPairsState,
+  MatchingPairsVariant,
 } from './types'
 
 // Minimal card type for testing
@@ -242,6 +242,122 @@ describe('createMatchingPairsValidator', () => {
 
       // Both players still present
       expect(state.activePlayers).toEqual(['student-1', 'observer-1'])
+    })
+  })
+
+  describe('FLIP_CARD: who may move which player', () => {
+    type Validator = ReturnType<typeof createMatchingPairsValidator<TestCard, TestConfig>>
+    // The matching-pairs validator answers synchronously
+    const validate = (validator: Validator, ...args: Parameters<Validator['validateMove']>) =>
+      validator.validateMove(...args) as { valid: boolean; error?: string }
+    // The kid ('kid-user') owns 'student-1'; a co-play observer ('obs-user')
+    // plays as its synthetic player, whose id is its user id
+    function coPlayState(currentPlayer: string) {
+      const validator = createMatchingPairsValidator(createTestVariant())
+      const state = getPracticeBreakState(
+        validator,
+        { difficulty: 6, turnTimer: 0 },
+        {
+          maxDurationMinutes: 5,
+          playerId: 'student-1',
+          playerName: 'Alice',
+          additionalPlayers: [
+            {
+              playerId: 'obs-user',
+              playerName: 'Mom',
+              emoji: '👩',
+              color: '#f00',
+              userId: 'obs-user',
+            },
+          ],
+        }
+      )
+      return { validator, state: { ...state, currentPlayer } }
+    }
+    const flip = (playerId: string, userId: string, cardId = 'a-0') => ({
+      type: 'FLIP_CARD' as const,
+      playerId,
+      userId,
+      timestamp: 1,
+      data: { cardId },
+    })
+    // The room's members' players: only the kid's
+    const playerOwnership = { 'student-1': 'kid-user' }
+
+    it('the observer moves its own co-play player', () => {
+      const { validator, state } = coPlayState('obs-user')
+      const result = validate(validator, state, flip('obs-user', 'obs-user'), {
+        userId: 'obs-user',
+        playerOwnership,
+      })
+      expect(result.valid).toBe(true)
+    })
+
+    it('no one else moves the co-play player: not the kid, not a stranger', () => {
+      const { validator, state } = coPlayState('obs-user')
+      for (const userId of ['kid-user', 'stranger']) {
+        const result = validate(validator, state, flip('obs-user', userId), {
+          userId,
+          playerOwnership,
+        })
+        expect(result).toEqual({ valid: false, error: 'You can only move your own players' })
+      }
+    })
+
+    it('an id in no one’s ownership is not movable (only the mover’s own user-id player is)', () => {
+      const validator = createMatchingPairsValidator(createTestVariant())
+      const state = getPracticeBreakState(
+        validator,
+        { difficulty: 6, turnTimer: 0 },
+        { maxDurationMinutes: 5, playerId: 'ghost', playerName: 'Ghost' }
+      )
+      const result = validate(validator, state, flip('ghost', 'stranger'), {
+        userId: 'stranger',
+        playerOwnership,
+      })
+      expect(result).toEqual({ valid: false, error: 'You can only move your own players' })
+    })
+
+    it('the kid moves its own player; another member’s player is refused', () => {
+      const { validator, state } = coPlayState('student-1')
+      expect(
+        validate(validator, state, flip('student-1', 'kid-user'), {
+          userId: 'kid-user',
+          playerOwnership,
+        }).valid
+      ).toBe(true)
+      expect(
+        validate(validator, state, flip('student-1', 'obs-user'), {
+          userId: 'obs-user',
+          playerOwnership,
+        })
+      ).toEqual({ valid: false, error: 'You can only move your own players' })
+    })
+
+    it('arcade local multiplayer: one user moves each of its own players in turn', () => {
+      const validator = createMatchingPairsValidator(createTestVariant())
+      const base = getPracticeBreakState(
+        validator,
+        { difficulty: 6, turnTimer: 0 },
+        {
+          maxDurationMinutes: 5,
+          playerId: 'p1',
+          playerName: 'One',
+          additionalPlayers: [
+            { playerId: 'p2', playerName: 'Two', emoji: '2', color: '#0f0', userId: 'host' },
+          ],
+        }
+      )
+      const ownership = { p1: 'host', p2: 'host' }
+      for (const player of ['p1', 'p2']) {
+        const result = validate(
+          validator,
+          { ...base, currentPlayer: player },
+          flip(player, 'host'),
+          { userId: 'host', playerOwnership: ownership }
+        )
+        expect(result.valid).toBe(true)
+      }
     })
   })
 })

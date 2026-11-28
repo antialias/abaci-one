@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { withAuth } from '@/lib/auth/withAuth'
 import { createTask, type TaskHandle } from '@/lib/task-manager'
 import type { DemoTaskEvent } from '@/lib/tasks/events'
+import { getUserId } from '@/lib/viewer'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -113,7 +114,9 @@ export const POST = withAuth(async (request) => {
           totalEvents: eventCount,
           totalPayloadBytes,
         })
-      }
+      },
+      // Its starter follows it over the socket (task-socket-access.ts)
+      await getUserId()
     )
 
     return NextResponse.json({ taskId })

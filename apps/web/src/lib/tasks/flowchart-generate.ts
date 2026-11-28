@@ -324,6 +324,8 @@ Return the result as a JSON object matching the GeneratedFlowchartSchema.`
 
       handle.setProgress(100, 'Flowchart generated!')
       handle.complete(output)
-    }
+    },
+    // The workshop user owns the task (who may follow it over the socket)
+    input.userId
   )
 }
