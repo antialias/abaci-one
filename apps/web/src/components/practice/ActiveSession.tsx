@@ -72,6 +72,7 @@ import { AbacusDock } from './input/AbacusDock'
 import { NumericKeypad } from './input/NumericKeypad'
 import { useHasPhysicalKeyboard } from './input/useDeviceDetection'
 import {
+  chooseAdvanceTarget,
   chooseRedoReturnTarget,
   type RedoWriteOutcome,
   type TransitionTarget,
@@ -139,9 +140,6 @@ export interface BroadcastItem extends OnScreenItem {
   round: number
 }
 
-type SubmitAdvanceDestination = 'next-problem-same-lane' | 'state-handoff'
-type SubmitAdvanceIntent = 'slide-to-next-problem' | 'clear-to-loading'
-type SubmitMode = 'practice' | 'redo'
 /**
  * Identity of the problem an attempt answers, as the server matches it: the
  * attempt's own part, slot and round, never the plan's current ones (which
@@ -156,16 +154,6 @@ function answeredProblemIdentity(plan: SessionPlan, attempt: AttemptInput) {
     slotIndex: attempt.slotIndex,
     epochNumber: attempt.epochNumber ?? 0,
   }
-}
-
-type SubmitAdvanceResolution = {
-  destination: SubmitAdvanceDestination
-  intent: SubmitAdvanceIntent
-  transitionTarget: TransitionTarget | null
-}
-
-function getSubmitAdvanceIntent(destination: SubmitAdvanceDestination): SubmitAdvanceIntent {
-  return destination === 'next-problem-same-lane' ? 'slide-to-next-problem' : 'clear-to-loading'
 }
 
 /**
@@ -243,8 +231,14 @@ interface ActiveSessionProps {
   historicalResults?: SlotResult[]
   /** Student info for display in pause modal */
   student: StudentInfo
-  /** Called when a problem is answered */
-  onAnswer: (result: SlotResultSubmission & { partIndex: number; tryId: string }) => Promise<void>
+  /**
+   * Called when a problem is answered. Resolves to the plan the server
+   * returned, or null when the write was dropped behind a failure or failed
+   * (the page then resyncs the screen)
+   */
+  onAnswer: (
+    result: SlotResultSubmission & { partIndex: number; tryId: string }
+  ) => Promise<SessionPlan | null>
   /** Called when session is ended early */
   onEndEarly: (reason?: string) => void
   /** Called when session is paused (with info about why) - for external HUD updates */
@@ -541,13 +535,6 @@ export function ActiveSession({
   // even in redo mode.
   const activePartIndex = activeProblem?.partIndex ?? plan.currentPartIndex
   const isLinearActive = plan.parts[activePartIndex]?.format === 'linear'
-
-  const latestActiveProblemRef = useRef(activeProblem)
-  const latestCurrentProblemInfoRef = useRef(currentProblemInfo)
-  useEffect(() => {
-    latestActiveProblemRef.current = activeProblem
-    latestCurrentProblemInfoRef.current = currentProblemInfo
-  }, [activeProblem, currentProblemInfo])
 
   // Interaction state machine - single source of truth for UI state
   const {
@@ -1254,59 +1241,11 @@ export function ActiveSession({
     [setAnswer]
   )
 
-  const resolvePracticeTransitionTarget = useCallback(
-    ({
-      submittedPartIndex,
-      submittedSlotIndex,
-      submittedEpochNumber,
-      activeProblemKeyAtSubmit,
-    }: {
-      submittedPartIndex: number
-      submittedSlotIndex: number
-      submittedEpochNumber: number
-      activeProblemKeyAtSubmit: string | null
-    }): TransitionTarget | null => {
-      // Original lane progression can be derived synchronously from part slots.
-      if (submittedEpochNumber === 0) {
-        const nextSlot = arithmeticSlotAt(plan.parts, submittedPartIndex, submittedSlotIndex + 1)
-        if (nextSlot?.problem) {
-          return {
-            problem: nextSlot.problem,
-            slotIndex: submittedSlotIndex + 1,
-            partIndex: submittedPartIndex,
-            epochNumber: 0,
-          }
-        }
-      }
-
-      // Retry and async mutation paths rely on the latest active problem snapshot.
-      const latestActiveProblem = latestActiveProblemRef.current
-      const latestCurrentProblemInfo = latestCurrentProblemInfoRef.current
-      const hasAdvancedProblem =
-        latestActiveProblem &&
-        activeProblemKeyAtSubmit &&
-        latestActiveProblem.key !== activeProblemKeyAtSubmit
-      const isSamePartAsSubmitted = latestActiveProblem?.partIndex === submittedPartIndex
-      const latestEpochNumber = latestCurrentProblemInfo?.epochNumber ?? submittedEpochNumber
-      const isSameEpochAsSubmitted = latestEpochNumber === submittedEpochNumber
-
-      if (hasAdvancedProblem && isSamePartAsSubmitted && isSameEpochAsSubmitted) {
-        return {
-          problem: latestActiveProblem.problem,
-          slotIndex: latestActiveProblem.slotIndex,
-          partIndex: latestActiveProblem.partIndex,
-          epochNumber: latestActiveProblem.epochNumber ?? 0,
-        }
-      }
-
-      return null
-    },
-    [plan.parts]
-  )
-
+  // Where a submit goes after its feedback: slide to the target, or, with
+  // none, hand off to the session state (load whatever the plan shows)
   const enactSubmitAdvance = useCallback(
-    ({ intent, transitionTarget }: SubmitAdvanceResolution) => {
-      if (intent === 'slide-to-next-problem' && transitionTarget) {
+    (transitionTarget: TransitionTarget | null) => {
+      if (transitionTarget) {
         needsCenteringOffsetRef.current = true
         startTransition(
           transitionTarget.problem,
@@ -1319,85 +1258,6 @@ export function ActiveSession({
       clearToLoading()
     },
     [startTransition, clearToLoading]
-  )
-
-  const resolveSubmitAdvanceWithWait = useCallback(
-    ({
-      mode,
-      submittedPartIndex,
-      submittedSlotIndex,
-      submittedEpochNumber,
-      activeProblemKeyAtSubmit,
-      redoReturnTarget,
-    }: {
-      mode: SubmitMode
-      submittedPartIndex: number
-      submittedSlotIndex: number
-      submittedEpochNumber: number
-      activeProblemKeyAtSubmit: string | null
-      redoReturnTarget: TransitionTarget | null
-    }): Promise<SubmitAdvanceResolution> =>
-      new Promise((resolve) => {
-        if (mode === 'redo') {
-          const destination: SubmitAdvanceDestination = redoReturnTarget
-            ? 'next-problem-same-lane'
-            : 'state-handoff'
-          resolve({
-            destination,
-            intent: getSubmitAdvanceIntent(destination),
-            transitionTarget: redoReturnTarget,
-          })
-          return
-        }
-
-        const maxWaitMs = 500
-        const pollIntervalMs = 50
-        const startedAt = Date.now()
-
-        const settle = () => {
-          const transitionTarget = resolvePracticeTransitionTarget({
-            submittedPartIndex,
-            submittedSlotIndex,
-            submittedEpochNumber,
-            activeProblemKeyAtSubmit,
-          })
-          const destination: SubmitAdvanceDestination = transitionTarget
-            ? 'next-problem-same-lane'
-            : 'state-handoff'
-          resolve({
-            destination,
-            intent: getSubmitAdvanceIntent(destination),
-            transitionTarget,
-          })
-        }
-
-        const tick = () => {
-          const transitionTarget = resolvePracticeTransitionTarget({
-            submittedPartIndex,
-            submittedSlotIndex,
-            submittedEpochNumber,
-            activeProblemKeyAtSubmit,
-          })
-          if (transitionTarget) {
-            resolve({
-              destination: 'next-problem-same-lane',
-              intent: 'slide-to-next-problem',
-              transitionTarget,
-            })
-            return
-          }
-
-          if (Date.now() - startedAt >= maxWaitMs) {
-            settle()
-            return
-          }
-
-          setTimeout(tick, pollIntervalMs)
-        }
-
-        tick()
-      }),
-    [resolvePracticeTransitionTarget]
   )
 
   // Handle submit
@@ -1445,7 +1305,6 @@ export function ActiveSession({
     // The round of the problem on screen, not the plan's (which can lag)
     const answered = answeredProblemIdentity(plan, attemptData)
     const epochNumberAtSubmit = answered.epochNumber
-    const activeProblemKeyAtSubmit = activeProblem?.key ?? null
     const redoReturnTargetAtSubmit: TransitionTarget | null = currentProblemInfo
       ? {
           problem: currentProblemInfo.problem,
@@ -1493,18 +1352,24 @@ export function ActiveSession({
         phase.phase === 'helpMode' || assistance.machineState.context.helpedTermIndices.size > 0,
     }
 
-    const submitMode: SubmitMode = isInRedoMode && redoState ? 'redo' : 'practice'
+    const isDoOver = isInRedoMode && !!redoState
 
-    // Handle redo recording separately - return path is still unified through submit advance resolver.
-    let redoOutcome: RedoWriteOutcome = { recorded: false }
-    if (submitMode === 'redo' && redoState) {
+    // Where the screen goes after the feedback, decided once the write that
+    // decides it is in hand: from the plan at submit for a first-round try mid-
+    // part, else from the plan the write returned, through the same pure call
+    // the server made (getCurrentProblemInfo: the kind's expectedItem over the
+    // part's state). Never from a ref, a render or a timer (practice-kinds
+    // §6.14, §7 Q1).
+    let advanceTarget: TransitionTarget | null
+    if (isDoOver && redoState) {
       // Every do-over is recorded. The server stamps its round and weight; a
       // do-over of a problem already answered correctly is practice-only
       // (weight 0, no effect on mastery, the score or the dot).
+      let redoOutcome: RedoWriteOutcome = { recorded: false }
       if (onRecordRedo && redoItem) {
         // The do-over names its item (Phase 5b). Use the special redo
         // mutation. It can move the session on (a redeemed retry round), so
-        // the return target comes from its answer below.
+        // the return target comes from its answer.
         const redoPlan = await onRecordRedo(
           doOverWriteOf({
             playerId: student.id,
@@ -1517,46 +1382,43 @@ export function ActiveSession({
         )
         redoOutcome = { recorded: true, plan: redoPlan }
       }
-
-      // Continue into unified completion path below.
+      advanceTarget = chooseRedoReturnTarget(plan, redoOutcome, redoReturnTargetAtSubmit)
     } else {
-      // Optimistic submit: for epoch 0 mid-part, advance immediately without
-      // waiting for the server. The mutation queue in PracticeClient serializes
-      // the actual server writes.
-      const nextSlotExists = !!arithmeticSlotAt(
+      const submission = { ...result, partIndex: answered.partIndex }
+      const nextSlot = arithmeticSlotAt(
         plan.parts,
         attemptData.partIndex,
         attemptData.slotIndex + 1
-      )?.problem
-      const canAdvanceOptimistically = epochNumberAtSubmit === 0 && nextSlotExists
-
-      const submission = { ...result, partIndex: answered.partIndex }
-      if (canAdvanceOptimistically) {
+      )
+      if (epochNumberAtSubmit === 0 && nextSlot?.problem) {
+        // Optimistic submit: a first-round try mid-part advances at once to
+        // the part's next slot, without waiting for the server. The write
+        // queue in PracticeClient serializes the actual server writes.
         void onAnswer(submission)
+        advanceTarget = {
+          problem: nextSlot.problem,
+          slotIndex: attemptData.slotIndex + 1,
+          partIndex: attemptData.partIndex,
+          epochNumber: 0,
+        }
       } else {
-        await onAnswer(submission)
+        // A retry round's next item, or what follows a part's last one, is
+        // the server's to decide: wait for its plan (null when the write was
+        // dropped or failed: the page resyncs, and nothing is derived)
+        advanceTarget = chooseAdvanceTarget(answered, await onAnswer(submission))
       }
     }
 
     // Complete submit with result
     completeSubmit(isCorrect ? 'correct' : 'incorrect')
 
-    // Wait for feedback display then resolve-and-enact the shared advance policy.
+    // Wait for feedback display (UI pacing), then advance
     setTimeout(
       () => {
-        void resolveSubmitAdvanceWithWait({
-          mode: submitMode,
-          submittedPartIndex: attemptData.partIndex,
-          submittedSlotIndex: attemptData.slotIndex,
-          submittedEpochNumber: epochNumberAtSubmit,
-          activeProblemKeyAtSubmit,
-          redoReturnTarget: chooseRedoReturnTarget(plan, redoOutcome, redoReturnTargetAtSubmit),
-        }).then((resolution) => {
-          enactSubmitAdvance(resolution)
-          if (submitMode === 'redo') {
-            onRedoComplete?.()
-          }
-        })
+        enactSubmitAdvance(advanceTarget)
+        if (isDoOver) {
+          onRedoComplete?.()
+        }
       },
       isCorrect ? 500 : 1500
     )
@@ -1565,13 +1427,10 @@ export function ActiveSession({
     onAnswer,
     onRecordRedo,
     student.id,
-    plan.id,
-    plan.currentPartIndex,
-    activeProblem?.key,
+    plan,
     startSubmit,
     completeSubmit,
     enactSubmitAdvance,
-    resolveSubmitAdvanceWithWait,
     currentProblemInfo?.epochNumber,
     isDockedByUser,
     prefixSums,

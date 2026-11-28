@@ -393,9 +393,13 @@ export function PracticeClient({
     [showError]
   )
 
-  // Handle recording an answer
+  // Handle recording an answer. Resolves to the plan the server returned (the
+  // screen derives its next item from it), or null when the write was dropped
+  // behind a failure or failed (the screen resyncs)
   const handleAnswer = useCallback(
-    (result: SlotResultSubmission & { partIndex: number; tryId: string }): Promise<void> => {
+    (
+      result: SlotResultSubmission & { partIndex: number; tryId: string }
+    ): Promise<SessionPlan | null> => {
       // Synchronous work: problem markers + trace logging happen immediately.
       // The marker names the answered item (its own part, id and round), not
       // the plan's cursor, which lags an optimistic advance
@@ -424,7 +428,7 @@ export function PracticeClient({
       })
 
       // Chain this mutation onto the queue so mutations execute in order
-      const mutationPromise = (async () => {
+      const mutationPromise = (async (): Promise<SessionPlan | null> => {
         try {
           const updatedPlan = await writeQueue.enqueue(() =>
             recordResult.mutateAsync({
@@ -435,7 +439,7 @@ export function PracticeClient({
             })
           )
           // Dropped: an answer queued before this one failed; the screen resyncs
-          if (!updatedPlan) return
+          if (!updatedPlan) return null
           // The server's flow says where the session went (a transition, a
           // break, the end); the screens follow it from the plan
           logGameBreakTrace('answer-submit-resolved', {
@@ -452,8 +456,10 @@ export function PracticeClient({
               scroll: false,
             })
           }
+          return updatedPlan
         } catch (err) {
           reportTryWriteFailure(err)
+          return null
         }
       })()
 

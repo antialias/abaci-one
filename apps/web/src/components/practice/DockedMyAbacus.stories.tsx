@@ -245,8 +245,12 @@ function createMockSessionPlan(config: {
 }
 
 const defaultHandlers = {
-  onAnswer: async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>) => {
+  onAnswer: async (
+    result: Omit<SlotResult, 'timestamp' | 'partNumber'>
+  ): Promise<SessionPlan | null> => {
     console.log('Answer recorded:', result)
+    // No server here: the screen hands off to the plan it has
+    return null
   },
   onEndEarly: (reason?: string) => {
     console.log(`Session ended early: ${reason || 'No reason given'}`)
@@ -467,7 +471,7 @@ function InteractiveDemo() {
   const [results, setResults] = useState<SlotResult[]>([])
 
   const handleAnswer = useCallback(
-    async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>) => {
+    async (result: Omit<SlotResult, 'timestamp' | 'partNumber'>): Promise<SessionPlan | null> => {
       const fullResult: SlotResult = {
         ...result,
         partNumber: (plan.currentPartIndex + 1) as 1 | 2 | 3,
@@ -496,6 +500,8 @@ function InteractiveDemo() {
           partStates: { ...prev.partStates, [prev.currentPartIndex]: { slotIndex: nextSlotIndex } },
         }
       })
+      // No server here: the screen hands off to the plan just set
+      return null
     },
     [plan.currentPartIndex]
   )

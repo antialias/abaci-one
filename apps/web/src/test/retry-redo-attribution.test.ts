@@ -13,6 +13,7 @@
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  chooseAdvanceTarget,
   chooseRedoReturnTarget,
   type TransitionTarget,
 } from '@/components/practice/redoReturnTarget'
@@ -337,6 +338,70 @@ describe('retry and do-over attribution', () => {
       expect(plan.results.map((r) => r.slotIndex)).toEqual([0, 1])
       expect(plan.results[1].slotId).toBe(plan.parts[0].slots[1].slotId)
       expect(cursorOf(plan)).toBe(2)
+    })
+  })
+
+  describe('the next item after a try that waits for its write (K5a-3a)', () => {
+    /** Where the answered problem was: as ActiveSession names it at submit. */
+    const answeredAt = (plan: SessionPlan) => {
+      const info = getCurrentProblemInfo(plan)!
+      return {
+        partIndex: plan.currentPartIndex,
+        slotIndex: info.originalSlotIndex,
+        epochNumber: info.epochNumber,
+      }
+    }
+
+    it("slides to the retry round's next item, taken from the plan the server returned", async () => {
+      let plan = await newPlan(playerId, 3)
+      plan = await answerShown(plan, false)
+      plan = await answerShown(plan, false)
+      plan = await answerShown(plan, true) // round 1 = [slot 0, slot 1]
+      const at = answeredAt(plan)
+      expect(at).toEqual({ partIndex: 0, slotIndex: 0, epochNumber: 1 })
+
+      const after = await answerShown(plan, true)
+      const target = chooseAdvanceTarget(at, after)
+      expect(target).toMatchObject({ partIndex: 0, slotIndex: 1, epochNumber: 1 })
+      expect(target!.problem).toEqual(plan.parts[0].slots[1].problem)
+
+      // The answer the client sends from that target is the one the server expects
+      const slot = after.parts[0].slots[target!.slotIndex]
+      const next = await sendRecord(after.id, {
+        slotId: slot.slotId,
+        slotIndex: target!.slotIndex,
+        partIndex: target!.partIndex,
+        epochNumber: target!.epochNumber,
+        problem: target!.problem,
+        studentAnswer: target!.problem.answer,
+        isCorrect: true,
+        responseTimeMs: 3000,
+        skillsExercised: target!.problem.skillsRequired,
+        usedOnScreenAbacus: false,
+        hadHelp: false,
+        incorrectAttempts: 0,
+      })
+      expect(next.results.at(-1)).toMatchObject({ slotId: slot.slotId, round: 1 })
+    })
+
+    it('hands off when a new round starts, the part ends, or the write was dropped', async () => {
+      let plan = await newPlan(playerId, 2, { twoParts: true })
+      plan = await answerShown(plan, false)
+      // The part's last first-pass item, wrong slot 0 queued: round 1 starts
+      let at = answeredAt(plan)
+      let after = await answerShown(plan, true)
+      expect(retryOf(after)?.currentEpoch).toBe(1)
+      expect(chooseAdvanceTarget(at, after)).toBeNull()
+
+      // The round's last item, answered right: the part ends (a transition)
+      at = answeredAt(after)
+      plan = after
+      after = await answerShown(plan, true)
+      expect(after.currentPartIndex).toBe(1)
+      expect(chooseAdvanceTarget(at, after)).toBeNull()
+
+      // Dropped or failed: nothing to derive from
+      expect(chooseAdvanceTarget(at, null)).toBeNull()
     })
   })
 
