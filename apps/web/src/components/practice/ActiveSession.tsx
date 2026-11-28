@@ -181,7 +181,7 @@ export interface ActiveRedo {
   originalResult: SlotResult
 }
 
-/** What a do-over write sends (`record_redo`). */
+/** A do-over write: the screen's try and the item redone, sent as a `record_try` do-over. */
 export interface RecordRedoParams {
   playerId: string
   planId: string
