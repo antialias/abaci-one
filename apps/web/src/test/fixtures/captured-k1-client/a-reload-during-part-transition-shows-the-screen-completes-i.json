@@ -1,0 +1,1674 @@
+{
+ "captured": "e2e/retry-redo-attribution.spec.ts (CAPTURE_TRY_BODIES) against a build of 208433adb (the K1 client and server), 2026-11-28",
+ "title": "a reload during part_transition shows the screen, completes it, and the break runs",
+ "start": {
+  "id": "x6f77muuxnmuywhwd2th3t61",
+  "playerId": "w0szo636tixqwmm4vhfwuyv5",
+  "targetDurationMinutes": 1,
+  "estimatedProblemCount": 5,
+  "avgTimePerProblemSeconds": 10,
+  "gameBreakSettings": {
+   "enabled": true,
+   "maxDurationMinutes": 1,
+   "selectionMode": "auto-start",
+   "selectedGame": "matching",
+   "skipSetupPhase": true,
+   "useAdaptiveSelection": false
+  },
+  "parts": [
+   {
+    "kind": "arithmetic",
+    "partNumber": 1,
+    "type": "abacus",
+    "format": "vertical",
+    "useAbacus": true,
+    "slots": [
+     {
+      "slotId": "d9813894-616c-4d3c-bc4b-45b28d7a0d3a",
+      "index": 0,
+      "purpose": "focus",
+      "constraints": {
+       "allowedSkills": {
+        "basic": {
+         "directAddition": true,
+         "heavenBead": true,
+         "simpleCombinations": true
+        },
+        "fiveComplements": {
+         "3=5-2": true,
+         "4=5-1": true
+        }
+       },
+       "targetSkills": {
+        "fiveComplements": {
+         "3=5-2": true
+        }
+       },
+       "forbiddenSkills": {},
+       "termCount": {
+        "min": 3,
+        "max": 5
+       },
+       "digitRange": {
+        "min": 1,
+        "max": 2
+       },
+       "maxComplexityBudgetPerTerm": 7
+      },
+      "problem": {
+       "terms": [
+        30,
+        36,
+        30
+       ],
+       "answer": 96,
+       "skillsRequired": [
+        "basic.directAddition",
+        "fiveComplements.3=5-2",
+        "basic.simpleCombinations"
+       ],
+       "generationTrace": {
+        "terms": [
+         30,
+         36,
+         30
+        ],
+        "answer": 96,
+        "steps": [
+         {
+          "stepNumber": 1,
+          "operation": "0 + 30 = 30",
+          "accumulatedBefore": 0,
+          "termAdded": 30,
+          "accumulatedAfter": 30,
+          "skillsUsed": [
+           "basic.directAddition"
+          ],
+          "explanation": "0 + 30: ones column 0+0=0 (carry) \u2192 direct addition of 30",
+          "complexityCost": 0.5003814798577342
+         },
+         {
+          "stepNumber": 2,
+          "operation": "30 + 36 = 66",
+          "accumulatedBefore": 30,
+          "termAdded": 36,
+          "accumulatedAfter": 66,
+          "skillsUsed": [
+           "fiveComplements.3=5-2",
+           "basic.simpleCombinations"
+          ],
+          "explanation": "30 + 36: ones column 0+6=6 (carry) \u2192 five complement: +3 = +5-2, simple combination (5+n)",
+          "complexityCost": 4.500381359665504
+         },
+         {
+          "stepNumber": 3,
+          "operation": "66 + 30 = 96",
+          "accumulatedBefore": 66,
+          "termAdded": 30,
+          "accumulatedAfter": 96,
+          "skillsUsed": [
+           "basic.directAddition"
+          ],
+          "explanation": "66 + 30: ones column 6+0=6 (carry) \u2192 direct addition of 30",
+          "complexityCost": 0.5003814798577342
+         }
+        ],
+        "allSkills": [
+         "basic.directAddition",
+         "fiveComplements.3=5-2",
+         "basic.simpleCombinations"
+        ],
+        "budgetConstraint": 7,
+        "totalComplexityCost": 5.5011443193809715,
+        "skillMasteryContext": {
+         "basic.directAddition": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 0.5,
+          "effectiveCost": 0.5003814798577342
+         },
+         "fiveComplements.3=5-2": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 1,
+          "effectiveCost": 3.999999879807769
+         },
+         "basic.simpleCombinations": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 0.5,
+          "effectiveCost": 0.5003814798577342
+         }
+        }
+       }
+      },
+      "complexityBounds": {
+       "max": 7
+      },
+      "termCountExplanation": {
+       "comfortLevel": 0.3,
+       "factors": {
+        "avgMastery": null,
+        "sessionMode": "maintenance",
+        "modeMultiplier": 1,
+        "skillCountBonus": 0
+       },
+       "dynamicRange": {
+        "min": 3,
+        "max": 5
+       },
+       "override": {
+        "min": 3,
+        "max": 6
+       },
+       "finalRange": {
+        "min": 3,
+        "max": 5
+       }
+      }
+     },
+     {
+      "slotId": "83c4c066-8f9d-41a9-83bc-baaa7d35a320",
+      "index": 1,
+      "purpose": "focus",
+      "constraints": {
+       "allowedSkills": {
+        "basic": {
+         "directAddition": true,
+         "heavenBead": true,
+         "simpleCombinations": true
+        },
+        "fiveComplements": {
+         "3=5-2": true,
+         "4=5-1": true
+        }
+       },
+       "targetSkills": {
+        "fiveComplements": {
+         "3=5-2": true
+        }
+       },
+       "forbiddenSkills": {},
+       "termCount": {
+        "min": 3,
+        "max": 5
+       },
+       "digitRange": {
+        "min": 1,
+        "max": 2
+       },
+       "maxComplexityBudgetPerTerm": 7
+      },
+      "problem": {
+       "terms": [
+        2,
+        33,
+        33,
+        20,
+        1
+       ],
+       "answer": 89,
+       "skillsRequired": [
+        "basic.directAddition",
+        "fiveComplements.3=5-2"
+       ],
+       "generationTrace": {
+        "terms": [
+         2,
+         33,
+         33,
+         20,
+         1
+        ],
+        "answer": 89,
+        "steps": [
+         {
+          "stepNumber": 1,
+          "operation": "0 + 2 = 2",
+          "accumulatedBefore": 0,
+          "termAdded": 2,
+          "accumulatedAfter": 2,
+          "skillsUsed": [
+           "basic.directAddition"
+          ],
+          "explanation": "0 + 2: ones column 0+2=2 \u2192 direct addition of 2",
+          "complexityCost": 0.5003814798577342
+         },
+         {
+          "stepNumber": 2,
+          "operation": "2 + 33 = 35",
+          "accumulatedBefore": 2,
+          "termAdded": 33,
+          "accumulatedAfter": 35,
+          "skillsUsed": [
+           "basic.directAddition",
+           "fiveComplements.3=5-2"
+          ],
+          "explanation": "2 + 33: ones column 2+3=5 (carry) \u2192 direct addition of 33, five complement: +3 = +5-2",
+          "complexityCost": 4.500381359665504
+         },
+         {
+          "stepNumber": 3,
+          "operation": "35 + 33 = 68",
+          "accumulatedBefore": 35,
+          "termAdded": 33,
+          "accumulatedAfter": 68,
+          "skillsUsed": [
+           "fiveComplements.3=5-2",
+           "basic.directAddition"
+          ],
+          "explanation": "35 + 33: ones column 5+3=8 (carry) \u2192 five complement: +3 = +5-2, direct addition of 33",
+          "complexityCost": 4.500381359665504
+         },
+         {
+          "stepNumber": 4,
+          "operation": "68 + 20 = 88",
+          "accumulatedBefore": 68,
+          "termAdded": 20,
+          "accumulatedAfter": 88,
+          "skillsUsed": [
+           "basic.directAddition"
+          ],
+          "explanation": "68 + 20: ones column 8+0=8 (carry) \u2192 direct addition of 20",
+          "complexityCost": 0.5003814798577342
+         },
+         {
+          "stepNumber": 5,
+          "operation": "88 + 1 = 89",
+          "accumulatedBefore": 88,
+          "termAdded": 1,
+          "accumulatedAfter": 89,
+          "skillsUsed": [
+           "basic.directAddition"
+          ],
+          "explanation": "88 + 1: ones column 8+1=9 (carry) \u2192 direct addition of 1",
+          "complexityCost": 0.5003814798577342
+         }
+        ],
+        "allSkills": [
+         "basic.directAddition",
+         "fiveComplements.3=5-2"
+        ],
+        "budgetConstraint": 7,
+        "totalComplexityCost": 10.50190715890421,
+        "skillMasteryContext": {
+         "basic.directAddition": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 0.5,
+          "effectiveCost": 0.5003814798577342
+         },
+         "fiveComplements.3=5-2": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 1,
+          "effectiveCost": 3.999999879807769
+         }
+        }
+       }
+      },
+      "complexityBounds": {
+       "max": 7
+      },
+      "termCountExplanation": {
+       "comfortLevel": 0.3,
+       "factors": {
+        "avgMastery": null,
+        "sessionMode": "maintenance",
+        "modeMultiplier": 1,
+        "skillCountBonus": 0
+       },
+       "dynamicRange": {
+        "min": 3,
+        "max": 5
+       },
+       "override": {
+        "min": 3,
+        "max": 6
+       },
+       "finalRange": {
+        "min": 3,
+        "max": 5
+       }
+      }
+     },
+     {
+      "slotId": "af0f5e96-a124-4842-bbb1-1f415def6082",
+      "index": 2,
+      "purpose": "reinforce",
+      "constraints": {
+       "allowedSkills": {
+        "basic": {
+         "directAddition": true,
+         "heavenBead": true,
+         "simpleCombinations": true
+        },
+        "fiveComplements": {
+         "3=5-2": true,
+         "4=5-1": true
+        }
+       },
+       "targetSkills": {
+        "fiveComplements": {
+         "3=5-2": true
+        }
+       },
+       "forbiddenSkills": {},
+       "termCount": {
+        "min": 3,
+        "max": 5
+       },
+       "digitRange": {
+        "min": 1,
+        "max": 2
+       },
+       "maxComplexityBudgetPerTerm": 7
+      },
+      "problem": {
+       "terms": [
+        20,
+        39,
+        30,
+        10
+       ],
+       "answer": 99,
+       "skillsRequired": [
+        "basic.directAddition",
+        "fiveComplements.3=5-2",
+        "basic.simpleCombinations"
+       ],
+       "generationTrace": {
+        "terms": [
+         20,
+         39,
+         30,
+         10
+        ],
+        "answer": 99,
+        "steps": [
+         {
+          "stepNumber": 1,
+          "operation": "0 + 20 = 20",
+          "accumulatedBefore": 0,
+          "termAdded": 20,
+          "accumulatedAfter": 20,
+          "skillsUsed": [
+           "basic.directAddition"
+          ],
+          "explanation": "0 + 20: ones column 0+0=0 (carry) \u2192 direct addition of 20",
+          "complexityCost": 0.5003814798577342
+         },
+         {
+          "stepNumber": 2,
+          "operation": "20 + 39 = 59",
+          "accumulatedBefore": 20,
+          "termAdded": 39,
+          "accumulatedAfter": 59,
+          "skillsUsed": [
+           "fiveComplements.3=5-2",
+           "basic.simpleCombinations"
+          ],
+          "explanation": "20 + 39: ones column 0+9=9 (carry) \u2192 five complement: +3 = +5-2, simple combination (5+n)",
+          "complexityCost": 4.500381359665504
+         },
+         {
+          "stepNumber": 3,
+          "operation": "59 + 30 = 89",
+          "accumulatedBefore": 59,
+          "termAdded": 30,
+          "accumulatedAfter": 89,
+          "skillsUsed": [
+           "basic.directAddition"
+          ],
+          "explanation": "59 + 30: ones column 9+0=9 (carry) \u2192 direct addition of 30",
+          "complexityCost": 0.5003814798577342
+         },
+         {
+          "stepNumber": 4,
+          "operation": "89 + 10 = 99",
+          "accumulatedBefore": 89,
+          "termAdded": 10,
+          "accumulatedAfter": 99,
+          "skillsUsed": [
+           "basic.directAddition"
+          ],
+          "explanation": "89 + 10: ones column 9+0=9 (carry) \u2192 direct addition of 10",
+          "complexityCost": 0.5003814798577342
+         }
+        ],
+        "allSkills": [
+         "basic.directAddition",
+         "fiveComplements.3=5-2",
+         "basic.simpleCombinations"
+        ],
+        "budgetConstraint": 7,
+        "totalComplexityCost": 6.001525799238705,
+        "skillMasteryContext": {
+         "basic.directAddition": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 0.5,
+          "effectiveCost": 0.5003814798577342
+         },
+         "fiveComplements.3=5-2": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 1,
+          "effectiveCost": 3.999999879807769
+         },
+         "basic.simpleCombinations": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 0.5,
+          "effectiveCost": 0.5003814798577342
+         }
+        }
+       }
+      },
+      "complexityBounds": {
+       "max": 7
+      },
+      "termCountExplanation": {
+       "comfortLevel": 0.3,
+       "factors": {
+        "avgMastery": null,
+        "sessionMode": "maintenance",
+        "modeMultiplier": 1,
+        "skillCountBonus": 0
+       },
+       "dynamicRange": {
+        "min": 3,
+        "max": 5
+       },
+       "override": {
+        "min": 3,
+        "max": 6
+       },
+       "finalRange": {
+        "min": 3,
+        "max": 5
+       }
+      }
+     }
+    ],
+    "estimatedMinutes": 1
+   },
+   {
+    "kind": "arithmetic",
+    "partNumber": 2,
+    "type": "visualization",
+    "format": "vertical",
+    "useAbacus": false,
+    "slots": [
+     {
+      "slotId": "f1ae3a5a-1a95-4c9f-8ade-f1ab4c789840",
+      "index": 0,
+      "purpose": "focus",
+      "constraints": {
+       "allowedSkills": {
+        "basic": {
+         "directAddition": true,
+         "heavenBead": true,
+         "simpleCombinations": true
+        },
+        "fiveComplements": {
+         "3=5-2": true,
+         "4=5-1": true
+        }
+       },
+       "targetSkills": {
+        "fiveComplements": {
+         "3=5-2": true
+        }
+       },
+       "forbiddenSkills": {},
+       "termCount": {
+        "min": 3,
+        "max": 4
+       },
+       "digitRange": {
+        "min": 1,
+        "max": 2
+       },
+       "maxComplexityBudgetPerTerm": 5
+      },
+      "problem": {
+       "terms": [
+        10,
+        73,
+        3,
+        1
+       ],
+       "answer": 87,
+       "skillsRequired": [
+        "basic.directAddition",
+        "basic.simpleCombinations",
+        "fiveComplements.3=5-2"
+       ],
+       "generationTrace": {
+        "terms": [
+         10,
+         73,
+         3,
+         1
+        ],
+        "answer": 87,
+        "steps": [
+         {
+          "stepNumber": 1,
+          "operation": "0 + 10 = 10",
+          "accumulatedBefore": 0,
+          "termAdded": 10,
+          "accumulatedAfter": 10,
+          "skillsUsed": [
+           "basic.directAddition"
+          ],
+          "explanation": "0 + 10: ones column 0+0=0 (carry) \u2192 direct addition of 10",
+          "complexityCost": 0.5003814798577342
+         },
+         {
+          "stepNumber": 2,
+          "operation": "10 + 73 = 83",
+          "accumulatedBefore": 10,
+          "termAdded": 73,
+          "accumulatedAfter": 83,
+          "skillsUsed": [
+           "basic.simpleCombinations",
+           "basic.directAddition"
+          ],
+          "explanation": "10 + 73: ones column 0+3=3 (carry) \u2192 simple combination (5+n), direct addition of 73",
+          "complexityCost": 1.0007629597154684
+         },
+         {
+          "stepNumber": 3,
+          "operation": "83 + 3 = 86",
+          "accumulatedBefore": 83,
+          "termAdded": 3,
+          "accumulatedAfter": 86,
+          "skillsUsed": [
+           "fiveComplements.3=5-2"
+          ],
+          "explanation": "83 + 3: ones column 3+3=6 (carry) \u2192 five complement: +3 = +5-2",
+          "complexityCost": 3.999999879807769
+         },
+         {
+          "stepNumber": 4,
+          "operation": "86 + 1 = 87",
+          "accumulatedBefore": 86,
+          "termAdded": 1,
+          "accumulatedAfter": 87,
+          "skillsUsed": [
+           "basic.directAddition"
+          ],
+          "explanation": "86 + 1: ones column 6+1=7 (carry) \u2192 direct addition of 1",
+          "complexityCost": 0.5003814798577342
+         }
+        ],
+        "allSkills": [
+         "basic.directAddition",
+         "basic.simpleCombinations",
+         "fiveComplements.3=5-2"
+        ],
+        "budgetConstraint": 5,
+        "totalComplexityCost": 6.001525799238705,
+        "skillMasteryContext": {
+         "basic.directAddition": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 0.5,
+          "effectiveCost": 0.5003814798577342
+         },
+         "basic.simpleCombinations": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 0.5,
+          "effectiveCost": 0.5003814798577342
+         },
+         "fiveComplements.3=5-2": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 1,
+          "effectiveCost": 3.999999879807769
+         }
+        }
+       }
+      },
+      "complexityBounds": {
+       "max": 5
+      },
+      "termCountExplanation": {
+       "comfortLevel": 0.3,
+       "factors": {
+        "avgMastery": null,
+        "sessionMode": "maintenance",
+        "modeMultiplier": 1,
+        "skillCountBonus": 0
+       },
+       "dynamicRange": {
+        "min": 3,
+        "max": 4
+       },
+       "override": null,
+       "finalRange": {
+        "min": 3,
+        "max": 4
+       }
+      }
+     },
+     {
+      "slotId": "1eea5be1-49ff-4138-a5f1-1466c9617027",
+      "index": 1,
+      "purpose": "challenge",
+      "constraints": {
+       "allowedSkills": {
+        "basic": {
+         "directAddition": true,
+         "heavenBead": true,
+         "simpleCombinations": true
+        },
+        "fiveComplements": {
+         "3=5-2": true,
+         "4=5-1": true
+        }
+       },
+       "targetSkills": {},
+       "forbiddenSkills": {},
+       "termCount": {
+        "min": 3,
+        "max": 4
+       },
+       "digitRange": {
+        "min": 1,
+        "max": 2
+       },
+       "minComplexityBudgetPerTerm": 1
+      },
+      "problem": {
+       "terms": [
+        15,
+        82,
+        2
+       ],
+       "answer": 99,
+       "skillsRequired": [
+        "basic.directAddition",
+        "basic.heavenBead",
+        "basic.simpleCombinations"
+       ],
+       "generationTrace": {
+        "terms": [
+         15,
+         82,
+         2
+        ],
+        "answer": 99,
+        "steps": [
+         {
+          "stepNumber": 1,
+          "operation": "0 + 15 = 15",
+          "accumulatedBefore": 0,
+          "termAdded": 15,
+          "accumulatedAfter": 15,
+          "skillsUsed": [
+           "basic.directAddition",
+           "basic.heavenBead"
+          ],
+          "explanation": "0 + 15: ones column 0+5=5 (carry) \u2192 direct addition of 15, use heaven bead (5)",
+          "complexityCost": 1.0007629597154686
+         },
+         {
+          "stepNumber": 2,
+          "operation": "15 + 82 = 97",
+          "accumulatedBefore": 15,
+          "termAdded": 82,
+          "accumulatedAfter": 97,
+          "skillsUsed": [
+           "basic.simpleCombinations",
+           "basic.directAddition"
+          ],
+          "explanation": "15 + 82: ones column 5+2=7 (carry) \u2192 simple combination (5+n), direct addition of 82",
+          "complexityCost": 1.0007629597154684
+         },
+         {
+          "stepNumber": 3,
+          "operation": "97 + 2 = 99",
+          "accumulatedBefore": 97,
+          "termAdded": 2,
+          "accumulatedAfter": 99,
+          "skillsUsed": [
+           "basic.directAddition"
+          ],
+          "explanation": "97 + 2: ones column 7+2=9 (carry) \u2192 direct addition of 2",
+          "complexityCost": 0.5003814798577342
+         }
+        ],
+        "allSkills": [
+         "basic.directAddition",
+         "basic.heavenBead",
+         "basic.simpleCombinations"
+        ],
+        "minBudgetConstraint": 1,
+        "totalComplexityCost": 2.5019073992886707,
+        "skillMasteryContext": {
+         "basic.directAddition": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 0.5,
+          "effectiveCost": 0.5003814798577342
+         },
+         "basic.heavenBead": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 0.5,
+          "effectiveCost": 0.5003814798577344
+         },
+         "basic.simpleCombinations": {
+          "isPracticing": true,
+          "practiceLevel": "visual",
+          "baseCost": 0.5,
+          "effectiveCost": 0.5003814798577342
+         }
+        }
+       }
+      },
+      "complexityBounds": {
+       "min": 1
+      },
+      "termCountExplanation": {
+       "comfortLevel": 0.3,
+       "factors": {
+        "avgMastery": null,
+        "sessionMode": "maintenance",
+        "modeMultiplier": 1,
+        "skillCountBonus": 0
+       },
+       "dynamicRange": {
+        "min": 3,
+        "max": 4
+       },
+       "override": null,
+       "finalRange": {
+        "min": 3,
+        "max": 4
+       }
+      }
+     }
+    ],
+    "estimatedMinutes": 0
+   }
+  ],
+  "summary": {
+   "focusDescription": "+1 Direct",
+   "totalProblemCount": 5,
+   "estimatedMinutes": 1,
+   "parts": [
+    {
+     "partNumber": 1,
+     "type": "abacus",
+     "description": "Use Abacus",
+     "problemCount": 3,
+     "estimatedMinutes": 1
+    },
+    {
+     "partNumber": 2,
+     "type": "visualization",
+     "description": "Mental Math (Visualization)",
+     "problemCount": 2,
+     "estimatedMinutes": 0
+    }
+   ]
+  },
+  "masteredSkillIds": [
+   "basic.directAddition",
+   "basic.heavenBead",
+   "basic.simpleCombinations",
+   "fiveComplements.3=5-2",
+   "fiveComplements.4=5-1"
+  ],
+  "status": "in_progress",
+  "flowState": "practicing",
+  "flowUpdatedAt": 1795853602000,
+  "flowVersion": 1,
+  "currentPartIndex": 0,
+  "sessionHealth": {
+   "overall": "good",
+   "accuracy": 1,
+   "pacePercent": 100,
+   "currentStreak": 0,
+   "avgResponseTimeMs": 0
+  },
+  "adjustments": [],
+  "results": [],
+  "rowVersion": 2,
+  "breaks": [],
+  "partStates": {},
+  "pauses": [],
+  "remoteCameraSessionId": null,
+  "isPaused": false,
+  "pausedAt": null,
+  "pausedBy": null,
+  "pauseReason": null,
+  "createdAt": 1795853602000,
+  "approvedAt": 1795853602000,
+  "startedAt": 1795853602000,
+  "completedAt": null,
+  "statusBeforeDeletion": null,
+  "deletedAt": null,
+  "deletedBy": null
+ },
+ "writes": [
+  {
+   "route": "plan",
+   "body": {
+    "action": "record",
+    "result": {
+     "tryId": "34d67a38-4448-4968-8b8f-95387ba28ee6",
+     "slotId": "d9813894-616c-4d3c-bc4b-45b28d7a0d3a",
+     "slotIndex": 0,
+     "epochNumber": 0,
+     "problem": {
+      "terms": [
+       30,
+       36,
+       30
+      ],
+      "answer": 96,
+      "skillsRequired": [
+       "basic.directAddition",
+       "fiveComplements.3=5-2",
+       "basic.simpleCombinations"
+      ],
+      "generationTrace": {
+       "terms": [
+        30,
+        36,
+        30
+       ],
+       "answer": 96,
+       "steps": [
+        {
+         "stepNumber": 1,
+         "operation": "0 + 30 = 30",
+         "accumulatedBefore": 0,
+         "termAdded": 30,
+         "accumulatedAfter": 30,
+         "skillsUsed": [
+          "basic.directAddition"
+         ],
+         "explanation": "0 + 30: ones column 0+0=0 (carry) \u2192 direct addition of 30",
+         "complexityCost": 0.5003814798577342
+        },
+        {
+         "stepNumber": 2,
+         "operation": "30 + 36 = 66",
+         "accumulatedBefore": 30,
+         "termAdded": 36,
+         "accumulatedAfter": 66,
+         "skillsUsed": [
+          "fiveComplements.3=5-2",
+          "basic.simpleCombinations"
+         ],
+         "explanation": "30 + 36: ones column 0+6=6 (carry) \u2192 five complement: +3 = +5-2, simple combination (5+n)",
+         "complexityCost": 4.500381359665504
+        },
+        {
+         "stepNumber": 3,
+         "operation": "66 + 30 = 96",
+         "accumulatedBefore": 66,
+         "termAdded": 30,
+         "accumulatedAfter": 96,
+         "skillsUsed": [
+          "basic.directAddition"
+         ],
+         "explanation": "66 + 30: ones column 6+0=6 (carry) \u2192 direct addition of 30",
+         "complexityCost": 0.5003814798577342
+        }
+       ],
+       "allSkills": [
+        "basic.directAddition",
+        "fiveComplements.3=5-2",
+        "basic.simpleCombinations"
+       ],
+       "budgetConstraint": 7,
+       "totalComplexityCost": 5.5011443193809715,
+       "skillMasteryContext": {
+        "basic.directAddition": {
+         "isPracticing": true,
+         "practiceLevel": "visual",
+         "baseCost": 0.5,
+         "effectiveCost": 0.5003814798577342
+        },
+        "fiveComplements.3=5-2": {
+         "isPracticing": true,
+         "practiceLevel": "visual",
+         "baseCost": 1,
+         "effectiveCost": 3.999999879807769
+        },
+        "basic.simpleCombinations": {
+         "isPracticing": true,
+         "practiceLevel": "visual",
+         "baseCost": 0.5,
+         "effectiveCost": 0.5003814798577342
+        }
+       }
+      }
+     },
+     "studentAnswer": 96,
+     "isCorrect": true,
+     "responseTimeMs": 377,
+     "skillsExercised": [
+      "basic.directAddition",
+      "fiveComplements.3=5-2",
+      "basic.simpleCombinations"
+     ],
+     "usedOnScreenAbacus": false,
+     "incorrectAttempts": 0,
+     "hadHelp": false,
+     "partIndex": 0
+    }
+   },
+   "status": 200
+  },
+  {
+   "route": "plan",
+   "body": {
+    "action": "record",
+    "result": {
+     "tryId": "6bc2996e-6c57-4285-b6e3-9b6551b34efb",
+     "slotId": "83c4c066-8f9d-41a9-83bc-baaa7d35a320",
+     "slotIndex": 1,
+     "epochNumber": 0,
+     "problem": {
+      "terms": [
+       2,
+       33,
+       33,
+       20,
+       1
+      ],
+      "answer": 89,
+      "skillsRequired": [
+       "basic.directAddition",
+       "fiveComplements.3=5-2"
+      ],
+      "generationTrace": {
+       "terms": [
+        2,
+        33,
+        33,
+        20,
+        1
+       ],
+       "answer": 89,
+       "steps": [
+        {
+         "stepNumber": 1,
+         "operation": "0 + 2 = 2",
+         "accumulatedBefore": 0,
+         "termAdded": 2,
+         "accumulatedAfter": 2,
+         "skillsUsed": [
+          "basic.directAddition"
+         ],
+         "explanation": "0 + 2: ones column 0+2=2 \u2192 direct addition of 2",
+         "complexityCost": 0.5003814798577342
+        },
+        {
+         "stepNumber": 2,
+         "operation": "2 + 33 = 35",
+         "accumulatedBefore": 2,
+         "termAdded": 33,
+         "accumulatedAfter": 35,
+         "skillsUsed": [
+          "basic.directAddition",
+          "fiveComplements.3=5-2"
+         ],
+         "explanation": "2 + 33: ones column 2+3=5 (carry) \u2192 direct addition of 33, five complement: +3 = +5-2",
+         "complexityCost": 4.500381359665504
+        },
+        {
+         "stepNumber": 3,
+         "operation": "35 + 33 = 68",
+         "accumulatedBefore": 35,
+         "termAdded": 33,
+         "accumulatedAfter": 68,
+         "skillsUsed": [
+          "fiveComplements.3=5-2",
+          "basic.directAddition"
+         ],
+         "explanation": "35 + 33: ones column 5+3=8 (carry) \u2192 five complement: +3 = +5-2, direct addition of 33",
+         "complexityCost": 4.500381359665504
+        },
+        {
+         "stepNumber": 4,
+         "operation": "68 + 20 = 88",
+         "accumulatedBefore": 68,
+         "termAdded": 20,
+         "accumulatedAfter": 88,
+         "skillsUsed": [
+          "basic.directAddition"
+         ],
+         "explanation": "68 + 20: ones column 8+0=8 (carry) \u2192 direct addition of 20",
+         "complexityCost": 0.5003814798577342
+        },
+        {
+         "stepNumber": 5,
+         "operation": "88 + 1 = 89",
+         "accumulatedBefore": 88,
+         "termAdded": 1,
+         "accumulatedAfter": 89,
+         "skillsUsed": [
+          "basic.directAddition"
+         ],
+         "explanation": "88 + 1: ones column 8+1=9 (carry) \u2192 direct addition of 1",
+         "complexityCost": 0.5003814798577342
+        }
+       ],
+       "allSkills": [
+        "basic.directAddition",
+        "fiveComplements.3=5-2"
+       ],
+       "budgetConstraint": 7,
+       "totalComplexityCost": 10.50190715890421,
+       "skillMasteryContext": {
+        "basic.directAddition": {
+         "isPracticing": true,
+         "practiceLevel": "visual",
+         "baseCost": 0.5,
+         "effectiveCost": 0.5003814798577342
+        },
+        "fiveComplements.3=5-2": {
+         "isPracticing": true,
+         "practiceLevel": "visual",
+         "baseCost": 1,
+         "effectiveCost": 3.999999879807769
+        }
+       }
+      }
+     },
+     "studentAnswer": 89,
+     "isCorrect": true,
+     "responseTimeMs": 1390,
+     "skillsExercised": [
+      "basic.directAddition",
+      "fiveComplements.3=5-2"
+     ],
+     "usedOnScreenAbacus": false,
+     "incorrectAttempts": 0,
+     "hadHelp": false,
+     "partIndex": 0
+    }
+   },
+   "status": 200
+  },
+  {
+   "route": "plan",
+   "body": {
+    "action": "record",
+    "result": {
+     "tryId": "b1536d50-6901-43db-8f90-d2f68c49b92f",
+     "slotId": "af0f5e96-a124-4842-bbb1-1f415def6082",
+     "slotIndex": 2,
+     "epochNumber": 0,
+     "problem": {
+      "terms": [
+       20,
+       39,
+       30,
+       10
+      ],
+      "answer": 99,
+      "skillsRequired": [
+       "basic.directAddition",
+       "fiveComplements.3=5-2",
+       "basic.simpleCombinations"
+      ],
+      "generationTrace": {
+       "terms": [
+        20,
+        39,
+        30,
+        10
+       ],
+       "answer": 99,
+       "steps": [
+        {
+         "stepNumber": 1,
+         "operation": "0 + 20 = 20",
+         "accumulatedBefore": 0,
+         "termAdded": 20,
+         "accumulatedAfter": 20,
+         "skillsUsed": [
+          "basic.directAddition"
+         ],
+         "explanation": "0 + 20: ones column 0+0=0 (carry) \u2192 direct addition of 20",
+         "complexityCost": 0.5003814798577342
+        },
+        {
+         "stepNumber": 2,
+         "operation": "20 + 39 = 59",
+         "accumulatedBefore": 20,
+         "termAdded": 39,
+         "accumulatedAfter": 59,
+         "skillsUsed": [
+          "fiveComplements.3=5-2",
+          "basic.simpleCombinations"
+         ],
+         "explanation": "20 + 39: ones column 0+9=9 (carry) \u2192 five complement: +3 = +5-2, simple combination (5+n)",
+         "complexityCost": 4.500381359665504
+        },
+        {
+         "stepNumber": 3,
+         "operation": "59 + 30 = 89",
+         "accumulatedBefore": 59,
+         "termAdded": 30,
+         "accumulatedAfter": 89,
+         "skillsUsed": [
+          "basic.directAddition"
+         ],
+         "explanation": "59 + 30: ones column 9+0=9 (carry) \u2192 direct addition of 30",
+         "complexityCost": 0.5003814798577342
+        },
+        {
+         "stepNumber": 4,
+         "operation": "89 + 10 = 99",
+         "accumulatedBefore": 89,
+         "termAdded": 10,
+         "accumulatedAfter": 99,
+         "skillsUsed": [
+          "basic.directAddition"
+         ],
+         "explanation": "89 + 10: ones column 9+0=9 (carry) \u2192 direct addition of 10",
+         "complexityCost": 0.5003814798577342
+        }
+       ],
+       "allSkills": [
+        "basic.directAddition",
+        "fiveComplements.3=5-2",
+        "basic.simpleCombinations"
+       ],
+       "budgetConstraint": 7,
+       "totalComplexityCost": 6.001525799238705,
+       "skillMasteryContext": {
+        "basic.directAddition": {
+         "isPracticing": true,
+         "practiceLevel": "visual",
+         "baseCost": 0.5,
+         "effectiveCost": 0.5003814798577342
+        },
+        "fiveComplements.3=5-2": {
+         "isPracticing": true,
+         "practiceLevel": "visual",
+         "baseCost": 1,
+         "effectiveCost": 3.999999879807769
+        },
+        "basic.simpleCombinations": {
+         "isPracticing": true,
+         "practiceLevel": "visual",
+         "baseCost": 0.5,
+         "effectiveCost": 0.5003814798577342
+        }
+       }
+      }
+     },
+     "studentAnswer": 99,
+     "isCorrect": true,
+     "responseTimeMs": 1388,
+     "skillsExercised": [
+      "basic.directAddition",
+      "fiveComplements.3=5-2",
+      "basic.simpleCombinations"
+     ],
+     "usedOnScreenAbacus": false,
+     "incorrectAttempts": 0,
+     "hadHelp": false,
+     "partIndex": 0
+    }
+   },
+   "status": 200
+  },
+  {
+   "route": "flow-events",
+   "body": {
+    "event": {
+     "type": "PART_TRANSITION_COMPLETED",
+     "shouldRunBreak": true
+    },
+    "expectedFlowVersion": 2
+   },
+   "status": 200
+  },
+  {
+   "route": "flow-events",
+   "body": {
+    "event": {
+     "type": "BREAK_FINISHED",
+     "reason": "skipped",
+     "results": null
+    },
+    "expectedFlowVersion": 3
+   },
+   "status": 200
+  }
+ ],
+ "end": {
+  "status": "in_progress",
+  "flowState": "practicing",
+  "currentPartIndex": 1,
+  "partStates": {
+   "0": {
+    "slotIndex": 3
+   },
+   "1": {
+    "slotIndex": 0
+   }
+  },
+  "results": [
+   {
+    "slotId": "d9813894-616c-4d3c-bc4b-45b28d7a0d3a",
+    "slotIndex": 0,
+    "problem": {
+     "terms": [
+      30,
+      36,
+      30
+     ],
+     "answer": 96,
+     "skillsRequired": [
+      "basic.directAddition",
+      "fiveComplements.3=5-2",
+      "basic.simpleCombinations"
+     ],
+     "generationTrace": {
+      "terms": [
+       30,
+       36,
+       30
+      ],
+      "answer": 96,
+      "steps": [
+       {
+        "stepNumber": 1,
+        "operation": "0 + 30 = 30",
+        "accumulatedBefore": 0,
+        "termAdded": 30,
+        "accumulatedAfter": 30,
+        "skillsUsed": [
+         "basic.directAddition"
+        ],
+        "explanation": "0 + 30: ones column 0+0=0 (carry) \u2192 direct addition of 30",
+        "complexityCost": 0.5003814798577342
+       },
+       {
+        "stepNumber": 2,
+        "operation": "30 + 36 = 66",
+        "accumulatedBefore": 30,
+        "termAdded": 36,
+        "accumulatedAfter": 66,
+        "skillsUsed": [
+         "fiveComplements.3=5-2",
+         "basic.simpleCombinations"
+        ],
+        "explanation": "30 + 36: ones column 0+6=6 (carry) \u2192 five complement: +3 = +5-2, simple combination (5+n)",
+        "complexityCost": 4.500381359665504
+       },
+       {
+        "stepNumber": 3,
+        "operation": "66 + 30 = 96",
+        "accumulatedBefore": 66,
+        "termAdded": 30,
+        "accumulatedAfter": 96,
+        "skillsUsed": [
+         "basic.directAddition"
+        ],
+        "explanation": "66 + 30: ones column 6+0=6 (carry) \u2192 direct addition of 30",
+        "complexityCost": 0.5003814798577342
+       }
+      ],
+      "allSkills": [
+       "basic.directAddition",
+       "fiveComplements.3=5-2",
+       "basic.simpleCombinations"
+      ],
+      "budgetConstraint": 7,
+      "totalComplexityCost": 5.5011443193809715,
+      "skillMasteryContext": {
+       "basic.directAddition": {
+        "isPracticing": true,
+        "practiceLevel": "visual",
+        "baseCost": 0.5,
+        "effectiveCost": 0.5003814798577342
+       },
+       "fiveComplements.3=5-2": {
+        "isPracticing": true,
+        "practiceLevel": "visual",
+        "baseCost": 1,
+        "effectiveCost": 3.999999879807769
+       },
+       "basic.simpleCombinations": {
+        "isPracticing": true,
+        "practiceLevel": "visual",
+        "baseCost": 0.5,
+        "effectiveCost": 0.5003814798577342
+       }
+      }
+     }
+    },
+    "studentAnswer": 96,
+    "isCorrect": true,
+    "responseTimeMs": 377,
+    "skillsExercised": [
+     "basic.directAddition",
+     "fiveComplements.3=5-2",
+     "basic.simpleCombinations"
+    ],
+    "usedOnScreenAbacus": false,
+    "incorrectAttempts": 0,
+    "hadHelp": false,
+    "tryId": "34d67a38-4448-4968-8b8f-95387ba28ee6",
+    "kind": "first",
+    "round": 0,
+    "practiceOnly": false,
+    "partIndex": 0,
+    "partNumber": 1,
+    "timestamp": "2026-11-28T08:13:22.936Z",
+    "masteryWeight": 1,
+    "itemId": "d9813894-616c-4d3c-bc4b-45b28d7a0d3a",
+    "outcome": "answered",
+    "answer": 96,
+    "evidence": {
+     "skills": [
+      "basic.directAddition",
+      "fiveComplements.3=5-2",
+      "basic.simpleCombinations"
+     ],
+     "presentation": "abacus"
+    },
+    "payload": {
+     "kind": "arithmetic"
+    }
+   },
+   {
+    "slotId": "83c4c066-8f9d-41a9-83bc-baaa7d35a320",
+    "slotIndex": 1,
+    "problem": {
+     "terms": [
+      2,
+      33,
+      33,
+      20,
+      1
+     ],
+     "answer": 89,
+     "skillsRequired": [
+      "basic.directAddition",
+      "fiveComplements.3=5-2"
+     ],
+     "generationTrace": {
+      "terms": [
+       2,
+       33,
+       33,
+       20,
+       1
+      ],
+      "answer": 89,
+      "steps": [
+       {
+        "stepNumber": 1,
+        "operation": "0 + 2 = 2",
+        "accumulatedBefore": 0,
+        "termAdded": 2,
+        "accumulatedAfter": 2,
+        "skillsUsed": [
+         "basic.directAddition"
+        ],
+        "explanation": "0 + 2: ones column 0+2=2 \u2192 direct addition of 2",
+        "complexityCost": 0.5003814798577342
+       },
+       {
+        "stepNumber": 2,
+        "operation": "2 + 33 = 35",
+        "accumulatedBefore": 2,
+        "termAdded": 33,
+        "accumulatedAfter": 35,
+        "skillsUsed": [
+         "basic.directAddition",
+         "fiveComplements.3=5-2"
+        ],
+        "explanation": "2 + 33: ones column 2+3=5 (carry) \u2192 direct addition of 33, five complement: +3 = +5-2",
+        "complexityCost": 4.500381359665504
+       },
+       {
+        "stepNumber": 3,
+        "operation": "35 + 33 = 68",
+        "accumulatedBefore": 35,
+        "termAdded": 33,
+        "accumulatedAfter": 68,
+        "skillsUsed": [
+         "fiveComplements.3=5-2",
+         "basic.directAddition"
+        ],
+        "explanation": "35 + 33: ones column 5+3=8 (carry) \u2192 five complement: +3 = +5-2, direct addition of 33",
+        "complexityCost": 4.500381359665504
+       },
+       {
+        "stepNumber": 4,
+        "operation": "68 + 20 = 88",
+        "accumulatedBefore": 68,
+        "termAdded": 20,
+        "accumulatedAfter": 88,
+        "skillsUsed": [
+         "basic.directAddition"
+        ],
+        "explanation": "68 + 20: ones column 8+0=8 (carry) \u2192 direct addition of 20",
+        "complexityCost": 0.5003814798577342
+       },
+       {
+        "stepNumber": 5,
+        "operation": "88 + 1 = 89",
+        "accumulatedBefore": 88,
+        "termAdded": 1,
+        "accumulatedAfter": 89,
+        "skillsUsed": [
+         "basic.directAddition"
+        ],
+        "explanation": "88 + 1: ones column 8+1=9 (carry) \u2192 direct addition of 1",
+        "complexityCost": 0.5003814798577342
+       }
+      ],
+      "allSkills": [
+       "basic.directAddition",
+       "fiveComplements.3=5-2"
+      ],
+      "budgetConstraint": 7,
+      "totalComplexityCost": 10.50190715890421,
+      "skillMasteryContext": {
+       "basic.directAddition": {
+        "isPracticing": true,
+        "practiceLevel": "visual",
+        "baseCost": 0.5,
+        "effectiveCost": 0.5003814798577342
+       },
+       "fiveComplements.3=5-2": {
+        "isPracticing": true,
+        "practiceLevel": "visual",
+        "baseCost": 1,
+        "effectiveCost": 3.999999879807769
+       }
+      }
+     }
+    },
+    "studentAnswer": 89,
+    "isCorrect": true,
+    "responseTimeMs": 1390,
+    "skillsExercised": [
+     "basic.directAddition",
+     "fiveComplements.3=5-2"
+    ],
+    "usedOnScreenAbacus": false,
+    "incorrectAttempts": 0,
+    "hadHelp": false,
+    "tryId": "6bc2996e-6c57-4285-b6e3-9b6551b34efb",
+    "kind": "first",
+    "round": 0,
+    "practiceOnly": false,
+    "partIndex": 0,
+    "partNumber": 1,
+    "timestamp": "2026-11-28T08:13:24.828Z",
+    "masteryWeight": 1,
+    "itemId": "83c4c066-8f9d-41a9-83bc-baaa7d35a320",
+    "outcome": "answered",
+    "answer": 89,
+    "evidence": {
+     "skills": [
+      "basic.directAddition",
+      "fiveComplements.3=5-2"
+     ],
+     "presentation": "abacus"
+    },
+    "payload": {
+     "kind": "arithmetic"
+    }
+   },
+   {
+    "slotId": "af0f5e96-a124-4842-bbb1-1f415def6082",
+    "slotIndex": 2,
+    "problem": {
+     "terms": [
+      20,
+      39,
+      30,
+      10
+     ],
+     "answer": 99,
+     "skillsRequired": [
+      "basic.directAddition",
+      "fiveComplements.3=5-2",
+      "basic.simpleCombinations"
+     ],
+     "generationTrace": {
+      "terms": [
+       20,
+       39,
+       30,
+       10
+      ],
+      "answer": 99,
+      "steps": [
+       {
+        "stepNumber": 1,
+        "operation": "0 + 20 = 20",
+        "accumulatedBefore": 0,
+        "termAdded": 20,
+        "accumulatedAfter": 20,
+        "skillsUsed": [
+         "basic.directAddition"
+        ],
+        "explanation": "0 + 20: ones column 0+0=0 (carry) \u2192 direct addition of 20",
+        "complexityCost": 0.5003814798577342
+       },
+       {
+        "stepNumber": 2,
+        "operation": "20 + 39 = 59",
+        "accumulatedBefore": 20,
+        "termAdded": 39,
+        "accumulatedAfter": 59,
+        "skillsUsed": [
+         "fiveComplements.3=5-2",
+         "basic.simpleCombinations"
+        ],
+        "explanation": "20 + 39: ones column 0+9=9 (carry) \u2192 five complement: +3 = +5-2, simple combination (5+n)",
+        "complexityCost": 4.500381359665504
+       },
+       {
+        "stepNumber": 3,
+        "operation": "59 + 30 = 89",
+        "accumulatedBefore": 59,
+        "termAdded": 30,
+        "accumulatedAfter": 89,
+        "skillsUsed": [
+         "basic.directAddition"
+        ],
+        "explanation": "59 + 30: ones column 9+0=9 (carry) \u2192 direct addition of 30",
+        "complexityCost": 0.5003814798577342
+       },
+       {
+        "stepNumber": 4,
+        "operation": "89 + 10 = 99",
+        "accumulatedBefore": 89,
+        "termAdded": 10,
+        "accumulatedAfter": 99,
+        "skillsUsed": [
+         "basic.directAddition"
+        ],
+        "explanation": "89 + 10: ones column 9+0=9 (carry) \u2192 direct addition of 10",
+        "complexityCost": 0.5003814798577342
+       }
+      ],
+      "allSkills": [
+       "basic.directAddition",
+       "fiveComplements.3=5-2",
+       "basic.simpleCombinations"
+      ],
+      "budgetConstraint": 7,
+      "totalComplexityCost": 6.001525799238705,
+      "skillMasteryContext": {
+       "basic.directAddition": {
+        "isPracticing": true,
+        "practiceLevel": "visual",
+        "baseCost": 0.5,
+        "effectiveCost": 0.5003814798577342
+       },
+       "fiveComplements.3=5-2": {
+        "isPracticing": true,
+        "practiceLevel": "visual",
+        "baseCost": 1,
+        "effectiveCost": 3.999999879807769
+       },
+       "basic.simpleCombinations": {
+        "isPracticing": true,
+        "practiceLevel": "visual",
+        "baseCost": 0.5,
+        "effectiveCost": 0.5003814798577342
+       }
+      }
+     }
+    },
+    "studentAnswer": 99,
+    "isCorrect": true,
+    "responseTimeMs": 1388,
+    "skillsExercised": [
+     "basic.directAddition",
+     "fiveComplements.3=5-2",
+     "basic.simpleCombinations"
+    ],
+    "usedOnScreenAbacus": false,
+    "incorrectAttempts": 0,
+    "hadHelp": false,
+    "tryId": "b1536d50-6901-43db-8f90-d2f68c49b92f",
+    "kind": "first",
+    "round": 0,
+    "practiceOnly": false,
+    "partIndex": 0,
+    "partNumber": 1,
+    "timestamp": "2026-11-28T08:13:26.716Z",
+    "masteryWeight": 1,
+    "itemId": "af0f5e96-a124-4842-bbb1-1f415def6082",
+    "outcome": "answered",
+    "answer": 99,
+    "evidence": {
+     "skills": [
+      "basic.directAddition",
+      "fiveComplements.3=5-2",
+      "basic.simpleCombinations"
+     ],
+     "presentation": "abacus"
+    },
+    "payload": {
+     "kind": "arithmetic"
+    }
+   }
+  ]
+ }
+}

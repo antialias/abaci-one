@@ -3781,7 +3781,7 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
   },
   {
     "label": "redo of an unanswered slot refused",
-    "outcome": "SlotResultMismatchError: Answer is for slot p1s0, but the current problem is (none)",
+    "outcome": "SlotResultMismatchError: Answer is for slot p1s0, but the current problem is (none) (no_try)",
     "revoked": 0,
     "row": {
       "breaks": [],
@@ -12117,7 +12117,7 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
   },
   {
     "label": "stale tab: s0 again with another answer",
-    "outcome": "SlotResultMismatchError: Answer is for slot p0s0, but the current problem is p0s1",
+    "outcome": "SlotResultMismatchError: Answer is for slot p0s0, but the current problem is p0s1 (not_current)",
     "revoked": 0,
     "row": {
       "breaks": [],
@@ -12376,7 +12376,7 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
   },
   {
     "label": "wrong round sent: mismatch",
-    "outcome": "SlotResultMismatchError: Answer is for slot p0s2, but the current problem is p0s2",
+    "outcome": "SlotResultMismatchError: Answer is for slot p0s2, but the current problem is p0s2 (not_current)",
     "revoked": 0,
     "row": {
       "breaks": [],
@@ -17948,7 +17948,7 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
   },
   {
     "label": "a new answer after completion: mismatch",
-    "outcome": "SlotResultMismatchError: Answer is for slot p2s2, but the current problem is (none)",
+    "outcome": "SlotResultMismatchError: Answer is for slot p2s2, but the current problem is (none) (not_current)",
     "revoked": 0,
     "row": {
       "breaks": [
@@ -27337,7 +27337,7 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
   },
   {
     "label": "redo of divulged s0 refused",
-    "outcome": "Error: Cannot redo slot 0 in part 0: answer was already revealed after exhausting retries",
+    "outcome": "SlotResultMismatchError: Answer is for slot p0s0, but the current problem is (none) (divulged)",
     "revoked": 0,
     "row": {
       "breaks": [],

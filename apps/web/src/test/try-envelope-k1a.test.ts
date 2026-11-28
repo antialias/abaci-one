@@ -9,9 +9,8 @@
  *   same item and dot (the top-level fields are whole, R1); a skip from a
  *   legacy body keeps today's top-level projection (S4), and a blank
  *   worksheet answer is skipped (R16); `evidence: null` beside absent.
- * - Judge parity: the server's judge agrees with the client's verdict on a
- *   right, a wrong, a retry, a skip and a do-over; a disagreement is logged
- *   and the client's verdict stored, so no kid's record changes.
+ * - The verdict: K1a stored the client's; since K2 the server's judge is the
+ *   only verdict (amendment A1), so a body's `isCorrect` is never stored.
  * - The skill-attempt bump reads `evidence.skills`, which is the row's
  *   `skillsExercised` (not always the problem's `skillsRequired`).
  * - Seeds (a smoke test, not BKT parity): `seededSessionRows`, create-student's
@@ -47,18 +46,13 @@ import { computeBktFromHistory } from '@/lib/curriculum/bkt'
 import { deriveLinearGateState } from '@/lib/curriculum/linear-gate'
 import { arithmeticKind } from '@/lib/curriculum/parts/arithmetic/server'
 import { getCurrentProblemInfo } from '@/lib/curriculum/parts/arithmetic/state'
-import {
-  getSessionPlan,
-  type ProblemResultWithContext,
-  recordRedoResult,
-  recordSlotResult,
-} from '@/lib/curriculum/session-planner'
+import { getSessionPlan, type ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
-import { practiceJudgeDisagreementsTotal, practiceTriesJudgedTotal } from '@/lib/metrics'
 import { generateSlotResults, seededSessionRows } from '@/lib/seed/helpers'
 import { TEST_PROFILES } from '@/lib/seed/profiles'
 import { convertToSlotResults } from '@/lib/worksheet-parsing/session-converter'
 import { historyTryOf } from '@/test/fixtures/history-try'
+import { sendRecord, sendRecordRedo } from '@/test/fixtures/legacy-try-bodies'
 import {
   createEphemeralDatabase,
   createTestStudent,
@@ -210,19 +204,14 @@ function skipBody(plan: SessionPlan, n: number): SlotResultSubmission {
 describe('K1a: the try envelope through the recorders', () => {
   let eph: EphemeralDbResult
   let playerId: string
-  let warn: ReturnType<typeof vi.spyOn>
-  const disagreements = () =>
-    warn.mock.calls.filter((c) => String(c[0]).includes('judge disagrees with the client verdict'))
 
   beforeEach(async () => {
     eph = createEphemeralDatabase()
     setCurrentEphemeralDb(eph.db)
     ;({ playerId } = await createTestStudent(eph.db, 'k1a'))
-    warn = vi.spyOn(console, 'warn')
     recordSkillAttemptsWithHelp.mockClear()
   })
   afterEach(() => {
-    warn.mockRestore()
     setCurrentEphemeralDb(null)
     eph.cleanup()
   })
@@ -231,17 +220,17 @@ describe('K1a: the try envelope through the recorders', () => {
   async function recordedSession(): Promise<SessionPlan> {
     const planId = await insertPlan(playerId)
     let plan = (await getSessionPlan(planId))!
-    plan = await recordSlotResult(planId, answerBody(plan, 1, true))
-    plan = await recordSlotResult(planId, answerBody(plan, 2, false))
-    plan = await recordSlotResult(planId, skipBody(plan, 3))
+    plan = await sendRecord(planId, answerBody(plan, 1, true))
+    plan = await sendRecord(planId, answerBody(plan, 2, false))
+    plan = await sendRecord(planId, skipBody(plan, 3))
     // retry round 1: slot 1 right, slot 2 skipped again
-    plan = await recordSlotResult(planId, answerBody(plan, 4, true))
-    plan = await recordSlotResult(planId, skipBody(plan, 5))
+    plan = await sendRecord(planId, answerBody(plan, 4, true))
+    plan = await sendRecord(planId, skipBody(plan, 5))
     // retry round 2: slot 2 wrong
-    plan = await recordSlotResult(planId, answerBody(plan, 6, false))
+    plan = await sendRecord(planId, answerBody(plan, 6, false))
     // a do-over of slot 0 (right before: practice-only)
     const slot = plan.parts[0].slots[0]
-    plan = await recordRedoResult(
+    plan = await sendRecordRedo(
       planId,
       {
         tryId: tid(7),
@@ -282,8 +271,6 @@ describe('K1a: the try envelope through the recorders', () => {
         expect(r).toHaveProperty(f)
       expect(typeof r.usedOnScreenAbacus).toBe('boolean')
     }
-    // Judge parity on every try: right, wrong, retry, skip, do-over
-    expect(disagreements()).toEqual([])
   })
 
   it('fixture (1): a K1 row and the same try as a pre-K1 row read as the same Try', async () => {
@@ -332,7 +319,7 @@ describe('K1a: the try envelope through the recorders', () => {
     const planId = await insertPlan(playerId)
     const before = (await getSessionPlan(planId))!
     const body = skipBody(before, 1)
-    const plan = await recordSlotResult(planId, body)
+    const plan = await sendRecord(planId, body)
     const row = plan.results[0]
     const { partIndex: _p, epochNumber: _e, ...topLevel } = body
     // Every field the body sent is stored as sent (S4: byte-identical top level)
@@ -345,7 +332,6 @@ describe('K1a: the try envelope through the recorders', () => {
       outcome: 'skipped',
       answer: null,
     })
-    expect(disagreements()).toEqual([])
     // Still evidence of a wrong try, as today: the skill-attempt bump runs
     expect(recordSkillAttemptsWithHelp).toHaveBeenCalledWith(
       playerId,
@@ -355,129 +341,30 @@ describe('K1a: the try envelope through the recorders', () => {
     )
   })
 
-  it('a disagreement is logged and the client verdict stored', async () => {
+  it("the server's verdict is stored, whatever the body's isCorrect says (K2, amendment A1)", async () => {
     const planId = await insertPlan(playerId)
     const before = (await getSessionPlan(planId))!
-    // A client that calls a wrong answer right (none does today)
-    const plan = await recordSlotResult(planId, {
+    // A body that calls a wrong answer right (no client does): not compared, not stored
+    const plan = await sendRecord(planId, {
       ...answerBody(before, 1, false),
       isCorrect: true,
     })
-    expect(plan.results[0]).toMatchObject({ isCorrect: true, outcome: 'answered' })
-    expect(disagreements()).toHaveLength(1)
-    expect(disagreements()[0][1]).toMatchObject({ clientVerdict: true, judge: false })
+    expect(plan.results[0]).toMatchObject({ isCorrect: false, outcome: 'answered' })
+    expect(recordSkillAttemptsWithHelp).toHaveBeenCalledWith(
+      playerId,
+      plan.results[0].skillsExercised.map((skillId) => ({ skillId, isCorrect: false })),
+      false,
+      3000
+    )
   })
 
-  it('a disagreement is logged once per recorded try, not once per CAS round', async () => {
+  it('a duplicate tryId the recorder ignores, raced or resent, is one row', async () => {
     const planId = await insertPlan(playerId)
     const before = (await getSessionPlan(planId))!
-    const wrongCalledRight = { ...answerBody(before, 1, false), isCorrect: true }
-    // Two first tries for one item race: the loser's closure runs, loses the
-    // CAS, re-reads and is refused; only the committed try may log
-    const settled = await Promise.allSettled([
-      recordSlotResult(planId, wrongCalledRight),
-      recordSlotResult(planId, { ...wrongCalledRight, tryId: tid(2) }),
-    ])
-    expect(settled.map((s) => s.status).sort()).toEqual(['fulfilled', 'rejected'])
-    expect(
-      warn.mock.calls.filter((c) => c[0] === '[withRowCas] lost a write race; re-reading').length
-    ).toBeGreaterThanOrEqual(1)
+    const body = answerBody(before, 1, false)
+    await Promise.allSettled([sendRecord(planId, body), sendRecord(planId, body)])
+    await sendRecord(planId, body)
     expect((await getSessionPlan(planId))!.results).toHaveLength(1)
-    expect(disagreements()).toHaveLength(1)
-  })
-
-  describe('judge parity counters (plan §8, amendment A1)', () => {
-    /** A counter's series as `label=value,…` → count, read through prom-client. */
-    async function series(counter: typeof practiceTriesJudgedTotal) {
-      const { values } = await counter.get()
-      return Object.fromEntries(
-        values.map((v) => [
-          Object.entries(v.labels)
-            .map(([k, l]) => `${k}=${l}`)
-            .join(','),
-          v.value,
-        ])
-      )
-    }
-    const judged = () => series(practiceTriesJudgedTotal)
-    const disagreed = () => series(practiceJudgeDisagreementsTotal)
-
-    beforeEach(() => {
-      practiceTriesJudgedTotal.reset()
-      practiceJudgeDisagreementsTotal.reset()
-    })
-
-    it('counts every recorded try once, by kind and outcome; no disagreement, none counted', async () => {
-      await recordedSession()
-      expect(await judged()).toEqual({
-        'kind=arithmetic,outcome=answered': 5,
-        'kind=arithmetic,outcome=skipped': 2,
-      })
-      expect(await disagreed()).toEqual({})
-    })
-
-    it('one recorded try with a disagreement: judged once, one disagreement for its recorder', async () => {
-      const planId = await insertPlan(playerId)
-      const before = (await getSessionPlan(planId))!
-      const plan = await recordSlotResult(planId, {
-        ...answerBody(before, 1, false),
-        isCorrect: true,
-      })
-      expect(await judged()).toEqual({ 'kind=arithmetic,outcome=answered': 1 })
-      expect(await disagreed()).toEqual({ 'kind=arithmetic,recorder=slot': 1 })
-
-      // A do-over the client calls right with a wrong answer: the redo recorder's
-      const slot = plan.parts[0].slots[0]
-      await recordRedoResult(
-        planId,
-        {
-          tryId: tid(2),
-          slotId: slot.slotId,
-          slotIndex: 0,
-          problem: slot.problem!,
-          studentAnswer: slot.problem!.answer + 1,
-          isCorrect: true,
-          responseTimeMs: 2000,
-          skillsExercised: slot.problem!.skillsRequired,
-          usedOnScreenAbacus: false,
-          hadHelp: false,
-          incorrectAttempts: 0,
-        },
-        { itemId: slot.slotId, originalPartIndex: 0, originalSlotIndex: 0 }
-      )
-      expect(await judged()).toEqual({ 'kind=arithmetic,outcome=answered': 2 })
-      expect(await disagreed()).toEqual({
-        'kind=arithmetic,recorder=slot': 1,
-        'kind=arithmetic,recorder=redo': 1,
-      })
-    })
-
-    it('two racing tries for one item count once, not once per CAS round', async () => {
-      const planId = await insertPlan(playerId)
-      const before = (await getSessionPlan(planId))!
-      const wrongCalledRight = { ...answerBody(before, 1, false), isCorrect: true }
-      const settled = await Promise.allSettled([
-        recordSlotResult(planId, wrongCalledRight),
-        recordSlotResult(planId, { ...wrongCalledRight, tryId: tid(2) }),
-      ])
-      expect(settled.map((s) => s.status).sort()).toEqual(['fulfilled', 'rejected'])
-      expect(
-        warn.mock.calls.filter((c) => c[0] === '[withRowCas] lost a write race; re-reading').length
-      ).toBeGreaterThanOrEqual(1)
-      expect(await judged()).toEqual({ 'kind=arithmetic,outcome=answered': 1 })
-      expect(await disagreed()).toEqual({ 'kind=arithmetic,recorder=slot': 1 })
-    })
-
-    it('a duplicate tryId the recorder ignores is not counted, raced or resent', async () => {
-      const planId = await insertPlan(playerId)
-      const before = (await getSessionPlan(planId))!
-      const body = { ...answerBody(before, 1, false), isCorrect: true }
-      await Promise.allSettled([recordSlotResult(planId, body), recordSlotResult(planId, body)])
-      await recordSlotResult(planId, body)
-      expect((await getSessionPlan(planId))!.results).toHaveLength(1)
-      expect(await judged()).toEqual({ 'kind=arithmetic,outcome=answered': 1 })
-      expect(await disagreed()).toEqual({ 'kind=arithmetic,recorder=slot': 1 })
-    })
   })
 
   it("the skill-attempt bump reads evidence.skills: the row's skillsExercised", async () => {
@@ -485,7 +372,7 @@ describe('K1a: the try envelope through the recorders', () => {
     const before = (await getSessionPlan(planId))!
     // The journey simulator sends the skills it challenged, not skillsRequired
     const skillsExercised = ['fiveComplements.4=5-1', 'basic.directAddition']
-    const plan = await recordSlotResult(planId, {
+    const plan = await sendRecord(planId, {
       ...answerBody(before, 1, true),
       skillsExercised,
     })

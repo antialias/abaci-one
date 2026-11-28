@@ -9,6 +9,8 @@
  * Run against an already-running server:
  *   BASE_URL=http://localhost:3021 npx playwright test retry-redo-attribution --workers=1
  */
+import { mkdirSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
 import { type APIRequestContext, expect, type Page, test } from '@playwright/test'
 
 const SHOTS = process.env.RF_SHOTS_DIR ?? '/tmp/rf-e2e'
@@ -136,6 +138,7 @@ async function startSession(
     expect(r.ok(), `${action}: ${await r.text()}`).toBeTruthy()
   }
   const plan = await getPlan(request, playerId, planId)
+  if (capture) capture.start = plan
   // The scenarios below rely on a part of at least 3 problems before a second part
   expect(plan.parts.length).toBeGreaterThanOrEqual(2)
   expect(plan.parts[0].slots.length).toBeGreaterThanOrEqual(3)
@@ -360,6 +363,63 @@ async function openSession(page: Page, playerId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// Capture (CAPTURE_TRY_BODIES=<dir>): each scenario's plan writes and flow
+// events as the page sent them (body and reply status, in the order sent) with the plan at the
+// start and at the end, one JSON file a scenario. The fixtures of
+// `src/test/record-try-k2-captured.test.ts` were captured so, from the client
+// at 208433adb (practice-kinds K2). Off by default; scenarios that fake a
+// failed save are not captured (their replies are the test's, not a server's).
+// ---------------------------------------------------------------------------
+
+const CAPTURE_DIR = process.env.CAPTURE_TRY_BODIES
+interface Capture {
+  title: string
+  start?: Plan
+  writes: { route: 'plan' | 'flow-events'; body: unknown; status?: number }[]
+}
+let capture: Capture | null = null
+
+function startCapture(page: Page, title: string) {
+  capture = null
+  if (!CAPTURE_DIR || title.includes('failed save')) return
+  const current: Capture = { title, writes: [] }
+  capture = current
+  const routeOf = (method: string, url: string) => {
+    const { pathname } = new URL(url)
+    if (method === 'PATCH' && /\/sessions\/plans\/[^/?]+$/.test(pathname)) return 'plan'
+    if (method === 'POST' && /\/sessions\/plans\/[^/?]+\/flow-events$/.test(pathname)) {
+      return 'flow-events'
+    }
+    return null
+  }
+  const pending = new Map<unknown, Capture['writes'][number]>()
+  page.on('request', (req) => {
+    const route = routeOf(req.method(), req.url())
+    if (!route) return
+    const write = { route, body: JSON.parse(req.postData() ?? 'null') }
+    pending.set(req, write)
+    current.writes.push(write)
+  })
+  page.on('response', (res) => {
+    const write = pending.get(res.request())
+    if (write) write.status = res.status()
+  })
+}
+
+async function finishCapture(request: APIRequestContext, playerId: string) {
+  const done = capture
+  capture = null
+  if (!CAPTURE_DIR || !done?.start) return
+  const end = await getPlan(request, playerId, done.start.id)
+  mkdirSync(CAPTURE_DIR, { recursive: true })
+  const slug = done.title
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60)
+  writeFileSync(path.join(CAPTURE_DIR, `${slug}.json`), JSON.stringify({ ...done, end }, null, 2))
+}
+
+// ---------------------------------------------------------------------------
 // Scenarios
 // ---------------------------------------------------------------------------
 
@@ -367,7 +427,9 @@ test.describe('retry / do-over attribution', () => {
   test.setTimeout(240_000)
 
   let playerId = ''
+  test.beforeEach(async ({ page }, testInfo) => startCapture(page, testInfo.title))
   test.afterEach(async ({ request }) => {
+    if (playerId) await finishCapture(request, playerId)
     // RF_KEEP_PLAYERS=1 keeps the students so their plans can be read afterwards
     if (playerId && !process.env.RF_KEEP_PLAYERS) await cleanupPlayer(request, playerId)
     playerId = ''
@@ -799,7 +861,9 @@ test.describe('the client renders from the server flow state (Phase 3c)', () => 
   test.setTimeout(240_000)
 
   let playerId = ''
+  test.beforeEach(async ({ page }, testInfo) => startCapture(page, testInfo.title))
   test.afterEach(async ({ request }) => {
+    if (playerId) await finishCapture(request, playerId)
     if (playerId && !process.env.RF_KEEP_PLAYERS) await cleanupPlayer(request, playerId)
     playerId = ''
   })

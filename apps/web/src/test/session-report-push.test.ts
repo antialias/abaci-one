@@ -19,7 +19,6 @@ import {
   abandonSessionPlan,
   completeSessionPlanEarly,
   getSessionPlan,
-  recordSlotResult,
 } from '@/lib/curriculum/session-planner'
 import type { SessionReport } from '@/lib/curriculum/session-report'
 import { registerSessionReportJoin } from '@/lib/curriculum/session-report-access'
@@ -30,6 +29,7 @@ import {
 } from '@/lib/curriculum/session-report-server'
 import { applySlotResultReview } from '@/lib/curriculum/session-review'
 import { createSessionShare, revokeSessionShare } from '@/lib/session-share'
+import { sendRecord } from '@/test/fixtures/legacy-try-bodies'
 import {
   fixtureBreakGameResult,
   fixtureParts,
@@ -190,7 +190,7 @@ function submissionFor(plan: SessionPlan, correct: boolean, tryId = tid()): Slot
 
 async function answer(planId: string, correct: boolean) {
   const plan = (await getSessionPlan(planId))!
-  return recordSlotResult(planId, submissionFor(plan, correct))
+  return sendRecord(planId, submissionFor(plan, correct))
 }
 
 /** One-part plan of `n` slots, so a session can finish in a few tries. */
@@ -282,7 +282,7 @@ describe('Phase 4a: session report push and routes', () => {
       const submission = submissionFor(plan, true)
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const settled = await Promise.allSettled(
-        [0, 1, 2, 3].map(() => recordSlotResult(planId, { ...submission }))
+        [0, 1, 2, 3].map(() => sendRecord(planId, { ...submission }))
       )
       warn.mockRestore()
       await flushSessionReportPushes()

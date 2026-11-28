@@ -16,9 +16,9 @@ import {
   approveSessionPlan,
   generateSessionPlan,
   getRecentSessionResults,
-  recordSlotResult,
   startSessionPlan,
 } from '@/lib/curriculum/session-planner'
+import { sendRecord } from '@/test/fixtures/legacy-try-bodies'
 import {
   createEphemeralDatabase,
   createTestStudent,
@@ -36,7 +36,7 @@ async function completeSession(planId: string, student: SimulatedStudent) {
   let plan: SessionPlan = await startSessionPlan(planId)
   for (let shown = getCurrentProblemInfo(plan); shown; shown = getCurrentProblemInfo(plan)) {
     const answer = student.answerProblem(shown.problem)
-    plan = await recordSlotResult(planId, {
+    plan = await sendRecord(planId, {
       slotId: shown.slotId,
       slotIndex: shown.originalSlotIndex,
       epochNumber: shown.epochNumber,

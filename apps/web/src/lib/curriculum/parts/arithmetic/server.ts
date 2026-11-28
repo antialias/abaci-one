@@ -11,7 +11,7 @@
  */
 
 import type { SessionPart, SlotResult, TryEvidence } from '@/db/schema/session-plans'
-import type { KindTry, KindTryRecord, PartKind } from '../kind'
+import type { DoOverRefusal, KindTry, KindTryRecord, PartKind } from '../kind'
 import { formatProblemExpression } from './describe'
 import { arithmeticProgress } from './report'
 import {
@@ -19,6 +19,7 @@ import {
   type ArithmeticItem,
   type ArithmeticState,
   expectedArithmeticItem,
+  MAX_RETRY_EPOCHS,
   redeemSlot,
   settleArithmetic,
   stepPastItem,
@@ -88,8 +89,15 @@ export const arithmeticKind: PartKind<
 
   expectedItem: expectedArithmeticItem,
 
+  // A do-over of an item with a try, unless its answer was divulged (a wrong
+  // try of the last retry round, which shows the answer; the dots' copy reads
+  // the same, `SessionProgressIndicator`). Moved here from `recordRedoResult`
+  // in K2, where it was a plain Error (500); refused here it is the
+  // recorder's quiet 409 `SLOT_MISMATCH` (R14).
   acceptsDoOver: (slots, _state, tries, itemId) =>
-    slots.some((s) => s.slotId === itemId) && tries.some((t) => t.itemId === itemId),
+    arithmeticDoOverRefusal(slots, tries, itemId) === null,
+
+  whyNotDoOver: (slots, _state, tries, itemId) => arithmeticDoOverRefusal(slots, tries, itemId),
 
   applyTry(slots, state, _tries, t) {
     if (t.kind === 'do_over') {
@@ -145,4 +153,46 @@ export const arithmeticKind: PartKind<
   // A part stored without a type (old or hand-made rows) is 'linear', main's
   // default for evidence; null stays reserved for "not evidence".
   bktMode: (part) => (typeof part.type === 'string' ? part.type : 'linear'),
+
+  // A retry item shares its slot's id; its round is the retry round
+  itemPositionOf: (item) => ({ itemId: item.slotId, round: item.epochNumber }),
+
+  // A `record_try` row keeps the top-level snapshot every older reader reads
+  // (K6, K14); a skip or timeout in today's frozen projection (§3.1, S4)
+  snapshotOf(slots, itemId, t) {
+    const slotIndex = slots.findIndex((s) => s.slotId === itemId)
+    const problem = slots[slotIndex]?.problem
+    if (!problem) return null
+    const answered = t.outcome === 'answered'
+    return {
+      fields: {
+        slotId: itemId,
+        slotIndex,
+        problem,
+        studentAnswer: answered ? (t.answer as number) : problem.answer,
+        skillsExercised: problem.skillsRequired,
+        usedOnScreenAbacus: t.payload.usedOnScreenAbacus === true,
+        ...(answered ? {} : { hadHelp: true, helpTrigger: 'manual' as const }),
+      },
+      payload: { kind: 'arithmetic' },
+    }
+  },
+}
+
+/** Why a do-over of `itemId` is refused (the 409's `reason`, K2), null when it is taken. */
+function arithmeticDoOverRefusal(
+  slots: ArithmeticContent,
+  tries: readonly KindTry[],
+  itemId: string
+): DoOverRefusal | null {
+  if (!slots.some((s) => s.slotId === itemId)) return 'unknown_item'
+  if (!tries.some((t) => t.itemId === itemId)) return 'no_try'
+  return answerWasDivulged(tries, itemId) ? 'divulged' : null
+}
+
+/** Whether the item's answer was shown: a wrong try of the last retry round. */
+function answerWasDivulged(tries: readonly KindTry[], itemId: string): boolean {
+  return tries.some(
+    (t) => t.itemId === itemId && !t.isCorrect && t.kind === 'retry' && t.round >= MAX_RETRY_EPOCHS
+  )
 }

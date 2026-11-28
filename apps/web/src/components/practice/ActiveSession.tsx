@@ -1473,6 +1473,9 @@ export function ActiveSession({
       ...answered,
       problem: attemptData.problem,
       studentAnswer: answerNum,
+      // The screen's own check, for display. Sent only so a server rolled back
+      // to K1 stores a verdict; the server judges the try (practice-kinds K2,
+      // amendment A1). A later phase drops it.
       isCorrect,
       ...timingGuard,
       hiddenTimeExcludedMs: attemptData.accumulatedHiddenMs || undefined,
@@ -1697,7 +1700,11 @@ export function ActiveSession({
       partIndex: attempt.partIndex,
       problem: attempt.problem,
       studentAnswer: attempt.problem.answer, // Record the correct answer
-      isCorrect: false, // Marked incorrect because student didn't solve it
+      // Kept for a server rolled back to K1, which stores it; a K2 server
+      // stores a skip as wrong itself. A later phase drops it.
+      isCorrect: false,
+      // A K2 server reads the skip from here (practice-kinds §3.3)
+      outcome: 'skipped' as const,
       ...timingGuard,
       hiddenTimeExcludedMs: attempt.accumulatedHiddenMs || undefined,
       skillsExercised: attempt.problem.skillsRequired,

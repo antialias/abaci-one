@@ -55,6 +55,12 @@ export interface KindTryRecord {
   payload: TryPayload
 }
 
+/**
+ * Why a do-over is refused: the item is not the part's, it has no try yet, or
+ * its answer was shown (a kind that divulges answers).
+ */
+export type DoOverRefusal = 'unknown_item' | 'no_try' | 'divulged'
+
 /** Progress through one part: items done of items planned. */
 export interface PartProgress {
   done: number
@@ -116,6 +122,16 @@ export interface PartKind<Content, State, Item, Part extends StoredPart = Stored
   expectedItem(content: Content, state: State): Item | null
   /** Whether a do-over of `itemId` may be recorded, given the part's tries so far */
   acceptsDoOver(content: Content, state: State, tries: readonly KindTry[], itemId: string): boolean
+  /**
+   * Why `acceptsDoOver` refuses, named in the recorder's 409 (K2, amendment
+   * A12); null when it accepts. Default: the refusal is `not_accepted`.
+   */
+  whyNotDoOver?(
+    content: Content,
+    state: State,
+    tries: readonly KindTry[],
+    itemId: string
+  ): DoOverRefusal | null
   /** The state after a recorded try (`tries` = the part's tries before it) */
   applyTry(content: Content, state: State, tries: readonly KindTry[], t: KindTry): State
   /**
@@ -138,6 +154,23 @@ export interface PartKind<Content, State, Item, Part extends StoredPart = Stored
   presentationOf(part: Part): AttemptPresentation
   /** null = the part's tries are not BKT evidence */
   bktMode(part: Part): BktMode | null
+  /**
+   * The id and round of an item `expectedItem` returned, for the recorder's
+   * `record_try` (K2, amendment A12). Default: the item's own `itemId`, round 0.
+   * K3's shared cursor answers it for every kind on it.
+   */
+  itemPositionOf?(item: Item): { itemId: string; round: number }
+  /**
+   * The row fields a try sent in the envelope (`record_try`) stores beside the
+   * envelope, and the payload stored (K2, amendment A12). Arithmetic: its
+   * top-level snapshot and a skip's frozen projection (§3.1, K14). Default: no
+   * fields, the submitted payload. null = no such item.
+   */
+  snapshotOf?(
+    content: Content,
+    itemId: string,
+    t: { outcome: TryOutcome; answer: unknown; payload: TryPayload }
+  ): { fields: Partial<StoredTry>; payload: TryPayload } | null
 }
 
 /** Any registered kind, as structure holds it. */

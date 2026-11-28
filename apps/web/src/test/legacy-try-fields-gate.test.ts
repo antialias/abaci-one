@@ -36,14 +36,15 @@ const NORMALIZER_AND_WRITERS = new Set([
   // the normalizer's only reader of the fields
   'db/schema/legacy-try-fields.ts',
   'db/schema/session-plan-normalize.ts',
-  // the writers: recordSlotResult / recordRedoResult (and their resubmit and
-  // divulged-answer checks, which Phase 6(b) moves with the writes)
-  'lib/curriculum/session-planner.ts',
+  // the legacy-body adapter of the one recorder (practice-kinds K2;
+  // recordSlotResult / recordRedoResult before): its resubmit check
+  'lib/curriculum/parts/arithmetic/legacy-wire.ts',
 ])
 
 /** Files where the gated names are fields of other records, not of a stored try */
 const OTHER_RECORDS: Record<string, string> = {
   'lib/curriculum/parts/arithmetic/state.ts': 'the current item and the retry queue items',
+  'lib/curriculum/parts/arithmetic/server.ts': "the current item's retry round (itemPositionOf)",
   'components/practice/ActiveSession.tsx':
     'the current item, the attempt on screen, the submission built from it',
   'components/practice/hooks/useInteractionPhase.ts': 'the attempt on screen',

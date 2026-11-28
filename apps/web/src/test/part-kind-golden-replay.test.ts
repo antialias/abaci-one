@@ -4,8 +4,10 @@
  * Golden replay for Phase 2 of the session architecture (plan of record §7):
  * the part-kind extraction is behaviour-identical.
  *
- * Each scenario replays a fixed try sequence through `recordSlotResult` /
- * `recordRedoResult` on a deterministic three-part plan and records, after
+ * Each scenario replays a fixed try sequence through the `record` /
+ * `record_redo` legacy bodies (`recordTry` since practice-kinds K2, through
+ * `test/fixtures/legacy-try-bodies.ts`; `recordSlotResult` /
+ * `recordRedoResult` before) on a deterministic three-part plan and records, after
  * every step, the stored row (results, position, retry state, flow fields,
  * health), what the client would show next (`getCurrentProblemInfo`), the
  * skill-attempt writes and the share revocations. The snapshot beside this
@@ -51,6 +53,10 @@
  * checked after each scenario below). K1a also added the skips scenario
  * (a skip as `handleSkip` sends it, first try and inside retry rounds), new
  * snapshot entries only.
+ *
+ * Practice-kinds K2 repointed it at the one recorder, `recordTry`, with the
+ * same legacy bodies, and stores the server's verdict (amendment A1); the
+ * verdicts agree on every try, so the stored `isCorrect` lines are as before.
  */
 
 import { eq } from 'drizzle-orm'
@@ -70,10 +76,9 @@ import {
   applySessionFlowEvent,
   getSessionPlan,
   type RedoContext,
-  recordRedoResult,
-  recordSlotResult,
 } from '@/lib/curriculum/session-planner'
 import { revokeSharesForSession } from '@/lib/session-share'
+import { sendRecord, sendRecordRedo } from '@/test/fixtures/legacy-try-bodies'
 import {
   createEphemeralDatabase,
   createTestStudent,
@@ -307,14 +312,14 @@ async function replay(planId: string, steps: [label: string, step: Step][]) {
 const answer =
   (correct: boolean, opts: Parameters<typeof submissionFor>[2] = {}): Step =>
   (plan) =>
-    recordSlotResult(plan.id, submissionFor(plan, correct, opts))
+    sendRecord(plan.id, submissionFor(plan, correct, opts))
 
 /** What `handleSkip` sends (ActiveSession.tsx): the correct answer, wrong, manual help. */
 const skip =
   (opts: Parameters<typeof submissionFor>[2] = {}): Step =>
   (plan) => {
     const body = submissionFor(plan, false, opts)
-    return recordSlotResult(plan.id, {
+    return sendRecord(plan.id, {
       ...body,
       studentAnswer: body.problem.answer,
       isCorrect: false,
@@ -326,7 +331,7 @@ const skip =
 const redo =
   (partIndex: number, slotIndex: number, correct: boolean, tryId?: string): Step =>
   (plan) =>
-    recordRedoResult(plan.id, ...doOver(plan, partIndex, slotIndex, correct, tryId))
+    sendRecordRedo(plan.id, ...doOver(plan, partIndex, slotIndex, correct, tryId))
 
 /**
  * The client finishing a part transition (Phase 3c): its screen completes the
@@ -364,24 +369,15 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
   let n = 0
   const next = () => tid(++n)
 
-  let warn: ReturnType<typeof vi.spyOn>
-
   beforeEach(async () => {
     eph = createEphemeralDatabase()
     setCurrentEphemeralDb(eph.db)
     ;({ playerId } = await createTestStudent(eph.db, 'golden'))
     n = 0
-    warn = vi.spyOn(console, 'warn')
   })
   afterEach(() => {
-    // Judge parity (K1a): the server's judge never disagreed with the client
-    const disagreements = warn.mock.calls.filter((c) =>
-      String(c[0]).includes('judge disagrees with the client verdict')
-    )
-    warn.mockRestore()
     setCurrentEphemeralDb(null)
     eph.cleanup()
-    expect(disagreements).toEqual([])
   })
 
   it('first tries through every part, with breaks: transitions and completion', async () => {
@@ -503,21 +499,21 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
           's0 right (held for resend)',
           (plan) => {
             held = submissionFor(plan, true, { tryId: dup, sendEpoch: true })
-            return recordSlotResult(plan.id, held)
+            return sendRecord(plan.id, held)
           },
         ],
-        ['same tryId again: no-op', (plan) => recordSlotResult(plan.id, held!)],
+        ['same tryId again: no-op', (plan) => sendRecord(plan.id, held!)],
         [
           'same try without tryId: exact-match no-op',
           (plan) => {
             const { tryId: _t, ...noId } = held!
-            return recordSlotResult(plan.id, noId)
+            return sendRecord(plan.id, noId)
           },
         ],
         [
           'stale tab: s0 again with another answer',
           (plan) =>
-            recordSlotResult(plan.id, {
+            sendRecord(plan.id, {
               ...held!,
               tryId: next(),
               studentAnswer: held!.studentAnswer + 5,
@@ -526,7 +522,7 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
         [
           'stale tab: lagged slotId but s1 content (stored with its own id)',
           (plan) =>
-            recordSlotResult(plan.id, {
+            sendRecord(plan.id, {
               ...submissionFor(plan, false, { tryId: next() }),
               slotId: plan.parts[0].slots[0].slotId,
             }),
@@ -534,7 +530,7 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
         [
           'wrong round sent: mismatch',
           (plan) =>
-            recordSlotResult(plan.id, {
+            sendRecord(plan.id, {
               ...submissionFor(plan, true, { tryId: next() }),
               epochNumber: 1,
             }),
@@ -543,17 +539,17 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
           'redo s1 right (held for resend)',
           (plan) => {
             heldRedo = doOver(plan, 0, 1, true, next())
-            return recordRedoResult(plan.id, ...heldRedo)
+            return sendRecordRedo(plan.id, ...heldRedo)
           },
         ],
-        ['same redo tryId again: no-op', (plan) => recordRedoResult(plan.id, ...heldRedo!)],
+        ['same redo tryId again: no-op', (plan) => sendRecordRedo(plan.id, ...heldRedo!)],
         ['s2 right -> transition', answer(true, { tryId: next() })],
         ['redo p0 s0 during part_transition: practice-only', redo(0, 0, true, next())],
         [
           'resend of the part-ending try without tryId: no-op',
           async (plan) => {
             const last = plan.results.at(-1)!
-            return recordSlotResult(plan.id, {
+            return sendRecord(plan.id, {
               slotId: last.slotId,
               slotIndex: last.slotIndex,
               problem: last.problem,
@@ -584,7 +580,7 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
           'resend of the final try (same tryId) after completion: no-op',
           (plan) => {
             const last = plan.results.at(-1)!
-            return recordSlotResult(plan.id, {
+            return sendRecord(plan.id, {
               tryId: last.tryId,
               slotId: last.slotId,
               slotIndex: last.slotIndex,
@@ -603,7 +599,7 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
           'a new answer after completion: mismatch',
           (plan) => {
             const last = plan.results.at(-1)!
-            return recordSlotResult(plan.id, {
+            return sendRecord(plan.id, {
               tryId: next(),
               slotId: last.slotId,
               slotIndex: last.slotIndex,

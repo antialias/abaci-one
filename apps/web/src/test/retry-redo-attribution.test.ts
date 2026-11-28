@@ -34,8 +34,6 @@ import {
   getRecentSessionResults,
   getSessionPlan,
   type ProblemResultWithContext,
-  recordRedoResult,
-  recordSlotResult,
   SlotResultMismatchError,
   startSessionPlan,
 } from '@/lib/curriculum/session-planner'
@@ -43,6 +41,7 @@ import { applySlotResultReview } from '@/lib/curriculum/session-review'
 import { assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
 import { revokeSharesForSession } from '@/lib/session-share'
 import { historyTryOf } from '@/test/fixtures/history-try'
+import { sendRecord, sendRecordRedo } from '@/test/fixtures/legacy-try-bodies'
 import {
   createEphemeralDatabase,
   createTestStudent,
@@ -107,7 +106,7 @@ async function answerShown(
 ): Promise<SessionPlan> {
   const info = getCurrentProblemInfo(plan)
   if (!info) throw new Error('client shows no problem')
-  return recordSlotResult(plan.id, {
+  return sendRecord(plan.id, {
     tryId,
     slotId: info.slotId,
     slotIndex: info.originalSlotIndex,
@@ -130,7 +129,7 @@ async function redo(
   { tryId, originalWasCorrect = false }: { tryId?: string; originalWasCorrect?: boolean } = {}
 ): Promise<SessionPlan> {
   const slot = plan.parts[0].slots[slotIndex]
-  return recordRedoResult(
+  return sendRecordRedo(
     plan.id,
     {
       tryId,
@@ -208,7 +207,7 @@ describe('retry and do-over attribution', () => {
     const info = getCurrentProblemInfo(plan)!
     plan = await answerShown(plan, true)
     // Same request again (double tap / network retry): same slotId as the try just recorded.
-    plan = await recordSlotResult(plan.id, {
+    plan = await sendRecord(plan.id, {
       slotId: info.slotId,
       slotIndex: info.originalSlotIndex,
       problem: info.problem,
@@ -229,7 +228,7 @@ describe('retry and do-over attribution', () => {
     plan = await answerShown(plan, true) // slot 0
     const skipped = plan.parts[0].slots[2] // the server expects slot 1
     await expect(
-      recordSlotResult(plan.id, {
+      sendRecord(plan.id, {
         slotId: skipped.slotId,
         slotIndex: 2,
         problem: skipped.problem!,
@@ -268,13 +267,13 @@ describe('retry and do-over attribution', () => {
       hadHelp: false,
       incorrectAttempts: 0,
     })
-    plan = await recordSlotResult(plan.id, tryOf(0, false)) // slot 2 wrong -> retry round = [slot 2]
+    plan = await sendRecord(plan.id, tryOf(0, false)) // slot 2 wrong -> retry round = [slot 2]
     expect(getCurrentProblemInfo(plan)!.slotId).toBe(last.slotId) // same slot, epoch 1
 
-    plan = await recordSlotResult(plan.id, tryOf(0, false)) // resubmit of the original try
+    plan = await sendRecord(plan.id, tryOf(0, false)) // resubmit of the original try
     expect(plan.results).toHaveLength(3)
 
-    plan = await recordSlotResult(plan.id, tryOf(1, true)) // the retry itself
+    plan = await sendRecord(plan.id, tryOf(1, true)) // the retry itself
     expect(plan.results).toHaveLength(4)
     expect(plan.results.at(-1)).toMatchObject({ kind: 'retry', round: 1 })
     expect(plan.status).toBe('completed')
@@ -304,13 +303,13 @@ describe('retry and do-over attribution', () => {
       const slot0 = plan.parts[0].slots[0].slotId
       const slot1 = plan.parts[0].slots[1].slotId
       // Answer to slot 1, built before slot 0's response arrived: slotId still names slot 0
-      plan = await recordSlotResult(plan.id, tryFor(plan, 1, slot0))
+      plan = await sendRecord(plan.id, tryFor(plan, 1, slot0))
       expect(plan.results).toHaveLength(2)
       expect(plan.results[1].slotId).toBe(slot1)
       expect(plan.results[1].slotIndex).toBe(1)
       expect(cursorOf(plan)).toBe(2) // advanced once
       // and the next lagging answer (slot 2, named slot 1) goes to slot 2, not slot 1
-      plan = await recordSlotResult(plan.id, tryFor(plan, 2, slot1))
+      plan = await sendRecord(plan.id, tryFor(plan, 2, slot1))
       expect(plan.results[2].slotId).toBe(plan.parts[0].slots[2].slotId)
       expect(plan.results[2].slotIndex).toBe(2)
     })
@@ -318,13 +317,13 @@ describe('retry and do-over attribution', () => {
     it('(b) ignores an exact resubmit, but rejects the same slot with a different answer', async () => {
       let plan = await newPlan(playerId, 3)
       const slot0 = plan.parts[0].slots[0].slotId
-      plan = await recordSlotResult(plan.id, tryFor(plan, 0, slot0))
-      const after = await recordSlotResult(plan.id, tryFor(plan, 0, slot0))
+      plan = await sendRecord(plan.id, tryFor(plan, 0, slot0))
+      const after = await sendRecord(plan.id, tryFor(plan, 0, slot0))
       expect(after.results).toHaveLength(1)
       expect(cursorOf(after)).toBe(1)
 
       const wrong = plan.parts[0].slots[0].problem!.answer + 1
-      await expect(recordSlotResult(plan.id, tryFor(plan, 0, slot0, wrong))).rejects.toBeInstanceOf(
+      await expect(sendRecord(plan.id, tryFor(plan, 0, slot0, wrong))).rejects.toBeInstanceOf(
         SlotResultMismatchError
       )
     })
@@ -332,8 +331,8 @@ describe('retry and do-over attribution', () => {
     it('(c) records the genuine next answer after a resubmit', async () => {
       let plan = await newPlan(playerId, 3)
       const slot0 = plan.parts[0].slots[0].slotId
-      plan = await recordSlotResult(plan.id, tryFor(plan, 0, slot0))
-      plan = await recordSlotResult(plan.id, tryFor(plan, 0, slot0)) // resubmit: no-op
+      plan = await sendRecord(plan.id, tryFor(plan, 0, slot0))
+      plan = await sendRecord(plan.id, tryFor(plan, 0, slot0)) // resubmit: no-op
       plan = await answerShown(plan, true) // slot 1
       expect(plan.results.map((r) => r.slotIndex)).toEqual([0, 1])
       expect(plan.results[1].slotId).toBe(plan.parts[0].slots[1].slotId)
@@ -369,7 +368,7 @@ describe('retry and do-over attribution', () => {
 
       // The answer the client sends from that target is accepted and attributed to slot 1
       const slot = after.parts[target!.partIndex].slots[target!.slotIndex]
-      const plan = await recordSlotResult(after.id, {
+      const plan = await sendRecord(after.id, {
         slotId: slot.slotId,
         slotIndex: target!.slotIndex,
         partIndex: target!.partIndex,
@@ -465,7 +464,7 @@ describe('retry and do-over attribution', () => {
     const plan = await newPlan(playerId, 3)
     const info = getCurrentProblemInfo(plan)!
     await expect(
-      recordSlotResult(plan.id, {
+      sendRecord(plan.id, {
         slotId: info.slotId,
         slotIndex: info.originalSlotIndex,
         partIndex: 1,
@@ -501,7 +500,7 @@ describe('retry and do-over attribution', () => {
     it('records a tryId once: a resend is a no-op, also for a do-over', async () => {
       let plan = await newPlan(playerId, 3)
       plan = await answerShown(plan, false, tid(2))
-      const again = await recordSlotResult(plan.id, {
+      const again = await sendRecord(plan.id, {
         ...plan.results[0],
         studentAnswer: plan.results[0].studentAnswer,
         tryId: tid(2),
@@ -521,7 +520,7 @@ describe('retry and do-over attribution', () => {
       const info = plan.parts[0].slots[0]
       // Same content as the try just recorded, but a new tryId: not a resend
       await expect(
-        recordSlotResult(plan.id, {
+        sendRecord(plan.id, {
           tryId: tid(4),
           slotId: info.slotId,
           slotIndex: 0,
@@ -552,14 +551,14 @@ describe('retry and do-over attribution', () => {
       expect(new Set(ids).size).toBe(4)
       // The exact-match fallback still makes a resend with a bad id a no-op
       const last = plan.results[3]
-      const again = await recordSlotResult(plan.id, { ...last, tryId: 'legacy:resend' })
+      const again = await sendRecord(plan.id, { ...last, tryId: 'legacy:resend' })
       expect(again.results).toHaveLength(4)
     })
 
     it('ignores client-sent stamps (kind, round, practiceOnly, masteryWeight, isRetry)', async () => {
       const plan = await newPlan(playerId, 3)
       const info = getCurrentProblemInfo(plan)!
-      const after = await recordSlotResult(plan.id, {
+      const after = await sendRecord(plan.id, {
         slotId: info.slotId,
         slotIndex: 0,
         problem: info.problem,
