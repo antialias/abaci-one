@@ -13,12 +13,16 @@
  * 6. Calculates final metrics comparing BKT to ground truth
  */
 
+import type { SessionPlan } from '@/db/schema/session-plans'
 import { computeBktFromHistory } from '@/lib/curriculum/bkt'
 // These imports will use the mocked database
 import { getCurrentProblemInfo } from '@/lib/curriculum/parts/arithmetic/state'
 import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
 import {
+  acknowledgeGameBreakResults,
   approveSessionPlan,
+  completePartTransition,
+  finishGameBreak,
   generateSessionPlan,
   getRecentSessionResults,
   startSessionPlan,
@@ -135,6 +139,9 @@ export class JourneyRunner {
       shown;
       shown = getCurrentProblemInfo(currentPlan)
     ) {
+      // Between parts the flow machine holds a transition (and maybe a break);
+      // walk it before the next try, as the practice client does
+      currentPlan = await this.walkToPracticing(currentPlan)
       const problem = shown.problem
       totalProblems++
 
@@ -217,6 +224,31 @@ export class JourneyRunner {
       sessionPlanId: plan.id,
       // Cognitive fatigue accumulated during this session
       sessionFatigue,
+    }
+  }
+
+  /**
+   * Complete a part transition and skip any game break through the same
+   * flow-machine calls the plans route makes (`part_transition_complete`,
+   * `break_finished` with reason `skipped`, `break_results_acked`), until the session is practicing.
+   */
+  private async walkToPracticing(plan: SessionPlan): Promise<SessionPlan> {
+    let current = plan
+    for (;;) {
+      switch (current.flowState ?? 'practicing') {
+        case 'part_transition':
+          current = await completePartTransition(current.id)
+          break
+        case 'break_pending':
+        case 'break_active':
+          current = await finishGameBreak(current.id, 'skipped')
+          break
+        case 'break_results':
+          current = await acknowledgeGameBreakResults(current.id)
+          break
+        default:
+          return current
+      }
     }
   }
 
