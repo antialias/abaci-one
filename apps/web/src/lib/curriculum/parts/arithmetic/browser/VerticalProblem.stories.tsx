@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
 import { createBasicSkillSet } from '@/types/tutorial'
 import { generateSingleProblem, type ProblemConstraints } from '@/utils/problemGenerator'
-import { css } from '@/../styled-system/css'
+import { css } from '@styled/css'
 import { VerticalProblem } from './VerticalProblem'
 
 const meta: Meta<typeof VerticalProblem> = {

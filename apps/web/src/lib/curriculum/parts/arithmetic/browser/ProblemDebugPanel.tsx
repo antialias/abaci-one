@@ -1,7 +1,7 @@
 'use client'
 
+import { css } from '@styled/css'
 import { useCallback, useState } from 'react'
-import { css } from '@/../styled-system/css'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { GeneratedProblem, ProblemSlot, SessionPart } from '@/db/schema/session-plans'
 

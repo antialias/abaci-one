@@ -1,7 +1,7 @@
 'use client'
 
+import { css } from '@styled/css'
 import { type CSSProperties, Fragment } from 'react'
-import { css } from '@/../styled-system/css'
 
 export interface LinearProblemProps {
   /** Terms: positive = addition, negative = subtraction */

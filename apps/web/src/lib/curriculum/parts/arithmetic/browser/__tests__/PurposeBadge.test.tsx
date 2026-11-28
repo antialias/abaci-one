@@ -16,7 +16,7 @@ vi.mock('@/contexts/ThemeContext', () => ({
 }))
 
 // Mock Panda CSS
-vi.mock('@/../styled-system/css', () => ({
+vi.mock('@styled/css', () => ({
   css: vi.fn(() => 'mocked-css-class'),
 }))
 

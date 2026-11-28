@@ -14,7 +14,7 @@
 
 import type { AbacusOverlay, StepBeadHighlight } from '@soroban/abacus-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { css } from '@/../styled-system/css'
+import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { getHelpTiming, shouldUseDebugTiming } from '@/constants/helpTiming'
 import { generateUnifiedInstructionSequence } from '@/utils/unifiedStepGenerator'

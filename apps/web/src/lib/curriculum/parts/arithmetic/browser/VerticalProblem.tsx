@@ -1,7 +1,7 @@
 'use client'
 
+import { css } from '@styled/css'
 import type { ReactNode } from 'react'
-import { css } from '@/../styled-system/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { GenerationTrace } from '@/db/schema/session-plans'

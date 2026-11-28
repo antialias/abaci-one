@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react'
 import { shouldUseDebugTiming } from '@/constants/helpTiming'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
-import { css } from '@/../styled-system/css'
+import { css } from '@styled/css'
 import { DebugMermaidDiagram } from '@/components/flowchart/DebugMermaidDiagram'
 import type { AssistanceMachineState, AssistanceEventLogEntry } from './useProgressiveAssistance'
 

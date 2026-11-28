@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react'
+import { css } from '@styled/css'
 import { useState } from 'react'
-import { css } from '@/../styled-system/css'
 import { NumericKeypad } from './NumericKeypad'
 
 const meta: Meta<typeof NumericKeypad> = {

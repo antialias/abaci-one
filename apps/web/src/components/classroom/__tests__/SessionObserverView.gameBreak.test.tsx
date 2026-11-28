@@ -140,7 +140,7 @@ vi.mock('@/constants/zIndex', () => ({
 }))
 
 // Mock child components that are heavy to render
-vi.mock('../AbacusDock', () => ({
+vi.mock('../../practice/input/AbacusDock', () => ({
   AbacusDock: () => null,
 }))
 vi.mock('../../practice/LiveResultsPanel', () => ({
