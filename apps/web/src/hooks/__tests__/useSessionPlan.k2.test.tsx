@@ -1,8 +1,8 @@
 /**
- * Practice-kinds K2 client contract (plan of record §3.3, §4 K2, R14): the
- * two status codes K2 changes resync quietly, and a try is sent as the
- * superset body (the legacy fields every server reads, plus the envelope a K2
- * server reads, and `isCorrect` only for a server rolled back to K1).
+ * Practice-kinds client contract (plan of record §3.3, §4 K2 and K4, R14): the
+ * two status codes K2 changes resync quietly, and from K4 every try is sent
+ * as `record_try` with the envelope and no verdict (the server is the only
+ * judge, amendments A1 and A15).
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook } from '@testing-library/react'
@@ -52,7 +52,7 @@ const answer = {
   incorrectAttempts: 0,
   hadHelp: false,
   partIndex: 0,
-} as SlotResultSubmission
+} as SlotResultSubmission & { tryId: string }
 
 beforeEach(() => {
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -74,7 +74,7 @@ describe('K2: the status codes R14 changes are quiet', () => {
       .mutateAsync({
         playerId: 'p1',
         planId: 'plan-1',
-        result: answer as Omit<SlotResult, 'timestamp' | 'partNumber'>,
+        result: answer as Omit<SlotResult, 'timestamp' | 'partNumber'> & { tryId: string },
         redoContext: {
           itemId: 'p0s0',
           originalPartIndex: 0,
@@ -118,8 +118,8 @@ describe('K2: the status codes R14 changes are quiet', () => {
   })
 })
 
-describe('K2: the superset body', () => {
-  it('record sends the legacy fields plus the envelope, and reads the plan from a reply with a verdict', async () => {
+describe('K4: every try is sent as record_try, with no verdict', () => {
+  it('a first try: the envelope with its round, and the plan read from a reply with a verdict', async () => {
     const stored = { id: 'plan-1', flowState: 'practicing' } as SessionPlan
     fetchMock.mockResolvedValueOnce(
       json(200, {
@@ -132,38 +132,91 @@ describe('K2: the superset body', () => {
     const landed = await result.current.mutateAsync({
       playerId: 'p1',
       planId: 'plan-1',
-      result: answer,
+      result: { ...answer, partIndex: 0 },
     })
 
     expect(landed).toEqual(stored)
     expect(sentBodies()).toEqual([
       {
-        action: 'record',
+        action: 'record_try',
         result: {
-          ...answer,
+          tryId: answer.tryId,
+          partIndex: 0,
           itemId: 'p0s0',
+          mode: 'first_or_retry',
+          round: 0,
           outcome: 'answered',
           answer: 3,
-          payload: { kind: 'arithmetic' },
+          payload: { kind: 'arithmetic', usedOnScreenAbacus: false },
+          timing: { responseTimeMs: 2000 },
+          help: { hadHelp: false, incorrectAttempts: 0 },
         },
       },
     ])
+    // The screen's check stays on the screen (amendment A15)
+    expect(JSON.stringify(sentBodies())).not.toContain('isCorrect')
   })
 
-  it('a skip is sent with outcome skipped and no answer', async () => {
-    fetchMock.mockResolvedValueOnce(json(200, { plan: { id: 'plan-1' } }))
+  it('a retry names its round; a skip is sent with outcome skipped and no answer', async () => {
+    fetchMock.mockResolvedValue(json(200, { plan: { id: 'plan-1' } }))
     const { result } = renderHook(() => useRecordSlotResult(), { wrapper })
     const skip = {
       ...answer,
+      epochNumber: 1,
       isCorrect: false,
       hadHelp: true,
       helpTrigger: 'manual' as const,
       outcome: 'skipped' as const,
+      partIndex: 0,
     }
 
     await result.current.mutateAsync({ playerId: 'p1', planId: 'plan-1', result: skip })
 
     const [body] = sentBodies()
-    expect(body.result).toMatchObject({ outcome: 'skipped', answer: null, studentAnswer: 3 })
+    expect(body.action).toBe('record_try')
+    expect(body.result).toMatchObject({
+      mode: 'first_or_retry',
+      round: 1,
+      outcome: 'skipped',
+      answer: null,
+      help: { hadHelp: true, incorrectAttempts: 0, helpTrigger: 'manual' },
+    })
+    expect(body.result).not.toHaveProperty('isCorrect')
+  })
+
+  it('a do-over: mode do_over, its item and part from the redo context, no round', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, { plan: { id: 'plan-1' } }))
+    const { result } = renderHook(() => useRecordRedoResult(), { wrapper })
+
+    await result.current.mutateAsync({
+      playerId: 'p1',
+      planId: 'plan-1',
+      result: { ...answer, slotId: 'p1s2', slotIndex: 2 } as Omit<
+        SlotResult,
+        'timestamp' | 'partNumber'
+      > & { tryId: string },
+      redoContext: {
+        itemId: 'p1s2',
+        originalPartIndex: 1,
+        originalSlotIndex: 2,
+        originalWasCorrect: false,
+      },
+    })
+
+    const [body] = sentBodies()
+    expect(body).toEqual({
+      action: 'record_try',
+      result: {
+        tryId: answer.tryId,
+        partIndex: 1,
+        itemId: 'p1s2',
+        mode: 'do_over',
+        outcome: 'answered',
+        answer: 3,
+        payload: { kind: 'arithmetic', usedOnScreenAbacus: false },
+        timing: { responseTimeMs: 2000 },
+        help: { hadHelp: false, incorrectAttempts: 0 },
+      },
+    })
   })
 })

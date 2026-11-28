@@ -393,12 +393,12 @@ export function PracticeClient({
 
   // Handle recording an answer
   const handleAnswer = useCallback(
-    (result: SlotResultSubmission): Promise<void> => {
+    (result: SlotResultSubmission & { partIndex: number; tryId: string }): Promise<void> => {
       // Synchronous work: problem markers + trace logging happen immediately.
       // The marker names the answered item (its own part, id and round), not
       // the plan's cursor, which lags an optimistic advance
       const item = {
-        partIndex: result.partIndex ?? currentPlan.currentPartIndex,
+        partIndex: result.partIndex,
         itemId: result.slotId,
         round: result.epochNumber ?? 0,
         doOver: false,
@@ -428,7 +428,8 @@ export function PracticeClient({
             recordResult.mutateAsync({
               playerId: studentId,
               planId: currentPlan.id,
-              result,
+              // The envelope names the answered item's part (K4)
+              result: { ...result, partIndex: item.partIndex },
             })
           )
           // Dropped: an answer queued before this one failed; the screen resyncs
