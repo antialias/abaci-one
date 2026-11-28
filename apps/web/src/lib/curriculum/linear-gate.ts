@@ -28,6 +28,7 @@ import { tryKindOfRow } from '@/db/schema/legacy-try-fields'
 import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import { READINESS_THRESHOLDS } from '@/lib/curriculum/config/readiness-thresholds'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import { evidenceSkillsOf } from '@/lib/curriculum/try-evidence'
 
 export interface LinearGateThresholds {
   /** Minimum first-attempt accuracy in the recent window to pass the gate (0..1). */
@@ -88,7 +89,7 @@ export function resolveLinearGateThresholds(config: unknown): LinearGateThreshol
  */
 function isGateEligible(r: ProblemResultWithContext): boolean {
   return (
-    r.partType === 'linear' &&
+    r.mode === 'linear' &&
     tryKindOfRow(r) !== 'retry' &&
     isCountedTry(r) &&
     r.source !== 'recency-refresh' &&
@@ -99,7 +100,7 @@ function isGateEligible(r: ProblemResultWithContext): boolean {
 /**
  * Compute the ramp gate for each supplied category from linear practice history.
  *
- * An attempt counts toward a category if ANY of its `skillsExercised` falls in that
+ * An attempt counts toward a category if ANY of its evidence skills falls in that
  * category (an attempt spanning categories counts toward each). Accuracy is measured
  * over the most-recent `accuracyWindowSize` first-attempt linear results in the category.
  */
@@ -115,7 +116,7 @@ export function deriveLinearGateState(params: {
   for (const category of categories) {
     if (out.has(category)) continue
     const inCategory = gateResults.filter((r) =>
-      r.skillsExercised.some((s) => getSkillCategory(s) === category)
+      evidenceSkillsOf(r).some((s) => getSkillCategory(s) === category)
     )
     const sorted = [...inCategory].sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()

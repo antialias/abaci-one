@@ -9,7 +9,7 @@
  */
 
 import { arithmeticKind } from './arithmetic/server'
-import type { AnyPartKind, BktMode, StoredPart } from './kind'
+import type { AnyPartKind, StoredPart } from './kind'
 
 export const partKinds: ReadonlyMap<string, AnyPartKind> = new Map([
   [arithmeticKind.id, arithmeticKind as AnyPartKind],
@@ -44,10 +44,4 @@ export function plannedItemCount(part: StoredPart): number {
   if (!kind) return 0
   const content = kind.contentOf(part)
   return kind.progress(content, kind.initialState(content), []).total
-}
-
-/** The BKT mode of a part's tries; null (not evidence) for an unknown kind. */
-export function bktModeOf(part: StoredPart): BktMode | null {
-  const kind = findPartKind(part)
-  return kind ? kind.bktMode(part) : null
 }

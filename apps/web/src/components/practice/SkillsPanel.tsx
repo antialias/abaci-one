@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import { CATEGORY_PRIORITY } from '@/constants/skillCategories'
 import type { SlotResult } from '@/db/schema/session-plans'
+import { evidenceSkillsOf } from '@/lib/curriculum/try-evidence'
 import { getCategoryDisplayName, getSkillDisplayName } from '@/utils/skillDisplay'
 import { css } from '../../../styled-system/css'
 
@@ -219,7 +220,7 @@ function calculateSkillBreakdownByCategory(results: SlotResult[]): SkillCategory
   const skillMap = new Map<string, { correct: number; total: number }>()
 
   for (const result of results) {
-    for (const skillId of result.skillsExercised) {
+    for (const skillId of evidenceSkillsOf(result)) {
       const current = skillMap.get(skillId) || { correct: 0, total: 0 }
       current.total++
       if (result.isCorrect) current.correct++

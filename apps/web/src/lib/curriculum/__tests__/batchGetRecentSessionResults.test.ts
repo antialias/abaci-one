@@ -159,9 +159,9 @@ describe('batchGetRecentSessionResults', () => {
     expect(playerResults).toHaveLength(2)
 
     // Should be sorted most recent first
-    expect(playerResults[0].partType).toBe('visualization')
+    expect(playerResults[0].mode).toBe('visualization')
     expect(playerResults[0].sessionId).toBe('session-1')
-    expect(playerResults[1].partType).toBe('abacus')
+    expect(playerResults[1].mode).toBe('abacus')
   })
 
   it('separates results by player', async () => {
@@ -332,7 +332,7 @@ describe('batchGetRecentSessionResults', () => {
 
     const resultMap = await batchGetRecentSessionResults([playerId])
     const playerResults = resultMap.get(playerId)!
-    expect(playerResults[0].partType).toBe('linear')
+    expect(playerResults[0].mode).toBe('linear')
   })
 
   it('sorts results by timestamp descending within each player', async () => {
@@ -410,12 +410,12 @@ describe('batchGetRecentSessionResults', () => {
     expect(playerResults).toHaveLength(3)
 
     // Sorted by timestamp desc, so linear (10:04) > visualization (10:02) > abacus (10:00)
-    expect(playerResults[0].partType).toBe('linear')
-    expect(playerResults[1].partType).toBe('visualization')
-    expect(playerResults[2].partType).toBe('abacus')
+    expect(playerResults[0].mode).toBe('linear')
+    expect(playerResults[1].mode).toBe('visualization')
+    expect(playerResults[2].mode).toBe('abacus')
   })
 
-  it('assigns same partType to multiple results from the same part', async () => {
+  it('assigns the same mode to multiple results from the same part', async () => {
     const { playerId } = await createTestStudent(ephemeralDb.db, 'same-part')
 
     const parts = [makeSessionPart(1, 'abacus', 3)]
@@ -436,7 +436,7 @@ describe('batchGetRecentSessionResults', () => {
     const resultMap = await batchGetRecentSessionResults([playerId])
     const playerResults = resultMap.get(playerId)!
     expect(playerResults).toHaveLength(3)
-    expect(playerResults.every((r) => r.partType === 'abacus')).toBe(true)
+    expect(playerResults.every((r) => r.mode === 'abacus')).toBe(true)
   })
 
   it('handles session with empty parts array', async () => {
@@ -459,16 +459,20 @@ describe('batchGetRecentSessionResults', () => {
     const resultMap = await batchGetRecentSessionResults([playerId])
     const playerResults = resultMap.get(playerId)!
     expect(playerResults).toHaveLength(1)
-    // No parts to match, should fall back to 'linear'
-    expect(playerResults[0].partType).toBe('linear')
+    // No part to match: arithmetic with no type, whose presentation is 'linear'
+    expect(playerResults[0].mode).toBe('linear')
   })
 
-  // Practice kinds K0 (plan of record §4, review R1): the row filter pinned as
-  // it stands. Every mastery-history reader goes through it, so a try stored
-  // without a `skillsExercised` array vanishes from readiness with no error.
-  // K1b changes it to "has `evidence` or a `skillsExercised` array" on purpose
-  // and updates this test with the reason.
-  it('keeps only rows whose skillsExercised is an array (pinned before K1b)', async () => {
+  // Practice kinds K0 pinned this filter as "rows whose skillsExercised is an
+  // array" (review R1): a try stored without one vanished from readiness with
+  // no error, which would drop every try of a kind whose evidence is not a
+  // skill list on the row. K1b changes it on purpose (plan of record §4) to
+  // "has `evidence` or a `skillsExercised` array": the evidence-only row is
+  // now kept. A row with neither is still dropped, and an unstamped row's
+  // evidence is still derived from its `skillsExercised` (amendment A4), so
+  // the other rows read as before. A stamped `null` is recorded, not counted
+  // (§1.3): dropped whatever its skillsExercised, as the SQL path drops it (A8).
+  it('keeps rows with evidence or a skillsExercised array (K1b)', async () => {
     const { playerId } = await createTestStudent(ephemeralDb.db, 'row-filter')
     const at = new Date('2025-01-01T10:00:00Z')
     const row = (tryId: string, over: Record<string, unknown> = {}) =>
@@ -485,7 +489,8 @@ describe('batchGetRecentSessionResults', () => {
         withoutSkills as SlotResult,
         row('null-skills', { skillsExercised: null }),
         row('string-skills', { skillsExercised: 'basic.directAddition' }),
-        // a row carrying only K1's envelope `evidence` is dropped today
+        row('null-evidence', { evidence: null }),
+        // a row carrying only K1's envelope `evidence` (dropped before K1b)
         row('evidence-only', {
           skillsExercised: undefined,
           evidence: { skills: ['basic.directAddition'], presentation: 'abacus' },
@@ -495,7 +500,17 @@ describe('batchGetRecentSessionResults', () => {
     })
 
     const kept = (await batchGetRecentSessionResults([playerId])).get(playerId) ?? []
-    expect(kept.map((r) => r.tryId).sort()).toEqual(['empty-skills', 'with-skills'])
+    expect(kept.map((r) => r.tryId).sort()).toEqual([
+      'empty-skills',
+      'evidence-only',
+      'with-skills',
+    ])
+    const evidenceOnly = kept.find((r) => r.tryId === 'evidence-only')
+    expect(evidenceOnly?.evidence).toEqual({
+      skills: ['basic.directAddition'],
+      presentation: 'abacus',
+    })
+    expect(evidenceOnly?.mode).toBe('abacus')
   })
 
   it('getRecentSessionResults delegates to batch and returns correct results', async () => {
@@ -521,7 +536,7 @@ describe('batchGetRecentSessionResults', () => {
 
     const results = await getRecentSessionResults(playerId, 50)
     expect(results).toHaveLength(1)
-    expect(results[0].partType).toBe('abacus')
+    expect(results[0].mode).toBe('abacus')
     expect(results[0].sessionId).toBe('session-delegate')
   })
 })

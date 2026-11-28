@@ -57,6 +57,7 @@ import { assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
 import { generateSlotResults, seededSessionRows } from '@/lib/seed/helpers'
 import { TEST_PROFILES } from '@/lib/seed/profiles'
 import { convertToSlotResults } from '@/lib/worksheet-parsing/session-converter'
+import { historyTryOf } from '@/test/fixtures/history-try'
 import {
   createEphemeralDatabase,
   createTestStudent,
@@ -544,12 +545,8 @@ describe('K1a smoke: seeded profiles through the real seed stamping (BKT parity 
   it('stamps every row, and BKT, readiness and the linear gate read as without it', () => {
     for (const profile of TEST_PROFILES) {
       const { rows, parts, stored } = seeded(profile)
-      const context = (r: SlotResult): ProblemResultWithContext => ({
-        ...r,
-        sessionId: 'seed',
-        sessionCompletedAt: T0,
-        partType: 'linear',
-      })
+      const context = (r: SlotResult): ProblemResultWithContext =>
+        historyTryOf({ ...r, sessionId: 'seed', sessionCompletedAt: T0 }, 'linear')
       const before = rows.map((r) => context(r.result))
       const after = stored.map(context)
       rows.forEach((r, idx) => {

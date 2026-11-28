@@ -17,7 +17,9 @@ import {
   type CurrentPlanItem,
   expectedArithmeticItem,
 } from '@/lib/curriculum/parts/arithmetic/state'
+import { masteryModeOf } from '@/lib/curriculum/parts/presentations'
 import { findPartKind, kindIdOf } from '@/lib/curriculum/parts/registry'
+import { asTryEvidence } from '@/lib/curriculum/try-evidence'
 import { itemSlotIndexOfRow, tryKindOfRow, tryRoundOfRow } from './legacy-try-fields'
 import { sameProblem } from './session-plan-helpers'
 import type {
@@ -134,7 +136,10 @@ export function resolveItemId(result: SlotResult, parts: readonly SessionPart[])
 }
 
 /** The part a row belongs to: its stamped `partIndex`, else the part its `partNumber` names. */
-function partIndexOfRow(result: SlotResult, parts: readonly SessionPart[]): number {
+function partIndexOfRow(
+  result: Pick<SlotResult, 'partIndex' | 'partNumber'>,
+  parts: readonly { partNumber: number }[]
+): number {
   return result.partIndex ?? parts.findIndex((p) => p.partNumber === result.partNumber)
 }
 
@@ -158,15 +163,6 @@ export type TryEnvelope = Required<
 export function envelopeOfRow(result: SlotResult, parts: readonly SessionPart[]): TryEnvelope {
   const part = parts[partIndexOfRow(result, parts)]
   const outcome = result.outcome ?? 'answered'
-  let evidence: TryEvidence | null
-  if (result.evidence !== undefined) evidence = result.evidence
-  else if (!part) evidence = arithmeticEvidenceOf(undefined, result)
-  else {
-    const kind = findPartKind(part)
-    evidence = kind
-      ? kind.evidenceOf(part, { result, outcome, payload: completedPayloadOf(result, part) })
-      : null
-  }
   return {
     itemId: result.itemId ?? resolveItemId(result, parts),
     outcome,
@@ -176,9 +172,103 @@ export function envelopeOfRow(result: SlotResult, parts: readonly SessionPart[])
         : outcome === 'answered'
           ? result.studentAnswer
           : null,
-    evidence,
+    evidence: evidenceOfRow(result, parts),
     payload: result.payload ?? { kind: part ? kindIdOf(part) : 'arithmetic' },
   }
+}
+
+/**
+ * What a row's evidence reads of its part. The history and the SQL evidence
+ * projection skip the plan's `parts` column (its slots are most of a row's
+ * bytes) and hand over only these, so a kind derives evidence from the try,
+ * never from the part's content (R9). Only a row stored without `evidence`
+ * derives it: every image that knows a kind stamps it (K1a).
+ */
+export interface EvidencePart {
+  partNumber: number
+  /** arithmetic's presentation; anything but a string reads as 'linear' */
+  type?: unknown
+  kind?: string
+}
+
+/**
+ * The parts as evidence reads them, from the lightweight
+ * `[{ n: partNumber, t: type, k: kind }]` projection of a plan's `parts`
+ * JSON that the history and the SQL evidence query make, in order: a row's
+ * `partIndex` is a position in it, so nothing is dropped (a malformed entry
+ * matches no row).
+ */
+export function evidencePartsOf(json: string | null | undefined): EvidencePart[] {
+  let entries: unknown
+  try {
+    entries = JSON.parse(json || '[]')
+  } catch {
+    return []
+  }
+  if (!Array.isArray(entries)) return []
+  return entries.map((entry) => {
+    const part = (entry && typeof entry === 'object' ? entry : {}) as {
+      n?: unknown
+      t?: unknown
+      k?: unknown
+    }
+    return {
+      partNumber: typeof part.n === 'number' ? part.n : Number.NaN,
+      type: part.t,
+      kind: typeof part.k === 'string' ? part.k : undefined,
+    }
+  })
+}
+
+/**
+ * A row's evidence (practice-kinds plan §3.1): the stamped value (null =
+ * recorded, not counted), else derived: a row whose part is not in `parts`
+ * is a legacy arithmetic row ('linear', as every evidence reader defaults
+ * it); a part of a kind this image does not know is not evidence; else the
+ * kind's `evidenceOf`.
+ */
+export function evidenceOfRow(
+  result: SlotResult,
+  parts: readonly EvidencePart[]
+): TryEvidence | null {
+  if (result.evidence !== undefined) return result.evidence
+  const part = parts[partIndexOfRow(result, parts)]
+  if (!part) return arithmeticEvidenceOf(undefined, result)
+  const kind = findPartKind(part)
+  if (!kind) return null
+  const outcome = result.outcome ?? 'answered'
+  return kind.evidenceOf(part, { result, outcome, payload: completedPayloadOf(result, part) })
+}
+
+/** A row's evidence as every evidence reader resolves it (K1b) */
+export interface ResolvedEvidence {
+  evidence: TryEvidence
+  /** `evidence.presentation` */
+  presentation: string
+  /** The mastery mode it counts toward, resolved now (`masteryModeOf`) */
+  mode: string
+}
+
+/**
+ * What a stored row counts toward, the one derivation the in-JS history
+ * (`batchGetRecentSessionResults`) and the SQL evidence projection
+ * (`batchGetRecentBktEvidence`) share: its evidence (`evidenceOfRow`, as
+ * readers trust it, `asTryEvidence`) and the mode its presentation counts
+ * toward. Null, counted toward nothing, when the row has no evidence (a
+ * stamped `null`: recorded, not counted, §1.3; a kind this image does not
+ * know; a pre-schema row with no `skillsExercised` array) or its presentation
+ * counts toward no mode. Whether it counts at all (`source`, `voided`,
+ * `practiceOnly`) is each reader's (amendment A5).
+ */
+export function resolvedEvidenceOfRow(
+  result: SlotResult,
+  parts: readonly EvidencePart[]
+): ResolvedEvidence | null {
+  const evidence = asTryEvidence(evidenceOfRow(result, parts))
+  if (!evidence) return null
+  const mode = masteryModeOf(evidence.presentation)
+  if (mode === null) return null
+  return { evidence, presentation: evidence.presentation, mode }
 }
 
 /**
@@ -187,7 +277,10 @@ export function envelopeOfRow(result: SlotResult, parts: readonly SessionPart[])
  * not in `parts` is legacy arithmetic; a kind this image does not know keeps
  * what is stored.
  */
-function completedPayloadOf(result: SlotResult, part: SessionPart | undefined): TryPayload {
+function completedPayloadOf(
+  result: SlotResult,
+  part: Pick<EvidencePart, 'kind'> | undefined
+): TryPayload {
   const kind = part ? findPartKind(part) : arithmeticKind
   if (kind) return kind.payloadOf(result)
   return result.payload ?? { kind: part ? kindIdOf(part) : 'arithmetic' }

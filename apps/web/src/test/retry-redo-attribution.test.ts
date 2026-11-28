@@ -42,6 +42,7 @@ import {
 import { applySlotResultReview } from '@/lib/curriculum/session-review'
 import { assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
 import { revokeSharesForSession } from '@/lib/session-share'
+import { historyTryOf } from '@/test/fixtures/history-try'
 import {
   createEphemeralDatabase,
   createTestStudent,
@@ -664,12 +665,9 @@ describe('retry and do-over attribution', () => {
       }
       const withRows = await read()
       // Raw rows (practice-only included) fed straight to the pure readers
-      const raw: ProblemResultWithContext[] = plan.results.map((r) => ({
-        ...r,
-        sessionId: plan.id,
-        sessionCompletedAt: new Date(),
-        partType: 'linear',
-      }))
+      const raw: ProblemResultWithContext[] = plan.results.map((r) =>
+        historyTryOf({ ...r, sessionId: plan.id, sessionCompletedAt: new Date() }, 'linear')
+      )
       const rawWithout = raw.filter((r) => !r.practiceOnly)
       expect(raw.length).toBeGreaterThan(rawWithout.length)
 

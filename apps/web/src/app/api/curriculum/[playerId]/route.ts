@@ -16,6 +16,7 @@ import {
   upsertPlayerCurriculum,
 } from '@/lib/curriculum/progress-manager'
 import { getRecentSessionResults } from '@/lib/curriculum/session-planner'
+import { evidenceSkillsOf } from '@/lib/curriculum/try-evidence'
 import { getUserId } from '@/lib/viewer'
 
 /**
@@ -63,7 +64,7 @@ export const GET = withAuth(async (_request, { params }) => {
       { attempts: number; correct: number; responseTimes: number[] }
     >()
     for (const result of sessionResults) {
-      for (const skillId of result.skillsExercised) {
+      for (const skillId of evidenceSkillsOf(result)) {
         if (!skillStats.has(skillId)) {
           skillStats.set(skillId, {
             attempts: 0,

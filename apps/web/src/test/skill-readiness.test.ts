@@ -10,9 +10,10 @@
 
 import { describe, expect, it } from 'vitest'
 import type { SkillBktResult } from '@/lib/curriculum/bkt'
-import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
-import { assessSkillReadiness, assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
 import { READINESS_THRESHOLDS } from '@/lib/curriculum/config/readiness-thresholds'
+import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import { assessAllSkillsReadiness, assessSkillReadiness } from '@/lib/curriculum/skill-readiness'
+import { historyTryOf } from '@/test/fixtures/history-try'
 
 // =============================================================================
 // Helpers
@@ -35,28 +36,30 @@ function createResult(
 ): ProblemResultWithContext {
   slotCounter++
   const timestamp = opts.timestamp ?? new Date(Date.now() - slotCounter * 60000)
-  return {
-    sessionId,
-    partNumber: 1,
-    slotIndex: slotCounter,
-    problem: {
-      terms: opts.terms ?? [1, 2, 3],
-      answer: 6,
-      skillsRequired: skillsExercised,
+  return historyTryOf(
+    {
+      sessionId,
+      partNumber: 1,
+      slotIndex: slotCounter,
+      problem: {
+        terms: opts.terms ?? [1, 2, 3],
+        answer: 6,
+        skillsRequired: skillsExercised,
+      },
+      studentAnswer: isCorrect ? 6 : 7,
+      isCorrect,
+      responseTimeMs,
+      skillsExercised,
+      usedOnScreenAbacus: false,
+      timestamp,
+      hadHelp: opts.hadHelp ?? false,
+      incorrectAttempts: 0,
+      sessionCompletedAt: timestamp,
+      source: opts.source,
+      isRetry: opts.isRetry,
     },
-    studentAnswer: isCorrect ? 6 : 7,
-    isCorrect,
-    responseTimeMs,
-    skillsExercised,
-    usedOnScreenAbacus: false,
-    timestamp,
-    hadHelp: opts.hadHelp ?? false,
-    incorrectAttempts: 0,
-    sessionCompletedAt: timestamp,
-    partType: 'abacus',
-    source: opts.source,
-    isRetry: opts.isRetry,
-  }
+    'abacus'
+  )
 }
 
 function createBktResult(

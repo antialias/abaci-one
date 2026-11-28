@@ -3,9 +3,12 @@ import 'server-only'
 import { sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { legacyTryFieldsOfProjection } from '@/db/schema/legacy-try-fields'
+import {
+  type EvidencePart,
+  evidencePartsOf,
+  resolvedEvidenceOfRow,
+} from '@/db/schema/session-plan-normalize'
 import type { SlotResult, TryKind } from '@/db/schema/session-plans'
-import type { BktMode } from '../parts/kind'
-import { bktModeOf } from '../parts/registry'
 import type { BktEvidence } from './types'
 
 /**
@@ -31,41 +34,17 @@ interface RawProjectedEvidence {
   originalSource?: unknown
   timingReview?: unknown
   partNumber?: unknown
+  partIndex?: unknown
+  /** The stamped envelope's evidence (JSON null when stamped null) */
+  evidence?: unknown
+  /** `json_type(value, '$.evidence')`: 'null' = stamped null, absent (NULL) = not stamped */
+  evidenceType?: unknown
   kind?: unknown
   round?: unknown
   practiceOnly?: unknown
   /** The legacy try fields, read only through `legacyTryFieldsOfProjection` */
   [legacyField: string]: unknown
   voided?: unknown
-}
-
-interface RawPartType {
-  n?: unknown
-  t?: unknown
-  k?: unknown
-}
-
-/**
- * Each part's BKT mode by part number, from its kind's `bktMode` (absent kind
- * = arithmetic: the part's type). null = the part's tries are not evidence.
- * (Arithmetic answers 'linear' for a part stored without a type, as main did.)
- * A non-string, non-null answer is left out, so its rows fall back to the
- * legacy default below.
- */
-function bktModesByPartNumber(parts: RawPartType[]): Map<number, BktMode | null> {
-  const modes = new Map<number, BktMode | null>()
-  for (const part of parts) {
-    if (!part || typeof part.n !== 'number') continue
-    // The projected part: what the kinds' bktMode reads (arithmetic: `type`)
-    const stored = {
-      kind: typeof part.k === 'string' ? part.k : undefined,
-      partNumber: part.n,
-      type: part.t,
-    }
-    const mode = bktModeOf(stored)
-    if (mode === null || typeof mode === 'string') modes.set(part.n, mode)
-  }
-  return modes
 }
 
 function parseJsonArray(value: string | null): unknown[] {
@@ -107,9 +86,23 @@ function normalizeTimestamp(value: unknown): Date | string | null {
 
 function toBktEvidence(
   raw: RawProjectedEvidence,
-  modeByPartNumber: ReadonlyMap<number, BktMode | null>
+  parts: readonly EvidencePart[]
 ): BktEvidence | null {
-  if (!Array.isArray(raw.skillsExercised)) return null
+  // What the row is evidence of and its mode, derived as the in-JS history
+  // derives it (`resolvedEvidenceOfRow`): stamped (`json_type` tells a
+  // stamped null from no stamp), else from its part (§3.1)
+  const stamped = raw.evidenceType !== null && raw.evidenceType !== undefined
+  const resolved = resolvedEvidenceOfRow(
+    {
+      skillsExercised: raw.skillsExercised,
+      partNumber: optionalNumber(raw.partNumber),
+      partIndex: optionalNumber(raw.partIndex),
+      ...(stamped ? { evidence: raw.evidence } : {}),
+    } as SlotResult,
+    parts
+  )
+  if (!resolved) return null
+  const { evidence, mode } = resolved
 
   const timestamp = normalizeTimestamp(raw.timestamp)
   if (!timestamp) return null
@@ -120,19 +113,14 @@ function toBktEvidence(
   // Voided tries (worksheet unapproval, Phase 3a) count nowhere
   if (raw.voided === true || raw.voided === 1) return null
 
-  const partNumber = optionalNumber(raw.partNumber)
-  const mode = partNumber == null ? undefined : modeByPartNumber.get(partNumber)
-  // The part's kind says its tries are not BKT evidence
-  if (mode === null) return null
   const timingReview =
     raw.timingReview && typeof raw.timingReview === 'object'
       ? (raw.timingReview as SlotResult['timingReview'])
       : undefined
 
   return {
-    skillsExercised: raw.skillsExercised.filter(
-      (skillId): skillId is string => typeof skillId === 'string'
-    ),
+    evidence,
+    mode,
     timestamp,
     isCorrect: raw.isCorrect === true || raw.isCorrect === 1,
     responseTimeMs: optionalNumber(raw.responseTimeMs) ?? 0,
@@ -149,9 +137,6 @@ function toBktEvidence(
     source: optionalSource(raw.source),
     originalSource: optionalSource(raw.originalSource),
     timingReview,
-    // Rows that name no part (recency-refresh sentinels, parts: []) keep the
-    // legacy 'linear' default (§10 P2-5)
-    partType: mode ?? 'linear',
   }
 }
 
@@ -197,6 +182,9 @@ async function getEvidenceChunk(
           'originalSource', json_extract(value, '$.originalSource'),
           'timingReview', json_extract(value, '$.timingReview'),
           'partNumber', json_extract(value, '$.partNumber'),
+          'partIndex', json_extract(value, '$.partIndex'),
+          'evidence', json_extract(value, '$.evidence'),
+          'evidenceType', json_type(value, '$.evidence'),
           'kind', json_extract(value, '$.kind'),
           'round', json_extract(value, '$.round'),
           'practiceOnly', json_extract(value, '$.practiceOnly'),
@@ -243,9 +231,7 @@ export async function batchGetRecentBktEvidence(
     const sessions = await getEvidenceChunk(chunk, sessionLimit)
 
     for (const session of sessions) {
-      const modeByPartNumber = bktModesByPartNumber(
-        parseJsonArray(session.partTypeMap) as RawPartType[]
-      )
+      const parts = evidencePartsOf(session.partTypeMap)
 
       let evidence = resultMap.get(session.playerId)
       if (!evidence) {
@@ -255,7 +241,7 @@ export async function batchGetRecentBktEvidence(
 
       for (const raw of parseJsonArray(session.evidenceJson) as RawProjectedEvidence[]) {
         if (!raw || typeof raw !== 'object') continue
-        const normalized = toBktEvidence(raw, modeByPartNumber)
+        const normalized = toBktEvidence(raw, parts)
         if (normalized) evidence.push(normalized)
       }
     }

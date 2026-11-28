@@ -12,14 +12,7 @@ import * as report from '../arithmetic/report'
 import { arithmeticKind, redeemByDoOver } from '../arithmetic/server'
 import * as state from '../arithmetic/state'
 import type { KindTry } from '../kind'
-import {
-  bktModeOf,
-  findPartKind,
-  isPartPlayable,
-  kindIdOf,
-  partKindOf,
-  plannedItemCount,
-} from '../registry'
+import { findPartKind, isPartPlayable, kindIdOf, partKindOf, plannedItemCount } from '../registry'
 
 function slot(i: number, withProblem = true): ProblemSlot {
   return {
@@ -70,10 +63,8 @@ describe('registry', () => {
     expect(isPartPlayable(part('abacus', []))).toBe(true) // as the old loop: no slot, nothing missing
   })
 
-  it('planned items are the slots; bktMode is the part type', () => {
+  it('planned items are the slots', () => {
     expect(plannedItemCount(part('linear'))).toBe(3)
-    expect(bktModeOf(part('visualization'))).toBe('visualization')
-    expect(bktModeOf({ ...part('abacus'), kind: 'arithmetic' })).toBe('abacus')
   })
 })
 
