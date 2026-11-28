@@ -22,7 +22,7 @@ import type {
   SlotResult,
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
-import { formatProblemExpression } from '@/lib/curriculum/parts/arithmetic/describe'
+import { describeTry } from '@/lib/curriculum/parts/registry'
 import { type SessionReport, sessionBreaksOf } from '@/lib/curriculum/session-report'
 import { getSkillDisplayName } from '@/utils/skillSearch'
 
@@ -447,7 +447,10 @@ function summarizeProblemAttempts(plan: SessionPlan): ProblemAttemptSummary[] {
       partType: getPartTypeLabel(partType),
       purpose: slotMeta?.slot.purpose,
       problem,
-      problemText: formatProblemExpression(problem.terms, problem.answer),
+      problemText: describeTry(
+        slotMeta?.part ?? plan.parts[(finalResult.partNumber ?? 1) - 1],
+        finalResult
+      ),
       answer: problem.answer,
       studentAnswers: uniqueNumbers(group.map(({ result }) => result.studentAnswer)),
       attempts,

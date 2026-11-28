@@ -17,6 +17,15 @@
  * read a part's slots to draw one dot per slot, §10 P5b-10). Outside these
  * directories the arithmetic kind's own files and the normalizer read slots
  * by design.
+ *
+ * Practice kinds K4 (plan of record §4 K4) adds the kind-blind gate: the
+ * session shell (`components/practice/session/`, K5), the flow machine, the
+ * report, the recorder, the composer (`lib/curriculum/compose/`, K6a) and the
+ * curriculum API read none of arithmetic's try fields either (`problem`,
+ * `studentAnswer`, `skillsExercised`, `usedOnScreenAbacus`, `terms`), nor the
+ * names above. A path that does not exist yet is listed with the phase that
+ * makes it, so it is gated the day it appears; an exemption is listed with
+ * its reason and must still read a gated name, so the list only shrinks.
  */
 
 import fs from 'node:fs'
@@ -28,6 +37,37 @@ const SRC = path.resolve(__dirname, '..')
 const GATED_DIRS = ['components/practice', 'app/practice', 'hooks']
 const GATED_NAMES = new Set(['slots', 'retryState', 'currentSlotIndex'])
 const EXEMPT_FILES = new Set(['components/practice/SessionProgressIndicator.tsx'])
+
+/** Arithmetic's try fields, which kind-blind code reads only through the kind (K4). */
+const TRY_FIELD_NAMES = [
+  'problem',
+  'studentAnswer',
+  'skillsExercised',
+  'usedOnScreenAbacus',
+  'terms',
+]
+const KIND_BLIND_NAMES = new Set([...GATED_NAMES, ...TRY_FIELD_NAMES])
+const KIND_BLIND_PATHS = [
+  'components/practice/session',
+  'lib/curriculum/session-flow.ts',
+  'lib/curriculum/session-report.ts',
+  'lib/curriculum/record-try.ts',
+  'lib/curriculum/compose',
+  'app/api/curriculum',
+]
+/** Gated paths not written yet, by the phase that writes them. */
+const NOT_YET: Record<string, string> = {
+  'components/practice/session': 'K5 (the session shell)',
+  'lib/curriculum/compose': 'K6a (the composer)',
+}
+/**
+ * Kind-blind files that read a gated name today, each with why (§8 A16). The
+ * gate asserts each still does, so a fixed one leaves the list.
+ */
+const KIND_BLIND_EXEMPT: Record<string, string> = {
+  'app/api/curriculum/[playerId]/attachments/[attachmentId]/approve/route.ts':
+    "worksheet approval keeps its own writer (R16); its response names the worksheet's skills",
+}
 
 function isExempt(relative: string): boolean {
   return (
@@ -58,7 +98,11 @@ function isAssignmentTarget(node: ts.Node): boolean {
 }
 
 /** The gated reads in one source file, as `line:name`. */
-function gatedReads(fileName: string, source: string): string[] {
+function gatedReads(
+  fileName: string,
+  source: string,
+  names: ReadonlySet<string> = GATED_NAMES
+): string[] {
   const sf = ts.createSourceFile(
     fileName,
     source,
@@ -88,7 +132,7 @@ function gatedReads(fileName: string, source: string): string[] {
       name =
         ts.isIdentifier(node.name) || ts.isStringLiteralLike(node.name) ? node.name.text : undefined
     }
-    if (name && GATED_NAMES.has(name)) {
+    if (name && names.has(name)) {
       hits.push(`${sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1}:${name}`)
     }
     ts.forEachChild(node, visit)
@@ -161,5 +205,71 @@ describe('Phase 5 import gate: screens read no slots or legacy cursor', () => {
     }
     expect(scanned).toBeGreaterThan(100)
     expect(offenders).toEqual([])
+  })
+})
+
+/** The files of a gated path (a file or a directory), relative to `src`, tests and stories left out. */
+function gatedFilesOf(gated: string): string[] {
+  const full = path.join(SRC, gated)
+  const files = fs.statSync(full).isDirectory() ? sourceFiles(full) : [full]
+  return files
+    .map((file) => path.relative(SRC, file).split(path.sep).join('/'))
+    .filter((relative) => !isExempt(relative))
+}
+
+describe('K4 kind-blind gate: no arithmetic try field outside the kind', () => {
+  it("catches arithmetic's try fields (the gate fails on a planted read)", () => {
+    const planted = [
+      'const a = row.studentAnswer',
+      'const { problem } = row',
+      "const s = row['skillsExercised']",
+      'const t = row.problem?.terms',
+      'const u = r.usedOnScreenAbacus',
+      'const n = part.slots.length',
+    ].join('\n')
+    expect(gatedReads('planted.ts', planted, KIND_BLIND_NAMES)).toEqual([
+      '1:studentAnswer',
+      '2:problem',
+      '3:skillsExercised',
+      '4:terms',
+      '4:problem',
+      '5:usedOnScreenAbacus',
+      '6:slots',
+    ])
+  })
+
+  it('every gated path exists unless its phase is still to come', () => {
+    for (const gated of KIND_BLIND_PATHS) {
+      expect(fs.existsSync(path.join(SRC, gated)), `${gated} (${NOT_YET[gated] ?? 'exists'})`).toBe(
+        !(gated in NOT_YET)
+      )
+    }
+  })
+
+  it('no kind-blind file reads a try field or a slot, but the listed exemptions', () => {
+    const offenders: string[] = []
+    const exemptHits: Record<string, string[]> = {}
+    let scanned = 0
+    for (const gated of KIND_BLIND_PATHS) {
+      if (gated in NOT_YET) continue
+      for (const relative of gatedFilesOf(gated)) {
+        scanned++
+        const hits = gatedReads(
+          relative,
+          fs.readFileSync(path.join(SRC, relative), 'utf8'),
+          KIND_BLIND_NAMES
+        )
+        if (relative in KIND_BLIND_EXEMPT) exemptHits[relative] = hits
+        else if (hits.length > 0) offenders.push(`${relative} ${hits.join(' ')}`)
+      }
+    }
+    expect(scanned).toBeGreaterThan(30)
+    expect(offenders).toEqual([])
+    // Each exemption is a file the gate reads and that still reads a gated name
+    for (const exempt of Object.keys(KIND_BLIND_EXEMPT)) {
+      expect(exemptHits[exempt], `${exempt}: drop it from KIND_BLIND_EXEMPT`).toEqual(
+        expect.arrayContaining([expect.any(String)])
+      )
+    }
   })
 })

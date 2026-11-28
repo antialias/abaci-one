@@ -8,6 +8,7 @@
  * recording a try into it fails (§10 P2-4).
  */
 
+import type { SlotResult } from '@/db/schema/session-plans'
 import { arithmeticKind } from './arithmetic/server'
 import type { AnyPartKind, StoredPart } from './kind'
 
@@ -36,6 +37,21 @@ export function partKindOf(part: Pick<StoredPart, 'kind'>): AnyPartKind {
 export function isPartPlayable(part: StoredPart): boolean {
   const kind = findPartKind(part)
   return kind ? kind.isPlayable(kind.contentOf(part)) : true
+}
+
+/**
+ * One line naming what a stored try answered, by its part's kind
+ * (`describe`), for the song, MCP and logs. A part this image does not know,
+ * or a row with no part, is 'a problem'.
+ */
+export function describeTry(part: StoredPart | undefined, row: SlotResult): string {
+  const kind = part ? findPartKind(part) : undefined
+  if (!part || !kind) return 'a problem'
+  return kind.describe(part, {
+    result: row,
+    outcome: row.outcome ?? 'answered',
+    payload: kind.payloadOf(row),
+  })
 }
 
 /** Items planned for a part (its `items()`); 0 for an unknown kind. */

@@ -12,8 +12,8 @@
  *   the seam in `parts/legacy-wire.ts` (amendment A12), so the same try gives
  *   the same row whichever body carries it;
  * - `record_try` with the envelope (`TrySubmission`), located by `itemId`
- *   through the kind's `expectedItem` / `acceptsDoOver`. Unused by the client
- *   until K4.
+ *   (and, when sent, the round) through the kind's `expectedItem` /
+ *   `acceptsDoOver`. The client sends every try this way from K4b.
  *
  * This file names no kind: what a kind stores is the kind's (`snapshotOf`,
  * `evidenceOf`, `payloadOf`), and the legacy wire is its adapter's.
@@ -80,6 +80,13 @@ export interface TrySubmission {
   partIndex: number
   itemId: string
   mode: 'first_or_retry' | 'do_over'
+  /**
+   * A first or retry try's round as the client showed it (K4, amendment A16).
+   * When sent it must be the expected item's round: a resend that arrives
+   * once the item's next round is current is not the current try. Absent:
+   * the item's id alone locates it.
+   */
+  round?: number
   outcome: TryOutcome
   /** null unless answered */
   answer: unknown | null
@@ -111,12 +118,64 @@ export interface RecordTryResult {
 }
 
 const OUTCOMES: readonly TryOutcome[] = ['answered', 'skipped', 'timeout']
+
+/**
+ * A string field's members, as a record so tsc holds it to the union: a
+ * member missing or one too many is a type error.
+ */
+type Members<U extends string> = Readonly<Record<U, true>>
+
+const CAP_REASONS: Members<NonNullable<StoredTry['capReason']>> = {
+  'idle-exceeded': true,
+  'clock-anomaly': true,
+}
+const CAP_SOURCES: Members<NonNullable<StoredTry['capSource']>> = { client: true, server: true }
+const HELP_TRIGGERS: Members<NonNullable<StoredTry['helpTrigger']>> = {
+  none: true,
+  manual: true,
+  'auto-time': true,
+  'auto-errors': true,
+  'teacher-approved': true,
+}
+
+/** A value of the type a field must have, or one of its union's members. */
+function passes(rule: 'number' | 'boolean' | Members<string>, v: unknown): boolean {
+  if (typeof rule === 'string') return typeof v === rule
+  return typeof v === 'string' && Object.keys(rule).includes(v)
+}
+
+/**
+ * The timing fields a `record_try` body may set, with the type each must
+ * have (a string field, a member of its union). Only these reach the row:
+ * anything else in `timing` (`voided`, `attachmentId`, a top-level field of
+ * any name) is dropped, so a body can set no stamp the server owns.
+ */
+const TIMING_FIELD_TYPES = {
+  responseTimeMs: 'number',
+  responseTimeMsRaw: 'number',
+  wasIdleCapped: 'boolean',
+  capReason: CAP_REASONS,
+  capThresholdMs: 'number',
+  capSource: CAP_SOURCES,
+  hiddenTimeExcludedMs: 'number',
+} as const satisfies Record<keyof TrySubmission['timing'], 'number' | 'boolean' | Members<string>>
+
+/** The whitelisted timing fields of a body, each of its declared type. */
+function timingOf(raw: unknown): Partial<TrySubmission['timing']> {
+  const out: Record<string, unknown> = {}
+  if (!raw || typeof raw !== 'object') return out
+  const r = raw as Record<string, unknown>
+  for (const [key, rule] of Object.entries(TIMING_FIELD_TYPES)) {
+    if (passes(rule, r[key])) out[key] = r[key]
+  }
+  return out as Partial<TrySubmission['timing']>
+}
 const isOutcome = (v: unknown): v is TryOutcome => OUTCOMES.includes(v as TryOutcome)
 
 /**
- * A `record_try` body checked for shape (the route's 400). Only the fields the
- * recorder reads are checked; timing and help pass through the same guards
- * as a legacy body's.
+ * A `record_try` body checked for shape (the route's 400). Timing and help
+ * are whitelisted field by field (`TIMING_FIELD_TYPES`); timing then passes
+ * the same guard as a legacy body's (`sanitizeResultTiming`).
  */
 export function parseTrySubmission(body: unknown): TrySubmission {
   if (!body || typeof body !== 'object') throw new MalformedTrySubmissionError('not an object')
@@ -131,12 +190,18 @@ export function parseTrySubmission(body: unknown): TrySubmission {
   if (b.mode !== 'first_or_retry' && b.mode !== 'do_over') {
     throw new MalformedTrySubmissionError('mode')
   }
+  if (
+    b.round !== undefined &&
+    (typeof b.round !== 'number' || !Number.isInteger(b.round) || b.round < 0)
+  ) {
+    throw new MalformedTrySubmissionError('round')
+  }
   if (!isOutcome(b.outcome)) throw new MalformedTrySubmissionError('outcome')
   const payload = b.payload as TryPayload | undefined
   if (!payload || typeof payload !== 'object' || typeof payload.kind !== 'string') {
     throw new MalformedTrySubmissionError('payload')
   }
-  const timing = (b.timing ?? {}) as TrySubmission['timing']
+  const timing = timingOf(b.timing)
   if (typeof timing.responseTimeMs !== 'number') {
     throw new MalformedTrySubmissionError('timing.responseTimeMs')
   }
@@ -146,14 +211,17 @@ export function parseTrySubmission(body: unknown): TrySubmission {
     partIndex: b.partIndex,
     itemId: b.itemId,
     mode: b.mode,
+    ...(b.mode === 'first_or_retry' && typeof b.round === 'number' ? { round: b.round } : {}),
     outcome: b.outcome,
     answer: b.outcome === 'answered' ? (b.answer ?? null) : null,
     payload,
-    timing,
+    timing: timing as TrySubmission['timing'],
     help: {
       hadHelp: help.hadHelp === true,
       incorrectAttempts: typeof help.incorrectAttempts === 'number' ? help.incorrectAttempts : 0,
-      ...(help.helpTrigger !== undefined ? { helpTrigger: help.helpTrigger } : {}),
+      ...(passes(HELP_TRIGGERS, help.helpTrigger)
+        ? { helpTrigger: help.helpTrigger as StoredTry['helpTrigger'] }
+        : {}),
     },
   }
 }
@@ -297,7 +365,11 @@ function locateEnvelope(plan: SessionPlan, s: TrySubmission): Target {
     const expected =
       s.partIndex === plan.currentPartIndex ? kind.expectedItem(content, state) : null
     const position = expected === null ? null : itemPositionOf(kind, expected)
-    if (!position || position.itemId !== s.itemId) {
+    if (
+      !position ||
+      position.itemId !== s.itemId ||
+      (s.round !== undefined && s.round !== position.round)
+    ) {
       throw new SlotResultMismatchError(s.itemId, position?.itemId ?? null, 'not_current')
     }
     tryKind = position.round > 0 ? 'retry' : 'first'
@@ -309,7 +381,16 @@ function locateEnvelope(plan: SessionPlan, s: TrySubmission): Target {
       const reason = kind.whyNotDoOver?.(content, state, tries, s.itemId) ?? 'not_accepted'
       throw new SlotResultMismatchError(s.itemId, null, reason)
     }
-    ;({ round, practiceOnly } = doOverStamp(tries.filter((t) => t.itemId === s.itemId)))
+    const stamp = doOverStamp(tries.filter((t) => t.itemId === s.itemId))
+    // The kit's rule (amendment A17): a do-over of an item whose answer the
+    // kid has been shown is practice-only when a kind accepts it at all. It
+    // is recorded and counts toward nothing, so no kind can give credit for
+    // an answer it showed. A kind may refuse it instead (`whyNotDoOver`
+    // 'divulged', the shared cursor). Shown is the kind's reading of the
+    // tries, never where its cursor stands: an item queued for its last
+    // round has no round left and its answer is not out
+    round = stamp.round
+    practiceOnly = stamp.practiceOnly || kind.answerShown(tries, s.itemId)
     tryKind = 'do_over'
   }
   const snapshot = kind.snapshotOf

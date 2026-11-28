@@ -18,7 +18,26 @@ import {
 } from '@/lib/curriculum'
 import { setPracticingSkills } from '@/lib/curriculum/progress-manager'
 import { setPlanFields } from '@/lib/curriculum/row-cas'
+import type { EnabledParts } from '@/lib/curriculum/session-planner'
 import { getUserId } from '@/lib/viewer'
+
+/**
+ * A part a preset asks for, named by `(kind, presentation)` (practice-kinds
+ * §4 K4). Generation still takes arithmetic's three toggles until the
+ * planner registry plans any kind (K6a, which adds the one-kind starter), so
+ * a preset names arithmetic's presentations only.
+ */
+interface PresetPart {
+  kind: 'arithmetic'
+  presentation: keyof EnabledParts
+}
+
+interface Preset {
+  durationMinutes: number
+  parts: readonly PresetPart[]
+  overrideProblemsPerPart: number
+  gameBreakSettings: GameBreakSettings
+}
 
 /**
  * Debug presets for quick session creation
@@ -27,7 +46,10 @@ const PRESETS = {
   /** 2 parts (abacus + visualization), 1 problem each, auto-start matching game break */
   'game-break': {
     durationMinutes: 2,
-    enabledParts: { abacus: true, visualization: true, linear: false },
+    parts: [
+      { kind: 'arithmetic', presentation: 'abacus' },
+      { kind: 'arithmetic', presentation: 'visualization' },
+    ],
     overrideProblemsPerPart: 1,
     gameBreakSettings: {
       enabled: true,
@@ -41,7 +63,7 @@ const PRESETS = {
   /** 1 part (abacus only), 1 problem, no game break */
   minimal: {
     durationMinutes: 1,
-    enabledParts: { abacus: true, visualization: false, linear: false },
+    parts: [{ kind: 'arithmetic', presentation: 'abacus' }],
     overrideProblemsPerPart: 1,
     gameBreakSettings: {
       enabled: false,
@@ -52,9 +74,16 @@ const PRESETS = {
       useAdaptiveSelection: false,
     } satisfies GameBreakSettings,
   },
-} as const
+} as const satisfies Record<string, Preset>
 
 type PresetName = keyof typeof PRESETS
+
+/** The generator's toggles for a preset's parts: on for each presentation it names. */
+function enabledPartsOf(parts: readonly PresetPart[]): EnabledParts {
+  const enabled: EnabledParts = { abacus: false, visualization: false, linear: false }
+  for (const part of parts) enabled[part.presentation] = true
+  return enabled
+}
 
 /**
  * POST /api/debug/practice-session
@@ -85,6 +114,7 @@ export const POST = withAuth(
       }
 
       const config = PRESETS[preset]
+      const enabledParts = enabledPartsOf(config.parts)
 
       // 1. Get current viewer's database user ID
       const userId = await getUserId()
@@ -149,9 +179,9 @@ export const POST = withAuth(
             ...DEFAULT_SESSION_PREFERENCES,
             durationMinutes: config.durationMinutes,
             partWeights: {
-              abacus: config.enabledParts.abacus ? 1 : 0,
-              visualization: config.enabledParts.visualization ? 1 : 0,
-              linear: config.enabledParts.linear ? 1 : 0,
+              abacus: enabledParts.abacus ? 1 : 0,
+              visualization: enabledParts.visualization ? 1 : 0,
+              linear: enabledParts.linear ? 1 : 0,
             },
             gameBreakEnabled: config.gameBreakSettings.enabled,
             gameBreakMinutes: config.gameBreakSettings.maxDurationMinutes,
@@ -174,7 +204,7 @@ export const POST = withAuth(
       const plan = await generateSessionPlan({
         playerId: player.id,
         durationMinutes: config.durationMinutes,
-        enabledParts: config.enabledParts,
+        enabledParts,
         overrideProblemsPerPart: config.overrideProblemsPerPart,
         gameBreakSettings: config.gameBreakSettings,
       })

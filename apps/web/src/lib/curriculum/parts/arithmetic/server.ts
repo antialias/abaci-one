@@ -103,6 +103,7 @@ export const arithmeticKind: PartKind<
   // in K2, where it was a plain Error (500); refused here it is the
   // recorder's quiet 409 `SLOT_MISMATCH` (R14).
   initialState: arithmeticCursor.initialState,
+  answerShown: arithmeticCursor.answerShown,
   acceptsDoOver: arithmeticCursor.acceptsDoOver,
   whyNotDoOver: arithmeticCursor.whyNotDoOver,
   applyTry: arithmeticCursor.applyTry,

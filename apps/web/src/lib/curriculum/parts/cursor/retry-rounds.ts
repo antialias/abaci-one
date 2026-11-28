@@ -90,9 +90,32 @@ export interface RetryRoundsOptions<Item, Q extends QueuedRetry> {
   queuedItemOf?(list: readonly Item[], queued: Q): Item | undefined
 }
 
+/**
+ * `PartKind.answerShown` for a kind with `maxRounds` retry rounds: a wrong
+ * try in the last round shows the item's answer. That is a wrong retry at
+ * round `maxRounds` or later, exactly the first kind's rule before K3 (its
+ * first tries are round 0, and a first try is never counted, whatever round
+ * a row names); with no retry rounds (`maxRounds` 0) the first pass is the
+ * last round, so a wrong first try. Read from the tries alone: an item queued
+ * for its last round has not been shown it yet (amendment A17).
+ */
+export function answerShownWith(
+  maxRounds: number
+): (tries: readonly KindTry[], itemId: string) => boolean {
+  return (tries, itemId) =>
+    tries.some(
+      (t) =>
+        t.itemId === itemId &&
+        !t.isCorrect &&
+        ((t.kind === 'retry' && t.round >= maxRounds) || (t.kind === 'first' && maxRounds === 0))
+    )
+}
+
 /** The cursor half of `PartKind`, plus the moves a kind composing it may reuse. */
 export interface RetryRoundsCursor<Content, Item, Q extends QueuedRetry> {
   readonly maxRounds: number
+  /** `PartKind.answerShown`: `answerShownWith(maxRounds)` */
+  answerShown(tries: readonly KindTry[], itemId: string): boolean
   initialState(content: Content): RetryRoundsState<Q>
   expectedItem(content: Content, state: RetryRoundsState<Q>): RetryRoundItem<Item, Q> | null
   acceptsDoOver(
@@ -274,21 +297,7 @@ export function retryRoundsCursor<
     return redeemAt(state, index)
   }
 
-  /**
-   * Whether the item's answer was shown: a wrong try in the last round there
-   * is. That is a wrong retry at round `maxRounds` or later, exactly the
-   * first kind's rule before K3 (its first tries are round 0, and a first
-   * try is never counted, whatever round a row names); with no retry rounds
-   * (`maxRounds` 0) the first pass is the last round, so a wrong first try.
-   */
-  function divulged(tries: readonly KindTry[], itemId: string): boolean {
-    return tries.some(
-      (t) =>
-        t.itemId === itemId &&
-        !t.isCorrect &&
-        ((t.kind === 'retry' && t.round >= maxRounds) || (t.kind === 'first' && maxRounds === 0))
-    )
-  }
+  const divulged = answerShownWith(maxRounds)
 
   function whyNotDoOver(
     content: Content,
@@ -303,6 +312,8 @@ export function retryRoundsCursor<
 
   return {
     maxRounds,
+
+    answerShown: divulged,
 
     initialState: () => ({ slotIndex: 0, retry: undefined }),
 

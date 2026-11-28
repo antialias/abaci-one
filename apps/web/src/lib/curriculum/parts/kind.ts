@@ -136,6 +136,13 @@ export interface PartKind<Content, State, Item, Part extends StoredPart = Stored
   initialState(content: Content): State
   /** What the student is shown next; null when the part has nothing left to show */
   expectedItem(content: Content, state: State): Item | null
+  /**
+   * Whether the kid has been shown `itemId`'s answer, decided from the part's
+   * tries alone, never from where its cursor stands (amendment A17). The
+   * recorder stores a do-over of such an item practice-only when the kind
+   * accepts it at all. The shared cursor's is `answerShownWith(maxRounds)`.
+   */
+  answerShown(tries: readonly KindTry[], itemId: string): boolean
   /** Whether a do-over of `itemId` may be recorded, given the part's tries so far */
   acceptsDoOver(content: Content, state: State, tries: readonly KindTry[], itemId: string): boolean
   /**

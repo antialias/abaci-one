@@ -1,10 +1,12 @@
 /**
  * A stub second kind, "read the abacus" (plan of record §1.3): the proof that
- * a kind can be written against the contract alone. It imports only
- * `../../kind`; `stub-kind.test.ts` checks that, and tsc checks that it
- * satisfies `PartKind`.
+ * a kind can be written against the contract alone. It imports the
+ * contract, and from the shared cursor only its rule for when an answer is
+ * shown (`answerShownWith`); `stub-kind.test.ts` checks that, and tsc checks
+ * that it satisfies `PartKind`.
  */
 
+import { answerShownWith } from '../../cursor/retry-rounds'
 import type { KindTry, PartKind, Presentation } from '../../kind'
 
 export interface ReadAbacusItem {
@@ -43,6 +45,8 @@ export const readAbacusKind: PartKind<Content, State, ReadAbacusItem, ReadAbacus
   itemOf: (content, itemId) => content.items.find((i) => i.itemId === itemId) ?? null,
   initialState: () => ({ index: 0 }),
   expectedItem: (content, state) => content.items[state.index] ?? null,
+  // No retry rounds: a wrong first try shows the answer
+  answerShown: answerShownWith(0),
   acceptsDoOver: (content, state, tries, itemId) =>
     content.items.slice(0, state.index).some((i) => i.itemId === itemId) &&
     tries.some((t: KindTry) => t.itemId === itemId),
