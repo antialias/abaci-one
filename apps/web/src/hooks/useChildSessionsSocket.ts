@@ -1,11 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
-import { createSocket } from '@/lib/socket'
-import { api } from '@/lib/queryClient'
-import type { SessionStartedEvent, SessionEndedEvent } from '@/lib/classroom/socket-events'
+import type { SessionEndedEvent, SessionStartedEvent } from '@/lib/classroom/socket-events'
 import type { Counts } from '@/lib/curriculum/session-report'
+import { api } from '@/lib/queryClient'
+import { createSocket } from '@/lib/socket'
 
 /**
  * Active session information for a child
@@ -137,7 +137,8 @@ export function useChildSessionsSocket(
       setConnected(true)
 
       // Subscribe to child sessions
-      socket.emit('subscribe-child-sessions', { userId, childIds })
+      // The server checks each child against the socket's verified viewer
+      socket.emit('subscribe-child-sessions', { childIds })
       subscribedIdsRef.current = new Set(childIds)
     })
 
@@ -185,7 +186,6 @@ export function useChildSessionsSocket(
     return () => {
       if (subscribedIdsRef.current.size > 0) {
         socket.emit('unsubscribe-child-sessions', {
-          userId,
           childIds: Array.from(subscribedIdsRef.current),
         })
       }
@@ -209,18 +209,12 @@ export function useChildSessionsSocket(
     const toUnsubscribe = Array.from(subscribedIds).filter((id) => !currentIds.has(id))
 
     if (toSubscribe.length > 0) {
-      socket.emit('subscribe-child-sessions', {
-        userId,
-        childIds: toSubscribe,
-      })
+      socket.emit('subscribe-child-sessions', { childIds: toSubscribe })
       toSubscribe.forEach((id) => subscribedIds.add(id))
     }
 
     if (toUnsubscribe.length > 0) {
-      socket.emit('unsubscribe-child-sessions', {
-        userId,
-        childIds: toUnsubscribe,
-      })
+      socket.emit('unsubscribe-child-sessions', { childIds: toUnsubscribe })
       toUnsubscribe.forEach((id) => subscribedIds.delete(id))
 
       // Remove sessions for unsubscribed children

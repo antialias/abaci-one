@@ -265,11 +265,11 @@ export function useRoomData() {
 
     sock.on('connect', () => {
       // Always join user-specific channel for personal notifications (invitations, bans, kicks)
-      sock.emit('join-user-channel', { userId })
+      sock.emit('join-user-channel', {})
 
       // Join room channel only if user is in a room
       if (roomData?.id) {
-        sock.emit('join-room', { roomId: roomData.id, userId })
+        sock.emit('join-room', { roomId: roomData.id })
       }
     })
 
@@ -283,7 +283,7 @@ export function useRoomData() {
       if (sock.connected) {
         // Leave the room before disconnecting (if in a room)
         if (roomData?.id) {
-          sock.emit('leave-room', { roomId: roomData.id, userId })
+          sock.emit('leave-room', { roomId: roomData.id })
         }
         sock.disconnect()
       }
@@ -543,7 +543,7 @@ export function useRoomData() {
   // Function to notify room members of player updates
   const notifyRoomOfPlayerUpdate = useCallback(() => {
     if (socket && roomData?.id && userId) {
-      socket.emit('players-updated', { roomId: roomData.id, userId })
+      socket.emit('players-updated', { roomId: roomData.id })
     }
   }, [socket, roomData?.id, userId])
 

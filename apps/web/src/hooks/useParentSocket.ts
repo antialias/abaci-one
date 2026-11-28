@@ -1,9 +1,8 @@
 'use client'
 
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
-import { createSocket } from '@/lib/socket'
-import { useQueryClient } from '@tanstack/react-query'
 import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
 import type {
   EnrollmentApprovedEvent,
@@ -15,6 +14,7 @@ import type {
   EntryPromptDeclinedEvent,
   StudentUnenrolledEvent,
 } from '@/lib/classroom/socket-events'
+import { createSocket } from '@/lib/socket'
 
 /**
  * Hook for real-time parent notifications via WebSocket
@@ -48,7 +48,7 @@ export function useParentSocket(userId: string | undefined): {
       console.log('[ParentSocket] Connected')
       setConnected(true)
       // Join the user channel for parent notifications
-      socket.emit('join-user-channel', { userId })
+      socket.emit('join-user-channel', {})
     })
 
     socket.on('disconnect', () => {

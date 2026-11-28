@@ -6,8 +6,8 @@
  * Reads `GET …/plans/[planId]/report` (signed-in viewers) or
  * `GET /api/observe/[token]/report` (share links) through React Query, and
  * keeps it current from the server's pushes on the gated report room
- * (`subscribe-session-report`, joined with the caller's credential: the
- * signed-in viewer's id with `observe` on the player, or the share token):
+ * (`subscribe-session-report`, joined with the player, checked against the
+ * socket's verified viewer for `observe`, or with the share token):
  * - `session-report { report }` replaces the cached report only when its
  *   `rowVersion` is newer (pushes from several servers may arrive out of
  *   order; a fetch that started before a push never overwrites it either);
@@ -35,10 +35,10 @@ import { createSocket } from '@/lib/socket'
 
 export type SessionReportSource =
   /**
-   * A signed-in viewer; `viewerId` is checked for `observe` on the player to
-   * join the push room. The fetch needs only the cookie: with `viewerId` still
-   * null (identity loading) the report is fetched and the push room is joined
-   * once it is known.
+   * A viewer of the player's session. The fetch needs only the cookie; the
+   * push room is joined once `viewerId` is known (null: identity loading, or
+   * fetch only). The server checks its own verified viewer of the socket for
+   * `observe`, so the id itself is not sent.
    */
   | { playerId: string; planId: string; viewerId: string | null }
   /** A share-link holder */
@@ -131,7 +131,7 @@ export function useSessionReport(
     ? 'token' in source
       ? { shareToken: source.token }
       : source.viewerId
-        ? { viewerId: source.viewerId, playerId: source.playerId }
+        ? { playerId: source.playerId }
         : null
     : null
   const credentialHash = JSON.stringify(credential)
@@ -142,7 +142,8 @@ export function useSessionReport(
     const refetch = () => queryClient.invalidateQueries({ queryKey: key }, { cancelRefetch: false })
 
     socket.on('connect', () => {
-      // The gated push room; the server checks the credential (session-report-access.ts)
+      // The gated push room; the server checks the socket's viewer or the
+      // share token (session-report-access.ts)
       socket.emit('subscribe-session-report', { sessionId, ...credential })
       void refetch()
     })

@@ -47,6 +47,7 @@ vi.mock('@/db', () => ({
     },
     insert: vi.fn(() => ({
       values: vi.fn(() => ({
+        onConflictDoNothing: () => ({ returning: () => mockInsertReturning() }),
         returning: () => mockInsertReturning(),
       })),
     })),

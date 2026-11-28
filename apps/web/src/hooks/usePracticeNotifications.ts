@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useEffect, useRef } from 'react'
 import type { Socket } from 'socket.io-client'
-import { createSocket } from '@/lib/socket'
 import { useToast } from '@/components/common/ToastContext'
 import type { GenericNotificationEvent } from '@/lib/classroom/socket-events'
+import { createSocket } from '@/lib/socket'
 
 /**
  * Hook that listens for notification events on the user's Socket.IO channel
@@ -27,7 +27,7 @@ export function usePracticeNotifications(userId: string | undefined): void {
     socketRef.current = socket
 
     socket.on('connect', () => {
-      socket.emit('join-user-channel', { userId })
+      socket.emit('join-user-channel', {})
     })
 
     socket.on('notification', (data: GenericNotificationEvent) => {

@@ -4,6 +4,7 @@ import type { Session } from 'next-auth'
 import { auth } from '@/auth'
 import { db, schema } from '@/db'
 import { GUEST_COOKIE_NAME, GUEST_TOKEN_HEADER, verifyGuestToken } from './guest-token'
+import { getOrCreateUserFromGuestId } from './guest-user'
 
 /**
  * Unified viewer utility for server components
@@ -78,29 +79,6 @@ export async function getViewer(): Promise<
     )
     return { kind: 'unknown' }
   }
-}
-
-/**
- * Get or create a user record from a guestId
- *
- * This is the core function for converting a guest session identifier
- * into a database user record. If no user exists for the guestId,
- * one is created automatically.
- *
- * @param guestId - The guest session identifier
- * @returns The user record from the database
- */
-async function getOrCreateUserFromGuestId(guestId: string) {
-  let user = await db.query.users.findFirst({
-    where: eq(schema.users.guestId, guestId),
-  })
-
-  if (!user) {
-    const [newUser] = await db.insert(schema.users).values({ guestId }).returning()
-    user = newUser
-  }
-
-  return user
 }
 
 /**

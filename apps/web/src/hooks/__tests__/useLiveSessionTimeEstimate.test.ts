@@ -7,7 +7,6 @@ import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 // ============================================================================
 
 // The viewer id that subscribes to the gated session room (Phase 4c)
-vi.mock('@/hooks/useUserId', () => ({ useUserId: () => ({ data: 'viewer-1' }) }))
 vi.mock('socket.io-client', () => ({ io: vi.fn() }))
 
 type SocketHandler = (...args: any[]) => void
@@ -152,9 +151,9 @@ describe('useLiveSessionTimeEstimate', () => {
 
     expect(result.current.isConnected).toBe(true)
     expect(result.current.error).toBeNull()
+    // Only the session: the server checks the socket's own verified viewer
     expect(latestSocket!.emit).toHaveBeenCalledWith('subscribe-session-stats', {
       sessionId: 'session-123',
-      viewerId: 'viewer-1',
     })
   })
 

@@ -1,6 +1,9 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { ArcadeSessionStateContext } from '@/contexts/ArcadeSessionStateContext'
+import { useCoPlayInfo } from '@/contexts/CoPlayContext'
+import { useGameCompletionCallback } from '@/contexts/GameCompletionContext'
 import {
   buildPlayerMetadata,
   useArcadeSession,
@@ -9,13 +12,10 @@ import {
   useUserId,
 } from '@/lib/arcade/game-sdk'
 import { buildPlayerOwnershipFromRoomData } from '@/lib/arcade/player-ownership.client'
-import { useGameCompletionCallback } from '@/contexts/GameCompletionContext'
-import { useCoPlayInfo } from '@/contexts/CoPlayContext'
-import { ArcadeSessionStateContext } from '@/contexts/ArcadeSessionStateContext'
-import type { KnowYourWorldState, AssistanceLevel } from './types'
 import type { RegionSize } from './maps'
-import type { FeedbackType } from './utils/hotColdPhrases'
 import { MusicProvider } from './music'
+import type { AssistanceLevel, KnowYourWorldState } from './types'
+import type { FeedbackType } from './utils/hotColdPhrases'
 
 // Controls state for GameInfoPanel (set by MapRenderer, read by GameInfoPanel)
 export interface ControlsState {
@@ -149,9 +149,9 @@ interface KnowYourWorldContextValue {
       hoveredRegionId: string | null
     } | null
   >
+  /** The server stamps the cursor with this connection's verified user id */
   sendCursorUpdate: (
     playerId: string,
-    userId: string,
     cursorPosition: { x: number; y: number } | null,
     hoveredRegionId: string | null
   ) => void
@@ -389,16 +389,15 @@ export function KnowYourWorldProvider({ children }: { children: React.ReactNode 
     previousPhaseRef.current = state.gamePhase
   }, [state.gamePhase, onGameComplete, state])
 
-  // Pass through cursor updates with the provided player ID and userId
+  // Pass through cursor updates with the provided player ID
   const sendCursorUpdate = useCallback(
     (
       playerId: string,
-      sessionUserId: string,
       cursorPosition: { x: number; y: number } | null,
       hoveredRegionId: string | null
     ) => {
-      if (playerId && sessionUserId) {
-        sessionSendCursorUpdate(playerId, sessionUserId, cursorPosition, hoveredRegionId)
+      if (playerId) {
+        sessionSendCursorUpdate(playerId, cursorPosition, hoveredRegionId)
       }
     },
     [sessionSendCursorUpdate]

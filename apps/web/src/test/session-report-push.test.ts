@@ -105,7 +105,11 @@ vi.mock('@/lib/curriculum/progress-manager', async (importOriginal) => ({
 // The routes, without the auth layer
 vi.mock('@/lib/auth/withAuth', () => ({ withAuth: (handler: unknown) => handler }))
 vi.mock('@/lib/viewer', () => ({ getUserId: async () => 'viewer' }))
-const { canPerformAction } = vi.hoisted(() => ({ canPerformAction: vi.fn(async () => true) }))
+const { canPerformAction } = vi.hoisted(() => ({
+  canPerformAction: vi.fn(
+    async (_viewer: string, _player: string, _action: string, _opts?: unknown) => true
+  ),
+}))
 vi.mock('@/lib/classroom', () => ({ canPerformAction }))
 
 const { GET: planReportGET } = await import(
@@ -198,10 +202,18 @@ function onePart(n: number): SessionPart[] {
   return [{ ...part, slots: part.slots.slice(0, n) }]
 }
 
-/** A fake connected socket: `join` adds it to `members`, `received` collects what it hears. */
-function fakeSocket() {
+/**
+ * A fake connected socket: `join` adds it to `members`, `received` collects
+ * what it hears; `viewerId` is its verified viewer (absent: anonymous).
+ */
+function fakeSocket(viewerId?: string) {
   const handlers = new Map<string, (data: any) => Promise<void> | void>()
   const sock = {
+    data: {
+      viewer: viewerId
+        ? ({ kind: 'user', userId: viewerId } as const)
+        : ({ kind: 'anonymous' } as const),
+    },
     received: [] as Array<{ event: string; data: any }>,
     on: (event: string, handler: (data: any) => Promise<void> | void) => {
       handlers.set(event, handler)
@@ -477,22 +489,19 @@ describe('Phase 4a: session report push and routes', () => {
 
     it('gated report room: an unauthorized join is refused and hears no report; an authorized one does', async () => {
       const planId = await insertLivePlan(playerId, onePart(2))
-      const stranger = fakeSocket()
-      const parent = fakeSocket()
+      const stranger = fakeSocket('x')
+      const parent = fakeSocket(userId)
       const otherShareHolder = fakeSocket()
       const shareHolder = fakeSocket()
-      canPerformAction.mockResolvedValueOnce(false)
+      // Only the parent may observe. The stranger names the parent's id: it
+      // is checked as itself, so the asserted id grants nothing
+      canPerformAction.mockImplementation(async (viewer: string) => viewer === userId)
       await stranger.send('subscribe-session-report', {
-        sessionId: planId,
-        viewerId: 'x',
-        playerId,
-      })
-      canPerformAction.mockResolvedValueOnce(true)
-      await parent.send('subscribe-session-report', {
         sessionId: planId,
         viewerId: userId,
         playerId,
       })
+      await parent.send('subscribe-session-report', { sessionId: planId, playerId })
       const otherPlan = await insertLivePlan(playerId)
       const otherShare = await createSessionShare(otherPlan, playerId, userId, '1h')
       await otherShareHolder.send('subscribe-session-report', {
@@ -506,6 +515,8 @@ describe('Phase 4a: session report push and routes', () => {
       })
 
       expect(stranger.received.map((r) => r.event)).toEqual(['session-report-error'])
+      // Each socket was checked as itself: the stranger as 'x', the parent as the parent
+      expect(canPerformAction.mock.calls.map((c: unknown[]) => c[0])).toEqual(['x', userId])
       expect(otherShareHolder.received.map((r) => r.event)).toEqual(['session-report-error'])
       expect(parent.received.map((r) => r.event)).toEqual(['session-report-subscribed'])
       expect(shareHolder.received.map((r) => r.event)).toEqual(['session-report-subscribed'])

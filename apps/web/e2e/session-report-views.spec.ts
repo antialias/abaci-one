@@ -24,6 +24,8 @@ import {
   type Page,
   test,
 } from '@playwright/test'
+import { type Socket as ClientSocket, io as connectSocket } from 'socket.io-client'
+import { getLocalAuthSecret, LOCAL_ADMIN_USER_ID, mintSessionJWT } from './session-cookie'
 
 const SHOTS = process.env.RF_SHOTS_DIR ?? '/tmp/4c-views-e2e'
 
@@ -547,6 +549,71 @@ async function deleteSong(db: Client, songId: string) {
 const noAuth = { storageState: { cookies: [], origins: [] } }
 
 // ---------------------------------------------------------------------------
+// Socket identity: a raw socket.io client carrying a browser's cookies. The
+// server takes the viewer from the handshake's cookies, never from a payload.
+// Cookie values are never logged.
+// ---------------------------------------------------------------------------
+
+const cookieHeader = (cookies: { name: string; value: string }[]) =>
+  cookies.map((c) => `${c.name}=${c.value}`).join('; ')
+
+async function rawSocket(baseURL: string, cookie: string): Promise<ClientSocket> {
+  const sock = connectSocket(baseURL, {
+    path: '/api/socket',
+    transports: ['websocket'],
+    extraHeaders: cookie ? { cookie } : {},
+    reconnection: false,
+    forceNew: true,
+  })
+  await new Promise<void>((resolve, reject) => {
+    sock.once('connect', () => resolve())
+    sock.once('connect_error', (e) => reject(new Error(`socket connect failed: ${e.message}`)))
+  })
+  return sock
+}
+
+/**
+ * The guest cookie the middleware issues a signed-out visitor, as a `name=value`
+ * pair ('' if none). Read from `Set-Cookie`: in production it is `__Host-guest`
+ * (Secure), which a cookie jar on http://localhost does not keep.
+ */
+async function issuedGuestCookie(request: APIRequestContext): Promise<string> {
+  let url = '/'
+  for (let hop = 0; hop < 3; hop++) {
+    const res = await request.get(url, { maxRedirects: 0 })
+    for (const { name, value } of res.headersArray()) {
+      if (name.toLowerCase() !== 'set-cookie') continue
+      const pair = value.split(';')[0]
+      if (/^(__Host-)?guest=./.test(pair)) return pair
+    }
+    const next = res.headers().location
+    if (!next) break
+    url = next
+  }
+  return ''
+}
+
+/** Emit `event` and wait for whichever of `outcomes` the server answers with. */
+function ask(
+  sock: ClientSocket,
+  event: string,
+  data: unknown,
+  outcomes: string[]
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`no answer to ${event}`)), 10_000)
+    for (const outcome of outcomes) {
+      sock.once(outcome, () => {
+        clearTimeout(timer)
+        for (const o of outcomes) sock.off(o)
+        resolve(outcome)
+      })
+    }
+    sock.emit(event, data)
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Scenario
 // ---------------------------------------------------------------------------
 
@@ -683,6 +750,65 @@ test.describe('session report views (Phases 4c-4e)', () => {
     await expect(items.nth(3)).toContainText('○')
     await expect(items.nth(3)).toHaveAttribute('data-problem-number', '4')
     await page.screenshot({ path: `${SHOTS}/summary-grid.png` })
+  })
+
+  test('the socket is its signed-in viewer: an id a payload names grants nothing', async ({
+    context,
+    browser,
+    request,
+    baseURL,
+  }) => {
+    playerId = await seedStudent(request)
+    const plan = await startSession(request, playerId)
+    const report = { sessionId: plan.id, playerId }
+    const reportOutcomes = ['session-report-subscribed', 'session-report-error']
+    const roomOutcomes = ['session-room-joined', 'session-room-error']
+    const sockets: ClientSocket[] = []
+    try {
+      // The admin (the kid's parent), with no id in the payload
+      const admin = await rawSocket(baseURL!, cookieHeader(await context.cookies()))
+      sockets.push(admin)
+      expect(await ask(admin, 'subscribe-session-report', report, reportOutcomes)).toBe(
+        'session-report-subscribed'
+      )
+      expect(await ask(admin, 'join-session', report, roomOutcomes)).toBe('session-room-joined')
+
+      // A second signed-in user, and a guest, each naming the parent's id
+      const secondUser = `e2e-socket-stranger-${Date.now()}`
+      const strangerCookie = `authjs.session-token=${await mintSessionJWT(
+        getLocalAuthSecret(),
+        'authjs.session-token',
+        secondUser,
+        { name: 'Socket Stranger', email: null }
+      )}`
+      const guestContext = await browser.newContext(noAuth)
+      contexts.push(guestContext)
+      const guestCookie = await issuedGuestCookie(guestContext.request)
+      expect(guestCookie, 'the middleware issues a guest cookie').not.toBe('')
+
+      for (const [who, cookie] of [
+        ['second user', strangerCookie],
+        ['guest', guestCookie],
+        ['anonymous', ''],
+      ] as const) {
+        const sock = await rawSocket(baseURL!, cookie)
+        sockets.push(sock)
+        const asserted = { ...report, viewerId: LOCAL_ADMIN_USER_ID }
+        expect(
+          await ask(sock, 'subscribe-session-report', asserted, reportOutcomes),
+          `${who}: report`
+        ).toBe('session-report-error')
+        expect(await ask(sock, 'join-session', asserted, roomOutcomes), `${who}: live room`).toBe(
+          'session-room-error'
+        )
+        expect(
+          await ask(sock, 'subscribe-session-stats', asserted, roomOutcomes),
+          `${who}: stats`
+        ).toBe('session-room-error')
+      }
+    } finally {
+      for (const sock of sockets) sock.disconnect()
+    }
   })
 
   test('dashboard history and the classroom route read the report (Phase 4d)', async ({

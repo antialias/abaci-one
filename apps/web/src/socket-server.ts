@@ -17,9 +17,9 @@ import {
   updateSessionActivePlayers,
   updateSessionActivity,
 } from './lib/arcade/session-manager'
+import { arcadeActor } from './lib/arcade/socket-actor'
 import type { GameMove } from './lib/arcade/validation/types'
 import { type GameName, getValidator } from './lib/arcade/validators'
-import { isParentOf } from './lib/classroom'
 import {
   registerObserveSession,
   registerPracticeStateRelay,
@@ -27,6 +27,7 @@ import {
   registerSessionRoomJoins,
 } from './lib/classroom/session-room-access'
 import type { PartTransitionEvent } from './lib/classroom/socket-events'
+import { registerViewerChannels } from './lib/classroom/viewer-channels'
 import { registerSessionReportJoin } from './lib/curriculum/session-report-access'
 import { registerSessionReportPush } from './lib/curriculum/session-report-server'
 import { socketConnections, socketConnectionsTotal } from './lib/metrics'
@@ -37,6 +38,8 @@ import {
   markPhoneDisconnected,
 } from './lib/remote-camera/session-manager'
 import { incrementShareViewCount } from './lib/session-share'
+import { resolveSocketViewer } from './lib/socket-identity'
+import { socketViewerId } from './lib/socket-viewer'
 import { type PracticeStateInput, type VisionFrame, VisionRecorder } from './lib/vision/recording'
 
 // Throttle map for DVR buffer info emissions (sessionId -> last emit timestamp)
@@ -373,18 +376,38 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     initializeYjsServer(io)
   }
 
+  // Who each connection is, verified from the handshake's cookies (every
+  // reconnect is a new handshake, so it is re-derived). Never rejects: a
+  // connection with no identity is anonymous (share links, remote-camera
+  // phones). Handlers read `socket.data.viewer` and ignore payload ids.
+  io.use((socket, next) => {
+    resolveSocketViewer(socket.request.headers)
+      .then((viewer) => {
+        socket.data.viewer = viewer
+      })
+      .catch((error) => {
+        console.error('[Socket.IO] viewer resolution failed', error)
+        socket.data.viewer = { kind: 'anonymous' }
+      })
+      .finally(() => next())
+  })
+
   io.on('connection', (socket) => {
     // Track Socket.IO connection metrics
     socketConnections.inc()
     socketConnectionsTotal.inc()
 
-    let currentUserId: string | null = null
-
-    // Join arcade session room
+    // Join arcade session room: as the verified viewer (a payload `userId`
+    // is ignored), and a room's game channel only as a member of the room
     socket.on(
       'join-arcade-session',
-      async ({ userId, roomId }: { userId: string; roomId?: string }) => {
-        currentUserId = userId
+      async ({ roomId }: { userId?: string; roomId?: string } = {}) => {
+        const actor = await arcadeActor(socket, roomId)
+        if (!actor.ok) {
+          socket.emit('session-error', { error: actor.error })
+          return
+        }
+        const userId = actor.userId
         socket.join(`arcade:${userId}`)
 
         // If this session is part of a room, also join the game room for multi-user sync
@@ -579,15 +602,23 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     )
 
-    // Handle game moves
-    socket.on('game-move', async (data: { userId: string; move: GameMove; roomId?: string }) => {
+    // Handle game moves: made as the verified viewer (the payload's and the
+    // move's `userId` are replaced by it), in a room only by a member
+    socket.on('game-move', async (raw: { userId?: string; move: GameMove; roomId?: string }) => {
+      const actor = await arcadeActor(socket, raw?.roomId)
+      if (!actor.ok) {
+        socket.emit('move-rejected', { error: actor.error, move: raw?.move })
+        return
+      }
+      const userId = actor.userId
+      const data = { roomId: raw.roomId, move: { ...raw.move, userId } as GameMove }
       try {
         // Special handling for START_GAME - create session if it doesn't exist
         if (data.move.type === 'START_GAME') {
           // For room-based games, check if room session exists
           const existingSession = data.roomId
             ? await getArcadeSessionByRoom(data.roomId)
-            : await getArcadeSession(data.userId)
+            : await getArcadeSession(userId)
 
           if (!existingSession) {
             // activePlayers must be provided in the START_GAME move data
@@ -609,7 +640,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             })
 
             // Check if user is already in a room for this game
-            const userRoomIds = await getUserRooms(data.userId)
+            const userRoomIds = await getUserRooms(userId)
             let room = null
 
             // Look for an existing active room for this game
@@ -629,7 +660,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             if (!room) {
               room = await createRoom({
                 name: 'Auto-generated Room',
-                createdBy: data.userId,
+                createdBy: userId,
                 creatorName: 'Player',
                 gameName: 'matching' as GameName,
                 gameConfig: {
@@ -643,7 +674,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
             // Now create the session linked to the room
             await createArcadeSession({
-              userId: data.userId,
+              userId,
               gameName: 'matching',
               gameUrl: '/arcade', // Room-based sessions use /arcade
               initialState,
@@ -652,11 +683,11 @@ export function initializeSocketServer(httpServer: HTTPServer) {
             })
 
             // Notify all connected clients about the new session
-            const newSession = await getArcadeSession(data.userId)
+            const newSession = await getArcadeSession(userId)
             if (newSession) {
               // Extract game-specific state from namespaced storage
               const gameStateForClient = getGameStateFromSession(newSession, newSession.currentGame)
-              io!.to(`arcade:${data.userId}`).emit('session-state', {
+              io!.to(`arcade:${userId}`).emit('session-state', {
                 gameState: gameStateForClient, // Send only the current game's state
                 currentGame: newSession.currentGame,
                 gameUrl: newSession.gameUrl,
@@ -668,7 +699,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         }
 
         // Apply game move - use roomId for room-based games to access shared session
-        const result = await applyGameMove(data.userId, data.move, data.roomId)
+        const result = await applyGameMove(userId, data.move, data.roomId)
 
         if (result.success && result.session) {
           // Extract game-specific state from namespaced storage
@@ -685,23 +716,23 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           if (result.session.roomId) {
             io!.to(`game:${result.session.roomId}`).emit('move-accepted', moveAcceptedData)
           } else {
-            io!.to(`arcade:${data.userId}`).emit('move-accepted', moveAcceptedData)
+            io!.to(`arcade:${userId}`).emit('move-accepted', moveAcceptedData)
           }
 
           // Update activity timestamp
-          await updateSessionActivity(data.userId)
+          await updateSessionActivity(userId)
 
           // Server-side mismatch timer for matching game
           // When a FLIP_CARD results in a mismatch, schedule CLEAR_MISMATCH server-side
           // to avoid client-server race conditions on multi-replica deployments
           const matchingState = gameStateForClient as Record<string, unknown> | undefined
           if (data.move.type === 'FLIP_CARD' && matchingState?.showMismatchFeedback) {
-            const sessionKey = result.session.roomId || data.userId
+            const sessionKey = result.session.roomId || userId
             const existingTimer = activeMismatchTimers.get(sessionKey)
             if (existingTimer) clearTimeout(existingTimer)
 
             // Capture values for the async closure
-            const capturedUserId = data.userId
+            const capturedUserId = userId
             const capturedRoomId = data.roomId
             const capturedCurrentPlayer = matchingState.currentPlayer as string
 
@@ -744,7 +775,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           // Send rejection only to the requesting socket
           if (result.versionConflict) {
             console.warn(
-              `[SocketServer] VERSION_CONFLICT_REJECTED room=${data.roomId} move=${data.move.type} user=${data.userId} socket=${socket.id}`
+              `[SocketServer] VERSION_CONFLICT_REJECTED room=${data.roomId} move=${data.move.type} user=${userId} socket=${socket.id}`
             )
           }
           socket.emit('move-rejected', {
@@ -763,7 +794,13 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
 
     // Handle session exit
-    socket.on('exit-arcade-session', async ({ userId }: { userId: string }) => {
+    socket.on('exit-arcade-session', async () => {
+      const actor = await arcadeActor(socket)
+      if (!actor.ok) {
+        socket.emit('session-error', { error: actor.error })
+        return
+      }
+      const userId = actor.userId
       try {
         await deleteArcadeSession(userId)
         io!.to(`arcade:${userId}`).emit('session-ended')
@@ -776,7 +813,9 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
 
     // Keep-alive ping
-    socket.on('ping-session', async ({ userId }: { userId: string }) => {
+    socket.on('ping-session', async () => {
+      const userId = socketViewerId(socket)
+      if (!userId) return
       try {
         await updateSessionActivity(userId)
         socket.emit('pong-session')
@@ -785,8 +824,14 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
-    // Room: Join
-    socket.on('join-room', async ({ roomId, userId }: { roomId: string; userId: string }) => {
+    // Room: Join (a member of the room, as the verified viewer)
+    socket.on('join-room', async ({ roomId }: { roomId: string; userId?: string }) => {
+      const actor = await arcadeActor(socket, roomId)
+      if (!actor.ok) {
+        socket.emit('room-error', { error: actor.error })
+        return
+      }
+      const userId = actor.userId
       try {
         // Join the socket room
         socket.join(`room:${roomId}`)
@@ -853,18 +898,14 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }
     })
 
-    // User Channel: Join (for moderation events)
-    socket.on('join-user-channel', async ({ userId }: { userId: string }) => {
-      try {
-        // Join user-specific channel for moderation notifications
-        socket.join(`user:${userId}`)
-      } catch (error) {
-        console.error('Error joining user channel:', error)
-      }
-    })
+    // The viewer's own user channel and their children's player channels,
+    // by the verified viewer only (viewer-channels.ts)
+    registerViewerChannels(socket)
 
     // Room: Leave
-    socket.on('leave-room', async ({ roomId, userId }: { roomId: string; userId: string }) => {
+    socket.on('leave-room', async ({ roomId }: { roomId: string; userId?: string }) => {
+      const userId = socketViewerId(socket)
+      if (!userId) return
       try {
         // Leave the socket room
         socket.leave(`room:${roomId}`)
@@ -895,7 +936,12 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
 
     // Room: Players updated
-    socket.on('players-updated', async ({ roomId, userId }: { roomId: string; userId: string }) => {
+    socket.on('players-updated', async ({ roomId }: { roomId: string; userId?: string }) => {
+      const actor = await arcadeActor(socket, roomId)
+      if (!actor.ok) {
+        socket.emit('room-error', { error: actor.error })
+        return
+      }
       try {
         // Get updated player data
         const memberPlayers = await getRoomActivePlayers(roomId)
@@ -946,22 +992,25 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     })
 
     // Cursor position update (ephemeral, not persisted)
-    // Used for showing other players' cursors in real-time games
+    // Used for showing other players' cursors in real-time games. Only from a
+    // socket in the game room (joined as a member), stamped with its
+    // verified viewer (a payload `userId` is ignored)
     socket.on(
       'cursor-update',
       ({
         roomId,
         playerId,
-        userId,
         cursorPosition,
         hoveredRegionId,
       }: {
         roomId: string
         playerId: string
-        userId: string // Session ID that owns this cursor
+        userId?: string // Ignored: the cursor's owner is the verified viewer
         cursorPosition: { x: number; y: number } | null // SVG coordinates, null when cursor leaves
         hoveredRegionId: string | null // Region being hovered (determined by sender's local hit-testing)
       }) => {
+        const userId = socketViewerId(socket)
+        if (!userId || !roomId || !socket.rooms.has(`game:${roomId}`)) return
         // Broadcast to all other sockets in the game room (exclude sender)
         socket.to(`game:${roomId}`).emit('cursor-update', {
           playerId,
@@ -1410,43 +1459,6 @@ export function initializeSocketServer(httpServer: HTTPServer) {
               data.action.type
             )
           }
-        }
-      }
-    )
-
-    // Parent Observation: Subscribe to child session events
-    // Parents join player:${childId} channels to receive session-started/session-ended events
-    socket.on(
-      'subscribe-child-sessions',
-      async ({ userId, childIds }: { userId: string; childIds: string[] }) => {
-        try {
-          for (const childId of childIds) {
-            // Verify parent-child relationship
-            const isParent = await isParentOf(userId, childId)
-            if (isParent) {
-              await socket.join(`player:${childId}`)
-              console.log(`👪 Parent ${userId} subscribed to child sessions: ${childId}`)
-            } else {
-              console.log(`⚠️ Parent subscription denied - ${userId} is not parent of ${childId}`)
-            }
-          }
-        } catch (error) {
-          console.error('Error subscribing to child sessions:', error)
-        }
-      }
-    )
-
-    // Parent Observation: Unsubscribe from child session events
-    socket.on(
-      'unsubscribe-child-sessions',
-      async ({ userId, childIds }: { userId: string; childIds: string[] }) => {
-        try {
-          for (const childId of childIds) {
-            await socket.leave(`player:${childId}`)
-            console.log(`👪 Parent ${userId} unsubscribed from child sessions: ${childId}`)
-          }
-        } catch (error) {
-          console.error('Error unsubscribing from child sessions:', error)
         }
       }
     )

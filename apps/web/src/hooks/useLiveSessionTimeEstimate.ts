@@ -12,7 +12,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
 import { countedTries } from '@/db/schema/session-plan-helpers'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
-import { useUserId } from '@/hooks/useUserId'
 import type { SessionStatsEvent } from '@/lib/classroom/socket-events'
 import { arithmeticSlotTotal } from '@/lib/curriculum/parts/arithmetic/session-view'
 import { createSocket } from '@/lib/socket'
@@ -107,7 +106,6 @@ export function useLiveSessionTimeEstimate({
 
   const socketRef = useRef<Socket | null>(null)
   // The credential for the (gated, Phase 4c) session room: the viewer's id
-  const { data: viewerId } = useUserId()
 
   // Update initial data when props change (before WebSocket connects)
   useEffect(() => {
@@ -129,7 +127,7 @@ export function useLiveSessionTimeEstimate({
 
   // WebSocket subscription
   useEffect(() => {
-    if (!sessionId || !enabled || !viewerId) {
+    if (!sessionId || !enabled) {
       cleanup()
       return
     }
@@ -148,8 +146,8 @@ export function useLiveSessionTimeEstimate({
       setError(null)
 
       // Subscribe to the stats feed; the server checks `view` on the
-      // session's player for this viewer (session-room-access.ts)
-      socket.emit('subscribe-session-stats', { sessionId, viewerId })
+      // session's player for the socket's verified viewer (session-room-access.ts)
+      socket.emit('subscribe-session-stats', { sessionId })
     })
 
     socket.on('disconnect', () => {
@@ -203,7 +201,7 @@ export function useLiveSessionTimeEstimate({
       socket.disconnect()
       socketRef.current = null
     }
-  }, [sessionId, enabled, viewerId, cleanup])
+  }, [sessionId, enabled, cleanup])
 
   // Compute time estimates from current data
   // Practice-only do-overs count nowhere

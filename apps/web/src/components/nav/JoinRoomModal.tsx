@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { createSocket } from '@/lib/socket'
 import { Modal } from '@/components/common/Modal'
 import type { RoomData } from '@/hooks/useRoomData'
 import { useGetRoomByCode, useJoinRoom } from '@/hooks/useRoomData'
+import { createSocket } from '@/lib/socket'
 
 export interface JoinRoomModalProps {
   /**
@@ -166,7 +166,7 @@ export function JoinRoomModal({ isOpen, onClose, onSuccess }: JoinRoomModalProps
         socket.on('connect', () => {
           console.log('[JoinRoomModal] Socket connected, joining user channel')
           // Join user-specific channel to receive moderation events
-          socket?.emit('join-user-channel', { userId })
+          socket?.emit('join-user-channel', {})
         })
 
         socket.on('join-request-approved', async (data: { roomId: string; requestId: string }) => {

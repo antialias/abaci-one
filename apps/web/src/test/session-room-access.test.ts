@@ -37,6 +37,7 @@ import {
   resetSessionReportPushState,
 } from '@/lib/curriculum/session-report-server'
 import { createSessionShare } from '@/lib/session-share'
+import type { SocketViewerData } from '@/lib/socket-viewer'
 import { fixtureParts } from './fixtures/session-report'
 import {
   createEphemeralDatabase,
@@ -107,7 +108,11 @@ vi.mock('@/lib/curriculum/progress-manager', async (importOriginal) => ({
 // The routes, without the auth layer
 vi.mock('@/lib/auth/withAuth', () => ({ withAuth: (handler: unknown) => handler }))
 vi.mock('@/lib/viewer', () => ({ getUserId: async () => 'viewer' }))
-const { canPerformAction } = vi.hoisted(() => ({ canPerformAction: vi.fn(async () => true) }))
+const { canPerformAction } = vi.hoisted(() => ({
+  canPerformAction: vi.fn(
+    async (_viewer: string, _player: string, _action: string, _opts?: unknown) => true
+  ),
+}))
 vi.mock('@/lib/classroom', () => ({ canPerformAction }))
 
 const FIXED = new Date('2026-01-01T00:00:00.000Z')
@@ -178,7 +183,8 @@ function onePart(n: number): SessionPart[] {
 }
 
 /** A fake connected socket with the session-room joins registered. */
-function fakeSocket() {
+/** A connected socket; `viewerId` is its verified viewer (absent: anonymous). */
+function fakeSocket(viewerId?: string) {
   const handlers = new Map<string, (data: any) => Promise<void> | void>()
   const sock = {
     received: [] as Array<{ event: string; data: any }>,
@@ -186,7 +192,9 @@ function fakeSocket() {
       handlers.set(event, handler)
     },
     rooms: new Set<string>(),
-    data: {} as SharedSessionsData,
+    data: {
+      viewer: viewerId ? { kind: 'user', userId: viewerId } : { kind: 'anonymous' },
+    } as SharedSessionsData & SocketViewerData,
     /** `socket.to(room)`: everyone in the room but this socket */
     to: (room: string) => ({
       emit: (event: string, data: unknown) => {
@@ -235,8 +243,8 @@ async function broadcastPracticeState(from: ReturnType<typeof fakeSocket>, planI
 
 /** The kid's screen, admitted to the live room by `join-session`. */
 async function admittedKid(planId: string, playerId: string, userId: string) {
-  const kid = fakeSocket()
-  await kid.send('join-session', { sessionId: planId, viewerId: userId, playerId })
+  const kid = fakeSocket(userId)
+  await kid.send('join-session', { sessionId: planId, playerId })
   return kid
 }
 
@@ -274,11 +282,11 @@ describe('Phase 4c: the live session room is gated', () => {
     async (event) => {
       const planId = await insertLivePlan(playerId)
       const kid = await admittedKid(planId, playerId, userId)
-      const stranger = fakeSocket()
+      const stranger = fakeSocket('stranger')
       const anonymous = fakeSocket()
       const otherShareHolder = fakeSocket()
       canPerformAction.mockResolvedValue(false)
-      await stranger.send(event, { sessionId: planId, viewerId: 'stranger', playerId })
+      await stranger.send(event, { sessionId: planId, playerId })
       await anonymous.send(event, { sessionId: planId })
       const otherPlan = await insertLivePlan(playerId)
       const otherShare = await createSessionShare(otherPlan, playerId, userId, '1h')
@@ -297,6 +305,60 @@ describe('Phase 4c: the live session room is gated', () => {
     }
   )
 
+  describe('an asserted id grants nothing: the socket is its verified viewer', () => {
+    // Only the parent may observe; everyone else names the parent's id
+    beforeEach(() => {
+      canPerformAction.mockImplementation(async (viewer: string) => viewer === userId)
+    })
+
+    it.each(['join-session', 'subscribe-session-stats'])(
+      "%s with the parent's viewerId from a stranger's or an anonymous socket is refused",
+      async (event) => {
+        const planId = await insertLivePlan(playerId)
+        const kid = await admittedKid(planId, playerId, userId)
+        const stranger = fakeSocket('stranger')
+        const anonymous = fakeSocket()
+        await stranger.send(event, { sessionId: planId, viewerId: userId, playerId })
+        await anonymous.send(event, { sessionId: planId, viewerId: userId, playerId })
+        await broadcastPracticeState(kid, planId)
+        for (const sock of [stranger, anonymous]) {
+          expect(sock.received.map((r) => r.event)).toEqual(['session-room-error'])
+        }
+        // The kid's own join, then the stranger as itself; the anonymous socket checks no one
+        expect(canPerformAction.mock.calls.map((c) => c[0])).toEqual([userId, 'stranger'])
+      }
+    )
+
+    it("observe-session with the parent's observerId from a stranger is refused, and its controls dropped", async () => {
+      const planId = await insertLivePlan(playerId)
+      const kid = await admittedKid(planId, playerId, userId)
+      const stranger = fakeSocket('stranger')
+      await stranger.send('observe-session', { sessionId: planId, observerId: userId, playerId })
+      expect(heard(stranger, 'observe-error')).toHaveLength(1)
+      expect(stranger.rooms.has(sessionRoom(planId))).toBe(false)
+      await stranger.send('session-pause', { sessionId: planId })
+      await broadcastPracticeState(kid, planId)
+      expect(heard(kid, 'session-paused')).toEqual([])
+      expect(heard(stranger, 'practice-state')).toEqual([])
+    })
+
+    it("the parent's own socket is admitted whatever id its payload names (an old tab's shape)", async () => {
+      const planId = await insertLivePlan(playerId)
+      const parent = fakeSocket(userId)
+      await parent.send('join-session', { sessionId: planId, viewerId: 'someone-else', playerId })
+      expect(heard(parent, 'session-room-joined')).toHaveLength(1)
+    })
+
+    it('a guest viewer is checked like a signed-in one', async () => {
+      const planId = await insertLivePlan(playerId)
+      const guest = fakeSocket()
+      guest.data.viewer = { kind: 'guest', userId }
+      await guest.send('subscribe-session-stats', { sessionId: planId })
+      expect(heard(guest, 'session-room-error')).toEqual([])
+      expect(guest.rooms.has(sessionStatsRoom(planId))).toBe(true)
+    })
+  })
+
   it('each real caller joins its room: live room hears practice-state, stats feed hears session-stats', async () => {
     const planId = await insertLivePlan(playerId)
     const share = await createSessionShare(planId, playerId, userId, '1h')
@@ -310,8 +372,8 @@ describe('Phase 4c: the live session room is gated', () => {
     await shareHolder.send('observe-session', { sessionId: planId, shareToken: share.id })
     // The history list's stats subscriber names only the session: checked
     // against the session's own player, at `view`
-    const stats = fakeSocket()
-    await stats.send('subscribe-session-stats', { sessionId: planId, viewerId: userId })
+    const stats = fakeSocket(userId)
+    await stats.send('subscribe-session-stats', { sessionId: planId })
 
     await broadcastPracticeState(kid, planId)
 
@@ -340,9 +402,9 @@ describe('Phase 4c: the live session room is gated', () => {
     canPerformAction.mockImplementation(
       async (_viewer: string, _player: string, action: string) => action === 'view'
     )
-    const teacher = fakeSocket()
-    await teacher.send('subscribe-session-stats', { sessionId: planId, viewerId: 'teacher' })
-    await teacher.send('join-session', { sessionId: planId, viewerId: 'teacher', playerId })
+    const teacher = fakeSocket('teacher')
+    await teacher.send('subscribe-session-stats', { sessionId: planId })
+    await teacher.send('join-session', { sessionId: planId, playerId })
 
     await broadcastPracticeState(kid, planId)
 
@@ -364,21 +426,20 @@ describe('Phase 4c: the live session room is gated', () => {
       '%s: a refused socket is dropped, an admitted observer goes through',
       async (event, relayed) => {
         const planId = await insertLivePlan(playerId)
-        const kid = fakeSocket()
-        await kid.send('join-session', { sessionId: planId, viewerId: userId, playerId })
+        const kid = fakeSocket(userId)
+        await kid.send('join-session', { sessionId: planId, playerId })
         // Refused (no observe), then tries a control anyway
         canPerformAction.mockResolvedValue(false)
-        const stranger = fakeSocket()
-        await stranger.send('join-session', { sessionId: planId, viewerId: 'stranger', playerId })
+        const stranger = fakeSocket('stranger')
+        await stranger.send('join-session', { sessionId: planId, playerId })
         await stranger.send(event, { sessionId: planId, action: 'skip' })
         expect(heard(kid, relayed)).toEqual([])
 
         // Admitted observer, through observe-session
         canPerformAction.mockResolvedValue(true)
-        const observer = fakeSocket()
+        const observer = fakeSocket(userId)
         await observer.send('observe-session', {
           sessionId: planId,
-          observerId: userId,
           playerId,
         })
         await observer.send(event, { sessionId: planId, action: 'skip' })
@@ -389,13 +450,12 @@ describe('Phase 4c: the live session room is gated', () => {
         // A share holder admitted through observe-session stays view-only,
         // even after it observes another session with credentials
         const share = await createSessionShare(planId, playerId, userId, '1h')
-        const shareHolder = fakeSocket()
+        const shareHolder = fakeSocket(userId)
         await shareHolder.send('observe-session', { sessionId: planId, shareToken: share.id })
         expect(shareHolder.rooms.has(sessionRoom(planId))).toBe(true)
         const otherPlan = await insertLivePlan(playerId)
         await shareHolder.send('observe-session', {
           sessionId: otherPlan,
-          observerId: userId,
           playerId,
         })
         await shareHolder.send(event, { sessionId: planId, action: 'skip' })
@@ -442,7 +502,7 @@ describe('Phase 4c: the live session room is gated', () => {
       const share = await createSessionShare(planId, playerId, userId, '1h')
       const shareHolder = fakeSocket()
       await shareHolder.send('observe-session', { sessionId: planId, shareToken: share.id })
-      const stranger = fakeSocket()
+      const stranger = fakeSocket('stranger')
       emitted.length = 0
       await stranger.send('practice-state', { ...practiceState(planId), studentAnswer: 'spoof' })
       await shareHolder.send('practice-state', { ...practiceState(planId), studentAnswer: 'spoof' })
@@ -452,8 +512,8 @@ describe('Phase 4c: the live session room is gated', () => {
   })
 
   it('a stats subscriber of an unknown session is refused', async () => {
-    const sock = fakeSocket()
-    await sock.send('subscribe-session-stats', { sessionId: 'no-such-plan', viewerId: userId })
+    const sock = fakeSocket(userId)
+    await sock.send('subscribe-session-stats', { sessionId: 'no-such-plan' })
     expect(sock.received).toEqual([
       {
         event: 'session-room-error',
@@ -488,16 +548,16 @@ describe('Phase 4c: the live session room is gated', () => {
 
   describe('the room hears session-ended (P4a-4)', () => {
     async function joinedObserver(planId: string) {
-      const sock = fakeSocket()
-      await sock.send('join-session', { sessionId: planId, viewerId: userId, playerId })
+      const sock = fakeSocket(userId)
+      await sock.send('join-session', { sessionId: planId, playerId })
       return sock
     }
 
     it('at natural completion', async () => {
       const planId = await insertLivePlan(playerId, onePart(2))
       const observer = await joinedObserver(planId)
-      const stats = fakeSocket()
-      await stats.send('subscribe-session-stats', { sessionId: planId, viewerId: userId })
+      const stats = fakeSocket(userId)
+      await stats.send('subscribe-session-stats', { sessionId: planId })
       await answer(planId, true)
       await answer(planId, true)
       await flushSessionReportPushes()

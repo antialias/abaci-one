@@ -52,7 +52,8 @@ describe('usePrintJobRing', () => {
     renderHook(() => usePrintJobRing('user-1'), { wrapper })
 
     handlers.get('connect')?.()
-    expect(mockSocket.emit).toHaveBeenCalledWith('join-user-channel', { userId: 'user-1' })
+    // No id: the server joins the socket's own verified user channel
+    expect(mockSocket.emit).toHaveBeenCalledWith('join-user-channel', {})
     expect(invalidateSpy).toHaveBeenCalledTimes(1)
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: abacusPrintKeys.jobs() })
 

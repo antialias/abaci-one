@@ -42,7 +42,7 @@ export function usePrintJobRing(userId: string | undefined): { connected: boolea
 
     socket.on('connect', () => {
       setConnected(true)
-      socket.emit('join-user-channel', { userId })
+      socket.emit('join-user-channel', {})
       // Reconcile on every (re)connect: any ring that fired while this socket
       // was down is gone for good, so re-read the roster once. Bounded — one
       // invalidate per connect edge, no timers.
