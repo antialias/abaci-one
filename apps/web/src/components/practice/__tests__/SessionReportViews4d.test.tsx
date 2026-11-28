@@ -1,6 +1,6 @@
 /**
  * Phase 4d (session architecture §4, §7): the dashboard list row, the active
- * card and the end event, from the
+ * card, the classroom active-sessions query and the end event, from the
  * shared report fixture, so these screens show the same numbers as every
  * other view of the session.
  */
@@ -11,7 +11,7 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SessionHistoryEntry } from '@/lib/curriculum/progress-manager'
 import { summarizeSessionReport } from '@/lib/curriculum/session-report'
-import { sessionHistoryKeys } from '@/lib/queryKeys'
+import { classroomKeys, sessionHistoryKeys } from '@/lib/queryKeys'
 import {
   abandonedSession,
   liveTenProblemSession,
@@ -23,8 +23,16 @@ import {
 type Handler = (...args: any[]) => void
 interface MockSocket {
   on: ReturnType<typeof vi.fn>
+  off: ReturnType<typeof vi.fn>
   emit: ReturnType<typeof vi.fn>
   disconnect: ReturnType<typeof vi.fn>
+  connected: boolean
+  /** The socket's manager: its reconnect delays and its transport */
+  io: {
+    reconnectionDelay: ReturnType<typeof vi.fn>
+    reconnectionDelayMax: ReturnType<typeof vi.fn>
+    engine: { close: ReturnType<typeof vi.fn> }
+  }
   fire: (event: string, ...args: any[]) => void
 }
 let sockets: MockSocket[] = []
@@ -37,8 +45,17 @@ vi.mock('@/lib/socket', () => ({
         if (!handlers[event]) handlers[event] = []
         handlers[event].push(h)
       }) as ReturnType<typeof vi.fn>,
+      off: vi.fn((event: string, h: Handler) => {
+        handlers[event] = (handlers[event] ?? []).filter((x) => x !== h)
+      }) as ReturnType<typeof vi.fn>,
       emit: vi.fn(),
       disconnect: vi.fn(),
+      connected: false,
+      io: {
+        reconnectionDelay: vi.fn((v?: number): any => (v === undefined ? 1000 : undefined)),
+        reconnectionDelayMax: vi.fn((v?: number): any => (v === undefined ? 5000 : undefined)),
+        engine: { close: vi.fn() },
+      },
       fire: (event, ...args) => {
         for (const h of handlers[event] ?? []) h(...args)
       },
@@ -51,9 +68,18 @@ vi.mock('@/lib/socket', () => ({
 const { api } = vi.hoisted(() => ({ api: vi.fn() }))
 vi.mock('@/lib/queryClient', () => ({ api }))
 
+import { ClassroomLiveNotice } from '@/components/classroom/ClassroomLiveNotice'
 import { useChildSessionsSocket } from '@/hooks/useChildSessionsSocket'
+import { type ActiveSessionInfo, useActiveSessionsInClassroom } from '@/hooks/useClassroom'
+import { useClassroomSocket } from '@/hooks/useClassroomSocket'
 import { useSessionHistory } from '@/hooks/useSessionHistory'
 import { ActiveSessionCard, SessionItem } from '../VirtualizedSessionList'
+
+/** The practice page's teacher notice, fed by the hook. */
+function LiveNoticePage() {
+  const { live } = useClassroomSocket('cls-1')
+  return <ClassroomLiveNotice state={live} isDark={false} />
+}
 
 function client() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -184,6 +210,17 @@ describe('active card', () => {
   })
 })
 
+describe('classroom active sessions: no poll', () => {
+  it('the active-sessions query has no refetchInterval (push invalidates it)', async () => {
+    api.mockResolvedValue(json({ sessions: [] }))
+    const qc = client()
+    renderHook(() => useActiveSessionsInClassroom('cls-1'), { wrapper: wrapperOf(qc) })
+    const query = qc.getQueryCache().find({ queryKey: classroomKeys.activeSessions('cls-1') })
+    expect(query).toBeDefined()
+    expect((query!.options as { refetchInterval?: unknown }).refetchInterval).toBeUndefined()
+  })
+})
+
 describe('session-ended', () => {
   it('removes the active card (parent view)', async () => {
     const live = reportOf(liveTenProblemSession())
@@ -245,5 +282,264 @@ describe('session-ended', () => {
       socket.fire('session-ended', { playerId: 'kid-1', sessionId: 's1', reason: 'completed' })
     )
     await waitFor(() => expect(api.mock.calls.length).toBe(calls + 1))
+  })
+})
+
+describe('teacher cards: the teacher-only classroom room (no poll)', () => {
+  /** The teacher's card for the live fixture, as the active-sessions route answers it */
+  function seededCard(qc: QueryClient): void {
+    const live = reportOf(liveTenProblemSession())
+    const card: ActiveSessionInfo = {
+      sessionId: 'fx-live',
+      playerId: 'kid-1',
+      startedAt: new Date(T0).toISOString(),
+      currentPartIndex: 2,
+      currentSlotIndex: 0,
+      totalParts: 3,
+      completedProblems: live.position!.progress.done,
+      totalProblems: live.position!.progress.total,
+      outcome: 'in_progress',
+      totals: live.totals,
+      rowVersion: live.rowVersion,
+    }
+    qc.setQueryData(classroomKeys.activeSessions('cls-1'), [card])
+  }
+  const cardOf = (qc: QueryClient) =>
+    qc.getQueryData<ActiveSessionInfo[]>(classroomKeys.activeSessions('cls-1'))![0]
+  const summary = (completedProblems: number, rowVersion: number, outcome = 'in_progress') => ({
+    sessionId: 'fx-live',
+    playerId: 'kid-1',
+    outcome,
+    completedProblems,
+    totalProblems: 10,
+    totals: { ...reportOf(liveTenProblemSession()).totals, problems: completedProblems },
+    rowVersion,
+  })
+
+  it('joins the teacher room; a pushed write moves the card', () => {
+    const qc = client()
+    seededCard(qc)
+    renderHook(() => useClassroomSocket('cls-1'), { wrapper: wrapperOf(qc) })
+    const socket = sockets[0]
+    act(() => socket.fire('connect'))
+    expect(socket.emit).toHaveBeenCalledWith('join-classroom', { classroomId: 'cls-1' })
+    expect(cardOf(qc).completedProblems).toBe(7)
+
+    act(() => socket.fire('classroom-session-summary', summary(8, 12)))
+    expect(cardOf(qc)).toMatchObject({ completedProblems: 8, rowVersion: 12 })
+    expect(cardOf(qc).totals?.problems).toBe(8)
+
+    // An older push (out of order) changes nothing
+    act(() => socket.fire('classroom-session-summary', summary(7, 11)))
+    expect(cardOf(qc)).toMatchObject({ completedProblems: 8, rowVersion: 12 })
+  })
+
+  it('an unknown or ended session refetches the list instead of patching it', () => {
+    const qc = client()
+    seededCard(qc)
+    renderHook(() => useClassroomSocket('cls-1'), { wrapper: wrapperOf(qc) })
+    act(() => sockets[0].fire('classroom-session-summary', summary(10, 20, 'completed')))
+    expect(qc.getQueryState(classroomKeys.activeSessions('cls-1'))?.isInvalidated).toBe(true)
+  })
+
+  it('every accepted join refetches (first and reconnect); a student entering refetches', () => {
+    const qc = client()
+    seededCard(qc)
+    renderHook(() => useClassroomSocket('cls-1'), { wrapper: wrapperOf(qc) })
+    const socket = sockets[0]
+    const invalidated = () => qc.getQueryState(classroomKeys.activeSessions('cls-1'))?.isInvalidated
+    act(() => socket.fire('connect'))
+    expect(invalidated()).toBe(false) // not in the teacher room yet
+    // Another channel's ack (a player channel, another classroom) is not this join
+    act(() => socket.fire('channel-joined', { channel: 'player', id: 'cls-1' }))
+    act(() => socket.fire('channel-joined', { channel: 'classroom', id: 'cls-2' }))
+    expect(invalidated()).toBe(false)
+    act(() => socket.fire('channel-joined', { channel: 'classroom', id: 'cls-1' }))
+    expect(invalidated()).toBe(true)
+
+    seededCard(qc)
+    act(() => socket.fire('disconnect'))
+    act(() => socket.fire('connect'))
+    act(() => socket.fire('channel-joined', { channel: 'classroom', id: 'cls-1' }))
+    expect(invalidated()).toBe(true)
+
+    seededCard(qc)
+    expect(invalidated()).toBe(false)
+    act(() => socket.fire('student-entered', { playerName: 'Kid' }))
+    expect(invalidated()).toBe(true)
+  })
+
+  it('a transient join failure pauses the feed, rejoins on socket.io’s next connect, and refetches', () => {
+    const qc = client()
+    seededCard(qc)
+    const { result } = renderHook(() => useClassroomSocket('cls-1'), { wrapper: wrapperOf(qc) })
+    const socket = sockets[0]
+    const joins = () =>
+      socket.emit.mock.calls.filter(([event]: any[]) => event === 'join-classroom').length
+    const invalidated = () => qc.getQueryState(classroomKeys.activeSessions('cls-1'))?.isInvalidated
+    expect(result.current.live).toBe('connecting')
+    act(() => socket.fire('connect'))
+    expect(joins()).toBe(1)
+
+    act(() =>
+      socket.fire('channel-error', {
+        channel: 'classroom',
+        id: 'cls-1',
+        error: 'Failed to join classroom',
+        code: 'transient',
+      })
+    )
+    expect(result.current.live).toBe('paused')
+    // The transport is dropped so socket.io's own backoff reconnects, slower each time
+    expect(socket.io.engine.close).toHaveBeenCalledTimes(1)
+    expect(socket.io.reconnectionDelay).toHaveBeenCalledWith(2000)
+    expect(socket.disconnect).not.toHaveBeenCalled()
+    expect(invalidated()).toBe(false)
+
+    act(() => socket.fire('disconnect', 'forced close'))
+    act(() => socket.fire('connect'))
+    expect(joins()).toBe(2)
+    act(() => socket.fire('channel-joined', { channel: 'classroom', id: 'cls-1' }))
+    expect(result.current.live).toBe('live')
+    expect(invalidated()).toBe(true)
+    expect(socket.io.reconnectionDelay).toHaveBeenLastCalledWith(1000)
+  })
+
+  it('a refused join does not retry and says the feed is off', () => {
+    const qc = client()
+    const { result } = renderHook(() => useClassroomSocket('cls-1'), { wrapper: wrapperOf(qc) })
+    const socket = sockets[0]
+    act(() => socket.fire('connect'))
+    // Another classroom's refusal is not this one's
+    act(() =>
+      socket.fire('channel-error', {
+        channel: 'classroom',
+        id: 'cls-2',
+        error: 'x',
+        code: 'refused',
+      })
+    )
+    expect(result.current.live).toBe('connecting')
+    act(() =>
+      socket.fire('channel-error', {
+        channel: 'classroom',
+        id: 'cls-1',
+        error: 'Not the teacher of this classroom',
+        code: 'refused',
+      })
+    )
+    expect(result.current.live).toBe('refused')
+    expect(socket.disconnect).toHaveBeenCalledTimes(1)
+    expect(socket.io.engine.close).not.toHaveBeenCalled()
+    act(() => socket.fire('connect'))
+    expect(socket.emit.mock.calls.filter(([e]: any[]) => e === 'join-classroom')).toHaveLength(1)
+    act(() => socket.fire('disconnect'))
+    expect(result.current.live).toBe('refused')
+  })
+
+  it('the practice page shows the paused feed plainly, and nothing once live', () => {
+    const qc = client()
+    const view = render(<LiveNoticePage />, { wrapper: wrapperOf(qc) })
+    const socket = sockets[0]
+    expect(view.queryByRole('status')).toBeNull() // first connect: no flash
+    act(() => socket.fire('connect'))
+    act(() => socket.fire('disconnect', 'transport close'))
+    expect(view.getByRole('status').textContent).toBe('Live updates paused, reconnecting…')
+    act(() => socket.fire('connect'))
+    act(() =>
+      socket.fire('channel-error', {
+        channel: 'classroom',
+        id: 'cls-1',
+        error: 'x',
+        code: 'transient',
+      })
+    )
+    expect(view.getByRole('status').textContent).toBe('Live updates paused, reconnecting…')
+    act(() => socket.fire('connect'))
+    act(() => socket.fire('channel-joined', { channel: 'classroom', id: 'cls-1' }))
+    expect(view.queryByRole('status')).toBeNull()
+  })
+
+  it('an end pushed before the join completed is still reflected (the join refetches)', async () => {
+    const live = reportOf(liveTenProblemSession())
+    const card = {
+      sessionId: 'fx-live',
+      playerId: 'kid-1',
+      startedAt: new Date(T0).toISOString(),
+      currentPartIndex: 2,
+      currentSlotIndex: 0,
+      totalParts: 3,
+      completedProblems: 7,
+      totalProblems: 10,
+      outcome: 'in_progress',
+      totals: live.totals,
+      rowVersion: 11,
+    }
+    api.mockResolvedValueOnce(json({ sessions: [card] }))
+    const qc = client()
+    const { result } = renderHook(
+      () => {
+        useClassroomSocket('cls-1')
+        return useActiveSessionsInClassroom('cls-1')
+      },
+      { wrapper: wrapperOf(qc) }
+    )
+    await waitFor(() => expect(result.current.data).toHaveLength(1))
+    // The session ends while the socket is not yet in the teacher room: the
+    // end is pushed to nobody
+    api.mockImplementation(async () => json({ sessions: [] }))
+    act(() => sockets[0].fire('connect'))
+    act(() => sockets[0].fire('channel-joined', { channel: 'classroom', id: 'cls-1' }))
+    await waitFor(() => expect(result.current.data).toEqual([]))
+  })
+
+  it('a refetch older than a pushed summary keeps the pushed numbers', async () => {
+    const live = reportOf(liveTenProblemSession())
+    const card = {
+      sessionId: 'fx-live',
+      playerId: 'kid-1',
+      startedAt: new Date(T0).toISOString(),
+      currentPartIndex: 2,
+      currentSlotIndex: 0,
+      totalParts: 3,
+      completedProblems: 7,
+      totalProblems: 10,
+      outcome: 'in_progress',
+      totals: live.totals,
+      rowVersion: 11,
+    }
+    api.mockImplementation(async () => json({ sessions: [card] }))
+    const qc = client()
+    const { result } = renderHook(
+      () => {
+        useClassroomSocket('cls-1')
+        return useActiveSessionsInClassroom('cls-1')
+      },
+      { wrapper: wrapperOf(qc) }
+    )
+    await waitFor(() => expect(result.current.data).toHaveLength(1))
+    act(() => sockets[0].fire('classroom-session-summary', summary(8, 12)))
+    await waitFor(() =>
+      expect(result.current.data?.[0]).toMatchObject({ completedProblems: 8, rowVersion: 12 })
+    )
+
+    // A refetch that read the row before that write (rowVersion 11) lands after it
+    const calls = api.mock.calls.length
+    await act(() => qc.invalidateQueries({ queryKey: classroomKeys.activeSessions('cls-1') }))
+    await waitFor(() => expect(api.mock.calls.length).toBe(calls + 1))
+    await waitFor(() =>
+      expect(qc.getQueryState(classroomKeys.activeSessions('cls-1'))?.fetchStatus).toBe('idle')
+    )
+    expect(
+      qc.getQueryData<ActiveSessionInfo[]>(classroomKeys.activeSessions('cls-1'))?.[0]
+    ).toMatchObject({ completedProblems: 8, rowVersion: 12 })
+    expect(qc.getQueryState(classroomKeys.activeSessions('cls-1'))?.status).toBe('success')
+
+    // A newer refetch wins
+    api.mockImplementation(async () =>
+      json({ sessions: [{ ...card, completedProblems: 9, rowVersion: 13 }] })
+    )
+    await act(() => qc.invalidateQueries({ queryKey: classroomKeys.activeSessions('cls-1') }))
+    await waitFor(() => expect(result.current.data?.[0]).toMatchObject({ rowVersion: 13 }))
   })
 })

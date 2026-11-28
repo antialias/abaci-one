@@ -78,9 +78,6 @@ const { emitted, calls, members, fakeIo } = vi.hoisted(() => {
 vi.mock('@/lib/socket-io', () => ({
   getSocketIO: async () => fakeIo,
 }))
-vi.mock('@/lib/classroom/presence-manager', () => ({
-  getStudentPresence: async () => ({ classroomId: 'cls-1' }),
-}))
 // Lets a test make the report build throw (the end must still go out)
 const { readTriesFails } = vi.hoisted(() => ({ readTriesFails: { on: false } }))
 vi.mock('@/lib/curriculum/read-tries', async (importOriginal) => {
@@ -325,6 +322,12 @@ describe('Phase 4a: session report push and routes', () => {
     })
 
     it('natural completion pushes the final report, then session-ended to every room', async () => {
+      // Enrolled in a class (the teacher room is every enrolled classroom's, present or not)
+      await eph.db.insert(schema.users).values({ id: 'teacher-1', guestId: 'guest-teacher-1' })
+      await eph.db
+        .insert(schema.classrooms)
+        .values({ id: 'cls-1', teacherId: 'teacher-1', name: 'Class', code: 'CLS-1' })
+      await eph.db.insert(schema.classroomEnrollments).values({ classroomId: 'cls-1', playerId })
       const planId = await insertLivePlan(playerId, onePart(2))
       await answer(planId, true)
       await answer(planId, true)
@@ -335,8 +338,9 @@ describe('Phase 4a: session report push and routes', () => {
       const last = reportsPushed(planId).at(-1)!
       expect(last).toMatchObject({ outcome: 'completed', rowVersion: after.rowVersion })
 
-      // One emit to the player, classroom, gated report and (Phase 4c) live
-      // session and stats rooms, deduped per socket (P4a-4, P4c-1)
+      // One emit to the player, the teacher room, the gated report and
+      // (Phase 4c) live session and stats rooms, deduped per socket (P4a-4,
+      // P4c-1, P4d-8)
       const ended = calls.filter((c) => c.event === 'session-ended')
       expect(ended).toHaveLength(1)
       expect([...ended[0].rooms].sort()).toEqual(

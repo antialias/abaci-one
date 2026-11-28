@@ -8,7 +8,12 @@
 import http from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { encode } from 'next-auth/jwt'
-import { type Socket as ClientSocket, io as connect } from 'socket.io-client'
+import {
+  type Socket as ClientSocket,
+  io as connect,
+  type ManagerOptions,
+  type SocketOptions,
+} from 'socket.io-client'
 import { expect, vi } from 'vitest'
 
 export const SOCKET_TEST_SECRET = 'made-up-secret-for-socket-server-tests-000001'
@@ -47,13 +52,20 @@ export function disconnectClients() {
   for (const c of clients.splice(0)) c.disconnect()
 }
 
-/** A connected client whose handshake carries `cookie` (none: anonymous). */
-export async function client(cookie?: string): Promise<ClientSocket> {
+/**
+ * A connected client whose handshake carries `cookie` (none: anonymous). It
+ * does not reconnect unless `opts` say so.
+ */
+export async function client(
+  cookie?: string,
+  opts: Partial<ManagerOptions & SocketOptions> = {}
+): Promise<ClientSocket> {
   const sock = connect(url, {
     path: '/api/socket',
     transports: ['websocket'],
     extraHeaders: cookie ? { cookie } : {},
     reconnection: false,
+    ...opts,
     forceNew: true,
   })
   clients.push(sock)

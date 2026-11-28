@@ -352,6 +352,23 @@ export interface SessionEndedEvent {
 }
 
 /**
+ * A teacher card's numbers after a committed write (Phase 4d, §10 P4d-8):
+ * cut from the session report, sent only to the teacher-only room
+ * `classroom:<id>` of every classroom the student is enrolled in.
+ */
+export interface ClassroomSessionSummaryEvent {
+  sessionId: string
+  playerId: string
+  outcome: SessionReport['outcome']
+  /** The report's `position.progress.done` (items attempted once it is not in progress) */
+  completedProblems: number
+  /** The report's `position.progress.total` (planned items once it is not in progress) */
+  totalProblems: number
+  totals: SessionReport['totals']
+  rowVersion: number
+}
+
+/**
  * Join a session's gated report room (Phase 4a): the socket's viewer with
  * `observe` on the player, or a share token. The viewer is the one the
  * server verified at the handshake, never an id in the payload.
@@ -428,6 +445,13 @@ export interface SkillTutorialStateEvent {
   /** Tutorial state details (only present when launcherState is 'tutorial') */
   tutorialState?: TutorialStepState
 }
+
+/**
+ * Why a `join-classroom` / `join-player` failed: `'refused'`, the viewer may
+ * not join and asking again changes nothing; `'transient'`, the server could
+ * not check (a database error), and the client may ask again.
+ */
+export type ChannelErrorCode = 'refused' | 'transient'
 
 /**
  * Control actions a teacher can send to a student's tutorial
@@ -572,8 +596,22 @@ export interface ClassroomServerToClientEvents {
   'session-room-joined': (data: { sessionId: string }) => void
   /** The history list's stats feed (`session-stats:<id>`, `view` level): the kid's parts and tries, no live answer */
   'session-stats': (data: SessionStatsEvent) => void
+  /** A teacher card's numbers after a committed write (teacher-only `classroom:<id>`, Phase 4d) */
+  'classroom-session-summary': (data: ClassroomSessionSummaryEvent) => void
 
-  // Skill tutorial events (classroom channel - for teacher's observation)
+  /** An accepted `join-classroom` / `join-player` */
+  'channel-joined': (data: { channel: 'classroom' | 'player'; id: string }) => void
+  /** A failed `join-classroom` / `join-player`: nothing was joined */
+  'channel-error': (data: {
+    channel: 'classroom' | 'player'
+    id: string
+    error: string
+    code: ChannelErrorCode
+  }) => void
+
+  // Skill tutorial: the kid's state goes to the teacher-only `classroom:<id>`
+  // of each classroom the kid is enrolled in; the teacher's controls go to the
+  // kid's `player:<id>`
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
   'skill-tutorial-control': (data: SkillTutorialControlEvent) => void
 
@@ -633,7 +671,7 @@ export interface ClassroomClientToServerEvents {
   'observer-coplay-ready': (data: ObserverCoPlayReadyEvent) => void
   'observer-coplay-leave': (data: ObserverCoPlayLeaveEvent) => void
 
-  // Skill tutorial broadcasts (from student client to classroom channel)
+  // Skill tutorial: the kid's device sends its state, the teacher sends controls
   'skill-tutorial-state': (data: SkillTutorialStateEvent) => void
   'skill-tutorial-control': (data: SkillTutorialControlEvent) => void
 }

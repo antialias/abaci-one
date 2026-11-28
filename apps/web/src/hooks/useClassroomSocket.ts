@@ -1,11 +1,16 @@
 'use client'
 
+import { type QueryClient, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
-import { createSocket } from '@/lib/socket'
-import { useQueryClient } from '@tanstack/react-query'
+import type { ActiveSessionInfo } from '@/hooks/useClassroom'
+import {
+  type ClassroomLiveState,
+  followClassroomChannel,
+} from '@/lib/classroom/classroom-channel-client'
 import { invalidateForEvent } from '@/lib/classroom/query-invalidations'
 import type {
+  ClassroomSessionSummaryEvent,
   EnrollmentApprovedEvent,
   EnrollmentRequestApprovedEvent,
   EnrollmentRequestCreatedEvent,
@@ -16,6 +21,44 @@ import type {
   StudentLeftEvent,
   StudentUnenrolledEvent,
 } from '@/lib/classroom/socket-events'
+import { classroomKeys } from '@/lib/queryKeys'
+import { createSocket } from '@/lib/socket'
+
+/**
+ * Apply a pushed teacher-card summary (Phase 4d, §10 P4d-8) to the classroom's
+ * active sessions: a held in-progress session takes the newer numbers; a
+ * session the list does not hold yet, or one that is no longer in progress,
+ * refetches the list. An older or equal row version is ignored.
+ */
+export function applyClassroomSessionSummary(
+  queryClient: QueryClient,
+  classroomId: string,
+  summary: ClassroomSessionSummaryEvent
+): void {
+  const key = classroomKeys.activeSessions(classroomId)
+  const held = queryClient.getQueryData<ActiveSessionInfo[]>(key)
+  const card = held?.find((s) => s.sessionId === summary.sessionId)
+  if (!held || !card || summary.outcome !== 'in_progress') {
+    queryClient.invalidateQueries({ queryKey: key })
+    return
+  }
+  if (card.rowVersion !== undefined && summary.rowVersion <= card.rowVersion) return
+  queryClient.setQueryData<ActiveSessionInfo[]>(
+    key,
+    held.map((s) =>
+      s.sessionId === summary.sessionId
+        ? {
+            ...s,
+            completedProblems: summary.completedProblems,
+            totalProblems: summary.totalProblems,
+            totals: summary.totals,
+            outcome: summary.outcome,
+            rowVersion: summary.rowVersion,
+          }
+        : s
+    )
+  )
+}
 
 /**
  * Hook for real-time classroom presence updates via WebSocket
@@ -23,37 +66,49 @@ import type {
  * When a student enters or leaves the classroom, this hook receives the event
  * and automatically invalidates the React Query cache so the UI updates.
  *
+ * `classroom:<id>` is the teacher-only room (§10 P4d-8, P4d-9): the server
+ * admits only the classroom's teacher, checked against the socket's verified
+ * viewer, and sends it every enrolled student's session starts, summaries
+ * after each committed write (`classroom-session-summary`) and ends, plus
+ * presence, enrollment and the students' skill tutorial states. No timers:
+ * every accepted join (`channel-joined`, the first one included) refetches
+ * the cards, so whatever was pushed before the socket was in the room is not
+ * lost.
+ *
+ * The feed's state (`followClassroomChannel`) is returned so the page can say
+ * when it is paused: socket.io keeps reconnecting with no cap on attempts, a
+ * transient join failure rejoins on its next connect, and a refusal stops.
+ *
  * @param classroomId - The classroom to subscribe to
- * @returns Whether the socket is connected
+ * @returns The live feed's state
  */
 export function useClassroomSocket(classroomId: string | undefined): {
-  connected: boolean
+  live: ClassroomLiveState
 } {
-  const [connected, setConnected] = useState(false)
+  const [live, setLive] = useState<ClassroomLiveState>('connecting')
   const socketRef = useRef<Socket | null>(null)
   const queryClient = useQueryClient()
 
   useEffect(() => {
     if (!classroomId) return
-
-    // Create socket connection
-    const socket = createSocket({
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-    })
+    setLive('connecting')
+    // Its own connection (not one shared with another hook), so its reconnect
+    // settings are its own; no cap on attempts: socket.io's backoff keeps trying
+    const socket = createSocket({ forceNew: true, reconnection: true, reconnectionDelay: 1000 })
     socketRef.current = socket
 
-    socket.on('connect', () => {
-      console.log('[ClassroomSocket] Connected')
-      setConnected(true)
-      // Join the classroom channel
-      socket.emit('join-classroom', { classroomId })
+    // In the teacher room from now on: refetch what was pushed before the join
+    // (on the first join as on every rejoin)
+    const stopFollowing = followClassroomChannel(socket, classroomId, {
+      onState: setLive,
+      onJoined: () => {
+        queryClient.invalidateQueries({ queryKey: classroomKeys.activeSessions(classroomId) })
+        queryClient.invalidateQueries({ queryKey: classroomKeys.presence(classroomId) })
+      },
     })
 
-    socket.on('disconnect', () => {
-      console.log('[ClassroomSocket] Disconnected')
-      setConnected(false)
+    socket.on('classroom-session-summary', (summary: ClassroomSessionSummaryEvent) => {
+      applyClassroomSessionSummary(queryClient, classroomId, summary)
     })
 
     // Listen for student entered event
@@ -139,11 +194,12 @@ export function useClassroomSocket(classroomId: string | undefined): {
 
     // Cleanup on unmount
     return () => {
+      stopFollowing()
       socket.emit('leave-classroom', { classroomId })
       socket.disconnect()
       socketRef.current = null
     }
   }, [classroomId, queryClient])
 
-  return { connected }
+  return { live }
 }

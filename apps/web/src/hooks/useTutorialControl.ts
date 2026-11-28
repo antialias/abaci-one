@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
-import { createSocket } from '@/lib/socket'
 import type {
   SkillTutorialControlAction,
   SkillTutorialControlEvent,
 } from '@/lib/classroom/socket-events'
+import { createSocket } from '@/lib/socket'
 
 interface UseTutorialControlResult {
   /** Whether connected to the socket */
@@ -18,7 +18,11 @@ interface UseTutorialControlResult {
 /**
  * Hook for teachers to send control events to a student's skill tutorial
  *
- * @param classroomId - The classroom ID (used for the socket channel)
+ * The server checks `control-tutorial` against the socket's verified viewer
+ * and sends the control to the student's own channel `player:<id>`, where the
+ * student's device listens (§10 P4d-9). Sending needs no room joined.
+ *
+ * @param classroomId - The student's classroom (control is offered only within one)
  * @param playerId - The student's player ID
  * @param enabled - Whether control is enabled (default: true)
  */
@@ -30,7 +34,7 @@ export function useTutorialControl(
   const socketRef = useRef<Socket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
 
-  // Connect to socket and join classroom channel
+  // Connect to socket
   useEffect(() => {
     if (!classroomId || !playerId || !enabled) {
       if (socketRef.current) {
@@ -50,10 +54,8 @@ export function useTutorialControl(
     socketRef.current = socket
 
     socket.on('connect', () => {
-      console.log('[TutorialControl] Connected, joining classroom channel:', classroomId)
+      console.log('[TutorialControl] Connected')
       setIsConnected(true)
-      // Join the classroom channel to send control events
-      socket.emit('join-classroom', { classroomId })
     })
 
     socket.on('disconnect', () => {
@@ -63,7 +65,6 @@ export function useTutorialControl(
 
     return () => {
       console.log('[TutorialControl] Cleaning up socket connection')
-      socket.emit('leave-classroom', { classroomId })
       socket.disconnect()
       socketRef.current = null
       setIsConnected(false)

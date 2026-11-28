@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Fragment, useCallback, useMemo, useState } from 'react'
 // Direct imports to avoid barrel pulling in EmojiPicker (694KB emojibase-data)
 import { AddStudentByFamilyCodeModal } from '@/components/classroom/AddStudentByFamilyCodeModal'
+import { ClassroomLiveNotice } from '@/components/classroom/ClassroomLiveNotice'
 import { CreateClassroomForm } from '@/components/classroom/CreateClassroomForm'
 import { PendingApprovalsSection } from '@/components/classroom/PendingApprovalsSection'
 import { SessionObserverModal } from '@/components/classroom/SessionObserverModal'
@@ -104,7 +105,8 @@ export function PracticeClient({ initialPickerData, viewerId, userId }: Practice
 
   // Real-time WebSocket updates for classroom events
   // This invalidates React Query caches when students enter/leave, sessions start/end, etc.
-  useClassroomSocket(classroomId)
+  // `live` says when the feed is paused, so a stale view is never a silent one
+  const { live: classroomLive } = useClassroomSocket(classroomId)
 
   // Use unified students (already fetched above) as the main data source
   // Cast to maintain compatibility with existing grouping functions
@@ -475,6 +477,11 @@ export function PracticeClient({ initialPickerData, viewerId, userId }: Practice
                 🏫 Are you a teacher? Create a classroom
               </button>
             </div>
+          )}
+
+          {/* The classroom's live updates, when they are not running */}
+          {isTeacher && classroomId && (
+            <ClassroomLiveNotice state={classroomLive} isDark={isDark} />
           )}
 
           {/* Teacher Enrollment Requests - for teachers to approve parent-initiated requests */}
