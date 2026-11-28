@@ -40,13 +40,18 @@ let db: ReturnType<typeof drizzle>
 const columns = async () =>
   (await client.execute('PRAGMA table_info(session_plans)')).rows.map((r) => String(r.name))
 
-/** The real migrations folder without 0149: the chain prod ran before 6b-2 */
+/**
+ * The real migrations folder up to 0148: the chain prod ran before 6b-2.
+ * Later migrations go too: drizzle's migrator skips any entry older than the
+ * newest one applied, so a later one applied here would hide 0149 from the
+ * full run below.
+ */
 function folderBefore0149(): string {
   const folder = join(dir, 'drizzle')
   cpSync('./drizzle', folder, { recursive: true })
   const journalPath = join(folder, 'meta', '_journal.json')
   const journal = JSON.parse(readFileSync(journalPath, 'utf-8'))
-  journal.entries = journal.entries.filter((e: { tag: string }) => !e.tag.startsWith('0149_'))
+  journal.entries = journal.entries.filter((e: { idx: number }) => e.idx < 149)
   writeFileSync(journalPath, JSON.stringify(journal))
   return folder
 }

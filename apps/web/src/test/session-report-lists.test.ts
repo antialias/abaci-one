@@ -268,6 +268,7 @@ describe('MCP tools answer the report', () => {
           "firstTryCorrect": 7,
           "firstTryPercent": 70,
           "fixedInRetries": 3,
+          "glitches": 0,
           "outcome": "completed",
           "plannedProblems": 10,
           "problems": 10,

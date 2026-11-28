@@ -2,7 +2,7 @@
  * MCP Tool implementations for curriculum data access
  */
 
-import { eq, inArray, or } from 'drizzle-orm'
+import { desc, eq, inArray, or } from 'drizzle-orm'
 import {
   type AdditionConfigV4Custom,
   parseAdditionConfig,
@@ -32,6 +32,7 @@ import {
   getRecentSessionResults,
   startSessionPlan,
 } from '@/lib/curriculum/session-planner'
+import { GLITCH_REF_PATTERN } from '@/lib/curriculum/glitches'
 import { type SessionReportSummary, summarizeSessionReport } from '@/lib/curriculum/session-report'
 import { buildSessionReports } from '@/lib/curriculum/session-report-batch'
 import { evidenceSkillsOf } from '@/lib/curriculum/try-evidence'
@@ -53,6 +54,24 @@ export const MCP_TOOLS = [
       type: 'object',
       properties: {},
       required: [],
+    },
+  },
+  {
+    name: 'get_glitch',
+    description:
+      'Look up a practice glitch by its reference (GL-XXXX, as a grown-up copied it from the ' +
+      "practice screen or the session summary). Returns every row with that reference for this key's " +
+      'students, newest first: the kind, the detail, both builds, the user agent, both clocks, and the ' +
+      'session and player ids. A reference is unique per session only, so more than one row can match.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ref: {
+          type: 'string',
+          description: 'The glitch reference, e.g. GL-7K2Q',
+        },
+      },
+      required: ['ref'],
     },
   },
   {
@@ -129,7 +148,8 @@ export const MCP_TOOLS = [
       'Numbers are the session report (the same as the summary, dashboard and share link): ' +
       'problems (attempted), tries (every answer, retries included), first-try correct and %, ' +
       'fixed in retries, final correct and % (after retries), activeMinutes (time spent answering) ' +
-      'vs wallMinutes (start to end, breaks included) and breakMinutes.',
+      'vs wallMinutes (start to end, breaks included) and breakMinutes. ' +
+      'glitches: the glitch references the summary lists (look one up with get_glitch).',
     inputSchema: {
       type: 'object',
       properties: {
@@ -491,6 +511,48 @@ export async function verifyPlayerAccess(userId: string, playerId: string): Prom
 }
 
 /**
+ * Every glitch row with this reference whose player the key's user may see,
+ * newest first, whole (practice-kinds §8 A23.3). It takes no `player_id`, so
+ * the MCP route calls it before its `player_id` gate and it filters its own
+ * rows through `verifyPlayerAccess`: a row for another user's player is never
+ * returned.
+ */
+export async function getGlitch(userId: string, ref: string) {
+  const normalized = typeof ref === 'string' ? ref.trim().toUpperCase() : ''
+  if (!GLITCH_REF_PATTERN.test(normalized)) {
+    throw new Error('ref must look like GL-XXXX')
+  }
+  const rows = await db
+    .select()
+    .from(schema.practiceGlitches)
+    .where(eq(schema.practiceGlitches.ref, normalized))
+    .orderBy(desc(schema.practiceGlitches.createdAt), desc(schema.practiceGlitches.id))
+  const allowed = new Map<string, boolean>()
+  for (const playerId of new Set(rows.map((r) => r.playerId))) {
+    allowed.set(playerId, await verifyPlayerAccess(userId, playerId))
+  }
+  return {
+    ref: normalized,
+    glitches: rows
+      .filter((r) => allowed.get(r.playerId))
+      .map((r) => ({
+        id: r.id,
+        ref: r.ref,
+        kind: r.kind,
+        sessionId: r.sessionPlanId,
+        playerId: r.playerId,
+        detail: r.detail,
+        clientBuild: r.clientBuild,
+        serverBuild: r.serverBuild,
+        userAgent: r.userAgent,
+        clientAt: r.clientAt,
+        createdAt: r.createdAt,
+        date: new Date(r.createdAt).toISOString(),
+      })),
+  }
+}
+
+/**
  * Get student overview with skill counts and practice info
  */
 export async function getStudentOverview(playerId: string) {
@@ -692,6 +754,8 @@ export async function getPracticeSessions(playerId: string, days: number = 14) {
       date: s.startedAt,
       completedAt: s.report.endedAt != null ? new Date(s.report.endedAt) : s.completedAt,
       ...sessionReportNumbers(s.report),
+      /** Glitch references on the summary's line (`save_delayed` left out) */
+      glitches: s.report.glitches.count,
     }))
 }
 

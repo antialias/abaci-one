@@ -8,6 +8,9 @@
  * (instead of one per row), and, for lists, a slim `parts` projection made in
  * SQL (§10 P4d-1).
  *
+ * The sessions' glitch rows are loaded the same way, in one query (practice-
+ * kinds §8 A23.3), so a list row's `glitches` count is the summary's.
+ *
  * The song is not loaded: none of these views shows it (`song.status` is
  * `none` in these reports; the summary projection drops it).
  */
@@ -15,6 +18,7 @@
 import { and, asc, eq, inArray, type SQL, sql } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { SessionPart } from '@/db/schema/session-plans'
+import { loadGlitchesFor } from './glitches'
 import { readTries } from './read-tries'
 import {
   buildSessionReport,
@@ -177,7 +181,11 @@ export async function buildSessionReports(
   plans: readonly ReportPlan[],
   now: number = Date.now()
 ): Promise<(SessionReport | null)[]> {
-  const gameResults = await loadBreakGameResultsFor(plans.map((p) => p.id))
+  const ids = plans.map((p) => p.id)
+  const [gameResults, glitches] = await Promise.all([
+    loadBreakGameResultsFor(ids),
+    loadGlitchesFor(ids),
+  ])
   return Promise.all(
     plans.map(async (row) => {
       try {
@@ -187,6 +195,7 @@ export async function buildSessionReports(
           tries: await readTries(plan),
           gameResults: gameResults.get(plan.id) ?? [],
           song: null,
+          glitches: glitches.get(plan.id) ?? [],
           now,
         })
       } catch (error) {

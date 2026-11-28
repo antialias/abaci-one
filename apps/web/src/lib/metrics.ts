@@ -172,6 +172,20 @@ export const practiceStreakMax = new Gauge({
   registers: [metricsRegistry],
 })
 
+/**
+ * Glitch rows stored (practice-kinds §8 A23.3), plus `kind="malformed"` for a
+ * glitch write the route refused. Every label value is an enum the route owns
+ * (`glitchCounterLabels`, `lib/curriculum/glitches.ts`), never a client
+ * string, so the series cannot grow. `kind="verdict_corrected"` at zero over a
+ * week is the screen/server verdict parity check.
+ */
+export const practiceGlitchesTotal = new Counter({
+  name: 'practice_glitches_total',
+  help: 'Practice glitches recorded, by kind and a fixed detail label',
+  labelNames: ['kind', 'detail'],
+  registers: [metricsRegistry],
+})
+
 // =============================================================================
 // PRACTICE PICKER METRICS
 // =============================================================================
@@ -768,6 +782,7 @@ export const metrics = {
     problemsTotal: practiceProblemsTotal,
     responseTime: practiceResponseTime,
     streakMax: practiceStreakMax,
+    glitchesTotal: practiceGlitchesTotal,
   },
   practicePicker: {
     loadDuration: practicePickerLoadDuration,

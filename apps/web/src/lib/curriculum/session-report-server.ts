@@ -31,6 +31,7 @@ import { and, asc, desc, eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { adjustmentsOf, isEndedOutcome, sessionOutcome } from '@/db/schema/session-plan-normalize'
 import type { SessionPlan } from '@/db/schema/session-plans'
+import { loadGlitches } from './glitches'
 import { readTries } from './read-tries'
 import { setRowCommitListener } from './row-cas'
 import {
@@ -86,12 +87,13 @@ export async function loadSessionReport(
   plan: SessionPlan,
   now: number = Date.now()
 ): Promise<SessionReport> {
-  const [tries, gameResults, song] = await Promise.all([
+  const [tries, gameResults, song, glitches] = await Promise.all([
     readTries(plan),
     loadBreakGameResults(plan.id),
     loadSong(plan.id),
+    loadGlitches(plan.id),
   ])
-  return buildSessionReport({ plan, tries, gameResults, song, now })
+  return buildSessionReport({ plan, tries, gameResults, song, glitches, now })
 }
 
 /** The report of a session by id; null when there is no such row. */
