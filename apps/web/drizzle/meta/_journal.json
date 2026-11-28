@@ -1051,6 +1051,13 @@
       "when": 1795810306612,
       "tag": "0149_drop_legacy_session_plan_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "6",
+      "when": 1795887276402,
+      "tag": "0150_practice_glitches",
+      "breakpoints": true
     }
   ]
 }
