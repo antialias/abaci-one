@@ -16,16 +16,22 @@
 import type { Presentation } from './kind'
 import { partKinds } from './registry'
 
-/** Every registered presentation, in kind-registration order then the kind's own */
-export const registeredPresentations: readonly Presentation[] = [...partKinds.values()].flatMap(
-  (kind) => [...kind.presentations.values()]
-)
-
-const byId = new Map(registeredPresentations.map((p) => [p.id, p]))
+/**
+ * Every registered presentation, in kind-registration order then the kind's
+ * own. Read from the registry at each call, so a kind registered after this
+ * module loaded (a test's stub kind) is seen.
+ */
+export function registeredPresentations(): Presentation[] {
+  return [...partKinds.values()].flatMap((kind) => [...kind.presentations.values()])
+}
 
 /** A registered presentation, or undefined for an id no registry knows. */
 export function findPresentation(id: string): Presentation | undefined {
-  return byId.get(id)
+  for (const kind of partKinds.values()) {
+    const presentation = kind.presentations.get(id)
+    if (presentation) return presentation
+  }
+  return undefined
 }
 
 /**
@@ -36,6 +42,6 @@ export function findPresentation(id: string): Presentation | undefined {
  * (§3.1).
  */
 export function masteryModeOf(presentationId: string): string | null {
-  const presentation = byId.get(presentationId)
+  const presentation = findPresentation(presentationId)
   return presentation ? presentation.masteryMode : presentationId
 }

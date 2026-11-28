@@ -60,15 +60,17 @@ export interface PartReportRow extends Counts {
   /** The part's kind id (absent on old rows = arithmetic) */
   kind: string
   /**
-   * Arithmetic's presentation type (abacus / visualization / linear), when it
-   * has one. Kept for the open bundles that read it (`SessionHero`, R3);
-   * new readers read `presentation ?? type` until K5b moves them
+   * Arithmetic's stored presentation type (abacus / visualization / linear),
+   * as the part has it; null when it has none. Kept for the open bundles
+   * that read it (`SessionHero`, R3); new readers read `presentation`
    */
   type: string | null
   /**
-   * The part's presentation id, from its kind (`presentationOf`; practice-
-   * kinds K3, beside `type` and the same value for arithmetic); the part's
-   * own `presentation` field for a kind this image does not know, else null
+   * The part's resolved presentation id, from its kind (`presentationOf`;
+   * practice-kinds K3): it equals `type` whenever `type` is set, and an
+   * arithmetic part without one resolves to `'linear'` (as its evidence
+   * does). A kind this image does not know: the part's own `presentation`
+   * field, else null
    */
   presentation: string | null
   /** Σ effective response time of the part's tries */

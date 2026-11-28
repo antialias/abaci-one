@@ -171,6 +171,31 @@ describe('the shared cursor stores what the K2 cursor stored (K3)', () => {
     }
   })
 
+  // Hand-built tries no image writes (a first try is always round 0): the
+  // divulged rule reads them as K2's did, a first try never divulging.
+  it('divulged: hand-built tries of every kind and round read as K2 read them', () => {
+    const slots = [slot(0), slot(1)]
+    const state = arithmeticKind.initialState(slots)
+    for (const kind of ['first', 'retry', 'do_over'] as const) {
+      for (const round of [0, 1, 2, 3]) {
+        for (const isCorrect of [true, false]) {
+          const tries: KindTry[] = [{ itemId: 's0', kind, round, practiceOnly: false, isCorrect }]
+          expect(arithmeticKind.whyNotDoOver?.(slots, state, tries, 's0'), `${kind} ${round}`).toBe(
+            k2ArithmeticCursor.whyNotDoOver(slots, state, tries, 's0')
+          )
+        }
+      }
+    }
+    const wrongFirstAt2: KindTry = {
+      itemId: 's0',
+      kind: 'first',
+      round: 2,
+      practiceOnly: false,
+      isCorrect: false,
+    }
+    expect(arithmeticKind.whyNotDoOver?.(slots, state, [wrongFirstAt2], 's0')).toBeNull()
+  })
+
   it('a queued retry still carries the problem and the purpose, in the stored key order', () => {
     const slots = [slot(0), slot(1)]
     const state = arithmeticKind.applyTry(slots, arithmeticKind.initialState(slots), [], {

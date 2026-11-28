@@ -56,3 +56,17 @@ const linear: Presentation<SessionPart> = {
 export const arithmeticPresentations: ReadonlyMap<string, Presentation<SessionPart>> = new Map(
   [abacus, visualization, linear].map((p) => [p.id, p])
 )
+
+/**
+ * The presentation an arithmetic part's tries were practiced in: its
+ * `presentation` (none is written before K6), else its `type`. A part stored
+ * without either (old or hand-made rows), or no part at all, is 'linear', as
+ * every evidence reader read it before K1b (`partType ?? 'linear'`);
+ * `evidenceOfRow` derives an unstamped row's evidence from it.
+ */
+export function arithmeticPresentationOf(
+  part: { presentation?: unknown; type?: unknown } | undefined
+): string {
+  if (typeof part?.presentation === 'string') return part.presentation
+  return typeof part?.type === 'string' ? part.type : 'linear'
+}

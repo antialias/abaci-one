@@ -274,14 +274,19 @@ export function retryRoundsCursor<
     return redeemAt(state, index)
   }
 
-  /** Whether the item's answer was shown: a wrong try in the last round there is. */
+  /**
+   * Whether the item's answer was shown: a wrong try in the last round there
+   * is. That is a wrong retry at round `maxRounds` or later, exactly the
+   * first kind's rule before K3 (its first tries are round 0, and a first
+   * try is never counted, whatever round a row names); with no retry rounds
+   * (`maxRounds` 0) the first pass is the last round, so a wrong first try.
+   */
   function divulged(tries: readonly KindTry[], itemId: string): boolean {
     return tries.some(
       (t) =>
         t.itemId === itemId &&
         !t.isCorrect &&
-        (t.kind === 'retry' || t.kind === 'first') &&
-        t.round >= maxRounds
+        ((t.kind === 'retry' && t.round >= maxRounds) || (t.kind === 'first' && maxRounds === 0))
     )
   }
 

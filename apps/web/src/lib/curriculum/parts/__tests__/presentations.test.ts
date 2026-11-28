@@ -12,7 +12,7 @@ const part = (type: SessionPart['type'], useAbacus: boolean) =>
 
 describe('arithmetic presentations', () => {
   it('registers abacus, visualization, linear, each its own mastery mode', () => {
-    expect(registeredPresentations.map((p) => [p.id, p.masteryMode])).toEqual([
+    expect(registeredPresentations().map((p) => [p.id, p.masteryMode])).toEqual([
       ['abacus', 'abacus'],
       ['visualization', 'visualization'],
       ['linear', 'linear'],

@@ -394,6 +394,21 @@ describe('part rows name their presentation (K3)', () => {
     ).toEqual(['type', 'presentation'])
   })
 
+  it("an arithmetic part with no type: type null, presentation the resolved 'linear'", () => {
+    const fixture = tenProblemSession()
+    const [first, ...rest] = fixture.plan.parts
+    const { type: _type, ...untyped } = first
+    const report = reportOf({
+      ...fixture,
+      plan: { ...fixture.plan, parts: [untyped as never, ...rest] },
+    })
+    expect(report.parts.map((p) => [p.type, p.presentation])).toEqual([
+      [null, 'linear'],
+      ['visualization', 'visualization'],
+      ['linear', 'linear'],
+    ])
+  })
+
   it("a part's own presentation field wins over type; an unknown kind's own field is read as it stands", () => {
     const fixture = tenProblemSession()
     const [first, second, third] = fixture.plan.parts

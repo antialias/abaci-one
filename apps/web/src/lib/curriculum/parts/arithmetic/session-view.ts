@@ -28,8 +28,7 @@ import type {
   SessionPlan,
 } from '@/db/schema/session-plans'
 import type { ObserverPosition, PracticeItemRef } from '@/lib/classroom/socket-events'
-import { arithmeticPresentations } from './presentations'
-import { arithmeticPresentationOf } from './server'
+import { arithmeticPresentationOf, arithmeticPresentations } from './presentations'
 import type { ArithmeticState } from './state'
 
 /** The plan fields this module reads (position through `partStateOf`). */

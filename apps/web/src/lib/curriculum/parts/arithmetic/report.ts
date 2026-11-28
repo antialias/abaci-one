@@ -9,16 +9,7 @@
  */
 
 import type { SessionPlan } from '@/db/schema/session-plans'
-import type { PartProgress } from '../kind'
-import { type ArithmeticContent, type ArithmeticState, arithmeticPartStateOf } from './state'
-
-/**
- * Progress through one part: original slots passed of slots planned (the
- * slot-index count today's views show; retries are not planned items).
- */
-export function arithmeticProgress(slots: ArithmeticContent, state: ArithmeticState): PartProgress {
-  return { done: Math.min(state.slotIndex, slots.length), total: slots.length }
-}
+import { arithmeticPartStateOf } from './state'
 
 /**
  * Calculate total problems including pending retries for progress display

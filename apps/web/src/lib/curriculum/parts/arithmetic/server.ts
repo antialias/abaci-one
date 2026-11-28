@@ -13,7 +13,7 @@
 import type { SessionPart, SlotResult, TryEvidence } from '@/db/schema/session-plans'
 import type { KindTry, KindTryRecord, PartKind, Presentation } from '../kind'
 import { formatProblemExpression } from './describe'
-import { arithmeticPresentations } from './presentations'
+import { arithmeticPresentationOf, arithmeticPresentations } from './presentations'
 import {
   type ArithmeticContent,
   type ArithmeticItem,
@@ -37,20 +37,6 @@ export function redeemByDoOver(
   t: KindTry
 ): ArithmeticState {
   return arithmeticCursor.redeem(slots, state, t)
-}
-
-/**
- * The presentation an arithmetic part's tries were practiced in: its
- * `presentation` (none is written before K6), else its `type`. A part stored
- * without either (old or hand-made rows), or no part at all, is 'linear', as
- * every evidence reader read it before K1b (`partType ?? 'linear'`);
- * `evidenceOfRow` derives an unstamped row's evidence from it.
- */
-export function arithmeticPresentationOf(
-  part: { presentation?: unknown; type?: unknown } | undefined
-): string {
-  if (typeof part?.presentation === 'string') return part.presentation
-  return typeof part?.type === 'string' ? part.type : 'linear'
 }
 
 /**

@@ -15,13 +15,18 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { currentItemOf, normalizeTries } from '@/db/schema/session-plan-normalize'
+import {
+  currentItemOf,
+  normalizeTries,
+  resolvedEvidenceOfRow,
+} from '@/db/schema/session-plan-normalize'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 import {
   type ReadAbacusItem,
   readAbacusKind,
 } from '@/lib/curriculum/parts/__tests__/fixtures/read-abacus-kind'
 import type { AnyPartKind } from '@/lib/curriculum/parts/kind'
+import { masteryModeOf } from '@/lib/curriculum/parts/presentations'
 import { partKinds } from '@/lib/curriculum/parts/registry'
 import { summarizeSessionReport } from '@/lib/curriculum/session-report'
 import {
@@ -145,6 +150,12 @@ describe('fixture (7): a read_abacus part and its rows', () => {
       ['r2', { skills: ['read.2'], presentation: 'static' }],
     ])
     expect(tries.map((t) => t.payload)).toEqual([payload(0), payload(1), payload(2)])
+    // Its presentation counts toward the kind's own mode, resolved through the
+    // registry as it stands now (the stub is registered after load)
+    expect(
+      fixture.plan.results.slice(-3).map((r) => resolvedEvidenceOfRow(r, fixture.plan.parts)?.mode)
+    ).toEqual(['read_abacus', 'read_abacus', 'read_abacus'])
+    expect(masteryModeOf('static')).toBe('read_abacus')
   })
 
   it('the report plans its items, counts its tries and names its presentation', () => {
