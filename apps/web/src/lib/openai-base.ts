@@ -6,12 +6,12 @@
  * Realtime voice is the one documented exception to "every LLM call goes
  * through `@soroban/llm-client`": a live speech-to-speech session has no
  * `claude -p` equivalent. Text and vision calls go through the LLM client
- * (default provider `claude_code`); images go through the switch proxy
+ * (provider `claude_code`); images go through the switch proxy
  * (`src/lib/images/switch-images.ts`).
  *
- * Follows `OPENAI_MEDIA_BASE_URL`, else api.openai.com. (Deliberately NOT
- * `LLM_OPENAI_*`: the llm-client config loader sweeps every extra
- * `LLM_OPENAI_*` var into provider options.)
+ * Follows `OPENAI_MEDIA_BASE_URL`, else api.openai.com. The key is
+ * `LLM_OPENAI_API_KEY` (or `OPENAI_API_KEY`), read by the realtime session
+ * routes.
  *
  * A function rather than a constant so env is read at call time: runtime env
  * always wins over anything the bundler evaluated at build.

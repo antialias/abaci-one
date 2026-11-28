@@ -2,12 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { classifySongFailure } from '../classify-failure'
 
 describe('classifySongFailure', () => {
-  it('classifies the prod OpenAI 401 message as auth_invalid', () => {
-    const msg =
-      'openai API error (401): Incorrect API key provided: sk-proj-***PY5WsA. You can find your API key at https://platform.openai.com/account/api-keys.'
-    const result = classifySongFailure(msg)
+  it('reads a 401 that names no service as the proxy refusing the app', () => {
+    const result = classifySongFailure('Request failed (401): unauthorized')
     expect(result.kind).toBe('auth_invalid')
-    expect(result.remediation?.href).toContain('platform.openai.com')
+    expect(result.ownerMessage).toContain('LLM_CLAUDE_CODE_API_KEY')
+    expect(result.ownerMessage).not.toContain('OpenAI')
     expect(result.userMessage).not.toContain('API')
   })
 
@@ -64,21 +63,14 @@ describe('classifySongFailure', () => {
     expect(result.remediation?.href).toContain('elevenlabs.io')
   })
 
-  it('distinguishes OpenAI out-of-funds (429+insufficient_quota) from rate-limit (429 alone)', () => {
-    // Real OpenAI strings — both come back as 429 but mean very different things.
-    const outOfFunds = classifySongFailure(
-      'openai API error (429): You exceeded your current quota, please check your plan and billing details.'
-    )
-    const insufficientQuotaCode = classifySongFailure('openai API error (429): insufficient_quota')
-    const rateLimited = classifySongFailure(
-      'openai API error (429): Rate limit reached for gpt-4o in organization org-...'
-    )
+  it('distinguishes the text model out of quota (429+insufficient_quota) from rate-limit (429 alone)', () => {
+    const outOfFunds = classifySongFailure('claude_code API error (429): insufficient_quota')
+    const rateLimited = classifySongFailure('claude_code API error (429): Rate limit reached')
 
     expect(outOfFunds.kind).toBe('quota_exceeded')
-    expect(outOfFunds.remediation?.href).toContain('platform.openai.com/account/billing')
-
-    expect(insufficientQuotaCode.kind).toBe('quota_exceeded')
-    expect(insufficientQuotaCode.remediation?.href).toContain('platform.openai.com/account/billing')
+    expect(outOfFunds.ownerMessage).toContain('switch proxy')
+    expect(outOfFunds.ownerMessage).not.toContain('OpenAI')
+    expect(outOfFunds.remediation).toBeNull()
 
     expect(rateLimited.kind).toBe('rate_limited')
     expect(rateLimited.remediation).toBeNull()

@@ -16,65 +16,63 @@ export type LogLevel = "debug" | "info" | "warn" | "error";
  * @param data - Optional structured data to include
  */
 export type LoggerFn = (
-  level: LogLevel,
-  message: string,
-  data?: Record<string, unknown>,
+	level: LogLevel,
+	message: string,
+	data?: Record<string, unknown>,
 ) => void;
 
 /**
  * Logging configuration for the LLM client
  */
 export interface LoggingConfig {
-  /** Enable logging globally (default: false) */
-  enabled: boolean;
-  /** Custom logger function (default: console-based logger) */
-  logger?: LoggerFn;
-  /** Minimum log level to output (default: 'debug') */
-  minLevel?: LogLevel;
+	/** Enable logging globally (default: false) */
+	enabled: boolean;
+	/** Custom logger function (default: console-based logger) */
+	logger?: LoggerFn;
+	/** Minimum log level to output (default: 'debug') */
+	minLevel?: LogLevel;
 }
 
 /**
  * Default console-based logger
  */
 export const defaultLogger: LoggerFn = (level, message, data) => {
-  const prefix = `[llm-client:${level}]`;
-  if (data) {
-    console[level === "debug" ? "log" : level](prefix, message, data);
-  } else {
-    console[level === "debug" ? "log" : level](prefix, message);
-  }
+	const prefix = `[llm-client:${level}]`;
+	if (data) {
+		console[level === "debug" ? "log" : level](prefix, message, data);
+	} else {
+		console[level === "debug" ? "log" : level](prefix, message);
+	}
 };
 
 /**
  * Provider configuration loaded from environment variables
  */
 export interface ProviderConfig {
-  /** Provider name (e.g., 'openai', 'anthropic') */
-  name: string;
-  /** API key for authentication */
-  apiKey: string;
-  /** Base URL for API requests */
-  baseUrl: string;
-  /** Default model for this provider */
-  defaultModel: string;
-  /** Provider-specific options */
-  options?: Record<string, unknown>;
+	/** Provider name (always 'claude_code') */
+	name: string;
+	/** API key for authentication */
+	apiKey: string;
+	/** Base URL for API requests */
+	baseUrl: string;
+	/** Default model for this provider */
+	defaultModel: string;
+	/** Provider-specific options */
+	options?: Record<string, unknown>;
 }
 
 /**
  * LLM client configuration
  */
 export interface LLMClientConfig {
-  /** Default provider to use */
-  defaultProvider: string;
-  /** Default model (overrides provider default) */
-  defaultModel?: string;
-  /** Configured providers */
-  providers: Record<string, ProviderConfig>;
-  /** Default maximum retry attempts */
-  defaultMaxRetries: number;
-  /** Logging configuration */
-  logging?: LoggingConfig;
+	/** Default model (overrides provider default) */
+	defaultModel?: string;
+	/** The claude_code provider's configuration (absent when not configured) */
+	provider?: ProviderConfig;
+	/** Default maximum retry attempts */
+	defaultMaxRetries: number;
+	/** Logging configuration */
+	logging?: LoggingConfig;
 }
 
 /**
@@ -82,12 +80,12 @@ export interface LLMClientConfig {
  * Controls depth of reasoning (more = better quality, higher latency/cost)
  */
 export type ReasoningEffort =
-  | "none"
-  | "minimal"
-  | "low"
-  | "medium"
-  | "high"
-  | "xhigh";
+	| "none"
+	| "minimal"
+	| "low"
+	| "medium"
+	| "high"
+	| "xhigh";
 
 /** Queue class for capped providers: see LLMRequest.priority. */
 export type RequestPriority = "interactive" | "background";
@@ -96,147 +94,145 @@ export type RequestPriority = "interactive" | "background";
  * Request to make an LLM call with type-safe schema validation
  */
 export interface LLMRequest<T extends z.ZodType> {
-  /** The prompt to send to the LLM */
-  prompt: string;
-  /**
-   * Standing instructions for the model, kept apart from the prompt. Providers
-   * with a system slot use it; the others put it before the prompt.
-   */
-  system?: string;
-  /** Base64 data URLs for vision requests */
-  images?: string[];
-  /** Zod schema for response validation */
-  schema: T;
-  /** Override default provider */
-  provider?: string;
-  /** Override default model */
-  model?: string;
-  /** Maximum retry attempts (default: 2) */
-  maxRetries?: number;
-  /** Progress callback for UI feedback */
-  onProgress?: (progress: LLMProgress) => void;
-  /**
-   * Reasoning effort for GPT-5.2+ models (default: 'medium' for thinking models)
-   * Higher values = better reasoning but more tokens/latency
-   */
-  reasoningEffort?: ReasoningEffort;
-  /**
-   * Request timeout in milliseconds (default: 120000 = 2 minutes)
-   * Set to 0 for no timeout (not recommended)
-   */
-  timeoutMs?: number;
-  /**
-   * Queue class when runs are capped (claude_code): "interactive" (a child is
-   * waiting on the answer) goes ahead of "background" and always has a slot
-   * kept for it. Default: "background".
-   */
-  priority?: RequestPriority;
-  /** Aborting cancels the request, including while it waits for a slot. */
-  signal?: AbortSignal;
+	/** The prompt to send to the LLM */
+	prompt: string;
+	/**
+	 * Standing instructions for the model, kept apart from the prompt. Providers
+	 * with a system slot use it; the others put it before the prompt.
+	 */
+	system?: string;
+	/** Base64 data URLs for vision requests */
+	images?: string[];
+	/** Zod schema for response validation */
+	schema: T;
+	/** Override default model */
+	model?: string;
+	/** Maximum retry attempts (default: 2) */
+	maxRetries?: number;
+	/** Progress callback for UI feedback */
+	onProgress?: (progress: LLMProgress) => void;
+	/**
+	 * Reasoning effort for GPT-5.2+ models (default: 'medium' for thinking models)
+	 * Higher values = better reasoning but more tokens/latency
+	 */
+	reasoningEffort?: ReasoningEffort;
+	/**
+	 * Request timeout in milliseconds (default: 120000 = 2 minutes)
+	 * Set to 0 for no timeout (not recommended)
+	 */
+	timeoutMs?: number;
+	/**
+	 * Queue class when runs are capped (claude_code): "interactive" (a child is
+	 * waiting on the answer) goes ahead of "background" and always has a slot
+	 * kept for it. Default: "background".
+	 */
+	priority?: RequestPriority;
+	/** Aborting cancels the request, including while it waits for a slot. */
+	signal?: AbortSignal;
 }
 
 /**
  * Progress updates during LLM call
  */
 export interface LLMProgress {
-  /** Current stage of the call */
-  stage: "preparing" | "calling" | "validating" | "retrying";
-  /** Current attempt number (1-indexed) */
-  attempt: number;
-  /** Maximum number of attempts */
-  maxAttempts: number;
-  /** Human-readable status message */
-  message: string;
-  /** Validation error from previous attempt (for retries) */
-  validationError?: ValidationFeedback;
+	/** Current stage of the call */
+	stage: "preparing" | "calling" | "validating" | "retrying";
+	/** Current attempt number (1-indexed) */
+	attempt: number;
+	/** Maximum number of attempts */
+	maxAttempts: number;
+	/** Human-readable status message */
+	message: string;
+	/** Validation error from previous attempt (for retries) */
+	validationError?: ValidationFeedback;
 }
 
 /**
  * Validation error feedback for retry prompts
  */
 export interface ValidationFeedback {
-  /** Field path that failed validation */
-  field: string;
-  /** Error description */
-  error: string;
-  /** Value that was received */
-  received?: unknown;
-  /** Expected value or type */
-  expected?: unknown;
-  /** Valid options (for enum fields) */
-  validOptions?: string[];
+	/** Field path that failed validation */
+	field: string;
+	/** Error description */
+	error: string;
+	/** Value that was received */
+	received?: unknown;
+	/** Expected value or type */
+	expected?: unknown;
+	/** Valid options (for enum fields) */
+	validOptions?: string[];
 }
 
 /**
  * Response from an LLM call
  */
 export interface LLMResponse<T> {
-  /** Validated response data (typed according to schema) */
-  data: T;
-  /** Token usage statistics */
-  usage: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
-  /** Number of attempts needed */
-  attempts: number;
-  /** Provider that was used */
-  provider: string;
-  /** Model that was used */
-  model: string;
-  /** Raw JSON response from the LLM (before parsing/validation) */
-  rawResponse: string;
-  /** JSON Schema sent to the LLM (with field-level descriptions from .describe()) */
-  jsonSchema: string;
+	/** Validated response data (typed according to schema) */
+	data: T;
+	/** Token usage statistics */
+	usage: {
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+	};
+	/** Number of attempts needed */
+	attempts: number;
+	/** Provider that was used */
+	provider: string;
+	/** Model that was used */
+	model: string;
+	/** Raw JSON response from the LLM (before parsing/validation) */
+	rawResponse: string;
+	/** JSON Schema sent to the LLM (with field-level descriptions from .describe()) */
+	jsonSchema: string;
 }
 
 /**
  * Internal request passed to providers
  */
 export interface ProviderRequest {
-  /** The prompt to send */
-  prompt: string;
-  /** Standing instructions (see LLMRequest.system) */
-  system?: string;
-  /**
-   * Free text instead of JSON: the answer is the model's text, and
-   * `jsonSchema` is ignored. Only providers that can stream text see this.
-   */
-  textOutput?: boolean;
-  /** Base64 data URLs for vision */
-  images?: string[];
-  /** JSON schema for structured output */
-  jsonSchema: Record<string, unknown>;
-  /** Model to use */
-  model: string;
-  /** Validation feedback from previous attempt */
-  validationFeedback?: ValidationFeedback;
-  /** Reasoning effort level (for GPT-5.2+ models) */
-  reasoningEffort?: ReasoningEffort;
-  /** Request timeout in milliseconds */
-  timeoutMs?: number;
-  /** Queue class (see LLMRequest.priority) */
-  priority?: RequestPriority;
-  /** Aborting cancels the request */
-  signal?: AbortSignal;
+	/** The prompt to send */
+	prompt: string;
+	/** Standing instructions (see LLMRequest.system) */
+	system?: string;
+	/**
+	 * Free text instead of JSON: the answer is the model's text, and
+	 * `jsonSchema` is ignored. Only providers that can stream text see this.
+	 */
+	textOutput?: boolean;
+	/** Base64 data URLs for vision */
+	images?: string[];
+	/** JSON schema for structured output */
+	jsonSchema: Record<string, unknown>;
+	/** Model to use */
+	model: string;
+	/** Validation feedback from previous attempt */
+	validationFeedback?: ValidationFeedback;
+	/** Reasoning effort level (for GPT-5.2+ models) */
+	reasoningEffort?: ReasoningEffort;
+	/** Request timeout in milliseconds */
+	timeoutMs?: number;
+	/** Queue class (see LLMRequest.priority) */
+	priority?: RequestPriority;
+	/** Aborting cancels the request */
+	signal?: AbortSignal;
 }
 
 /**
  * Internal response from providers
  */
 export interface ProviderResponse {
-  /** Parsed content from the LLM */
-  content: unknown;
-  /** Raw JSON string from the LLM (before parsing) */
-  rawContent: string;
-  /** Token usage */
-  usage: {
-    promptTokens: number;
-    completionTokens: number;
-  };
-  /** Finish reason */
-  finishReason: string;
+	/** Parsed content from the LLM */
+	content: unknown;
+	/** Raw JSON string from the LLM (before parsing) */
+	rawContent: string;
+	/** Token usage */
+	usage: {
+		promptTokens: number;
+		completionTokens: number;
+	};
+	/** Finish reason */
+	finishReason: string;
 }
 
 /**
@@ -244,163 +240,163 @@ export interface ProviderResponse {
  * `result` carrying the unvalidated answer. Failures are thrown, as from call().
  */
 export type ProviderStreamEvent =
-  | StreamEventStarted
-  | StreamEventReasoning
-  | StreamEventOutputDelta
-  | StreamEventOutputReset
-  | { type: "result"; response: ProviderResponse };
+	| StreamEventStarted
+	| StreamEventReasoning
+	| StreamEventOutputDelta
+	| StreamEventOutputReset
+	| { type: "result"; response: ProviderResponse };
 
 /**
  * LLM Provider interface for implementing different providers
  */
 export interface LLMProvider {
-  /** Provider name */
-  readonly name: string;
-  /** Make an LLM call */
-  call(request: ProviderRequest): Promise<ProviderResponse>;
-  /**
-   * Stream one call (optional). A provider without it still serves
-   * LLMClient.stream(): the client makes one call() and reports its result.
-   */
-  stream?(
-    request: ProviderRequest,
-  ): AsyncGenerator<ProviderStreamEvent, void, unknown>;
+	/** Provider name */
+	readonly name: string;
+	/** Make an LLM call */
+	call(request: ProviderRequest): Promise<ProviderResponse>;
+	/**
+	 * Stream one call (optional). A provider without it still serves
+	 * LLMClient.stream(): the client makes one call() and reports its result.
+	 */
+	stream?(
+		request: ProviderRequest,
+	): AsyncGenerator<ProviderStreamEvent, void, unknown>;
 }
 
 /**
  * Error thrown when LLM validation fails after all retries
  */
 export class LLMValidationError extends Error {
-  constructor(public readonly feedback: ValidationFeedback) {
-    super(`LLM validation failed: ${feedback.field} - ${feedback.error}`);
-    this.name = "LLMValidationError";
-  }
+	constructor(public readonly feedback: ValidationFeedback) {
+		super(`LLM validation failed: ${feedback.field} - ${feedback.error}`);
+		this.name = "LLMValidationError";
+	}
 }
 
 /**
  * Error thrown when provider is not configured
  */
 export class ProviderNotConfiguredError extends Error {
-  constructor(provider: string) {
-    super(
-      `Provider '${provider}' is not configured. Check your environment variables.`,
-    );
-    this.name = "ProviderNotConfiguredError";
-  }
+	constructor(provider: string) {
+		super(
+			`Provider '${provider}' is not configured. Check your environment variables.`,
+		);
+		this.name = "ProviderNotConfiguredError";
+	}
 }
 
 /**
  * Error thrown when LLM API call fails
  */
 export class LLMApiError extends Error {
-  constructor(
-    public readonly provider: string,
-    public readonly statusCode: number,
-    message: string,
-    public readonly retryAfterMs?: number,
-  ) {
-    super(`${provider} API error (${statusCode}): ${message}`);
-    this.name = "LLMApiError";
-  }
+	constructor(
+		public readonly provider: string,
+		public readonly statusCode: number,
+		message: string,
+		public readonly retryAfterMs?: number,
+	) {
+		super(`${provider} API error (${statusCode}): ${message}`);
+		this.name = "LLMApiError";
+	}
 
-  /** Check if this is a rate limit error */
-  isRateLimited(): boolean {
-    return this.statusCode === 429;
-  }
+	/** Check if this is a rate limit error */
+	isRateLimited(): boolean {
+		return this.statusCode === 429;
+	}
 
-  /** Check if this is a server error that may be transient */
-  isServerError(): boolean {
-    return this.statusCode >= 500 && this.statusCode < 600;
-  }
+	/** Check if this is a server error that may be transient */
+	isServerError(): boolean {
+		return this.statusCode >= 500 && this.statusCode < 600;
+	}
 
-  /** Check if this is a client error that won't be fixed by retrying */
-  isClientError(): boolean {
-    return (
-      this.statusCode >= 400 && this.statusCode < 500 && this.statusCode !== 429
-    );
-  }
+	/** Check if this is a client error that won't be fixed by retrying */
+	isClientError(): boolean {
+		return (
+			this.statusCode >= 400 && this.statusCode < 500 && this.statusCode !== 429
+		);
+	}
 }
 
 /**
  * Error thrown when LLM response is truncated due to token limits
  */
 export class LLMTruncationError extends Error {
-  constructor(
-    public readonly provider: string,
-    public readonly partialContent: unknown,
-  ) {
-    super(
-      `${provider} response was truncated due to token limits. Partial content received.`,
-    );
-    this.name = "LLMTruncationError";
-  }
+	constructor(
+		public readonly provider: string,
+		public readonly partialContent: unknown,
+	) {
+		super(
+			`${provider} response was truncated due to token limits. Partial content received.`,
+		);
+		this.name = "LLMTruncationError";
+	}
 }
 
 /**
  * Error thrown when LLM refuses to respond due to content filter
  */
 export class LLMContentFilterError extends Error {
-  constructor(
-    public readonly provider: string,
-    public readonly filterReason?: string,
-  ) {
-    super(
-      `${provider} refused to respond due to content filter${filterReason ? `: ${filterReason}` : ""}`,
-    );
-    this.name = "LLMContentFilterError";
-  }
+	constructor(
+		public readonly provider: string,
+		public readonly filterReason?: string,
+	) {
+		super(
+			`${provider} refused to respond due to content filter${filterReason ? `: ${filterReason}` : ""}`,
+		);
+		this.name = "LLMContentFilterError";
+	}
 }
 
 /**
  * Error thrown when JSON parsing fails
  */
 export class LLMJsonParseError extends Error {
-  constructor(
-    public readonly rawContent: string,
-    public readonly parseError: string,
-  ) {
-    super(`Failed to parse LLM JSON response: ${parseError}`);
-    this.name = "LLMJsonParseError";
-  }
+	constructor(
+		public readonly rawContent: string,
+		public readonly parseError: string,
+	) {
+		super(`Failed to parse LLM JSON response: ${parseError}`);
+		this.name = "LLMJsonParseError";
+	}
 }
 
 /**
  * Error thrown when LLM request times out
  */
 export class LLMTimeoutError extends Error {
-  constructor(
-    public readonly provider: string,
-    public readonly timeoutMs: number,
-  ) {
-    super(
-      `${provider} request timed out after ${Math.round(timeoutMs / 1000)}s. The API server may be overloaded.`,
-    );
-    this.name = "LLMTimeoutError";
-  }
+	constructor(
+		public readonly provider: string,
+		public readonly timeoutMs: number,
+	) {
+		super(
+			`${provider} request timed out after ${Math.round(timeoutMs / 1000)}s. The API server may be overloaded.`,
+		);
+		this.name = "LLMTimeoutError";
+	}
 }
 
 /**
  * Error thrown when network connection fails
  */
 export class LLMNetworkError extends Error {
-  constructor(
-    public readonly provider: string,
-    public readonly cause?: Error,
-  ) {
-    const causeMessage = cause?.message ?? "Unknown network error";
-    super(`${provider} network error: ${causeMessage}`);
-    this.name = "LLMNetworkError";
-  }
+	constructor(
+		public readonly provider: string,
+		public readonly cause?: Error,
+	) {
+		const causeMessage = cause?.message ?? "Unknown network error";
+		super(`${provider} network error: ${causeMessage}`);
+		this.name = "LLMNetworkError";
+	}
 }
 
 /**
  * The caller aborted the request (its signal fired). Never retried.
  */
 export class LLMAbortedError extends Error {
-  constructor(public readonly provider: string) {
-    super(`${provider} request was aborted`);
-    this.name = "LLMAbortedError";
-  }
+	constructor(public readonly provider: string) {
+		super(`${provider} request was aborted`);
+		this.name = "LLMAbortedError";
+	}
 }
 
 // ============================================================================
@@ -411,53 +407,51 @@ export class LLMAbortedError extends Error {
  * Configuration for reasoning in streaming requests
  */
 export interface ReasoningConfig {
-  /** How much reasoning effort to apply */
-  effort: ReasoningEffort;
-  /** Kept for callers written against the OpenAI Responses API; ignored. */
-  summary?: "auto" | "concise" | "detailed";
+	/** How much reasoning effort to apply */
+	effort: ReasoningEffort;
+	/** Kept for callers written against the OpenAI Responses API; ignored. */
+	summary?: "auto" | "concise" | "detailed";
 }
 
 /**
  * Request for streaming LLM call
  */
 export interface LLMStreamRequest<T extends z.ZodType> {
-  /** The prompt to send to the LLM */
-  prompt: string;
-  /** Standing instructions for the model (see LLMRequest.system) */
-  system?: string;
-  /** Base64 data URLs for vision requests */
-  images?: string[];
-  /** Zod schema for response validation */
-  schema: T;
-  /** Override default provider */
-  provider?: string;
-  /** Override default model */
-  model?: string;
-  /** Reasoning configuration: its effort is the call's reasoning effort */
-  reasoning?: ReasoningConfig;
-  /**
-   * Retries when the answer fails the schema (fed back to the model) or the
-   * call fails before anything streamed (default: the client's maxRetries)
-   */
-  maxRetries?: number;
-  /**
-   * Request timeout in milliseconds (default: 300000 = 5 minutes for streaming)
-   * Streaming requests typically take longer, so default is higher
-   */
-  timeoutMs?: number;
-  /**
-   * Enable debug logging for this request (overrides global setting)
-   * Set to true to enable, false to disable, or omit to use global setting
-   */
-  debug?: boolean;
-  /**
-   * Queue class when runs are capped (claude_code): "interactive" (a child is
-   * waiting on the answer) goes ahead of "background" and always has a slot
-   * kept for it. Default: "background".
-   */
-  priority?: RequestPriority;
-  /** Aborting cancels the request, including while it waits for a slot. */
-  signal?: AbortSignal;
+	/** The prompt to send to the LLM */
+	prompt: string;
+	/** Standing instructions for the model (see LLMRequest.system) */
+	system?: string;
+	/** Base64 data URLs for vision requests */
+	images?: string[];
+	/** Zod schema for response validation */
+	schema: T;
+	/** Override default model */
+	model?: string;
+	/** Reasoning configuration: its effort is the call's reasoning effort */
+	reasoning?: ReasoningConfig;
+	/**
+	 * Retries when the answer fails the schema (fed back to the model) or the
+	 * call fails before anything streamed (default: the client's maxRetries)
+	 */
+	maxRetries?: number;
+	/**
+	 * Request timeout in milliseconds (default: 300000 = 5 minutes for streaming)
+	 * Streaming requests typically take longer, so default is higher
+	 */
+	timeoutMs?: number;
+	/**
+	 * Enable debug logging for this request (overrides global setting)
+	 * Set to true to enable, false to disable, or omit to use global setting
+	 */
+	debug?: boolean;
+	/**
+	 * Queue class when runs are capped (claude_code): "interactive" (a child is
+	 * waiting on the answer) goes ahead of "background" and always has a slot
+	 * kept for it. Default: "background".
+	 */
+	priority?: RequestPriority;
+	/** Aborting cancels the request, including while it waits for a slot. */
+	signal?: AbortSignal;
 }
 
 /**
@@ -465,73 +459,71 @@ export interface LLMStreamRequest<T extends z.ZodType> {
  * arrives as `output_delta` events; `complete.data` is the whole text.
  */
 export interface LLMTextStreamRequest {
-  /** The prompt to send to the LLM */
-  prompt: string;
-  /** Standing instructions for the model */
-  system?: string;
-  /** Base64 data URLs */
-  images?: string[];
-  /** Override default provider */
-  provider?: string;
-  /** Override default model */
-  model?: string;
-  /** Reasoning effort */
-  reasoningEffort?: ReasoningEffort;
-  /** Request timeout in milliseconds (default: 120000) */
-  timeoutMs?: number;
-  /** Retries when the call fails before any text streamed (default: client's) */
-  maxRetries?: number;
-  /** Enable debug logging for this request */
-  debug?: boolean;
-  /**
-   * Queue class when runs are capped (claude_code): "interactive" (a child is
-   * waiting on the answer) goes ahead of "background" and always has a slot
-   * kept for it. Default: "background".
-   */
-  priority?: RequestPriority;
-  /** Aborting cancels the request, including while it waits for a slot. */
-  signal?: AbortSignal;
+	/** The prompt to send to the LLM */
+	prompt: string;
+	/** Standing instructions for the model */
+	system?: string;
+	/** Base64 data URLs */
+	images?: string[];
+	/** Override default model */
+	model?: string;
+	/** Reasoning effort */
+	reasoningEffort?: ReasoningEffort;
+	/** Request timeout in milliseconds (default: 120000) */
+	timeoutMs?: number;
+	/** Retries when the call fails before any text streamed (default: client's) */
+	maxRetries?: number;
+	/** Enable debug logging for this request */
+	debug?: boolean;
+	/**
+	 * Queue class when runs are capped (claude_code): "interactive" (a child is
+	 * waiting on the answer) goes ahead of "background" and always has a slot
+	 * kept for it. Default: "background".
+	 */
+	priority?: RequestPriority;
+	/** Aborting cancels the request, including while it waits for a slot. */
+	signal?: AbortSignal;
 }
 
 /**
  * Base streaming event
  */
 interface StreamEventBase {
-  /** Sequence number for ordering */
-  sequence?: number;
+	/** Sequence number for ordering */
+	sequence?: number;
 }
 
 /**
  * Event when stream starts
  */
 export interface StreamEventStarted extends StreamEventBase {
-  type: "started";
-  /** Response ID from the API */
-  responseId: string;
+	type: "started";
+	/** Response ID from the API */
+	responseId: string;
 }
 
 /**
  * Event for reasoning summary text (the "thinking" process)
  */
 export interface StreamEventReasoning extends StreamEventBase {
-  type: "reasoning";
-  /** The reasoning summary text */
-  text: string;
-  /** Index of the summary part (for multi-step reasoning) */
-  summaryIndex: number;
-  /** Whether this is a delta (partial) or complete text */
-  isDelta: boolean;
+	type: "reasoning";
+	/** The reasoning summary text */
+	text: string;
+	/** Index of the summary part (for multi-step reasoning) */
+	summaryIndex: number;
+	/** Whether this is a delta (partial) or complete text */
+	isDelta: boolean;
 }
 
 /**
  * Event for output text delta
  */
 export interface StreamEventOutputDelta extends StreamEventBase {
-  type: "output_delta";
-  /** The partial output text */
-  text: string;
-  /** Index of the output item */
-  outputIndex: number;
+	type: "output_delta";
+	/** The partial output text */
+	text: string;
+	/** Index of the output item */
+	outputIndex: number;
 }
 
 /**
@@ -540,48 +532,48 @@ export interface StreamEventOutputDelta extends StreamEventBase {
  * A consumer accumulating output_delta text should clear it.
  */
 export interface StreamEventOutputReset extends StreamEventBase {
-  type: "output_reset";
+	type: "output_reset";
 }
 
 /**
  * Event when an error occurs during streaming
  */
 export interface StreamEventError extends StreamEventBase {
-  type: "error";
-  /** Error message */
-  message: string;
-  /** Error code if available */
-  code?: string;
+	type: "error";
+	/** Error message */
+	message: string;
+	/** Error code if available */
+	code?: string;
 }
 
 /**
  * Event when streaming completes successfully
  */
 export interface StreamEventComplete<T> extends StreamEventBase {
-  type: "complete";
-  /** The validated response data */
-  data: T;
-  /** Provider that answered (e.g. "claude_code") */
-  provider?: string;
-  /** Model or class id that was asked for */
-  model?: string;
-  /** Token usage statistics */
-  usage: {
-    promptTokens: number;
-    completionTokens: number;
-    reasoningTokens?: number;
-  };
-  /** Raw JSON response */
-  rawResponse: string;
+	type: "complete";
+	/** The validated response data */
+	data: T;
+	/** Provider that answered (e.g. "claude_code") */
+	provider?: string;
+	/** Model or class id that was asked for */
+	model?: string;
+	/** Token usage statistics */
+	usage: {
+		promptTokens: number;
+		completionTokens: number;
+		reasoningTokens?: number;
+	};
+	/** Raw JSON response */
+	rawResponse: string;
 }
 
 /**
  * Union of all streaming event types
  */
 export type StreamEvent<T> =
-  | StreamEventStarted
-  | StreamEventReasoning
-  | StreamEventOutputDelta
-  | StreamEventOutputReset
-  | StreamEventError
-  | StreamEventComplete<T>;
+	| StreamEventStarted
+	| StreamEventReasoning
+	| StreamEventOutputDelta
+	| StreamEventOutputReset
+	| StreamEventError
+	| StreamEventComplete<T>;

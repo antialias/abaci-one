@@ -14,8 +14,8 @@ const KID_SAFE_MESSAGE = "Couldn't make a song this time. A grown-up will help."
 
 type Remediation = ClassifiedSongFailure['remediation']
 
-/** Who failed, for the owner's message: the music service or the text model's provider. */
-type FailureSource = 'elevenlabs' | 'claude_code' | 'openai'
+/** Who failed, for the owner's message: the music service or the text model (claude_code). */
+type FailureSource = 'elevenlabs' | 'claude_code'
 
 const SOURCE_MESSAGES: Record<
   FailureSource,
@@ -36,11 +36,6 @@ const SOURCE_MESSAGES: Record<
     auth: "The switch proxy refused the app's client secret. Check LLM_CLAUDE_CODE_API_KEY against the proxy's client secret.",
     remediation: null,
   },
-  openai: {
-    missing: 'Missing OpenAI API key. Set LLM_OPENAI_API_KEY in the app-env Kubernetes secret.',
-    auth: 'The OpenAI API key is invalid. Update LLM_OPENAI_API_KEY in the app-env Kubernetes secret.',
-    remediation: { label: 'OpenAI API keys', href: 'https://platform.openai.com/account/api-keys' },
-  },
 }
 
 function failureSource(lower: string): FailureSource {
@@ -51,9 +46,8 @@ function failureSource(lower: string): FailureSource {
   ) {
     return 'elevenlabs'
   }
-  // llm-client prefixes its errors with the provider's name.
-  if (lower.includes('claude_code') || lower.includes('claude code')) return 'claude_code'
-  return 'openai'
+  // Everything else is the text model: every LLM call is claude_code.
+  return 'claude_code'
 }
 
 export function classifySongFailure(rawError: unknown): ClassifiedSongFailure {
@@ -83,7 +77,7 @@ export function classifySongFailure(rawError: unknown): ClassifiedSongFailure {
     }
   }
 
-  // Auth failures — 401 with consistent strings (OpenAI, ElevenLabs, the proxy).
+  // Auth failures — 401 with consistent strings (ElevenLabs, the proxy).
   if (
     lower.includes('401') ||
     lower.includes('incorrect api key') ||
@@ -126,10 +120,10 @@ export function classifySongFailure(rawError: unknown): ClassifiedSongFailure {
       userMessage: KID_SAFE_MESSAGE,
       ownerMessage: isElevenLabs
         ? 'ElevenLabs credits are exhausted. Top up your ElevenLabs account.'
-        : 'OpenAI quota is exhausted. Top up your OpenAI account.',
+        : "The switch proxy reports the text model's quota is exhausted. Check the proxy's upstream accounts.",
       remediation: isElevenLabs
         ? { label: 'ElevenLabs billing', href: 'https://elevenlabs.io/app/subscription' }
-        : { label: 'OpenAI billing', href: 'https://platform.openai.com/account/billing' },
+        : null,
     }
   }
 

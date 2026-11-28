@@ -63,7 +63,7 @@ variable "auth_secret_previous" {
 }
 
 variable "openai_api_key" {
-  description = "OpenAI API key for LLM features (flowchart generation, etc.)"
+  description = "OpenAI API key for realtime voice only (LLM_OPENAI_API_KEY). Text and vision calls are claude_code through the switch proxy and never use it."
   type        = string
   sensitive   = true
   default     = ""
@@ -74,12 +74,6 @@ variable "llm_switch_api_key" {
   type        = string
   sensitive   = true
   default     = ""
-}
-
-variable "llm_default_provider" {
-  description = "Default @soroban/llm-client text/vision provider (LLM_DEFAULT_PROVIDER). \"claude_code\" runs every call as `claude -p` through the claude-switch-proxy (needs an image with the claude CLI); kill switch = set \"openai\" and apply — it answers streamed calls in one piece (\"anthropic\" would also work but no LLM_ANTHROPIC_API_KEY is wired here). Realtime voice and TTS stay on OpenAI regardless. Deliberately defaults to \"openai\", so an unrelated scoped apply can never flip the provider ahead of the code; production sets \"claude_code\" in terraform.tfvars."
-  type        = string
-  default     = "openai"
 }
 
 variable "llm_claude_code_base_url" {

@@ -1,6 +1,6 @@
 /**
  * The caller's `system` instructions must reach the model on every path:
- * call, vision, stream and streamText, through the real client and providers.
+ * call, vision, stream and streamText, through the real client and provider.
  * claude_code runs a fake `claude` that records its arguments and stdin.
  */
 import {
@@ -12,15 +12,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-	afterAll,
-	afterEach,
-	beforeAll,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { LLMClient } from "./client";
 
@@ -48,7 +40,6 @@ echo '{"type":"result","subtype":"success","is_error":false,"result":"plain repl
 		client = new LLMClient(
 			{},
 			{
-				LLM_DEFAULT_PROVIDER: "claude_code",
 				LLM_CLAUDE_CODE_API_KEY: "dummy",
 				LLM_CLAUDE_CODE_BASE_URL: "http://127.0.0.1:9",
 				LLM_CLAUDE_CODE_CLI_PATH: cli,
@@ -99,60 +90,5 @@ echo '{"type":"result","subtype":"success","is_error":false,"result":"plain repl
 			client.streamText({ system: SYSTEM, prompt: "p", maxRetries: 0 }),
 		);
 		expect(args()).toContain(SYSTEM);
-	});
-});
-
-describe("system instructions reach openai (the kill switch)", () => {
-	afterEach(() => {
-		vi.unstubAllGlobals();
-	});
-
-	const answer = (content: unknown) =>
-		vi.fn().mockImplementation(
-			async () =>
-				new Response(
-					JSON.stringify({
-						id: "chatcmpl-test",
-						choices: [
-							{
-								index: 0,
-								message: {
-									role: "assistant",
-									content: JSON.stringify(content),
-								},
-								finish_reason: "stop",
-							},
-						],
-						usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
-					}),
-					{ status: 200, headers: { "Content-Type": "application/json" } },
-				),
-		);
-	const client = () =>
-		new LLMClient(
-			{},
-			{ LLM_DEFAULT_PROVIDER: "openai", LLM_OPENAI_API_KEY: "sk-test" },
-		);
-	const sent = (spy: ReturnType<typeof vi.fn>) =>
-		(spy.mock.calls[0] as [string, RequestInit])[1].body as string;
-
-	it("call()", async () => {
-		const spy = answer({ answer: "ok" });
-		vi.stubGlobal("fetch", spy);
-		await client().call({ system: SYSTEM, prompt: "p", schema, maxRetries: 0 });
-		expect(sent(spy)).toContain(SYSTEM);
-	});
-
-	it("vision()", async () => {
-		const spy = answer({ answer: "ok" });
-		vi.stubGlobal("fetch", spy);
-		await client().vision({
-			system: SYSTEM,
-			prompt: "p",
-			images: [image],
-			schema,
-			maxRetries: 0,
-		});
-		expect(sent(spy)).toContain(SYSTEM);
 	});
 });

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { LLMClient } from "../client";
+import { loadConfigFromEnv } from "../config";
 import type {
 	ProviderConfig,
 	ProviderRequest,
@@ -795,7 +796,6 @@ describe("ClaudeCodeProvider.stream", () => {
 
 describe("LLMClient.stream through claude_code", () => {
 	const env = {
-		LLM_DEFAULT_PROVIDER: "claude_code",
 		LLM_CLAUDE_CODE_API_KEY: "proxy-secret",
 		LLM_CLAUDE_CODE_BASE_URL: "http://nas:8787",
 		LLM_CLAUDE_CODE_DEFAULT_MODEL: "claude-abaci",
@@ -812,10 +812,7 @@ describe("LLMClient.stream through claude_code", () => {
 			runner,
 		);
 		// The client builds providers itself; hand it one with a fake runner.
-		(client as unknown as { providers: Map<string, unknown> }).providers.set(
-			"claude_code",
-			provider,
-		);
+		(client as unknown as { provider: unknown }).provider = provider;
 		return client;
 	};
 	const schema = z.object({ title: z.string() });
@@ -1086,7 +1083,6 @@ describe("LLMClient with the claude_code provider", () => {
 		const client = new LLMClient(
 			{},
 			{
-				LLM_DEFAULT_PROVIDER: "claude_code",
 				LLM_CLAUDE_CODE_API_KEY: "proxy-secret",
 			},
 		);
@@ -1103,12 +1099,51 @@ describe("LLMClient with the claude_code provider", () => {
 		const client = new LLMClient(
 			{},
 			{
-				LLM_DEFAULT_PROVIDER: "claude_code",
 				LLM_CLAUDE_CODE_API_KEY: "proxy-secret",
 				LLM_CLAUDE_CODE_BASE_URL: "http://nas:8787",
 			},
 		);
-		expect(client.getDefaultProvider()).toBe("claude_code");
+		expect(client.isConfigured()).toBe(true);
+		expect(client.getProviderName()).toBe("claude_code");
 		expect(client.getDefaultModel()).toBe("claude-sonnet-5");
+	});
+
+	it("is the only provider: an OpenAI key and LLM_DEFAULT_PROVIDER change nothing", async () => {
+		const client = new LLMClient(
+			{},
+			{
+				LLM_DEFAULT_PROVIDER: "openai",
+				LLM_OPENAI_API_KEY: "sk-test",
+			},
+		);
+		expect(client.isConfigured()).toBe(false);
+		await expect(
+			client.call({
+				prompt: "hi",
+				schema: z.object({ a: z.string() }),
+				maxRetries: 0,
+			}),
+		).rejects.toThrow(/Provider 'claude_code' is not configured/);
+	});
+
+	it("reads LLM_CLAUDE_CODE_* extras as provider options", () => {
+		const config = loadConfigFromEnv({
+			LLM_CLAUDE_CODE_API_KEY: "proxy-secret",
+			LLM_CLAUDE_CODE_BASE_URL: "http://nas:8787",
+			LLM_CLAUDE_CODE_DEFAULT_MODEL: "claude-abaci",
+			LLM_CLAUDE_CODE_MAX_CONCURRENCY: "3",
+			LLM_DEFAULT_MAX_RETRIES: "4",
+		});
+		expect(config).toEqual({
+			defaultModel: undefined,
+			defaultMaxRetries: 4,
+			provider: {
+				name: "claude_code",
+				apiKey: "proxy-secret",
+				baseUrl: "http://nas:8787",
+				defaultModel: "claude-abaci",
+				options: { max_concurrency: "3" },
+			},
+		});
 	});
 });

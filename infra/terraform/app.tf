@@ -84,10 +84,6 @@ resource "kubernetes_config_map" "app_config" {
     OTEL_SERVICE_NAME           = "abaci-app"
     # Web Push VAPID public key (served to clients at runtime via API)
     VAPID_PUBLIC_KEY = var.vapid_public_key
-    # Default text/vision provider for @soroban/llm-client. "claude_code" runs
-    # every call as `claude -p` through the claude-switch-proxy; kill switch =
-    # set llm_default_provider to "openai" and apply.
-    LLM_DEFAULT_PROVIDER = var.llm_default_provider
     # Claude Code in print mode (`claude -p`) through the proxy, on its native
     # Claude wire; the key is the proxy client secret.
     LLM_CLAUDE_CODE_BASE_URL      = var.llm_claude_code_base_url

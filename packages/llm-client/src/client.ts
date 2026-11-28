@@ -1,19 +1,11 @@
 import { z } from "zod";
-import {
-	getConfiguredProviders,
-	getProviderConfig,
-	isProviderConfigured,
-	loadConfigFromEnv,
-} from "./config";
+import { loadConfigFromEnv, PROVIDER_NAME } from "./config";
 import { Logger } from "./logger";
 import type { StreamMiddleware } from "./middleware";
-import { AnthropicProvider } from "./providers/anthropic";
 import { ClaudeCodeProvider } from "./providers/claude-code";
-import { OpenAIProvider } from "./providers/openai";
 import { executeWithRetry, getRetryDelay, isRetryableError } from "./retry";
 import type {
 	LLMClientConfig,
-	LLMProvider,
 	LLMRequest,
 	LLMResponse,
 	LLMStreamRequest,
@@ -25,62 +17,22 @@ import type {
 	StreamEvent,
 	ValidationFeedback,
 } from "./types";
-import {
-	LLMApiError,
-	LLMValidationError,
-	ProviderNotConfiguredError,
-} from "./types";
+import { LLMValidationError, ProviderNotConfiguredError } from "./types";
 
-/** The schema a text answer is asked for from a provider that cannot stream text. */
+/**
+ * The schema sent with a free-text request. claude_code ignores it in text
+ * mode (the answer is the model's text), but every request carries one.
+ */
 const TextAnswerSchema = z.object({
 	text: z.string().describe("Your whole reply, as plain text"),
 });
 
 /**
- * Factory function type for creating providers
- */
-type ProviderFactory = (
-	config: LLMClientConfig,
-	providerName: string,
-) => LLMProvider;
-
-/**
- * Registry of provider factories
- */
-const providerFactories: Record<string, ProviderFactory> = {
-	openai: (config, name) => {
-		const providerConfig = getProviderConfig(config, name);
-		if (!providerConfig) throw new ProviderNotConfiguredError(name);
-		return new OpenAIProvider(providerConfig);
-	},
-	anthropic: (config, name) => {
-		const providerConfig = getProviderConfig(config, name);
-		if (!providerConfig) throw new ProviderNotConfiguredError(name);
-		return new AnthropicProvider(providerConfig);
-	},
-	// Claude Code in print mode (`claude -p`), pointed at the switch proxy.
-	// Configured via LLM_CLAUDE_CODE_API_KEY (the proxy client secret) and
-	// LLM_CLAUDE_CODE_BASE_URL (the proxy root); see providers/claude-code.ts.
-	claude_code: (config, name) => {
-		const providerConfig = getProviderConfig(config, name);
-		if (!providerConfig) throw new ProviderNotConfiguredError(name);
-		// The generic env fallback would invent https://api.claude_code.com/v1
-		// and hand it the proxy secret: require an explicit base URL.
-		if (providerConfig.baseUrl === "https://api.claude_code.com/v1") {
-			throw new Error(
-				"claude_code provider requires an explicit LLM_CLAUDE_CODE_BASE_URL " +
-					"(the switch proxy's root, e.g. http://nas:8787)",
-			);
-		}
-		return new ClaudeCodeProvider(providerConfig);
-	},
-};
-
-/**
  * LLM Client for making type-safe LLM calls with multi-provider support
  *
  * Features:
- * - Multi-provider support (OpenAI, Anthropic, etc.)
+ * - One provider: Claude Code (`claude -p`) through the switch proxy, which
+ *   does any falling back between upstreams
  * - Zod schema validation for responses
  * - Zod .describe() annotations included in prompts for LLM context
  * - Retry logic with validation feedback
@@ -108,7 +60,7 @@ const providerFactories: Record<string, ProviderFactory> = {
  */
 export class LLMClient {
 	private readonly config: LLMClientConfig;
-	private readonly providers: Map<string, LLMProvider> = new Map();
+	private provider: ClaudeCodeProvider | undefined;
 	private readonly middleware: StreamMiddleware[];
 	private logger: Logger;
 
@@ -128,10 +80,6 @@ export class LLMClient {
 		this.config = {
 			...envConfig,
 			...configOverrides,
-			providers: {
-				...envConfig.providers,
-				...configOverrides?.providers,
-			},
 			logging: configOverrides?.logging ?? envConfig.logging,
 		};
 		this.logger = new Logger(this.config.logging);
@@ -202,9 +150,7 @@ export class LLMClient {
 	 * Stream an LLM response: the model's reasoning and its answer as they
 	 * arrive, then the answer validated against the schema.
 	 *
-	 * Providers with their own stream() (claude_code) report reasoning and
-	 * output deltas; the others (openai, anthropic) make one call() and report
-	 * only its result, so a caller works the same whichever provider answers.
+	 * Reasoning and output deltas are reported as they arrive.
 	 *
 	 * An answer that fails the schema is retried with the failure fed back, as
 	 * call() does; so is a retryable failure that came before anything streamed.
@@ -230,8 +176,7 @@ export class LLMClient {
 
 	/**
 	 * Stream a free-text answer (a chat reply). Text arrives as `output_delta`
-	 * events and `complete.data` is the whole reply. A provider that cannot
-	 * stream text answers in one piece.
+	 * events and `complete.data` is the whole reply.
 	 */
 	async *streamText(
 		request: LLMTextStreamRequest,
@@ -256,16 +201,15 @@ export class LLMClient {
 		request: LLMStreamRequest<T>,
 	): AsyncGenerator<StreamEvent<z.infer<T>>, void, unknown> {
 		const requestLogger = this.logger.withEnabled(request.debug);
-		const providerName = request.provider ?? this.config.defaultProvider;
-		const model = request.model ?? this.getDefaultModel(providerName);
-		const provider = this.getOrCreateProvider(providerName);
+		const model = request.model ?? this.getDefaultModel();
+		const provider = this.getOrCreateProvider();
 
 		const jsonSchema = z.toJSONSchema(request.schema, {
 			unrepresentable: "any",
 		}) as Record<string, unknown>;
 
 		requestLogger.debug("Starting stream request", {
-			provider: providerName,
+			provider: PROVIDER_NAME,
 			model,
 			promptLength: request.prompt.length,
 			hasImages: !!request.images?.length,
@@ -301,24 +245,22 @@ export class LLMClient {
 					},
 				};
 			},
-			{ provider: providerName, model },
+			model,
 		);
 	}
 
 	private async *createRawTextStream(
 		request: LLMTextStreamRequest,
 	): AsyncGenerator<StreamEvent<string>, void, unknown> {
-		const providerName = request.provider ?? this.config.defaultProvider;
-		const model = request.model ?? this.getDefaultModel(providerName);
-		const provider = this.getOrCreateProvider(providerName);
-		const textOutput = typeof provider.stream === "function";
+		const model = request.model ?? this.getDefaultModel();
+		const provider = this.getOrCreateProvider();
 
 		const base: ProviderRequest = {
 			prompt: request.prompt,
 			system: request.system,
 			images: request.images,
 			jsonSchema: z.toJSONSchema(TextAnswerSchema) as Record<string, unknown>,
-			textOutput,
+			textOutput: true,
 			model,
 			reasoningEffort: request.reasoningEffort ?? defaultReasoningEffort(model),
 			timeoutMs: request.timeoutMs ?? 120_000,
@@ -326,18 +268,13 @@ export class LLMClient {
 			signal: request.signal,
 		};
 
-		let sawText = false;
-		for await (const event of this.runStream(
+		yield* this.runStream(
 			provider,
 			base,
 			request.maxRetries ?? this.config.defaultMaxRetries,
-			(content) => {
-				if (textOutput && typeof content === "string") {
-					return { ok: true, data: content };
-				}
-				const parsed = TextAnswerSchema.safeParse(content);
-				return parsed.success
-					? { ok: true, data: parsed.data.text }
+			(content) =>
+				typeof content === "string"
+					? { ok: true, data: content }
 					: {
 							ok: false,
 							feedback: {
@@ -345,17 +282,9 @@ export class LLMClient {
 								error: "Expected the reply as a string",
 								received: content,
 							},
-						};
-			},
-			{ provider: providerName, model },
-		)) {
-			if (event.type === "output_delta") sawText = true;
-			// A provider that answered in one piece: the reply is its one delta.
-			if (event.type === "complete" && !sawText && event.data) {
-				yield { type: "output_delta", text: event.data, outputIndex: 0 };
-			}
-			yield event;
-		}
+						},
+			model,
+		);
 	}
 
 	/**
@@ -364,13 +293,13 @@ export class LLMClient {
 	 * caller already showing text would otherwise see it twice).
 	 */
 	private async *runStream<D>(
-		provider: LLMProvider,
+		provider: ClaudeCodeProvider,
 		base: ProviderRequest,
 		maxRetries: number,
 		validate: (
 			content: unknown,
 		) => { ok: true; data: D } | { ok: false; feedback: ValidationFeedback },
-		meta: { provider: string; model: string },
+		model: string,
 	): AsyncGenerator<StreamEvent<D>, void, unknown> {
 		const maxAttempts = maxRetries + 1;
 		let feedback: ValidationFeedback | undefined;
@@ -389,19 +318,15 @@ export class LLMClient {
 			let streamed = false;
 			let response: ProviderResponse | undefined;
 			try {
-				if (provider.stream) {
-					for await (const event of provider.stream(providerRequest)) {
-						if (event.type === "result") {
-							response = event.response;
-						} else {
-							if (event.type !== "started") streamed = true;
-							if (event.type === "output_delta") outputShown = true;
-							if (event.type === "output_reset") outputShown = false;
-							yield event;
-						}
+				for await (const event of provider.stream(providerRequest)) {
+					if (event.type === "result") {
+						response = event.response;
+					} else {
+						if (event.type !== "started") streamed = true;
+						if (event.type === "output_delta") outputShown = true;
+						if (event.type === "output_reset") outputShown = false;
+						yield event;
 					}
-				} else {
-					response = await provider.call(providerRequest);
 				}
 			} catch (error) {
 				if (attempt < maxAttempts && !streamed && isRetryableError(error)) {
@@ -424,8 +349,8 @@ export class LLMClient {
 						completionTokens: response.usage.completionTokens,
 					},
 					rawResponse: response.rawContent,
-					provider: meta.provider,
-					model: meta.model,
+					provider: PROVIDER_NAME,
+					model,
 				};
 				return;
 			}
@@ -437,35 +362,28 @@ export class LLMClient {
 	}
 
 	/**
-	 * Get list of configured providers
+	 * Whether the claude_code provider is configured (LLM_CLAUDE_CODE_API_KEY)
 	 */
-	getProviders(): string[] {
-		return getConfiguredProviders(this.config);
+	isConfigured(): boolean {
+		return this.config.provider !== undefined;
 	}
 
 	/**
-	 * Check if a provider is configured
+	 * The provider's name, as recorded with usage: always "claude_code"
 	 */
-	isProviderAvailable(providerName: string): boolean {
-		return isProviderConfigured(this.config, providerName);
-	}
-
-	/**
-	 * Get the default provider name
-	 */
-	getDefaultProvider(): string {
-		return this.config.defaultProvider;
+	getProviderName(): string {
+		return PROVIDER_NAME;
 	}
 
 	/**
 	 * Get the default model
 	 */
-	getDefaultModel(providerName?: string): string {
-		if (this.config.defaultModel) {
-			return this.config.defaultModel;
-		}
-		const provider = getProviderConfig(this.config, providerName);
-		return provider?.defaultModel ?? "default";
+	getDefaultModel(): string {
+		return (
+			this.config.defaultModel ??
+			this.config.provider?.defaultModel ??
+			"default"
+		);
 	}
 
 	/**
@@ -474,12 +392,9 @@ export class LLMClient {
 	private async executeRequest<T extends z.ZodType>(
 		request: LLMRequest<T>,
 	): Promise<LLMResponse<z.infer<T>>> {
-		const providerName = request.provider ?? this.config.defaultProvider;
-		const model = request.model ?? this.getDefaultModel(providerName);
+		const model = request.model ?? this.getDefaultModel();
 		const maxRetries = request.maxRetries ?? this.config.defaultMaxRetries;
-
-		// Get or create provider instance
-		const provider = this.getOrCreateProvider(providerName);
+		const provider = this.getOrCreateProvider();
 
 		// Convert Zod schema to JSON Schema using Zod v4's native method
 		// This preserves .describe() annotations as "description" fields
@@ -557,7 +472,7 @@ export class LLMClient {
 					providerResponse.usage.completionTokens,
 			},
 			attempts,
-			provider: providerName,
+			provider: PROVIDER_NAME,
 			model,
 			rawResponse: providerResponse.rawContent,
 			jsonSchema: JSON.stringify(jsonSchema, null, 2),
@@ -565,35 +480,26 @@ export class LLMClient {
 	}
 
 	/**
-	 * Get or create a provider instance
+	 * The claude_code provider, built on first use
 	 */
-	private getOrCreateProvider(providerName: string): LLMProvider {
-		const name = providerName.toLowerCase();
-
-		// Check cache
-		const cached = this.providers.get(name);
-		if (cached) {
-			return cached;
+	private getOrCreateProvider(): ClaudeCodeProvider {
+		if (this.provider) {
+			return this.provider;
 		}
-
-		// Check if provider is configured
-		if (!isProviderConfigured(this.config, name)) {
-			throw new ProviderNotConfiguredError(name);
+		const providerConfig = this.config.provider;
+		if (!providerConfig) {
+			throw new ProviderNotConfiguredError(PROVIDER_NAME);
 		}
-
-		// Get factory
-		const factory = providerFactories[name];
-		if (!factory) {
+		// No base URL default: the proxy client secret must only ever go to
+		// the proxy.
+		if (!providerConfig.baseUrl) {
 			throw new Error(
-				`Unknown provider: ${name}. Supported providers: ${Object.keys(providerFactories).join(", ")}`,
+				"claude_code provider requires an explicit LLM_CLAUDE_CODE_BASE_URL " +
+					"(the switch proxy's root, e.g. http://nas:8787)",
 			);
 		}
-
-		// Create and cache provider
-		const provider = factory(this.config, name);
-		this.providers.set(name, provider);
-
-		return provider;
+		this.provider = new ClaudeCodeProvider(providerConfig);
+		return this.provider;
 	}
 }
 
