@@ -17,8 +17,10 @@ import type {
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
+import type { TrySubmission } from '@/lib/curriculum/record-try'
 import type { SessionFlowEvent } from '@/lib/curriculum/session-flow'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
+import { supersetBodyOf } from '@/lib/curriculum/try-wire'
 import { api } from '@/lib/queryClient'
 import { sessionPlanKeys } from '@/lib/queryKeys'
 import { useBackgroundTask } from './useBackgroundTask'
@@ -97,6 +99,19 @@ export class NotPracticingClientError extends Error {
 }
 
 /**
+ * A try for a part whose kind the server does not know (409 `unknown_kind`,
+ * practice-kinds K2, R14): a newer image's part read by an older one. Nothing
+ * was recorded; the mutation has refetched the plan. Not the kid's fault, so
+ * nothing for the kid to read.
+ */
+export class UnknownKindClientError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnknownKindClientError'
+  }
+}
+
+/**
  * A flow event carried a stale `expectedFlowVersion` (409 `STALE_FLOW_VERSION`):
  * the server moved on. The mutation has refetched the active plan; the fresh
  * plan drives the screen. Nothing for the kid to read.
@@ -164,20 +179,28 @@ async function throwTryWriteError(res: Response, fallback: string): Promise<neve
   if (res.status === 409 && error.code === 'not_practicing' && error.plan) {
     throw new NotPracticingClientError(error.plan as SessionPlan)
   }
+  if (res.status === 409 && error.code === 'unknown_kind') {
+    throw new UnknownKindClientError(
+      error.error || 'Answer was for a part this server cannot record'
+    )
+  }
   throw new Error(error.error || fallback)
 }
 
 /**
  * Whether a failed try write needs no word to the kid: the screen resyncs to
  * the server's plan (already applied or refetched by the mutation) and that is
- * the whole story. A stale answer (409 `SLOT_MISMATCH`), a try while a
- * transition or break owns the next step (409 `not_practicing`), and a try the
- * server could not write for contention after its one resend (503).
+ * the whole story. A stale answer (409 `SLOT_MISMATCH`, which since K2 includes
+ * a do-over of an answer already divulged), a try while a transition or break
+ * owns the next step (409 `not_practicing`), a try for a part of a kind the
+ * server does not know (409 `unknown_kind`, K2), and a try the server could
+ * not write for contention after its one resend (503).
  */
 export function isQuietTryWriteFailure(err: unknown): boolean {
   return (
     err instanceof SlotMismatchClientError ||
     err instanceof NotPracticingClientError ||
+    err instanceof UnknownKindClientError ||
     (err instanceof TryNotSavedError && err.contention)
   )
 }
@@ -301,7 +324,12 @@ async function updateSessionPlan({
     api(`curriculum/${playerId}/sessions/plans/${planId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, result, reason, breakFinishReason }),
+      body: JSON.stringify({
+        action,
+        result: result && action === 'record' ? supersetBodyOf(result) : result,
+        reason,
+        breakFinishReason,
+      }),
     })
   // A recorded answer is resent once on a network error or 5xx (same tryId)
   const res = action === 'record' ? await sendTryWrite(send) : await send()
@@ -373,10 +401,36 @@ async function recordRedoResult({
     api(`curriculum/${playerId}/sessions/plans/${planId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'record_redo', result, redoContext }),
+      body: JSON.stringify({ action: 'record_redo', result: supersetBodyOf(result), redoContext }),
     })
   )
   if (!res.ok) await throwTryWriteError(res, 'Failed to record redo result')
+  const data = await res.json()
+  return data.plan
+}
+
+/**
+ * Record a try in the envelope (`record_try`, practice-kinds §1.3). The
+ * server answers 409 `unknown_kind` for a part it does not know. Unused until
+ * K4 moves the client onto it.
+ */
+async function recordTryWrite({
+  playerId,
+  planId,
+  submission,
+}: {
+  playerId: string
+  planId: string
+  submission: TrySubmission
+}): Promise<SessionPlan> {
+  const res = await sendTryWrite(() =>
+    api(`curriculum/${playerId}/sessions/plans/${planId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'record_try', result: submission }),
+    })
+  )
+  if (!res.ok) await throwTryWriteError(res, 'Failed to record try')
   const data = await res.json()
   return data.plan
 }
@@ -651,6 +705,28 @@ export function useRecordSlotResult() {
     onError: (err, { playerId, planId }) => {
       if (!isQuietTryWriteFailure(err)) {
         console.error('Failed to record slot result:', err.message)
+      }
+      return resyncAfterTryWriteError(queryClient, err, playerId, planId)
+    },
+  })
+}
+
+/**
+ * Hook: Record a try in the envelope (`record_try`; practice-kinds K2, unused
+ * until K4)
+ */
+export function useRecordTry() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: recordTryWrite,
+    onSuccess: (plan, { playerId }) => {
+      queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
+      queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
+    },
+    onError: (err, { playerId, planId }) => {
+      if (!isQuietTryWriteFailure(err)) {
+        console.error('Failed to record try:', err.message)
       }
       return resyncAfterTryWriteError(queryClient, err, playerId, planId)
     },

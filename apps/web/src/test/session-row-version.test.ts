@@ -39,10 +39,9 @@ import {
   MalformedDoOverError,
   NotPracticingError,
   type RedoContext,
-  recordRedoResult,
-  recordSlotResult,
   SlotResultMismatchError,
 } from '@/lib/curriculum/session-planner'
+import { sendRecord, sendRecordRedo } from '@/test/fixtures/legacy-try-bodies'
 import {
   createEphemeralDatabase,
   createTestStudent,
@@ -205,7 +204,7 @@ function doOver(
 
 async function answer(planId: string, correct: boolean): Promise<SessionPlan> {
   const plan = (await getSessionPlan(planId))!
-  return recordSlotResult(planId, submissionFor(plan, correct))
+  return sendRecord(planId, submissionFor(plan, correct))
 }
 
 async function row(planId: string): Promise<SessionPlan> {
@@ -250,8 +249,8 @@ describe('Phase 3a: row version and the flow machine', () => {
       const planId = await insertPlan(playerId)
       const plan = await row(planId)
       const [a, b] = await Promise.allSettled([
-        recordSlotResult(planId, submissionFor(plan, true)),
-        recordSlotResult(planId, submissionFor(plan, true)),
+        sendRecord(planId, submissionFor(plan, true)),
+        sendRecord(planId, submissionFor(plan, true)),
       ])
 
       expect(racesLost()).toBeGreaterThanOrEqual(1)
@@ -273,8 +272,8 @@ describe('Phase 3a: row version and the flow machine', () => {
       const plan = await row(planId)
       const submission = submissionFor(plan, true)
       const settled = await Promise.allSettled([
-        recordSlotResult(planId, submission),
-        recordSlotResult(planId, { ...submission }),
+        sendRecord(planId, submission),
+        sendRecord(planId, { ...submission }),
       ])
 
       expect(racesLost()).toBeGreaterThanOrEqual(1)
@@ -293,7 +292,7 @@ describe('Phase 3a: row version and the flow machine', () => {
       const calls = [0, 1, 2, 3].map((s) => doOver(plan, 0, s, true))
 
       const settled = await Promise.allSettled(
-        calls.map(([result, ctx]) => recordRedoResult(planId, result, ctx))
+        calls.map(([result, ctx]) => sendRecordRedo(planId, result, ctx))
       )
 
       const rejected = settled.filter((s) => s.status === 'rejected') as PromiseRejectedResult[]
@@ -576,7 +575,7 @@ describe('Phase 3a: row version and the flow machine', () => {
         const transition = await answer(planId, true)
         expect(transition.flowState).toBe('part_transition')
 
-        const refused = await recordSlotResult(planId, submissionFor(transition, true)).catch(
+        const refused = await sendRecord(planId, submissionFor(transition, true)).catch(
           (e: unknown) => e
         )
         expect(refused).toBeInstanceOf(NotPracticingError)
@@ -599,7 +598,7 @@ describe('Phase 3a: row version and the flow machine', () => {
         if (breaks) {
           await applySessionFlowEvent(planId, { type: 'BREAK_FINISHED', reason: 'skipped' })
         }
-        const taken = await recordSlotResult(planId, submissionFor(await row(planId), true))
+        const taken = await sendRecord(planId, submissionFor(await row(planId), true))
         expect(taken.results).toHaveLength(2)
         expect(taken.results[1].slotId).toBe('p1s0')
       }
@@ -609,8 +608,8 @@ describe('Phase 3a: row version and the flow machine', () => {
       const planId = await insertPlan(playerId, { breaks: false, slotsPerPart: 1 })
       const plan = await row(planId)
       const submission = submissionFor(plan, true)
-      const transition = await recordSlotResult(planId, submission)
-      const resent = await recordSlotResult(planId, submission)
+      const transition = await sendRecord(planId, submission)
+      const resent = await sendRecord(planId, submission)
       expect(resent.rowVersion).toBe(transition.rowVersion)
       expect(resent.results).toHaveLength(1)
     })
@@ -619,7 +618,7 @@ describe('Phase 3a: row version and the flow machine', () => {
       const planId = await insertPlan(playerId, { breaks: false, slotsPerPart: 1 })
       const transition = await answer(planId, true)
       expect(transition.flowState).toBe('part_transition')
-      const after = await recordRedoResult(planId, ...doOver(transition, 0, 0, true))
+      const after = await sendRecordRedo(planId, ...doOver(transition, 0, 0, true))
       expect(after.results.at(-1)).toMatchObject({ kind: 'do_over', practiceOnly: true })
       expect(after).toMatchObject({ flowState: 'part_transition', currentPartIndex: 1 })
     })
@@ -629,9 +628,7 @@ describe('Phase 3a: row version and the flow machine', () => {
       async (flowState) => {
         const planId = await insertPlan(playerId, { breaks: true, values: { flowState } })
         const plan = await row(planId)
-        const refused = await recordSlotResult(planId, submissionFor(plan, true)).catch(
-          (e: unknown) => e
-        )
+        const refused = await sendRecord(planId, submissionFor(plan, true)).catch((e: unknown) => e)
         expect(refused).toBeInstanceOf(NotPracticingError)
         expect((refused as NotPracticingError).plan.flowState).toBe(flowState)
         expect((await row(planId)).results).toHaveLength(0)
@@ -649,7 +646,7 @@ describe('Phase 3a: row version and the flow machine', () => {
         slotIndex: 1,
         problem: plan.parts[0].slots[1].problem!,
       }
-      await expect(recordSlotResult(planId, other)).rejects.toBeInstanceOf(NotPracticingError)
+      await expect(sendRecord(planId, other)).rejects.toBeInstanceOf(NotPracticingError)
     })
 
     it('PART_TRANSITION_COMPLETED ignores the client shouldRunBreak', async () => {
@@ -821,12 +818,12 @@ describe('Phase 5a: the server reads part_states and breaks', () => {
         const plan = await row(planId)
 
         // Until 6b-0 the legacy cursor (s0) won here (§10 P5a-8)
-        const legacyItem = await recordSlotResult(planId, submissionForSlot(plan, 0, 0)).catch(
+        const legacyItem = await sendRecord(planId, submissionForSlot(plan, 0, 0)).catch(
           (e: unknown) => e
         )
         expect(legacyItem).toBeInstanceOf(SlotResultMismatchError)
 
-        const after = await recordSlotResult(planId, submissionForSlot(plan, 0, 1))
+        const after = await sendRecord(planId, submissionForSlot(plan, 0, 1))
         expect(after.results).toHaveLength(1)
         expect(after.results[0]).toMatchObject({ slotId: 'p0s1', slotIndex: 1, kind: 'first' })
         expect(after.partStates['0']).toEqual({ slotIndex: 2 })
@@ -844,11 +841,11 @@ describe('Phase 5a: the server reads part_states and breaks', () => {
       const plan = await row(planId)
       expect(plan.partStates).toEqual({})
       // Until 6b-1 a legacy cursor at s1 named s1 here
-      const refused = await recordSlotResult(planId, submissionForSlot(plan, 0, 1)).catch(
+      const refused = await sendRecord(planId, submissionForSlot(plan, 0, 1)).catch(
         (e: unknown) => e
       )
       expect(refused).toBeInstanceOf(SlotResultMismatchError)
-      const after = await recordSlotResult(planId, submissionForSlot(plan, 0, 0))
+      const after = await sendRecord(planId, submissionForSlot(plan, 0, 0))
       expect(after.results[0]).toMatchObject({ slotId: 'p0s0', kind: 'first' })
     })
   })
@@ -866,7 +863,7 @@ describe('Phase 5a: the server reads part_states and breaks', () => {
       const plan = await row(planId)
       const [submission] = doOver(plan, 0, 0, true)
       // itemId alone, as a client could send once the indices go (Phase 6)
-      const after = await recordRedoResult(planId, submission, {
+      const after = await sendRecordRedo(planId, submission, {
         itemId: 'p0s0',
       } as RedoContext)
       expect(after.results.at(-1)).toMatchObject({
@@ -883,7 +880,7 @@ describe('Phase 5a: the server reads part_states and breaks', () => {
       const planId = await withWrongS0()
       const plan = await row(planId)
       const [submission, context] = doOver(plan, 0, 0, true)
-      const after = await recordRedoResult(planId, submission, { ...context, itemId: 'p0s0' })
+      const after = await sendRecordRedo(planId, submission, { ...context, itemId: 'p0s0' })
       expect(after.results.at(-1)).toMatchObject({ kind: 'do_over', slotId: 'p0s0' })
     })
 
@@ -892,7 +889,7 @@ describe('Phase 5a: the server reads part_states and breaks', () => {
       const plan = await row(planId)
       const [submission, context] = doOver(plan, 0, 0, true)
       const send = (redoContext: RedoContext) =>
-        recordRedoResult(planId, { ...submission, tryId: tid() }, redoContext)
+        sendRecordRedo(planId, { ...submission, tryId: tid() }, redoContext)
           .then(() => null)
           .catch((e: unknown) => e)
       expect(await send({ ...context, itemId: 'p0s1' })).toBeInstanceOf(MalformedDoOverError)

@@ -27,9 +27,9 @@ import {
   applySessionFlowEvent,
   completeSessionPlanEarly,
   getSessionPlan,
-  recordSlotResult,
 } from '@/lib/curriculum/session-planner'
 import { getSessionReport } from '@/lib/curriculum/session-report-server'
+import { sendRecord } from '@/test/fixtures/legacy-try-bodies'
 import {
   createEphemeralDatabase,
   createTestStudent,
@@ -179,8 +179,8 @@ describe('K0: a part of a kind this image does not know (R2)', () => {
     const planId = await insertPlan(playerId)
 
     // Part 1: both items right. The second is the part's last try.
-    await recordSlotResult(planId, correctSubmission(await row(planId)))
-    const afterLast = await recordSlotResult(planId, correctSubmission(await row(planId)))
+    await sendRecord(planId, correctSubmission(await row(planId)))
+    const afterLast = await sendRecord(planId, correctSubmission(await row(planId)))
 
     // The last try committed and moved the cursor into the unknown part.
     const stored = await row(planId)

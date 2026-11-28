@@ -21,9 +21,9 @@ import {
   approveSessionPlan,
   generateSessionPlan,
   getRecentSessionResults,
-  recordSlotResult,
   startSessionPlan,
 } from '@/lib/curriculum/session-planner'
+import { sendRecord } from '@/test/fixtures/legacy-try-bodies'
 import type { TestDatabase } from './EphemeralDatabase'
 import type { SeededRandom } from './SeededRandom'
 import type { SimulatedStudent } from './SimulatedStudent'
@@ -152,7 +152,7 @@ export class JourneyRunner {
       }
 
       // Record result using real API
-      currentPlan = await recordSlotResult(plan.id, {
+      currentPlan = await sendRecord(plan.id, {
         slotId: shown.slotId,
         slotIndex: shown.originalSlotIndex,
         epochNumber: shown.epochNumber,

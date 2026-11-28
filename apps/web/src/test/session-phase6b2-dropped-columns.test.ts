@@ -56,12 +56,11 @@ import {
   applySessionFlowEvent,
   getSessionPlan,
   type RedoContext,
-  recordRedoResult,
-  recordSlotResult,
 } from '@/lib/curriculum/session-planner'
 import { buildSessionReports, reportRowColumns } from '@/lib/curriculum/session-report-batch'
 import { loadSessionReport } from '@/lib/curriculum/session-report-server'
 import { buildSongPromptInput } from '@/lib/tasks/session-song'
+import { sendRecord, sendRecordRedo } from '@/test/fixtures/legacy-try-bodies'
 import {
   createEphemeralDatabase,
   createTestStudent,
@@ -241,23 +240,23 @@ const first =
   (dual) => {
     const submission = submissionFor(dual, correct)
     lastSubmission = submission
-    return (planId) => recordSlotResult(planId, submission)
+    return (planId) => sendRecord(planId, submission)
   }
 /** The last first-try sent again with its tryId (a resend after a lost reply) */
 const resend: Step = () => {
   const submission = lastSubmission!
-  return (planId) => recordSlotResult(planId, submission)
+  return (planId) => sendRecord(planId, submission)
 }
 /** The last first-try sent again without a tryId (a client from before tryIds double-submitting) */
 const resubmitWithoutTryId: Step = () => {
   const { tryId: _, ...submission } = lastSubmission!
-  return (planId) => recordSlotResult(planId, submission as SlotResultSubmission)
+  return (planId) => sendRecord(planId, submission as SlotResultSubmission)
 }
 const redo =
   (partIndex: number, slotIndex: number, correct: boolean): Step =>
   (dual) => {
     const args = doOver(dual, partIndex, slotIndex, correct)
-    return (planId) => recordRedoResult(planId, ...args)
+    return (planId) => sendRecordRedo(planId, ...args)
   }
 const flow =
   (event: Parameters<typeof applySessionFlowEvent>[1]): Step =>
@@ -521,9 +520,8 @@ describe('Phase 6b-2: 6b-1 writes and reads a session on the table 0149 dropped 
     expect(result.divergedAt, JSON.stringify(result.diff?.slice(0, 30), null, 1)).toBeNull()
     // The walk reached every reader: repeats were no-ops, the refusals were refused
     expect(result.outcomes.filter((o) => !o.endsWith(': ok'))).toEqual([
-      expect.stringMatching(
-        /^redo p0 s0 \(divulged\): refused: Cannot redo slot 0 in part 0: answer was already revealed/
-      ),
+      // since practice-kinds K2 the kind refuses it: a quiet 409, not a 500 (R14)
+      'redo p0 s0 (divulged): refused: SlotResultMismatchError',
       'stray results ack after a skipped break: InvalidFlowTransitionError',
     ])
     const done = await row(NAMES.next)

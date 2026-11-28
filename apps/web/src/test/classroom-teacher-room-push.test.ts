@@ -21,7 +21,6 @@ import { setRowCommitListener } from '@/lib/curriculum/row-cas'
 import {
   abandonSessionPlan,
   getSessionPlan,
-  recordSlotResult,
   startSessionPlan,
 } from '@/lib/curriculum/session-planner'
 import {
@@ -29,6 +28,7 @@ import {
   registerSessionReportPush,
   resetSessionReportPushState,
 } from '@/lib/curriculum/session-report-server'
+import { sendRecord } from '@/test/fixtures/legacy-try-bodies'
 import { fixtureParts } from './fixtures/session-report'
 import {
   createEphemeralDatabase,
@@ -109,7 +109,7 @@ async function insertApprovedPlan(): Promise<string> {
 async function answer(planId: string, correct: boolean) {
   const plan = (await getSessionPlan(planId))!
   const info = getCurrentProblemInfo(plan)!
-  return recordSlotResult(planId, {
+  return sendRecord(planId, {
     tryId: crypto.randomUUID(),
     epochNumber: info.epochNumber,
     slotId: info.slotId,

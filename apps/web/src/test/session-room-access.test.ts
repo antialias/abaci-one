@@ -29,7 +29,6 @@ import {
   abandonSessionPlan,
   completeSessionPlanEarly,
   getSessionPlan,
-  recordSlotResult,
 } from '@/lib/curriculum/session-planner'
 import {
   flushSessionReportPushes,
@@ -38,6 +37,7 @@ import {
 } from '@/lib/curriculum/session-report-server'
 import { createSessionShare } from '@/lib/session-share'
 import type { SocketViewerData } from '@/lib/socket-viewer'
+import { sendRecord } from '@/test/fixtures/legacy-try-bodies'
 import { fixtureParts } from './fixtures/session-report'
 import {
   createEphemeralDatabase,
@@ -173,7 +173,7 @@ function submissionFor(plan: SessionPlan, correct: boolean, tryId = tid()): Slot
 
 async function answer(planId: string, correct: boolean) {
   const plan = (await getSessionPlan(planId))!
-  return recordSlotResult(planId, submissionFor(plan, correct))
+  return sendRecord(planId, submissionFor(plan, correct))
 }
 
 /** One-part plan of `n` slots, so a session can finish in a few tries. */

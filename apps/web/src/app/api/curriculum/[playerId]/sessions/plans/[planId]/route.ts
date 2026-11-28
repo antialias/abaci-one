@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { players } from '@/db/schema'
-import type { SlotResult, SlotResultSubmission } from '@/db/schema/session-plans'
+import type { SlotResultSubmission } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import { emitSessionStartedToPlayer } from '@/lib/classroom/socket-emitter'
@@ -15,21 +15,28 @@ import {
   finishGameBreak,
   getSessionPlan,
   type RedoContext,
-  recordRedoResult,
-  recordSlotResult,
+  recordTry,
   restoreSessionPlan,
   SessionReviewError,
   SlotResultMismatchError,
   StaleFlowVersionError,
   softDeleteSessionPlan,
   startSessionPlan,
+  type TrySubmission,
+  type TryVerdict,
+  UnknownKindError,
   updateSessionPlanRemoteCamera,
 } from '@/lib/curriculum'
 import { arithmeticCursorSlotIndex } from '@/lib/curriculum/parts/arithmetic/session-view'
 import { serializePlan } from '@/lib/curriculum/plan-wire'
+import {
+  MalformedDoOverError,
+  MalformedTrySubmissionError,
+  NotPracticingError,
+  type RedoSubmission,
+} from '@/lib/curriculum/record-try'
 import { WriteContentionError } from '@/lib/curriculum/row-cas'
 import { InvalidFlowTransitionError } from '@/lib/curriculum/session-flow'
-import { MalformedDoOverError, NotPracticingError } from '@/lib/curriculum/session-planner'
 import { getUserId } from '@/lib/viewer'
 
 /**
@@ -56,10 +63,17 @@ export const GET = withAuth(async (_request, { params }) => {
  * Update session plan status or record results
  *
  * Body:
- * - action: 'approve' | 'start' | 'record' | 'record_redo' | 'end_early' | 'abandon'
- *          | 'set_remote_camera' | 'part_transition_complete' | 'break_finished' | 'break_results_acked'
- * - result?: SlotResult (for 'record' action)
+ * - action: 'approve' | 'start' | 'record' | 'record_redo' | 'record_try' | 'end_early'
+ *          | 'abandon' | 'set_remote_camera' | 'part_transition_complete' | 'break_finished'
+ *          | 'break_results_acked'
+ * - result?: the try (legacy or K2 superset body for 'record'/'record_redo'; a
+ *   `TrySubmission` for 'record_try')
  * - reason?: string (for 'end_early' action)
+ *
+ * The three try actions go through one recorder, `recordTry`, and answer
+ * `{ plan, try }`: `try` is the verdict the server stored (`tryId`,
+ * `isCorrect`, `outcome`; for a duplicate, the row already stored). Old
+ * bundles read `plan` only (practice-kinds K2, amendment A11).
  */
 export const PATCH = withAuth(async (request, { params }) => {
   const { playerId, planId } = (await params) as { playerId: string; planId: string }
@@ -91,6 +105,7 @@ export const PATCH = withAuth(async (request, { params }) => {
     } = body
 
     let plan
+    let recordedTry: TryVerdict | null | undefined
     const actionStart = Date.now()
 
     if (action === 'record') {
@@ -143,7 +158,11 @@ export const PATCH = withAuth(async (request, { params }) => {
           )
         }
         // Idempotent by result.tryId; the server stamps kind/round/practiceOnly/weight
-        plan = await recordSlotResult(planId, result as SlotResultSubmission)
+        // and judges the try (the body's isCorrect is not stored)
+        ;({ plan, try: recordedTry } = await recordTry(planId, {
+          action: 'record',
+          result: result as SlotResultSubmission,
+        }))
         break
 
       case 'record_redo':
@@ -158,11 +177,22 @@ export const PATCH = withAuth(async (request, { params }) => {
         // Every do-over is recorded; a do-over of a problem already answered
         // correctly is stamped practiceOnly (weight 0). redoContext.originalWasCorrect
         // is ignored: the server derives it from the item's tries.
-        plan = await recordRedoResult(
-          planId,
-          result as Omit<SlotResult, 'timestamp' | 'partNumber'>,
-          redoContext as RedoContext
-        )
+        ;({ plan, try: recordedTry } = await recordTry(planId, {
+          action: 'record_redo',
+          result: result as RedoSubmission,
+          redoContext: redoContext as RedoContext,
+        }))
+        break
+
+      case 'record_try':
+        // The envelope (practice-kinds §1.3); the client sends it from K4
+        if (!result) {
+          return NextResponse.json(
+            { error: 'result is required for record_try action' },
+            { status: 400 }
+          )
+        }
+        ;({ plan, try: recordedTry } = await recordTry(planId, result as TrySubmission))
         break
 
       case 'end_early':
@@ -221,13 +251,13 @@ export const PATCH = withAuth(async (request, { params }) => {
         return NextResponse.json(
           {
             error:
-              'Invalid action. Must be: approve, start, record, record_redo, end_early, abandon, set_remote_camera, part_transition_complete, break_finished, break_results_acked, or restore',
+              'Invalid action. Must be: approve, start, record, record_redo, record_try, end_early, abandon, set_remote_camera, part_transition_complete, break_finished, break_results_acked, or restore',
           },
           { status: 400 }
         )
     }
 
-    if (action === 'record' || action === 'record_redo') {
+    if (action === 'record' || action === 'record_redo' || action === 'record_try') {
       console.log('[GBTRACE][server]', 'patch-record-response', {
         ts: new Date().toISOString(),
         playerId,
@@ -253,7 +283,11 @@ export const PATCH = withAuth(async (request, { params }) => {
         updatedFlowUpdatedAt: plan.flowUpdatedAt ? String(plan.flowUpdatedAt) : null,
       })
     }
-    return NextResponse.json({ plan: serializePlan(plan) })
+    return NextResponse.json(
+      recordedTry === undefined
+        ? { plan: serializePlan(plan) }
+        : { plan: serializePlan(plan), try: recordedTry }
+    )
   } catch (error) {
     if (error instanceof SessionReviewError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
@@ -281,6 +315,13 @@ export const PATCH = withAuth(async (request, { params }) => {
         },
         { status: 409 }
       )
+    }
+    if (error instanceof UnknownKindError) {
+      // A part this image does not know: nothing recorded; the client resyncs (K2, R14)
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 409 })
+    }
+    if (error instanceof MalformedTrySubmissionError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 400 })
     }
     if (error instanceof MalformedDoOverError) {
       return NextResponse.json({ error: error.message, code: 'MALFORMED_DO_OVER' }, { status: 400 })
