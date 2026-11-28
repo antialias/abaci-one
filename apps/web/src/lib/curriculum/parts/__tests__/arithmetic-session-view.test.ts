@@ -179,14 +179,12 @@ describe('arithmetic session view', () => {
       kind: 'arithmetic',
       label: 'Abacus',
       emoji: '🧮',
-      needsPhysicalAbacus: true,
       presentation: 'abacus',
     })
     expect(arithmeticTransitionView({ type: 'visualization' }).label).toBe('Visualization')
     expect(arithmeticTransitionView({ type: 'linear' })).toMatchObject({
       label: 'Equations',
       emoji: '✏️',
-      needsPhysicalAbacus: false,
     })
   })
 })

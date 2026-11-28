@@ -13,6 +13,7 @@ import {
   PracticeSubNav,
   type SessionHudData,
 } from '@/components/practice'
+import { AbacusNoticeGate } from '@/components/practice/AbacusNoticeGate'
 import type { ActiveRedo, RecordRedoParams } from '@/components/practice/ActiveSession'
 import { GameBreakResultsScreen } from '@/components/practice/GameBreakResultsScreen'
 import { GameBreakScreen } from '@/components/practice/GameBreakScreen'
@@ -41,6 +42,7 @@ import type {
   SlotResultSubmission,
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
+import { abacusNoticeOnTransition } from '@/lib/curriculum/abacus-notice'
 import {
   arithmeticCursorLinearIndex,
   arithmeticDotsPosition,
@@ -844,8 +846,11 @@ export function PracticeClient({
     return {
       previous: previousPart ? partTransitionViewOf(previousPart) : null,
       next: partTransitionViewOf(nextPart),
+      // The abacus notice only when no break follows: after a break it
+      // comes right before the part (AbacusNoticeGate, plan §8 A19)
+      abacusNotice: abacusNoticeOnTransition(currentPlan, currentPlan.currentPartIndex),
     }
-  }, [transitionKey, currentPlan.parts, currentPlan.currentPartIndex])
+  }, [transitionKey, currentPlan])
 
   // Entering a transition starts its countdown during render (React's
   // "adjust state when a prop changes"): the render is redone before any
@@ -873,6 +878,20 @@ export function PracticeClient({
       TRANSITION_COUNTDOWN_MS
     )
   }, [transitionKey, transitionParts, transitionShown, sendPartTransition, logGameBreakTrace])
+
+  // The abacus notice after a break: observers see it as a transition, with
+  // its countdown, until it goes (the gate tells both)
+  const handleAbacusNoticeShown = useCallback(
+    (
+      previous: Parameters<typeof sendPartTransition>[0],
+      next: Parameters<typeof sendPartTransition>[1],
+      countdownStartTime: number
+    ) => {
+      logGameBreakTrace('abacus-notice-start', { next: next.label, countdownStartTime })
+      sendPartTransition(previous, next, countdownStartTime, TRANSITION_COUNTDOWN_MS)
+    },
+    [sendPartTransition, logGameBreakTrace]
+  )
 
   // The screen's countdown ran out, or the kid tapped to go on
   const handleTransitionScreenDone = useCallback(() => {
@@ -1107,44 +1126,52 @@ export function PracticeClient({
               readyObservers={readyObservers}
             />
           ) : (
-            <ActiveSession
+            <AbacusNoticeGate
               plan={currentPlan}
-              historicalResults={historicalResults}
-              student={{
-                id: player.id,
-                name: player.name,
-                emoji: player.emoji,
-                color: player.color,
-              }}
-              onAnswer={handleAnswer}
-              onEndEarly={handleEndEarly}
-              onPause={() => setIsPaused(true)}
-              onResume={handleResume}
-              onTimingUpdate={setTimingData}
-              onBroadcastStateChange={setBroadcastState}
-              isBrowseMode={isBrowseMode}
-              browseIndex={browseIndex}
-              onBrowseIndexChange={setBrowseIndex}
-              teacherControl={teacherControl}
-              onTeacherControlHandled={() => setTeacherControl(null)}
-              teacherPauseRequest={teacherPauseRequest}
-              onTeacherPauseHandled={() => setTeacherPauseRequest(null)}
-              teacherResumeRequest={teacherResumeRequest}
-              onTeacherResumeHandled={() => setTeacherResumeRequest(false)}
-              manualPauseRequest={manualPauseRequest}
-              onManualPauseHandled={() => setManualPauseRequest(false)}
-              redoState={redoState}
-              resyncRequest={resyncRequest}
-              onRecordRedo={handleRecordRedo}
-              onRedoComplete={() => setRedoState(null)}
-              onCancelRedo={handleCancelRedo}
-              onResultEdited={() => {
-                // Invalidate the session plan query to refetch updated results
-                queryClient.invalidateQueries({
-                  queryKey: sessionPlanKeys.active(studentId),
-                })
-              }}
-            />
+              student={{ name: player.name, emoji: player.emoji, color: player.color }}
+              enabled={!isBrowseMode}
+              onShown={handleAbacusNoticeShown}
+              onEnded={sendPartTransitionComplete}
+            >
+              <ActiveSession
+                plan={currentPlan}
+                historicalResults={historicalResults}
+                student={{
+                  id: player.id,
+                  name: player.name,
+                  emoji: player.emoji,
+                  color: player.color,
+                }}
+                onAnswer={handleAnswer}
+                onEndEarly={handleEndEarly}
+                onPause={() => setIsPaused(true)}
+                onResume={handleResume}
+                onTimingUpdate={setTimingData}
+                onBroadcastStateChange={setBroadcastState}
+                isBrowseMode={isBrowseMode}
+                browseIndex={browseIndex}
+                onBrowseIndexChange={setBrowseIndex}
+                teacherControl={teacherControl}
+                onTeacherControlHandled={() => setTeacherControl(null)}
+                teacherPauseRequest={teacherPauseRequest}
+                onTeacherPauseHandled={() => setTeacherPauseRequest(null)}
+                teacherResumeRequest={teacherResumeRequest}
+                onTeacherResumeHandled={() => setTeacherResumeRequest(false)}
+                manualPauseRequest={manualPauseRequest}
+                onManualPauseHandled={() => setManualPauseRequest(false)}
+                redoState={redoState}
+                resyncRequest={resyncRequest}
+                onRecordRedo={handleRecordRedo}
+                onRedoComplete={() => setRedoState(null)}
+                onCancelRedo={handleCancelRedo}
+                onResultEdited={() => {
+                  // Invalidate the session plan query to refetch updated results
+                  queryClient.invalidateQueries({
+                    queryKey: sessionPlanKeys.active(studentId),
+                  })
+                }}
+              />
+            </AbacusNoticeGate>
           )}
           {transitionKey && transitionParts && transitionShown?.key === transitionKey && (
             <PartTransitionScreen
@@ -1152,6 +1179,7 @@ export function PracticeClient({
               isVisible
               previous={transitionParts.previous}
               next={transitionParts.next}
+              abacusNotice={transitionParts.abacusNotice}
               countdownStartTime={transitionShown.countdownStartTime}
               student={{ name: player.name, emoji: player.emoji, color: player.color }}
               onComplete={handleTransitionScreenDone}

@@ -135,8 +135,6 @@ export { ObserverTransitionView } from './ObserverTransitionView'
 export {
   selectTransitionMessage,
   getTransitionType,
-  requiresAbacusPutAway,
-  requiresAbacusPickUp,
   type TransitionMessage,
   type TransitionType,
 } from './partTransitionMessages'

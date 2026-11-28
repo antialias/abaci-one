@@ -363,6 +363,15 @@ async function passBreak(page: Page) {
   })
   await page.screenshot({ path: `${SHOTS}/game-break.png` })
   await page.locator('[data-action="skip-break"]').click()
+  await passAbacusNotice(page)
+}
+
+/** After the break, before part 2 (visualization, after abacus): the abacus notice (plan §8 A19). */
+async function passAbacusNotice(page: Page) {
+  const notice = page.locator('[data-component="abacus-notice-screen"]')
+  await expect(notice).toBeVisible({ timeout: 20_000 })
+  await expect(notice.locator('[data-element="abacus-action"]')).toHaveText(/Put your abacus aside/)
+  await page.locator('[data-action="continue-abacus-notice"]').click()
 }
 
 const slotProblem = (plan: Plan, part: number, slot: number) => plan.parts[part].slots[slot].problem
@@ -901,6 +910,7 @@ test.describe('the client renders from the server flow state (Phase 3c)', () => 
       .poll(async () => (await getPlan(request, playerId, plan.id)).flowState)
       .toMatch(/^break_(pending|active)$/)
     await page.locator('[data-action="skip-break"]').click()
+    await passAbacusNotice(page)
     const next = await shownProblem(page)
     expect(sameProblem(next, slotProblem(plan, 1, 0))).toBe(true)
     expect(await toasts(page)).toEqual([])

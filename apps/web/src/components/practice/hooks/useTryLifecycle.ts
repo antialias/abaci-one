@@ -324,7 +324,7 @@ export interface UseTryLifecycleReturn<I, A, O, X extends EntryPhase<A>> {
   // Derived predicates for UI
   /** Can we accept keyboard/keypad input? */
   canAcceptInput: boolean
-  /** Should the problem display show as completed? */
+  /** Should the item display show as completed? */
   showAsCompleted: boolean
   /** Should the input area (keypad/submit) be shown? */
   showInputArea: boolean

@@ -36,13 +36,17 @@ const START_TO_ABACUS_MESSAGES: TransitionMessage[] = [
   { headline: 'Abacus Time', subtitle: 'Get your beads ready' },
 ]
 
+// No pool between two parts tells the kid what to do with the abacus: that is
+// the abacus notice's, which comes right before the part it is about (after a
+// game break when one runs) and follows the part's presentation (a ramp
+// equations part keeps the abacus; plan §8 A19).
 const ABACUS_TO_VISUALIZATION_MESSAGES: TransitionMessage[] = [
-  { headline: 'Mental Math Time!', subtitle: 'Put your abacus aside' },
+  { headline: 'Mental Math Time!', subtitle: 'Solve it in your head' },
   {
     headline: 'Visualization Mode',
     subtitle: 'Picture the beads in your mind',
   },
-  { headline: 'Abacus Break', subtitle: 'Set it down gently' },
+  { headline: 'Imagine It!', subtitle: 'The beads live in your mind' },
   { headline: 'Mind Over Beads', subtitle: 'Time to imagine' },
   { headline: 'Close Your Eyes...', subtitle: 'See the beads in your head' },
 ]
@@ -65,8 +69,8 @@ const START_TO_LINEAR_MESSAGES: TransitionMessage[] = [
 ]
 
 const ABACUS_TO_LINEAR_MESSAGES: TransitionMessage[] = [
-  { headline: 'Equation Time!', subtitle: 'Put your abacus away' },
-  { headline: 'Linear Mode', subtitle: 'No more beads for now' },
+  { headline: 'Equation Time!', subtitle: 'Math sentences ahead' },
+  { headline: 'Linear Mode', subtitle: 'Read it left to right' },
 ]
 
 // ============================================================================
@@ -145,26 +149,4 @@ export function selectTransitionMessage(
     seed !== undefined ? Math.abs(seed) % pool.length : Math.floor(Math.random() * pool.length)
 
   return pool[index]
-}
-
-/**
- * Check if a transition requires putting away the abacus
- */
-export function requiresAbacusPutAway(
-  previousPartType: SessionPartType | null,
-  nextPartType: SessionPartType
-): boolean {
-  if (previousPartType === null) return false
-  return previousPartType === 'abacus' && nextPartType !== 'abacus'
-}
-
-/**
- * Check if a transition requires getting the abacus
- */
-export function requiresAbacusPickUp(
-  previousPartType: SessionPartType | null,
-  nextPartType: SessionPartType
-): boolean {
-  if (previousPartType === null) return nextPartType === 'abacus'
-  return previousPartType !== 'abacus' && nextPartType === 'abacus'
 }

@@ -192,8 +192,6 @@ export interface ArithmeticTransitionView {
   kind: 'arithmetic'
   label: string
   emoji: string
-  /** Abacus parts are worked on the physical abacus */
-  needsPhysicalAbacus: boolean
   /**
    * The arithmetic presentation, which picks the screen's message; absent
    * for one this image does not register (the screen's plain headline)
@@ -205,13 +203,10 @@ export interface ArithmeticTransitionView {
  * Label and emoji from the part's presentation (`presentationOf`'s id:
  * `presentation`, else `type`; `presentations.ts`).
  *
- * The physical abacus (amendment A10, decided in K3): the screen keeps
- * asking whether the presentation is `abacus`, not the presentation's
- * `needsPhysicalAbacus(part)`. They differ only for a linear part on the
- * ramp (`useAbacus`), where the presentation's answer would newly show
- * "Grab your abacus" (and drop "Put your abacus away" after an abacus
- * part): a change the kid sees, which K3 may not make. Switching is the
- * owner's call, with the screen's move onto the registry (K5b).
+ * Whether the abacus comes or goes is not here: the owner resolved A10
+ * (§8 A19), and the notice reads each part's `needsPhysicalAbacus` through
+ * the registry (`lib/curriculum/abacus-notice.ts`), so a ramp equations part
+ * prompts for the abacus.
  */
 export function arithmeticTransitionView(
   part: Pick<SessionPart, 'type'> & Partial<Pick<SessionPart, 'presentation'>>
@@ -222,7 +217,6 @@ export function arithmeticTransitionView(
     kind: 'arithmetic',
     label: presentation?.label ?? id,
     emoji: presentation?.emoji ?? '⭐',
-    needsPhysicalAbacus: id === 'abacus',
     ...(presentation && isValidPracticeTypeId(id) ? { presentation: id } : {}),
   }
 }

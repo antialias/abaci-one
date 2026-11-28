@@ -6,9 +6,8 @@
  * Registered here so K3 adds them to `arithmeticKind.presentations` without
  * reopening the file (R15). The part transition screen shows the label and
  * emoji (`arithmeticTransitionView` reads them). `needsPhysicalAbacus` is
- * §1.1's: linear follows the part's `useAbacus` (the ramp). The transition
- * view still asks `type === 'abacus'` until K3 makes it read this, since a
- * ramp part would newly prompt for the abacus (amendment A10).
+ * §1.1's: linear follows the part's `useAbacus` (the ramp), and the abacus
+ * notice reads it (`abacus-notice.ts`; A10 resolved by the owner, §8 A19).
  *
  * `axes` are each presentation's ledger axes as `arithmeticKind.presentationOf`
  * answers for a part of that type, except `abacusAvailable`, which a part
