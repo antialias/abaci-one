@@ -355,7 +355,7 @@ describe('PracticeClient — a do-over names its item', () => {
       result: { isCorrect: true, slotIndex: 0, slotId: 'stale' } as Omit<
         SlotResult,
         'timestamp' | 'partNumber'
-      >,
+      > & { tryId: string },
       originalWasCorrect: false,
     })
     const { onRecordRedo } = h.activeProps as {

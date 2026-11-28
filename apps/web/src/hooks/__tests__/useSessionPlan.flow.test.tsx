@@ -36,7 +36,10 @@ const json = (status: number, body: unknown) =>
     headers: { 'Content-Type': 'application/json' },
   })
 
-const submission = { tryId: '00000000-0000-4000-8000-000000000001' } as SlotResultSubmission
+const submission = {
+  tryId: '00000000-0000-4000-8000-000000000001',
+  partIndex: 0,
+} as SlotResultSubmission & { partIndex: number; tryId: string }
 
 /** Requests sent to a URL path, in order, with their parsed bodies. */
 const sent = (path: string) =>

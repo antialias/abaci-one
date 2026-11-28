@@ -297,11 +297,22 @@ async function typeWrong(page: Page, p: Problem) {
   await waitSubmitted(page, mark)
 }
 
+/**
+ * Which write a PATCH body is (K4: the client sends every try as
+ * `record_try`; a do-over is `mode: 'do_over'`, anything else a first try or
+ * a retry). Null for any other action.
+ */
+function writeOf(body: { action?: string; result?: { mode?: string } }): 'try' | 'do_over' | null {
+  if (body.action !== 'record_try') return null
+  return body.result?.mode === 'do_over' ? 'do_over' : 'try'
+}
+
 const isWrite =
-  (action: string) => (r: { request(): { method(): string; postData(): string | null } }) => {
+  (write: 'try' | 'do_over') =>
+  (r: { request(): { method(): string; postData(): string | null } }) => {
     if (r.request().method() !== 'PATCH') return false
     try {
-      return JSON.parse(r.request().postData() ?? '{}').action === action
+      return writeOf(JSON.parse(r.request().postData() ?? '{}')) === write
     } catch {
       return false
     }
@@ -315,7 +326,7 @@ async function answer(
   opts: { doublePress?: boolean } = {}
 ) {
   const p = await shownProblem(page)
-  const reply = page.waitForResponse((r) => r.url().includes(planId) && isWrite('record')(r))
+  const reply = page.waitForResponse((r) => r.url().includes(planId) && isWrite('try')(r))
   if (correct) await typeCorrect(page, p, opts)
   else await typeWrong(page, p)
   const res = await reply
@@ -335,7 +346,7 @@ async function startDoOver(page: Page, slotIndex: number) {
 async function doOverCorrectly(page: Page, planId: string, slotIndex: number) {
   await startDoOver(page, slotIndex)
   const p = await shownProblem(page)
-  const reply = page.waitForResponse((r) => r.url().includes(planId) && isWrite('record_redo')(r))
+  const reply = page.waitForResponse((r) => r.url().includes(planId) && isWrite('do_over')(r))
   await typeCorrect(page, p)
   const res = await reply
   expect(res.status()).toBe(200)
@@ -534,7 +545,7 @@ test.describe('retry / do-over attribution', () => {
       timeout: 20_000,
     })
 
-    const records = bodies.filter((b) => JSON.parse(b).action === 'record')
+    const records = bodies.filter((b) => writeOf(JSON.parse(b)) === 'try')
     expect(records).toHaveLength(n)
 
     // The same write sent again (a retried request) changes nothing
@@ -613,7 +624,7 @@ test.describe('retry / do-over attribution', () => {
       await page.route(`**/sessions/plans/${plan.id}`, async (route) => {
         const req = route.request()
         const body = JSON.parse(req.postData() ?? '{}')
-        if (req.method() === 'PATCH' && body.action === 'record') {
+        if (req.method() === 'PATCH' && writeOf(body) === 'try') {
           recordCount++
           recordTryIds.push(body.result?.tryId)
           if (recordCount === 2) {
@@ -645,7 +656,7 @@ test.describe('retry / do-over attribution', () => {
       const failedShown = await shownProblem(page)
       expect(sameProblem(failedShown, slotProblem(plan, 0, 1))).toBe(true)
       const failedReply = page.waitForRequest(
-        (r) => r.method() === 'PATCH' && JSON.parse(r.postData() ?? '{}').action === 'record'
+        (r) => r.method() === 'PATCH' && writeOf(JSON.parse(r.postData() ?? '{}')) === 'try'
       )
       await typeCorrect(page, failedShown)
       await failedReply
@@ -695,7 +706,7 @@ test.describe('retry / do-over attribution', () => {
     let recordCount = 0
     await page.route(`**/sessions/plans/${plan.id}`, async (route) => {
       const req = route.request()
-      if (req.method() === 'PATCH' && JSON.parse(req.postData() ?? '{}').action === 'record') {
+      if (req.method() === 'PATCH' && writeOf(JSON.parse(req.postData() ?? '{}')) === 'try') {
         recordCount++
         if (recordCount === 2 || recordCount === 3) return route.abort('failed')
       }
@@ -753,7 +764,7 @@ test.describe('retry / do-over attribution', () => {
       expect(sameProblem(nowOnB, slotProblem(plan, 0, 1))).toBe(true)
       return
     }
-    const reply = stale.waitForResponse((r) => r.url().includes(plan.id) && isWrite('record')(r))
+    const reply = stale.waitForResponse((r) => r.url().includes(plan.id) && isWrite('try')(r))
     await typeWrong(stale, nowOnB)
     const status = (await reply).status()
     console.log(`[stale tab] reply to the old problem's answer: ${status}`)
@@ -804,7 +815,7 @@ test.describe('retry / do-over attribution', () => {
     const practicedBefore = await skillsPracticedAt(request, playerId)
     await startDoOver(page, 0)
     const redoReply = page.waitForResponse(
-      (r) => r.url().includes(plan.id) && isWrite('record_redo')(r)
+      (r) => r.url().includes(plan.id) && isWrite('do_over')(r)
     )
     await typeCorrect(page, await shownProblem(page))
     expect((await redoReply).status()).toBe(200)
@@ -909,7 +920,7 @@ test.describe('the client renders from the server flow state (Phase 3c)', () => 
     await page.route(`**/sessions/plans/${plan.id}`, async (route) => {
       const req = route.request()
       const body = JSON.parse(req.postData() ?? '{}')
-      if (req.method() !== 'PATCH' || body.action !== 'record') return route.continue()
+      if (req.method() !== 'PATCH' || writeOf(body) !== 'try') return route.continue()
       const res = await route.fetch()
       const json = await res.json()
       if (json.plan?.flowState === 'part_transition') json.plan.flowVersion -= 1
@@ -995,7 +1006,7 @@ test.describe('the client renders from the server flow state (Phase 3c)', () => 
     await page.route(`**/sessions/plans/${plan.id}`, async (route) => {
       const req = route.request()
       const body = JSON.parse(req.postData() ?? '{}')
-      if (req.method() !== 'PATCH' || body.action !== 'record') return route.continue()
+      if (req.method() !== 'PATCH' || writeOf(body) !== 'try') return route.continue()
       recordCount++
       recordTryIds.push(body.result?.tryId)
       if (recordCount === 2) {
@@ -1022,7 +1033,7 @@ test.describe('the client renders from the server flow state (Phase 3c)', () => 
     const slot2 = await shownProblem(page)
     expect(sameProblem(slot2, slotProblem(plan, 0, 2))).toBe(true)
     const slot2Reply = page.waitForResponse(
-      (r) => r.url().includes(plan.id) && isWrite('record')(r) && r.status() === 200
+      (r) => r.url().includes(plan.id) && isWrite('try')(r) && r.status() === 200
     )
     await typeCorrect(page, slot2)
     expect(recordCount).toBe(3)
@@ -1069,7 +1080,7 @@ test.describe('the client renders from the server flow state (Phase 3c)', () => 
     if (!sameProblem(await shownProblem(stale), slotProblem(plan, 0, last))) {
       throw new Error('tab B synced before answering; the 409 path was not exercised')
     }
-    const reply = stale.waitForResponse((r) => r.url().includes(plan.id) && isWrite('record')(r))
+    const reply = stale.waitForResponse((r) => r.url().includes(plan.id) && isWrite('try')(r))
     await typeCorrect(stale, slotProblem(plan, 0, last))
     const res = await reply
     expect(res.status()).toBe(409)

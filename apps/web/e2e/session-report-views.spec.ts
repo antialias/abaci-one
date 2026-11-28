@@ -228,11 +228,22 @@ async function typeWrong(page: Page, p: Problem) {
   await waitSubmitted(page, mark)
 }
 
+/**
+ * Which write a PATCH body is (K4: the client sends every try as
+ * `record_try`; a do-over is `mode: 'do_over'`, anything else a first try or
+ * a retry). Null for any other action.
+ */
+function writeOf(body: { action?: string; result?: { mode?: string } }): 'try' | 'do_over' | null {
+  if (body.action !== 'record_try') return null
+  return body.result?.mode === 'do_over' ? 'do_over' : 'try'
+}
+
 const isWrite =
-  (action: string) => (r: { request(): { method(): string; postData(): string | null } }) => {
+  (write: 'try' | 'do_over') =>
+  (r: { request(): { method(): string; postData(): string | null } }) => {
     if (r.request().method() !== 'PATCH') return false
     try {
-      return JSON.parse(r.request().postData() ?? '{}').action === action
+      return writeOf(JSON.parse(r.request().postData() ?? '{}')) === write
     } catch {
       return false
     }
@@ -241,7 +252,7 @@ const isWrite =
 /** Answers the problem on screen and waits for the server's reply to that write. */
 async function answer(page: Page, planId: string, correct: boolean) {
   const p = await shownProblem(page)
-  const reply = page.waitForResponse((r) => r.url().includes(planId) && isWrite('record')(r))
+  const reply = page.waitForResponse((r) => r.url().includes(planId) && isWrite('try')(r))
   if (correct) await typeCorrect(page, p)
   else await typeWrong(page, p)
   expect((await reply).status()).toBe(200)
@@ -257,7 +268,7 @@ async function doOverCorrectly(page: Page, planId: string, slotIndex: number) {
     .click()
   await expect(page.locator('[data-element="redo-mode-banner"]')).toBeVisible()
   const p = await shownProblem(page)
-  const reply = page.waitForResponse((r) => r.url().includes(planId) && isWrite('record_redo')(r))
+  const reply = page.waitForResponse((r) => r.url().includes(planId) && isWrite('do_over')(r))
   await typeCorrect(page, p)
   expect((await reply).status()).toBe(200)
 }

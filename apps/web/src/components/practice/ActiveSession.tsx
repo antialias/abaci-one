@@ -140,13 +140,14 @@ type SubmitAdvanceIntent = 'slide-to-next-problem' | 'clear-to-loading'
 type SubmitMode = 'practice' | 'redo'
 /**
  * Identity of the problem an attempt answers, as the server matches it: the
- * attempt's own slot and round, never the plan's current one (which lags one
- * problem behind an optimistic advance), plus the try id minted when the
- * problem was shown (the server records a try id once).
+ * attempt's own part, slot and round, never the plan's current ones (which
+ * lag one problem behind an optimistic advance), plus the try id minted when
+ * the problem was shown (the server records a try id once).
  */
 function answeredProblemIdentity(plan: SessionPlan, attempt: AttemptInput) {
   return {
     tryId: attempt.tryId,
+    partIndex: attempt.partIndex,
     slotId: arithmeticSlotAt(plan.parts, attempt.partIndex, attempt.slotIndex)?.slotId ?? '',
     slotIndex: attempt.slotIndex,
     epochNumber: attempt.epochNumber ?? 0,
@@ -180,11 +181,11 @@ export interface ActiveRedo {
   originalResult: SlotResult
 }
 
-/** What a do-over write sends (`record_redo`). */
+/** A do-over write: the screen's try and the item redone, sent as a `record_try` do-over. */
 export interface RecordRedoParams {
   playerId: string
   planId: string
-  result: Omit<SlotResult, 'timestamp' | 'partNumber'>
+  result: Omit<SlotResult, 'timestamp' | 'partNumber'> & { tryId: string }
   redoContext: {
     /** The item redone (Phase 5b); the server also reads `result.slotId` */
     itemId: string
@@ -215,7 +216,7 @@ export function doOverWriteOf({
   redo: Pick<ActiveRedo, 'partIndex' | 'itemId'>
   /** The item's slot index, read off the item by the kind's view */
   slotIndex: number
-  result: Omit<SlotResult, 'timestamp' | 'partNumber'>
+  result: Omit<SlotResult, 'timestamp' | 'partNumber'> & { tryId: string }
   originalWasCorrect: boolean
 }): RecordRedoParams {
   return {
@@ -239,7 +240,7 @@ interface ActiveSessionProps {
   /** Student info for display in pause modal */
   student: StudentInfo
   /** Called when a problem is answered */
-  onAnswer: (result: SlotResultSubmission) => Promise<void>
+  onAnswer: (result: SlotResultSubmission & { partIndex: number; tryId: string }) => Promise<void>
   /** Called when session is ended early */
   onEndEarly: (reason?: string) => void
   /** Called when session is paused (with info about why) - for external HUD updates */
@@ -1468,14 +1469,17 @@ export function ActiveSession({
     }
 
     // Record the result
-    const result: Omit<SlotResult, 'timestamp' | 'partNumber'> = {
+    const result: Omit<SlotResult, 'timestamp' | 'partNumber'> & {
+      tryId: string
+      partIndex: number
+    } = {
       // The round tells the server a resubmit from the next try of the same slot
       ...answered,
       problem: attemptData.problem,
       studentAnswer: answerNum,
-      // The screen's own check, for display. Sent only so a server rolled back
-      // to K1 stores a verdict; the server judges the try (practice-kinds K2,
-      // amendment A1). A later phase drops it.
+      // The screen's own check, for display (the markers). Never sent: the
+      // try goes as record_try, and the server is the only judge
+      // (practice-kinds K4, amendments A1, A15)
       isCorrect,
       ...timingGuard,
       hiddenTimeExcludedMs: attemptData.accumulatedHiddenMs || undefined,
@@ -1523,7 +1527,7 @@ export function ActiveSession({
       )?.problem
       const canAdvanceOptimistically = epochNumberAtSubmit === 0 && nextSlotExists
 
-      const submission: SlotResultSubmission = { ...result, partIndex: attemptData.partIndex }
+      const submission = { ...result, partIndex: answered.partIndex }
       if (canAdvanceOptimistically) {
         void onAnswer(submission)
       } else {
@@ -1695,15 +1699,13 @@ export function ActiveSession({
       assistance.machineState.context.thresholds.autoPauseMs,
       'client'
     )
-    const result: SlotResultSubmission = {
+    const result: SlotResultSubmission & { partIndex: number; tryId: string } = {
       ...answeredProblemIdentity(plan, attempt),
-      partIndex: attempt.partIndex,
       problem: attempt.problem,
       studentAnswer: attempt.problem.answer, // Record the correct answer
-      // Kept for a server rolled back to K1, which stores it; a K2 server
-      // stores a skip as wrong itself. A later phase drops it.
+      // The screen's own check, for display; never sent (K4, amendment A15)
       isCorrect: false,
-      // A K2 server reads the skip from here (practice-kinds §3.3)
+      // Sent as the envelope's outcome (practice-kinds §3.3)
       outcome: 'skipped' as const,
       ...timingGuard,
       hiddenTimeExcludedMs: attempt.accumulatedHiddenMs || undefined,

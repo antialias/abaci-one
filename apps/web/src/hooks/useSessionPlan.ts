@@ -20,7 +20,7 @@ import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import type { TrySubmission } from '@/lib/curriculum/record-try'
 import type { SessionFlowEvent } from '@/lib/curriculum/session-flow'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
-import { supersetBodyOf } from '@/lib/curriculum/try-wire'
+import { envelopeOfScreenTry } from '@/lib/curriculum/try-wire'
 import { api } from '@/lib/queryClient'
 import { sessionPlanKeys } from '@/lib/queryKeys'
 import { useBackgroundTask } from './useBackgroundTask'
@@ -301,7 +301,6 @@ async function updateSessionPlan({
   playerId,
   planId,
   action,
-  result,
   reason,
   breakFinishReason,
 }: {
@@ -310,29 +309,19 @@ async function updateSessionPlan({
   action:
     | 'approve'
     | 'start'
-    | 'record'
     | 'end_early'
     | 'abandon'
     | 'part_transition_complete'
     | 'break_finished'
     | 'break_results_acked'
-  result?: SlotResultSubmission
   reason?: string
   breakFinishReason?: 'timeout' | 'gameFinished' | 'skipped'
 }): Promise<SessionPlan> {
-  const send = () =>
-    api(`curriculum/${playerId}/sessions/plans/${planId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action,
-        result: result && action === 'record' ? supersetBodyOf(result) : result,
-        reason,
-        breakFinishReason,
-      }),
-    })
-  // A recorded answer is resent once on a network error or 5xx (same tryId)
-  const res = action === 'record' ? await sendTryWrite(send) : await send()
+  const res = await api(`curriculum/${playerId}/sessions/plans/${planId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, reason, breakFinishReason }),
+  })
   if (!res.ok) await throwTryWriteError(res, `Failed to ${action} session plan`)
   const data = await res.json()
   return data.plan
@@ -386,33 +375,11 @@ export interface RedoContext {
   originalWasCorrect: boolean
 }
 
-async function recordRedoResult({
-  playerId,
-  planId,
-  result,
-  redoContext,
-}: {
-  playerId: string
-  planId: string
-  result: Omit<SlotResult, 'timestamp' | 'partNumber'>
-  redoContext: RedoContext
-}): Promise<SessionPlan> {
-  const res = await sendTryWrite(() =>
-    api(`curriculum/${playerId}/sessions/plans/${planId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'record_redo', result: supersetBodyOf(result), redoContext }),
-    })
-  )
-  if (!res.ok) await throwTryWriteError(res, 'Failed to record redo result')
-  const data = await res.json()
-  return data.plan
-}
-
 /**
- * Record a try in the envelope (`record_try`, practice-kinds §1.3). The
- * server answers 409 `unknown_kind` for a part it does not know. Unused until
- * K4 moves the client onto it.
+ * Record a try in the envelope (`record_try`, practice-kinds §1.3, K4): every
+ * try the client sends, a first try, a retry and a do-over. Resent once on a
+ * network error or 5xx (same `tryId`). The server answers 409 `unknown_kind`
+ * for a part it does not know.
  */
 async function recordTryWrite({
   playerId,
@@ -682,7 +649,8 @@ async function onFlowEventError(
 }
 
 /**
- * Hook: Record a slot result (answer submitted)
+ * Hook: Record a slot result (answer submitted): a first try or a retry,
+ * sent as `record_try` (K4)
  */
 export function useRecordSlotResult() {
   const queryClient = useQueryClient()
@@ -695,8 +663,17 @@ export function useRecordSlotResult() {
     }: {
       playerId: string
       planId: string
-      result: SlotResultSubmission
-    }) => updateSessionPlan({ playerId, planId, action: 'record', result }),
+      /** The part of the problem answered and the try's id: the envelope names both */
+      result: SlotResultSubmission & { partIndex: number; tryId: string }
+    }) =>
+      recordTryWrite({
+        playerId,
+        planId,
+        submission: envelopeOfScreenTry(result, {
+          mode: 'first_or_retry',
+          partIndex: result.partIndex,
+        }),
+      }),
     onSuccess: (plan, { playerId }) => {
       queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
       queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
@@ -712,8 +689,9 @@ export function useRecordSlotResult() {
 }
 
 /**
- * Hook: Record a try in the envelope (`record_try`; practice-kinds K2, unused
- * until K4)
+ * Hook: Record a try in the envelope (`record_try`, practice-kinds §1.3), as
+ * the kind's shell will (K5). Today's screen goes through
+ * `useRecordSlotResult` / `useRecordRedoResult`, which send the same action.
  */
 export function useRecordTry() {
   const queryClient = useQueryClient()
@@ -947,9 +925,18 @@ export function useRecordRedoResult() {
     }: {
       playerId: string
       planId: string
-      result: Omit<SlotResult, 'timestamp' | 'partNumber'>
+      result: Omit<SlotResult, 'timestamp' | 'partNumber'> & { tryId: string }
       redoContext: RedoContext
-    }) => recordRedoResult({ playerId, planId, result, redoContext }),
+    }) =>
+      recordTryWrite({
+        playerId,
+        planId,
+        submission: envelopeOfScreenTry(result, {
+          mode: 'do_over',
+          partIndex: redoContext.originalPartIndex,
+          itemId: redoContext.itemId,
+        }),
+      }),
     onSuccess: (plan, { playerId }) => {
       queryClient.setQueryData(sessionPlanKeys.active(playerId), plan)
       queryClient.setQueryData(sessionPlanKeys.detail(plan.id), plan)
