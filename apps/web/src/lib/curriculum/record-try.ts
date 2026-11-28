@@ -120,28 +120,53 @@ export interface RecordTryResult {
 const OUTCOMES: readonly TryOutcome[] = ['answered', 'skipped', 'timeout']
 
 /**
+ * A string field's members, as a record so tsc holds it to the union: a
+ * member missing or one too many is a type error.
+ */
+type Members<U extends string> = Readonly<Record<U, true>>
+
+const CAP_REASONS: Members<NonNullable<StoredTry['capReason']>> = {
+  'idle-exceeded': true,
+  'clock-anomaly': true,
+}
+const CAP_SOURCES: Members<NonNullable<StoredTry['capSource']>> = { client: true, server: true }
+const HELP_TRIGGERS: Members<NonNullable<StoredTry['helpTrigger']>> = {
+  none: true,
+  manual: true,
+  'auto-time': true,
+  'auto-errors': true,
+  'teacher-approved': true,
+}
+
+/** A value of the type a field must have, or one of its union's members. */
+function passes(rule: 'number' | 'boolean' | Members<string>, v: unknown): boolean {
+  if (typeof rule === 'string') return typeof v === rule
+  return typeof v === 'string' && Object.keys(rule).includes(v)
+}
+
+/**
  * The timing fields a `record_try` body may set, with the type each must
- * have. Only these reach the row: anything else in `timing` (`voided`,
- * `attachmentId`, a top-level field of any name) is dropped, so a body can
- * set no stamp the server owns.
+ * have (a string field, a member of its union). Only these reach the row:
+ * anything else in `timing` (`voided`, `attachmentId`, a top-level field of
+ * any name) is dropped, so a body can set no stamp the server owns.
  */
 const TIMING_FIELD_TYPES = {
   responseTimeMs: 'number',
   responseTimeMsRaw: 'number',
   wasIdleCapped: 'boolean',
-  capReason: 'string',
+  capReason: CAP_REASONS,
   capThresholdMs: 'number',
-  capSource: 'string',
+  capSource: CAP_SOURCES,
   hiddenTimeExcludedMs: 'number',
-} as const satisfies Record<keyof TrySubmission['timing'], 'number' | 'boolean' | 'string'>
+} as const satisfies Record<keyof TrySubmission['timing'], 'number' | 'boolean' | Members<string>>
 
 /** The whitelisted timing fields of a body, each of its declared type. */
 function timingOf(raw: unknown): Partial<TrySubmission['timing']> {
   const out: Record<string, unknown> = {}
   if (!raw || typeof raw !== 'object') return out
   const r = raw as Record<string, unknown>
-  for (const [key, type] of Object.entries(TIMING_FIELD_TYPES)) {
-    if (typeof r[key] === type) out[key] = r[key]
+  for (const [key, rule] of Object.entries(TIMING_FIELD_TYPES)) {
+    if (passes(rule, r[key])) out[key] = r[key]
   }
   return out as Partial<TrySubmission['timing']>
 }
@@ -194,7 +219,9 @@ export function parseTrySubmission(body: unknown): TrySubmission {
     help: {
       hadHelp: help.hadHelp === true,
       incorrectAttempts: typeof help.incorrectAttempts === 'number' ? help.incorrectAttempts : 0,
-      ...(typeof help.helpTrigger === 'string' ? { helpTrigger: help.helpTrigger } : {}),
+      ...(passes(HELP_TRIGGERS, help.helpTrigger)
+        ? { helpTrigger: help.helpTrigger as StoredTry['helpTrigger'] }
+        : {}),
     },
   }
 }
@@ -356,20 +383,14 @@ function locateEnvelope(plan: SessionPlan, s: TrySubmission): Target {
     }
     const stamp = doOverStamp(tries.filter((t) => t.itemId === s.itemId))
     // The kit's rule (amendment A17): a do-over of an item whose answer the
-    // kind showed is practice-only when a kind accepts it at all. It is
-    // recorded and counts toward nothing, so no kind can give credit for an
-    // answer it showed. A kind may refuse it instead (`whyNotDoOver`
-    // 'divulged', the shared cursor). Shown: its latest counted try is wrong
-    // and no round is left for it, and it is not the item on screen (an item
-    // shown at its last round has 0 rounds left but its answer is not out yet)
-    const onScreen = kind.expectedItem(content, state)
-    const divulged =
-      !stamp.practiceOnly &&
-      stamp.round > 0 &&
-      kind.roundsRemaining(content, state, s.itemId) === 0 &&
-      (onScreen === null || itemPositionOf(kind, onScreen)?.itemId !== s.itemId)
+    // kid has been shown is practice-only when a kind accepts it at all. It
+    // is recorded and counts toward nothing, so no kind can give credit for
+    // an answer it showed. A kind may refuse it instead (`whyNotDoOver`
+    // 'divulged', the shared cursor). Shown is the kind's reading of the
+    // tries, never where its cursor stands: an item queued for its last
+    // round has no round left and its answer is not out
     round = stamp.round
-    practiceOnly = stamp.practiceOnly || divulged
+    practiceOnly = stamp.practiceOnly || kind.answerShown(tries, s.itemId)
     tryKind = 'do_over'
   }
   const snapshot = kind.snapshotOf

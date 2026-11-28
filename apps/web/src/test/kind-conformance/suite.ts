@@ -81,8 +81,8 @@ export interface KindFixtures {
   /** Retry rounds after the first pass (0 = none); the suite checks the kind agrees */
   retryRounds: number
   /**
-   * A do-over of an item whose answer the kind showed (a wrong try with
-   * `roundsRemaining` 0): refused as `divulged` (the shared cursor), or
+   * A do-over of an item whose answer the kind showed (`answerShown`, a
+   * wrong try in its last round): refused as `divulged` (the shared cursor), or
    * accepted as practice-only, recorded and counting toward nothing (weight
    * 0, no skill evidence, not in `finalCorrect`). The kit's rule (A17): no
    * kind gives credit for an answer it showed, and `recordTry` stamps it so.
@@ -648,6 +648,8 @@ export function conformanceChecks(kind: AnyPartKind, fx: KindFixtures): Conforma
           const tries = normalizeTries(after.id, after.parts, after.results)
           const refusal = kind.whyNotDoOver?.(content, partStateOf(after, 0), tries, target) ?? null
           const accepts = kind.acceptsDoOver(content, partStateOf(after, 0), tries, target)
+          // Shown exactly when no round is left for the item shown (A17)
+          expect(kind.answerShown(tries, target)).toBe(r === 0)
           if (r > 0) {
             // Not divulged: it comes back, and a do-over is open
             expect(accepts).toBe(true)
@@ -698,6 +700,66 @@ export function conformanceChecks(kind: AnyPartKind, fx: KindFixtures): Conforma
         expect(remaining).toEqual(
           Array.from({ length: fx.retryRounds + 1 }, (_, i) => fx.retryRounds - i)
         )
+      },
+    },
+
+    {
+      name: 'a do-over of an item queued for its last round counts and redeems it (A17)',
+      async run(ctx) {
+        // With no retry round no item is ever queued
+        if (fx.retryRounds === 0) return
+        const planId = await insertPlan(ctx.playerId, one(counted(3)))
+        const start = await row(planId)
+        const target = itemIdAt(kind, start, 0, 0)
+        const other = itemIdAt(kind, start, 0, 1)
+        // `target` wrong up to its next-to-last round, so it waits for its
+        // last; `other` wrong once, so it is shown while `target` waits
+        for (let guard = 0; ; guard++) {
+          const now = shown(await row(planId))
+          if (!now || guard > 20)
+            throw new Error('the part never queued the item for its last round')
+          if (now.itemId === target) {
+            await answerShown(kind, fx, planId, 'wrong')
+            if (now.round === fx.retryRounds - 1) break
+          } else {
+            const wrong = now.itemId === other && now.round === 0
+            await answerShown(kind, fx, planId, wrong ? 'wrong' : 'right')
+          }
+        }
+        const queued = await row(planId)
+        const content = kind.contentOf(queued.parts[0])
+        const state = partStateOf(queued, 0)
+        const tries = normalizeTries(queued.id, queued.parts, queued.results)
+        expect(shown(queued)?.itemId).toBe(other)
+        // No round left, yet its answer is not out: the cursor cannot tell, the tries can
+        expect(kind.roundsRemaining(content, state, target)).toBe(0)
+        expect(kind.answerShown(tries, target)).toBe(false)
+        expect(kind.acceptsDoOver(content, state, tries, target)).toBe(true)
+
+        const bumps = ctx.skillBump.mock.calls.length
+        const redo = await doOver(kind, fx, planId, 0, target, 'right')
+        const after = await row(planId)
+        expect(rowOf(after, redo.try!.tryId)).toMatchObject({
+          kind: 'do_over',
+          round: fx.retryRounds,
+          practiceOnly: false,
+          masteryWeight: weightOf('do_over', fx.retryRounds, false),
+        })
+        const skills = fx.skillsOf(itemOf(kind, after, 0, target))
+        expect(ctx.skillBump.mock.calls.length).toBe(bumps + (skills.length > 0 ? 1 : 0))
+
+        // Redeemed: the rest right finishes the part, and the item is not asked again
+        const seen: string[] = []
+        for (let guard = 0; guard < 10; guard++) {
+          const now = shown(await row(planId))
+          if (!now) break
+          seen.push(now.itemId)
+          await answerShown(kind, fx, planId, 'right')
+        }
+        expect(seen).not.toContain(target)
+        const done = await row(planId)
+        expect(done.status).toBe('completed')
+        expect(reportOf(done).totals).toMatchObject({ problems: 3, unresolved: 0, finalCorrect: 3 })
       },
     },
 

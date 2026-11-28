@@ -51,8 +51,11 @@ const tryOf = (itemId: string, isCorrect: boolean, kind: KindTry['kind'] = 'firs
 })
 
 describe('a stub kind against the contract', () => {
-  it('imports only the contract, which names no slot', () => {
-    expect(importsOf(read('fixtures/read-abacus-kind.ts'))).toEqual(['../../kind'])
+  it("imports only the contract, which names no slot, and the shared cursor's answer-shown rule", () => {
+    const stub = read('fixtures/read-abacus-kind.ts')
+    expect(importsOf(stub)).toEqual(['../../cursor/retry-rounds', '../../kind'])
+    // From the cursor, its rule for when an answer is shown (amendment A17) and nothing else
+    expect(stub).toMatch(/^import \{ answerShownWith \} from '\.\.\/\.\.\/cursor\/retry-rounds'$/m)
     const contract = read('../kind.ts')
     expect(contract).not.toMatch(SLOT_WORDS)
     // Type-only: the try kind and, from K1a (practice-kinds plan §1.3), the

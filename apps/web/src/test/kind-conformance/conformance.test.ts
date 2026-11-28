@@ -84,6 +84,24 @@ describe('the suite can fail (mutation tests)', () => {
     ).not.toEqual([])
   }, 60_000)
 
+  it('a kind that says no answer was ever shown fails (A17)', async () => {
+    // The same accepting kind, now claiming it never shows an answer: the
+    // recorder would count its divulged do-overs, and the suite says so
+    const hiding: AnyPartKind = {
+      ...arithmetic,
+      acceptsDoOver: (_content, _state, tries, itemId) => tries.some((t) => t.itemId === itemId),
+      whyNotDoOver: undefined,
+      answerShown: () => false,
+    }
+    expect(
+      await failingChecks(
+        hiding,
+        { ...arithmeticFixtures, doOverAfterDivulged: 'practice_only' },
+        recordSkillAttemptsWithHelp
+      )
+    ).toContain('roundsRemaining reaches 0 exactly when the kind divulges')
+  }, 60_000)
+
   it('the kinds as they are fail nothing (the mutation is what fails)', async () => {
     expect(
       await failingChecks(arithmetic, arithmeticFixtures, recordSkillAttemptsWithHelp)

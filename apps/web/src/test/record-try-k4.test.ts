@@ -128,6 +128,7 @@ interface Step {
   /** A do-over of this slot, else what is shown */
   redoSlot?: number
   verdict: 'right' | 'wrong' | 'skip'
+  usedOnScreenAbacus?: boolean
   help?: Pick<SlotResult, 'hadHelp' | 'helpTrigger' | 'incorrectAttempts'>
   timing?: Partial<
     Pick<
@@ -166,7 +167,7 @@ function screenTry(plan: SessionPlan, step: Step): ScreenTry & SlotResultSubmiss
     isCorrect: step.verdict === 'right',
     responseTimeMs: 3000,
     skillsExercised: p.skillsRequired,
-    usedOnScreenAbacus: false,
+    usedOnScreenAbacus: step.usedOnScreenAbacus === true,
     incorrectAttempts: 0,
     hadHelp: skip,
     ...(skip ? { helpTrigger: 'manual' as const, outcome: 'skipped' as const } : {}),
@@ -204,8 +205,9 @@ async function sendEnvelope(planId: string, step: Step) {
 
 /**
  * s0 right, idle-capped; s1 wrong with help; s2 skipped; a do-over of s0
- * (practice-only); round 1: s1 right (a retry), s2 wrong; a do-over of s2
- * while it waits for round 2 (it counts and redeems it, ending the part).
+ * (practice-only); round 1: s1 right (a retry, on the on-screen abacus), s2
+ * wrong; a do-over of s2 while it is shown for round 2 (it counts and
+ * redeems it, ending the part).
  */
 const WALK: Step[] = [
   {
@@ -228,9 +230,39 @@ const WALK: Step[] = [
   },
   { tryId: tid(3), verdict: 'skip' },
   { tryId: tid(4), redoSlot: 0, verdict: 'right' },
-  { tryId: tid(5), verdict: 'right' },
+  { tryId: tid(5), verdict: 'right', usedOnScreenAbacus: true },
   { tryId: tid(6), verdict: 'wrong', timing: { hiddenTimeExcludedMs: 500 } },
   { tryId: tid(7), redoSlot: 2, verdict: 'right' },
+]
+
+/**
+ * Amendment A17: an item queued for its last round has not had its answer
+ * shown, so a do-over of it counts and redeems, as `record_redo` has it.
+ * Scenario 1: s0 and s1 wrong, s2 right; round 1: s0 wrong again (queued
+ * for round 2) while s1 is on screen, a do-over of s0; then s1 right.
+ */
+const QUEUED_FOR_LAST_ROUND: Step[] = [
+  { tryId: tid(11), verdict: 'wrong' },
+  { tryId: tid(12), verdict: 'wrong' },
+  { tryId: tid(13), verdict: 'right' },
+  { tryId: tid(14), verdict: 'wrong' },
+  { tryId: tid(15), redoSlot: 0, verdict: 'right' },
+  { tryId: tid(16), verdict: 'right' },
+]
+
+/**
+ * Scenario 2: s0 and s1 wrong, s2 right; round 1: both wrong again; round
+ * 2: s0 on screen, a do-over of s1 (the second item queued for round 2);
+ * then s0 right.
+ */
+const SECOND_QUEUED_FOR_LAST_ROUND: Step[] = [
+  { tryId: tid(21), verdict: 'wrong' },
+  { tryId: tid(22), verdict: 'wrong' },
+  { tryId: tid(23), verdict: 'right' },
+  { tryId: tid(24), verdict: 'wrong' },
+  { tryId: tid(25), verdict: 'wrong' },
+  { tryId: tid(26), redoSlot: 1, verdict: 'right' },
+  { tryId: tid(27), verdict: 'right' },
 ]
 
 const masked = (results: SlotResult[]) =>
@@ -280,10 +312,11 @@ describe('K4a: record_try as the K4b client will send it', () => {
     eph.cleanup()
   })
 
-  it('stores the rows the superset body stores, try for try', async () => {
+  /** Walks the steps through both clients' wires, comparing the stored plan after every try. */
+  async function walkBoth(steps: Step[]) {
     const viaSuperset = await insertPlan(playerId)
     const viaEnvelope = await insertPlan(playerId)
-    for (const step of WALK) {
+    for (const step of steps) {
       await sendSuperset(viaSuperset, step)
       await sendEnvelope(viaEnvelope, step)
       const [a, b] = [await row(viaSuperset), await row(viaEnvelope)]
@@ -295,8 +328,15 @@ describe('K4a: record_try as the K4b client will send it', () => {
         a.status,
       ])
     }
+    return row(viaEnvelope)
+  }
+
+  const shape = (results: SlotResult[]) =>
+    results.map((r) => [r.slotIndex, r.kind, r.round, r.isCorrect, r.practiceOnly, r.masteryWeight])
+
+  it('stores the rows the superset body stores, try for try', async () => {
     // The walk reached every case it names
-    const done = await row(viaEnvelope)
+    const done = await walkBoth(WALK)
     expect(done.results.map((r) => [r.kind, r.round, r.outcome, r.practiceOnly])).toEqual([
       ['first', 0, 'answered', false],
       ['first', 0, 'answered', false],
@@ -308,6 +348,36 @@ describe('K4a: record_try as the K4b client will send it', () => {
     ])
     expect(done.results[0]).toMatchObject({ wasIdleCapped: true, responseTimeMsRaw: 400_000 })
     expect(done.results[1]).toMatchObject({ hadHelp: true, helpTrigger: 'auto-errors' })
+    expect(done.results[4]).toMatchObject({ usedOnScreenAbacus: true })
+    expect(done.results.filter((r) => r.usedOnScreenAbacus)).toHaveLength(1)
+    expect(done.status).toBe('completed')
+  })
+
+  it('counts a do-over of an item queued for its last round, as record_redo does (scenario 1)', async () => {
+    const done = await walkBoth(QUEUED_FOR_LAST_ROUND)
+    expect(shape(done.results)).toEqual([
+      [0, 'first', 0, false, false, 1],
+      [1, 'first', 0, false, false, 1],
+      [2, 'first', 0, true, false, 1],
+      [0, 'retry', 1, false, false, 0.5],
+      [0, 'do_over', 2, true, false, 0.25],
+      [1, 'retry', 1, true, false, 0.5],
+    ])
+    // The do-over redeemed s0: it is not asked in round 2
+    expect(done.status).toBe('completed')
+  })
+
+  it('counts a do-over of the second item queued for the last round (scenario 2)', async () => {
+    const done = await walkBoth(SECOND_QUEUED_FOR_LAST_ROUND)
+    expect(shape(done.results)).toEqual([
+      [0, 'first', 0, false, false, 1],
+      [1, 'first', 0, false, false, 1],
+      [2, 'first', 0, true, false, 1],
+      [0, 'retry', 1, false, false, 0.5],
+      [1, 'retry', 1, false, false, 0.5],
+      [1, 'do_over', 2, true, false, 0.25],
+      [0, 'retry', 2, true, false, 0.25],
+    ])
     expect(done.status).toBe('completed')
   })
 
@@ -340,6 +410,43 @@ describe('K4a: record_try as the K4b client will send it', () => {
     for (const key of ['voided', 'attachmentId', 'source', 'capReason', 'helpTrigger']) {
       expect(stored, key).not.toHaveProperty(key)
     }
+  })
+
+  it('stores a union field only when it names a member of its union', async () => {
+    const planId = await insertPlan(playerId)
+    const at = async (n: number) =>
+      envelopeOfScreenTry(screenTry(await row(planId), { tryId: tid(n), verdict: 'wrong' }), {
+        mode: 'first_or_retry',
+        partIndex: 0,
+      })
+    const first = await at(1)
+    const strays = {
+      ...first,
+      timing: { ...first.timing, capReason: 'whatever', capSource: 'browser' },
+      help: { ...first.help, helpTrigger: 'cheat' },
+    } as unknown as TrySubmission
+    expect((await patch(playerId, planId, { action: 'record_try', result: strays })).status).toBe(
+      200
+    )
+    const [stray] = (await row(planId)).results
+    for (const key of ['capReason', 'capSource', 'helpTrigger']) {
+      expect(stray, key).not.toHaveProperty(key)
+    }
+    // Members pass
+    const second = await at(2)
+    const members = {
+      ...second,
+      timing: { ...second.timing, capReason: 'clock-anomaly', capSource: 'server' },
+      help: { ...second.help, helpTrigger: 'teacher-approved' },
+    }
+    expect((await patch(playerId, planId, { action: 'record_try', result: members })).status).toBe(
+      200
+    )
+    expect((await row(planId)).results[1]).toMatchObject({
+      capReason: 'clock-anomaly',
+      capSource: 'server',
+      helpTrigger: 'teacher-approved',
+    })
   })
 
   it('traces record_try as record is traced, with no verdict', async () => {
