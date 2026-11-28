@@ -1,5 +1,5 @@
 /**
- * A do-over through the real `ActiveSession` (Phase 5b): the kid redoes an
+ * A do-over through the real `SessionShell` (Phase 5b): the kid redoes an
  * earlier item, and
  * - the write it sends names that item (`redoContext.itemId` = the item's own
  *   id, `result.slotId` = the same, its own slot index beside it);
@@ -13,12 +13,8 @@ import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SessionPlan } from '@/db/schema/session-plans'
 import { liveMidPartOneSession } from '@/test/fixtures/session-report'
-import {
-  type ActiveRedo,
-  ActiveSession,
-  type BroadcastState,
-  type RecordRedoParams,
-} from '../ActiveSession'
+import { SessionShell } from '../SessionShell'
+import type { ActiveRedo, BroadcastState, RecordRedoParams } from '../types'
 
 vi.mock('@/contexts/MyAbacusContext', () => ({
   useMyAbacus: () => ({
@@ -40,8 +36,8 @@ vi.mock('@soroban/abacus-react', async (importActual) => ({
 vi.mock('@/hooks/useSessionPlan', () => ({
   useSetRemoteCameraSession: () => ({ mutate: vi.fn() }),
 }))
-vi.mock('../input/AbacusDock', () => ({ AbacusDock: () => null }))
-vi.mock('../../decomposition', () => ({
+vi.mock('../../input/AbacusDock', () => ({ AbacusDock: () => null }))
+vi.mock('../../../decomposition', () => ({
   DecompositionProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 vi.mock('@/lib/curriculum/parts/arithmetic/browser/DecompositionSection', () => ({
@@ -53,12 +49,12 @@ vi.mock('@/lib/curriculum/parts/arithmetic/browser/AssistanceDebugPanel', () => 
 vi.mock('@/lib/curriculum/parts/arithmetic/browser/ProblemDebugPanel', () => ({
   ProblemDebugPanel: () => null,
 }))
-vi.mock('../input/NumericKeypad', () => ({ NumericKeypad: () => null }))
+vi.mock('../../input/NumericKeypad', () => ({ NumericKeypad: () => null }))
 vi.mock('@/lib/curriculum/parts/arithmetic/browser/PracticeHelpOverlay', () => ({
   PracticeHelpOverlay: () => null,
 }))
-vi.mock('../input/useDeviceDetection', async (importActual) => ({
-  ...(await importActual<typeof import('../input/useDeviceDetection')>()),
+vi.mock('../../input/useDeviceDetection', async (importActual) => ({
+  ...(await importActual<typeof import('../../input/useDeviceDetection')>()),
   useHasPhysicalKeyboard: () => false,
 }))
 
@@ -82,7 +78,7 @@ function Page({
   const [redoState, setRedoState] = useState<ActiveRedo | null>(null)
   tapDot = setRedoState
   return (
-    <ActiveSession
+    <SessionShell
       plan={plan}
       student={student}
       onAnswer={vi.fn(() => Promise.resolve<SessionPlan | null>(null))}
@@ -102,7 +98,7 @@ function Page({
   )
 }
 
-describe('ActiveSession — a do-over', () => {
+describe('SessionShell — a do-over', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })

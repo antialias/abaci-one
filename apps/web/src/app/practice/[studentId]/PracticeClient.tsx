@@ -5,16 +5,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '@/components/common/ToastContext'
 import { PageWithNav } from '@/components/PageWithNav'
 import {
-  ActiveSession,
   type AttemptTimingData,
   type BroadcastState,
   type GameBreakHudData,
   PracticeErrorBoundary,
   PracticeSubNav,
   type SessionHudData,
+  SessionShell,
 } from '@/components/practice'
 import { AbacusNoticeGate } from '@/components/practice/AbacusNoticeGate'
-import type { ActiveRedo, RecordRedoParams } from '@/components/practice/ActiveSession'
 import { GameBreakResultsScreen } from '@/components/practice/GameBreakResultsScreen'
 import { GameBreakScreen } from '@/components/practice/GameBreakScreen'
 import {
@@ -29,6 +28,7 @@ import {
   transitionCompletionToSend,
 } from '@/components/practice/partTransitionFlow'
 import type { RedoTarget } from '@/components/practice/SessionProgressIndicator'
+import type { ActiveRedo, RecordRedoParams } from '@/components/practice/session/types'
 import { createWriteQueue } from '@/components/practice/writeQueue'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import type { Player } from '@/db/schema/players'
@@ -145,11 +145,11 @@ export function PracticeClient({
   const { setVisionFrameCallback } = useMyAbacus()
   const queryClient = useQueryClient()
 
-  // Track pause state for HUD display (ActiveSession owns the modal and actual pause logic)
+  // Track pause state for HUD display (SessionShell owns the modal and actual pause logic)
   const [isPaused, setIsPaused] = useState(false)
-  // Track timing data from ActiveSession for the sub-nav HUD
+  // Track timing data from SessionShell for the sub-nav HUD
   const [timingData, setTimingData] = useState<AttemptTimingData | null>(null)
-  // Track broadcast state for session observation (digit-by-digit updates from ActiveSession)
+  // Track broadcast state for session observation (digit-by-digit updates from SessionShell)
   const [broadcastState, setBroadcastState] = useState<BroadcastState | null>(null)
   // Browse mode state - lifted here so PracticeSubNav can trigger it
   const [isBrowseMode, setIsBrowseMode] = useState(false)
@@ -351,7 +351,7 @@ export function PracticeClient({
     [currentPlan]
   )
 
-  // Pause handler - triggers manual pause in ActiveSession
+  // Pause handler - triggers manual pause in SessionShell
   const handlePause = useCallback(() => {
     setManualPauseRequest(true)
   }, [])
@@ -362,7 +362,7 @@ export function PracticeClient({
 
   // Write queue: answers and do-overs reach the server in submit order while the
   // UI advances optimistically. When one fails, the writes queued behind it are
-  // dropped and ActiveSession re-shows the server's current problem (the hook
+  // dropped and SessionShell re-shows the server's current problem (the hook
   // has already refetched the plan by the time the failure reaches here).
   const [resyncRequest, setResyncRequest] = useState(0)
   const [writeQueue] = useState(() => createWriteQueue(() => setResyncRequest((n) => n + 1)))
@@ -691,7 +691,7 @@ export function PracticeClient({
   )
 
   // Broadcast session state if student is in a classroom
-  // broadcastState is updated by ActiveSession via the onBroadcastStateChange callback
+  // broadcastState is updated by SessionShell via the onBroadcastStateChange callback
   // onAbacusControl receives control events from observing teacher
   // onTeacherPause/onTeacherResume receive pause/resume commands from teacher
   const {
@@ -1136,13 +1136,13 @@ export function PracticeClient({
               plan={currentPlan}
               student={{ name: player.name, emoji: player.emoji, color: player.color }}
               enabled={!isBrowseMode}
-              // A pause asked for during the notice waits for ActiveSession,
+              // A pause asked for during the notice waits for SessionShell,
               // which mounts after it; the countdown holds meanwhile
               paused={manualPauseRequest || (teacherPauseRequest !== null && !teacherResumeRequest)}
               onShown={handleAbacusNoticeShown}
               onEnded={sendPartTransitionComplete}
             >
-              <ActiveSession
+              <SessionShell
                 plan={currentPlan}
                 historicalResults={historicalResults}
                 student={{

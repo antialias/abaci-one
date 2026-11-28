@@ -4,7 +4,7 @@
  * These components support the daily practice system:
  * - StudentSelector: Choose which student is practicing
  * - ProgressDashboard: Show current progress and actions
- * - ActiveSession: Solve problems during practice
+ * - SessionShell: Solve problems during practice (any kind)
  * - SessionHero: Results after completing session (from the session report)
  */
 
@@ -12,8 +12,8 @@ export type {
   AttemptTimingData,
   BroadcastState,
   StudentInfo,
-} from './ActiveSession'
-export { ActiveSession } from './ActiveSession'
+} from './session/types'
+export { SessionShell } from './session/SessionShell'
 export { AllProblemsSection } from './AllProblemsSection'
 export { ContinueSessionCard } from './ContinueSessionCard'
 // Hooks

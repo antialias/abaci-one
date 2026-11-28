@@ -23,11 +23,12 @@ import {
 } from '@/utils/problemGenerator'
 import { css } from '../../../styled-system/css'
 import { MyAbacus } from '../MyAbacus'
-import { ActiveSession, type StudentInfo } from './ActiveSession'
+import { SessionShell } from './session/SessionShell'
+import type { StudentInfo } from './session/types'
 
 /**
  * Stories showing the actual MyAbacus docked into practice sessions.
- * These use the real ActiveSession and MyAbacus components to replicate
+ * These use the real SessionShell and MyAbacus components to replicate
  * the actual user experience for debugging layout issues.
  */
 const meta: Meta = {
@@ -41,7 +42,7 @@ export default meta
 type Story = StoryObj
 
 // ============================================================================
-// HELPERS - Same as ActiveSession.stories.tsx
+// HELPERS - Same as SessionShell.stories.tsx
 // ============================================================================
 
 function createMockStudent(name: string): StudentInfo {
@@ -323,7 +324,7 @@ function PageWrapper({ children }: { children: React.ReactNode }) {
 // ============================================================================
 
 /**
- * Real ActiveSession with docked MyAbacus - Part 1 (Abacus mode)
+ * Real SessionShell with docked MyAbacus - Part 1 (Abacus mode)
  *
  * This is the actual practice session page with the MyAbacus docked.
  * The abacus should auto-dock when the story renders.
@@ -332,7 +333,7 @@ export const Part1AbacusWithDockedAbacus: Story = {
   render: () => (
     <StoryProviders>
       <PageWrapper>
-        <ActiveSession
+        <SessionShell
           plan={createMockSessionPlan({
             skillLevel: 'basic',
             currentPartIndex: 0,
@@ -347,7 +348,7 @@ export const Part1AbacusWithDockedAbacus: Story = {
 }
 
 /**
- * Real ActiveSession - Part 2 (Visualization mode, no abacus dock)
+ * Real SessionShell - Part 2 (Visualization mode, no abacus dock)
  *
  * Part 2 doesn't show the abacus dock, so MyAbacus should remain
  * as a floating button.
@@ -356,7 +357,7 @@ export const Part2VisualizationNoDock: Story = {
   render: () => (
     <StoryProviders>
       <PageWrapper>
-        <ActiveSession
+        <SessionShell
           plan={createMockSessionPlan({
             skillLevel: 'fiveComplements',
             currentPartIndex: 1,
@@ -371,13 +372,13 @@ export const Part2VisualizationNoDock: Story = {
 }
 
 /**
- * Real ActiveSession with larger numbers (requires more columns)
+ * Real SessionShell with larger numbers (requires more columns)
  */
 export const LargerNumbersWithDock: Story = {
   render: () => (
     <StoryProviders>
       <PageWrapper>
-        <ActiveSession
+        <SessionShell
           plan={createMockSessionPlan({
             skillLevel: 'tenComplements',
             currentPartIndex: 0,
@@ -398,7 +399,7 @@ export const MidSessionWithHealth: Story = {
   render: () => (
     <StoryProviders>
       <PageWrapper>
-        <ActiveSession
+        <SessionShell
           plan={createMockSessionPlan({
             skillLevel: 'basic',
             currentPartIndex: 0,
@@ -426,7 +427,7 @@ export const StrugglingSession: Story = {
   render: () => (
     <StoryProviders>
       <PageWrapper>
-        <ActiveSession
+        <SessionShell
           plan={createMockSessionPlan({
             skillLevel: 'tenComplements',
             currentPartIndex: 0,
@@ -515,7 +516,7 @@ function InteractiveDemo() {
   return (
     <StoryProviders>
       <PageWrapper>
-        <ActiveSession
+        <SessionShell
           plan={plan}
           student={createMockStudent('Sonia')}
           onAnswer={handleAnswer}
@@ -594,7 +595,7 @@ function ComparisonDemo() {
         {/* Content */}
         <PageWrapper>
           {activeTab === 'part1' ? (
-            <ActiveSession
+            <SessionShell
               plan={createMockSessionPlan({
                 skillLevel: 'basic',
                 currentPartIndex: 0,
@@ -604,7 +605,7 @@ function ComparisonDemo() {
               {...defaultHandlers}
             />
           ) : (
-            <ActiveSession
+            <SessionShell
               plan={createMockSessionPlan({
                 skillLevel: 'fiveComplements',
                 currentPartIndex: 1,
@@ -733,7 +734,7 @@ function VisionStoryProviders({
 /**
  * Vision mode with real components - Local camera
  *
- * Uses real ActiveSession + MyAbacus + DockedVisionFeed.
+ * Uses real SessionShell + MyAbacus + DockedVisionFeed.
  * Will show loading/error state since there's no real camera,
  * but uses the actual component layout for debugging.
  */
@@ -741,7 +742,7 @@ export const VisionLocalCamera: Story = {
   render: () => (
     <VisionStoryProviders cameraSource="local">
       <PageWrapper>
-        <ActiveSession
+        <SessionShell
           plan={createMockSessionPlan({
             skillLevel: 'basic',
             currentPartIndex: 0,
@@ -758,14 +759,14 @@ export const VisionLocalCamera: Story = {
 /**
  * Vision mode with real components - Phone camera
  *
- * Uses real ActiveSession + MyAbacus + DockedVisionFeed.
+ * Uses real SessionShell + MyAbacus + DockedVisionFeed.
  * Will show "Connecting to phone..." since there's no real session.
  */
 export const VisionPhoneCamera: Story = {
   render: () => (
     <VisionStoryProviders cameraSource="phone">
       <PageWrapper>
-        <ActiveSession
+        <SessionShell
           plan={createMockSessionPlan({
             skillLevel: 'basic',
             currentPartIndex: 0,
@@ -786,7 +787,7 @@ export const VisionLargerNumbers: Story = {
   render: () => (
     <VisionStoryProviders cameraSource="local">
       <PageWrapper>
-        <ActiveSession
+        <SessionShell
           plan={createMockSessionPlan({
             skillLevel: 'tenComplements',
             currentPartIndex: 0,
@@ -1014,7 +1015,7 @@ function VisionMirrorDemo() {
             the 🧮 toggle to enter mirror mode with PIP.
           </p>
         </div>
-        <ActiveSession
+        <SessionShell
           plan={createMockSessionPlan({
             skillLevel: 'basic',
             currentPartIndex: 0,
@@ -1048,7 +1049,7 @@ function VisionMirrorLargeDemo() {
             {abacusValue} ({abacusColumns} columns).
           </p>
         </div>
-        <ActiveSession
+        <SessionShell
           plan={createMockSessionPlan({
             skillLevel: 'tenComplements',
             currentPartIndex: 0,

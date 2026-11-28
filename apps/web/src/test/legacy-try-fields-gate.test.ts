@@ -47,11 +47,12 @@ const OTHER_RECORDS: Record<string, string> = {
   'lib/curriculum/parts/arithmetic/server.ts': "the current item's retry round (itemPositionOf)",
   'lib/curriculum/parts/cursor/retry-rounds.ts':
     "the retry queue's entries, stored under the first kind's names (practice-kinds K3)",
-  'components/practice/ActiveSession.tsx':
-    'the current item, the attempt on screen, the submission built from it',
+  'lib/curriculum/parts/arithmetic/browser/ItemView.tsx':
+    'the current item, the attempt on screen, the submission built from it (practice-kinds K5a-3b: moved from ActiveSession.tsx)',
+  'lib/curriculum/parts/arithmetic/browser.tsx':
+    "the try item of a shown item and its round (practice-kinds K5a-3b: the session kind's tryItemOf, positionOf, doOverWriteOf)",
   'lib/curriculum/parts/arithmetic/browser/useDigitEntry.ts':
     'the attempt on screen (practice-kinds K5a-1: moved from useInteractionPhase.ts)',
-  'components/practice/redoReturnTarget.ts': 'the current item',
   'lib/curriculum/parts/arithmetic/browser/RetryTransitionScreen.tsx':
     'its epochNumber prop (the retry round shown; practice-kinds K5a-2: moved from components/practice/)',
   'app/practice/[studentId]/PracticeClient.tsx':

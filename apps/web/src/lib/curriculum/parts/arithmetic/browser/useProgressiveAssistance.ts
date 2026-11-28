@@ -650,7 +650,7 @@ export function useProgressiveAssistance(
 
   // Reset the idle escalation clock when the tab returns to the foreground so
   // frozen timers don't instantly cascade to auto-pause (#156). Self-contained:
-  // the hidden-time exclusion itself lives in useInteractionPhase; this only
+  // the hidden-time exclusion itself lives in useTryLifecycle; this only
   // guards the assistance UX. Mount-only — `dispatch` is stable.
   useEffect(() => {
     if (typeof document === 'undefined') return

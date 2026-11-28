@@ -63,7 +63,6 @@ const KIND_BLIND_PATHS = [
 ]
 /** Gated paths not written yet, by the phase that writes them. */
 const NOT_YET: Record<string, string> = {
-  'components/practice/session': 'K5 (the session shell)',
   'lib/curriculum/compose': 'K6a (the composer)',
 }
 /**

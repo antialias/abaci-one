@@ -78,26 +78,6 @@ const FOLDER_EXEMPT: Record<string, { modules: string[]; why: string }> = {
     modules: [`${A}/session-view`],
     why: "arithmetic's session view (K5, the shell)",
   },
-  'components/practice/ActiveSession.tsx': {
-    modules: [
-      `${A}/session-view`,
-      `${A}/state`,
-      // K5a-2 moved these views here; K5a-3's shell renders them through the browser kind
-      `${A}/browser/AssistanceDebugPanel`,
-      `${A}/browser/coachHintGenerator`,
-      `${A}/browser/DecompositionSection`,
-      `${A}/browser/LinearProblem`,
-      `${A}/browser/PracticeFeedback`,
-      `${A}/browser/PracticeHelpOverlay`,
-      `${A}/browser/ProblemDebugPanel`,
-      `${A}/browser/ProgressiveAssistanceUI`,
-      `${A}/browser/PurposeBadge`,
-      `${A}/browser/RetryTransitionScreen`,
-      `${A}/browser/useProgressiveAssistance`,
-      `${A}/browser/VerticalProblem`,
-    ],
-    why: "arithmetic's session view and state (K5, the shell), and its views (K5a-2 moved them; K5a-3's shell)",
-  },
   'components/practice/AnnotatedProblem.tsx': {
     modules: [`${A}/browser/LinearProblem`],
     why: "arithmetic's equation view in the history card (K5a-2 moved it; K5b's TryCard makes this arithmetic's card body)",
@@ -109,10 +89,6 @@ const FOLDER_EXEMPT: Record<string, { modules: string[]; why: string }> = {
   'components/practice/SessionProgressIndicator.tsx': {
     modules: [`${A}/browser/PurposeBadge`],
     why: "arithmetic's extractTargetSkillName for the dot tooltips (K5a-2 moved it; K5b's dots from items())",
-  },
-  'components/practice/hooks/usePracticeAssistanceAudio.ts': {
-    modules: [`${A}/browser/useProgressiveAssistance`],
-    why: "the help machine's state names, type only (K5a-2 moved it; this hook has no importer, K5a-3 retires it with the shell)",
   },
   'components/practice/AllProblemsSection.tsx': {
     modules: [`${A}/result-view`],
@@ -133,14 +109,6 @@ const FOLDER_EXEMPT: Record<string, { modules: string[]; why: string }> = {
   'components/practice/SessionPlanOverview.tsx': {
     modules: [`${A}/result-view`],
     why: "arithmetic's part overview (K5)",
-  },
-  'components/practice/hooks/useInteractionPhase.ts': {
-    modules: [`${A}/browser/useDigitEntry`],
-    why: "the try lifecycle composed with arithmetic's digit entry, for ActiveSession (K5a-1; K5a-3's shell deletes it)",
-  },
-  'components/practice/redoReturnTarget.ts': {
-    modules: [`${A}/state`],
-    why: "arithmetic's current problem (K5, the shell)",
   },
   'components/practice/sessionSummaryUtils.ts': {
     modules: [`${A}/result-view`],
@@ -401,9 +369,9 @@ describe('kind-folder gate: a kind folder is imported only by the registries and
       '4:@/lib/curriculum/parts/arithmetic/server',
     ])
     // Inside the folder, the folder is its own
-    expect(folderReach(`${PARTS}/arithmetic/ui.tsx`, "import { a } from './state'", kinds)).toEqual(
-      []
-    )
+    expect(
+      folderReach(`${PARTS}/arithmetic/browser.tsx`, "import { a } from './state'", kinds)
+    ).toEqual([])
   })
 
   it('no production file reaches into a kind folder but the registries and the exemptions', () => {
@@ -431,7 +399,7 @@ describe('kind-folder gate: a kind folder is imported only by the registries and
       modules.filter((m) => !imported.get(file)?.has(m)).map((m) => `${file} -> ${m}`)
     )
     expect(stale).toEqual([])
-    expect(Object.keys(FOLDER_EXEMPT)).toHaveLength(26)
+    expect(Object.keys(FOLDER_EXEMPT)).toHaveLength(22)
   })
 })
 
@@ -454,12 +422,12 @@ describe('server-half gate: parts/<kind>/server.ts reaches no .tsx and nothing i
       (target) => (`${target}.ts` in sources ? `${target}.ts` : resolveFile(target))
     )
     expect(hazards).toEqual(['@/db: lib/curriculum/parts/planted/server.ts -> ./helper -> @/db'])
-    // A .tsx reached at runtime (arithmetic's own ui.tsx stands in)
+    // A .tsx reached at runtime (arithmetic's own browser.tsx stands in)
     expect(
       serverHazards(`${PARTS}/arithmetic/planted-server.ts`, (r) =>
-        r === `${PARTS}/arithmetic/planted-server.ts` ? "import { x } from './ui'" : read(r)
+        r === `${PARTS}/arithmetic/planted-server.ts` ? "import { x } from './browser'" : read(r)
       )
-    ).toEqual([`.tsx: ${PARTS}/arithmetic/planted-server.ts -> ./ui`])
+    ).toEqual([`.tsx: ${PARTS}/arithmetic/planted-server.ts -> ./browser`])
   })
 
   it('every kind server half is clean', () => {

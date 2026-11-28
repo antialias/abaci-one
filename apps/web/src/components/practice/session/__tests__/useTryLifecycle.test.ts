@@ -17,7 +17,7 @@ import {
   type ActivePhase,
   createAttemptInput,
 } from '@/lib/curriculum/parts/arithmetic/browser/useDigitEntry'
-import { useInteractionPhase } from '../useInteractionPhase'
+import { useInteractionPhase } from '@/test/arithmetic-interaction'
 import {
   addPauseToActivePhase,
   foldHiddenSpanIntoActivePhase,

@@ -1,5 +1,5 @@
 /**
- * The abacus notice after a game break, before the real `ActiveSession`
+ * The abacus notice after a game break, before the real `SessionShell`
  * (plan §8 A19): the notice comes first, the part's first item after it, and
  * the item's response time counts from when the item is shown, never the
  * time the kid spent on the notice.
@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BreakRecord, SessionPlan } from '@/db/schema/session-plans'
 import { liveMidPartOneSession } from '@/test/fixtures/session-report'
 import { AbacusNoticeGate } from '../AbacusNoticeGate'
-import { ActiveSession } from '../ActiveSession'
+import { SessionShell } from '../session/SessionShell'
 
 vi.mock('@/contexts/MyAbacusContext', () => ({
   useMyAbacus: () => ({
@@ -96,7 +96,7 @@ describe('AbacusNoticeGate — the notice after a break, before the first item',
     const page = render(
       <QueryClientProvider client={client}>
         <AbacusNoticeGate plan={plan} student={student} onShown={onShown} onEnded={onEnded}>
-          <ActiveSession
+          <SessionShell
             plan={plan}
             student={student}
             onAnswer={onAnswer as never}

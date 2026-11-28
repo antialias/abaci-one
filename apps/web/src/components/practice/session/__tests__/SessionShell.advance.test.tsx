@@ -22,7 +22,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RetryItem, SessionPlan, SlotResult } from '@/db/schema/session-plans'
 import { applyFlowEvent } from '@/lib/curriculum/session-flow'
 import { liveMidPartOneSession, tenProblemSession } from '@/test/fixtures/session-report'
-import { type ActiveRedo, ActiveSession, type RecordRedoParams } from '../ActiveSession'
+import { SessionShell } from '../SessionShell'
+import type { ActiveRedo, RecordRedoParams } from '../types'
 
 vi.mock('@/contexts/MyAbacusContext', () => ({
   useMyAbacus: () => ({
@@ -44,8 +45,8 @@ vi.mock('@soroban/abacus-react', async (importActual) => ({
 vi.mock('@/hooks/useSessionPlan', () => ({
   useSetRemoteCameraSession: () => ({ mutate: vi.fn() }),
 }))
-vi.mock('../input/AbacusDock', () => ({ AbacusDock: () => null }))
-vi.mock('../../decomposition', () => ({
+vi.mock('../../input/AbacusDock', () => ({ AbacusDock: () => null }))
+vi.mock('../../../decomposition', () => ({
   DecompositionProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }))
 vi.mock('@/lib/curriculum/parts/arithmetic/browser/DecompositionSection', () => ({
@@ -57,12 +58,12 @@ vi.mock('@/lib/curriculum/parts/arithmetic/browser/AssistanceDebugPanel', () => 
 vi.mock('@/lib/curriculum/parts/arithmetic/browser/ProblemDebugPanel', () => ({
   ProblemDebugPanel: () => null,
 }))
-vi.mock('../input/NumericKeypad', () => ({ NumericKeypad: () => null }))
+vi.mock('../../input/NumericKeypad', () => ({ NumericKeypad: () => null }))
 vi.mock('@/lib/curriculum/parts/arithmetic/browser/PracticeHelpOverlay', () => ({
   PracticeHelpOverlay: () => null,
 }))
-vi.mock('../input/useDeviceDetection', async (importActual) => ({
-  ...(await importActual<typeof import('../input/useDeviceDetection')>()),
+vi.mock('../../input/useDeviceDetection', async (importActual) => ({
+  ...(await importActual<typeof import('../../input/useDeviceDetection')>()),
   useHasPhysicalKeyboard: () => false,
 }))
 
@@ -170,7 +171,7 @@ function Page({
   tapDot = setRedoState
   resync = () => setResyncRequest((n) => n + 1)
   return (
-    <ActiveSession
+    <SessionShell
       plan={plan}
       student={student}
       onAnswer={onAnswer}
@@ -207,7 +208,7 @@ function renderPage(
   )
   const session = () => {
     const el = page.container.querySelector('[data-component="active-session"]')
-    if (!el) throw new Error('ActiveSession not rendered')
+    if (!el) throw new Error('SessionShell not rendered')
     return el
   }
   return {
@@ -252,7 +253,7 @@ async function tick(ms: number) {
   })
 }
 
-describe('ActiveSession — advance after a try comes from the returned plan', () => {
+describe('SessionShell — advance after a try comes from the returned plan', () => {
   beforeEach(() => {
     vi.useFakeTimers({
       toFake: [
@@ -450,6 +451,45 @@ describe('ActiveSession — advance after a try comes from the returned plan', (
     expect(phases).not.toContain('transitioning')
     expect(s.shown()).not.toBe(answerOf(before, 2))
     observer.disconnect()
+    s.page.unmount()
+  })
+
+  it('a skip moves on from the plan its write returned, 1500 ms after it, not on a timer from the tap (A21)', async () => {
+    const before = firstPass([true])
+    const write = heldWrite()
+    const s = renderPage(before, write.promise)
+    await tick(0)
+    const skipped = s.shown()
+    expect(skipped).toBe(answerOf(before, 1))
+
+    const skip = s.page.container.querySelector('[data-action="skip"]')
+    if (!skip) throw new Error('skip button not rendered')
+    await act(async () => {
+      fireEvent.click(skip)
+    })
+    expect(s.onAnswer).toHaveBeenCalledTimes(1)
+    expect(s.onAnswer.mock.calls[0][0]).toMatchObject({ outcome: 'skipped' })
+    expect(s.phase()).toBe('showingFeedback')
+
+    // The write is slow: the old timer (1500 ms from the tap) reloaded the
+    // plan on screen, which still shows the skipped problem
+    await tick(3000)
+    expect(s.phase()).toBe('showingFeedback')
+    expect(s.shown()).toBe(skipped)
+
+    // The server answers: the cursor moves on to slot 2
+    const after = serverAfter(before, 1, false, 0)
+    await act(async () => {
+      write.resolve(after)
+    })
+    await tick(1499)
+    expect(s.phase()).toBe('showingFeedback')
+    expect(s.shown()).toBe(skipped)
+
+    // 1500 ms after the plan came back, the next problem is on screen
+    await tick(1)
+    expect(s.phase()).toBe('inputting')
+    expect(s.shown()).toBe(answerOf(after, 2))
     s.page.unmount()
   })
 })
