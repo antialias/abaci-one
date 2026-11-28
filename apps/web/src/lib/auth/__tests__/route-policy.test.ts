@@ -37,6 +37,13 @@ describe('route RBAC policy', () => {
     ).toBe(true)
   })
 
+  it('guests reach the practice glitch route (K5a-3c R1)', async () => {
+    const enforcer = await getRouteEnforcer()
+    expect(
+      await enforcer.enforce('guest', '/api/curriculum/p1/sessions/plans/plan1/glitches', 'POST')
+    ).toBe(true)
+  })
+
   it('guests reach the design snapshot + sharing routes', async () => {
     const enforcer = await getRouteEnforcer()
     for (const [path, method] of [

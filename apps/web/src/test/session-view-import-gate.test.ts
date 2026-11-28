@@ -58,6 +58,8 @@ const KIND_BLIND_PATHS = [
   'lib/curriculum/session-flow.ts',
   'lib/curriculum/session-report.ts',
   'lib/curriculum/record-try.ts',
+  // the glitch record (K5a-3c R1, §8 A23.3); its route is under app/api/curriculum
+  'lib/curriculum/glitches.ts',
   'lib/curriculum/compose',
   'app/api/curriculum',
 ]

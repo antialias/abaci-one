@@ -17,6 +17,7 @@ import type { DisplayRules, RuleMode } from '@/app/create/worksheets/displayRule
 import { db, schema } from '@/db'
 import { parentChild, worksheetShares } from '@/db/schema'
 import type { GameBreakSettings } from '@/db/schema/session-plans'
+import { GLITCH_REF_PATTERN } from '@/lib/curriculum/glitches'
 import {
   getAllSkillMastery,
   getRecentSessionDates,
@@ -32,7 +33,6 @@ import {
   getRecentSessionResults,
   startSessionPlan,
 } from '@/lib/curriculum/session-planner'
-import { GLITCH_REF_PATTERN } from '@/lib/curriculum/glitches'
 import { type SessionReportSummary, summarizeSessionReport } from '@/lib/curriculum/session-report'
 import { buildSessionReports } from '@/lib/curriculum/session-report-batch'
 import { evidenceSkillsOf } from '@/lib/curriculum/try-evidence'
