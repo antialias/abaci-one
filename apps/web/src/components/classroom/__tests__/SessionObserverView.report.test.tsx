@@ -91,7 +91,7 @@ vi.mock('../../debug/ObserverDebugPanel', () => ({ ObserverDebugPanel: () => nul
 vi.mock('../SessionShareButton', () => ({ SessionShareButton: () => null }))
 vi.mock('../GameBreakSpectatorView', () => ({ GameBreakSpectatorView: () => null }))
 vi.mock('../ObserverOnboardingCard', () => ({ ObserverOnboardingCard: () => null }))
-vi.mock('../../AbacusDock', () => ({ AbacusDock: () => null }))
+vi.mock('../../practice/input/AbacusDock', () => ({ AbacusDock: () => null }))
 
 import { SessionObserverView } from '../SessionObserverModal'
 

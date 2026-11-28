@@ -12,11 +12,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { ProblemSlot, SessionPart } from '@/db/schema/session-plans'
 import { css } from '../../../styled-system/css'
-import { AbacusDock } from '../AbacusDock'
-import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
-import { NumericKeypad } from './NumericKeypad'
-import { VerticalProblem } from './VerticalProblem'
-import { LinearProblem } from './LinearProblem'
+import { AbacusDock } from './input/AbacusDock'
+import { useHasPhysicalKeyboard } from './input/useDeviceDetection'
+import { NumericKeypad } from './input/NumericKeypad'
+import { VerticalProblem } from '@/lib/curriculum/parts/arithmetic/browser/VerticalProblem'
+import { LinearProblem } from '@/lib/curriculum/parts/arithmetic/browser/LinearProblem'
 
 export interface PracticePreviewProps {
   /** The problem slot to practice */

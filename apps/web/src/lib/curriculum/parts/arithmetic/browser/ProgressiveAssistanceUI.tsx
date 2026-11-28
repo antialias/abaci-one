@@ -1,8 +1,8 @@
 'use client'
 
+import { css, cx } from '@styled/css'
 import { useEffect, useState } from 'react'
-import { css, cx } from '../../../styled-system/css'
-import type { AssistanceMachineState } from './hooks/useProgressiveAssistance'
+import type { AssistanceMachineState } from './useProgressiveAssistance'
 
 interface ProgressiveAssistanceUIProps {
   machineState: AssistanceMachineState

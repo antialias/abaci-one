@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react'
 import { useState } from 'react'
 import { createBasicSkillSet } from '@/types/tutorial'
 import { generateSingleProblem, type ProblemConstraints } from '@/utils/problemGenerator'
-import { css } from '../../../styled-system/css'
+import { css } from '@styled/css'
 import { VerticalProblem } from './VerticalProblem'
 
 const meta: Meta<typeof VerticalProblem> = {
@@ -351,8 +351,11 @@ export const Playground: Story = {
 }
 
 // Import the interaction hook and help components
-import { useInteractionPhase, computePrefixSums } from './hooks/useInteractionPhase'
-import { HelpAbacus } from './HelpAbacus'
+import {
+  useInteractionPhase,
+  computePrefixSums,
+} from '@/components/practice/hooks/useInteractionPhase'
+import { HelpAbacus } from '@/components/practice/HelpAbacus'
 import type { GeneratedProblem } from '@/db/schema/session-plans'
 
 /**

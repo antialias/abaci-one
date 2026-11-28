@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react'
+import { css } from '@styled/css'
 import { useCallback, useState } from 'react'
-import { css } from '../../../styled-system/css'
 import { PracticeHelpOverlay } from './PracticeHelpOverlay'
 
 const meta: Meta<typeof PracticeHelpOverlay> = {

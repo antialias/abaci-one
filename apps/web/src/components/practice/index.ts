@@ -20,7 +20,7 @@ export { ContinueSessionCard } from './ContinueSessionCard'
 export {
   useHasPhysicalKeyboard,
   useIsTouchDevice,
-} from './hooks/useDeviceDetection'
+} from './input/useDeviceDetection'
 export { LiveResultsPanel } from './LiveResultsPanel'
 export { MobileResultsSummary } from './MobileResultsSummary'
 export {
@@ -42,9 +42,8 @@ export { PhotoLightbox } from './PhotoLightbox'
 export type { PhotoViewerEditorPhoto } from './PhotoViewerEditor'
 export { PhotoViewerEditor } from './PhotoViewerEditor'
 export { SessionPhotoGallery } from './SessionPhotoGallery'
-export { NumericKeypad } from './NumericKeypad'
+export { NumericKeypad } from './input/NumericKeypad'
 export { PracticeErrorBoundary } from './PracticeErrorBoundary'
-export { PracticeFeedback } from './PracticeFeedback'
 export type {
   RelationshipBadgeProps,
   RelationshipConfig,
@@ -57,7 +56,6 @@ export {
 } from './RelationshipBadge'
 export type { RelationshipCardProps } from './RelationshipCard'
 export { RelationshipCard } from './RelationshipCard'
-export { PurposeBadge } from './PurposeBadge'
 export type { SessionHudData, GameBreakHudData } from './PracticeSubNav'
 export { PracticeSubNav } from './PracticeSubNav'
 export { PracticeTimingDisplay } from './PracticeTimingDisplay'
@@ -114,7 +112,6 @@ export type {
 export { StudentSelector } from './StudentSelector'
 export { StudentActionMenu } from './StudentActionMenu'
 export { StudentFilterBar } from './StudentFilterBar'
-export { VerticalProblem } from './VerticalProblem'
 export type { StudentView, TeacherCompoundChipProps } from './ViewSelector'
 export {
   ViewSelector,

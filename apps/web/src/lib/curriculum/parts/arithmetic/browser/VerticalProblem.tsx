@@ -1,11 +1,11 @@
 'use client'
 
+import { css } from '@styled/css'
 import type { ReactNode } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { GenerationTrace } from '@/db/schema/session-plans'
 import { getBaseComplexity } from '@/utils/skillComplexity'
-import { css } from '../../../styled-system/css'
 
 interface VerticalProblemProps {
   /** Array of terms (positive for addition, negative for subtraction) */

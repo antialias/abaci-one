@@ -10,7 +10,7 @@ import {
 } from '@/hooks/useSessionTimeEstimate'
 import { calculateStreak } from '@/lib/calculateStreak'
 import { css } from '../../../styled-system/css'
-import { useIsTouchDevice } from './hooks/useDeviceDetection'
+import { useIsTouchDevice } from './input/useDeviceDetection'
 import { SpeedMeter } from './SpeedMeter'
 
 export interface SessionMoodIndicatorProps {

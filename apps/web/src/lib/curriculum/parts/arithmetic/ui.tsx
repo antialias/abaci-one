@@ -11,11 +11,11 @@
  * (§1.3), so `Intro` is absent.
  */
 
-import { LinearProblem } from '@/components/practice/LinearProblem'
-import { RetryTransitionScreen } from '@/components/practice/RetryTransitionScreen'
 import { SessionProgressIndicator } from '@/components/practice/SessionProgressIndicator'
-import { VerticalProblem } from '@/components/practice/VerticalProblem'
 import type { SessionPart } from '@/db/schema/session-plans'
+import { LinearProblem } from '@/lib/curriculum/parts/arithmetic/browser/LinearProblem'
+import { RetryTransitionScreen } from '@/lib/curriculum/parts/arithmetic/browser/RetryTransitionScreen'
+import { VerticalProblem } from '@/lib/curriculum/parts/arithmetic/browser/VerticalProblem'
 
 export const arithmeticUi = {
   /** The problem view for a part's display format */

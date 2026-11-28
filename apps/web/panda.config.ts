@@ -17,7 +17,7 @@ export default defineConfig({
     './src/**/*.test.tsx',
     './src/**/*.test.ts',
     // Keyboard config has special {bksp} and {enter} patterns that confuse the parser
-    './src/components/practice/numericKeypadConfig.ts',
+    './src/components/practice/input/numericKeypadConfig.ts',
     './src/components/ui/KidNumberInput/KidNumberInput.tsx',
   ],
 

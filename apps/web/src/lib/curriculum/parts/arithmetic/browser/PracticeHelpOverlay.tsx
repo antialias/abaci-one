@@ -14,14 +14,14 @@
 
 import type { AbacusOverlay, StepBeadHighlight } from '@soroban/abacus-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { css } from '../../../styled-system/css'
+import { css } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
 import { getHelpTiming, shouldUseDebugTiming } from '@/constants/helpTiming'
 import { generateUnifiedInstructionSequence } from '@/utils/unifiedStepGenerator'
 import { calculateTooltipPositioning } from '@/utils/beadTooltipUtils'
 import { calculateBeadDiffFromValues } from '@/utils/beadDiff'
-import { BeadTooltipContent } from '../shared/BeadTooltipContent'
-import { HelpAbacus } from './HelpAbacus'
+import { BeadTooltipContent } from '@/components/shared/BeadTooltipContent'
+import { HelpAbacus } from '@/components/practice/HelpAbacus'
 
 export interface PracticeHelpOverlayProps {
   /** Current abacus value (prefix sum the kid entered) */

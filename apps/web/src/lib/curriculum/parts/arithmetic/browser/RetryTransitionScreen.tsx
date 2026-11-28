@@ -7,9 +7,9 @@
  * with info about how many problems need retrying and which attempt this is.
  */
 
+import { css } from '@styled/css'
 import { useCallback, useEffect, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
-import { css } from '../../../styled-system/css'
 
 // ============================================================================
 // Constants

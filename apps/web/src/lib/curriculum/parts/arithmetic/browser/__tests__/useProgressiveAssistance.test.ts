@@ -8,7 +8,7 @@ import {
   type AssistanceContext,
   type AssistanceStateName,
 } from '../useProgressiveAssistance'
-import type { ProgressiveThresholds } from '../../autoPauseCalculator'
+import type { ProgressiveThresholds } from '@/components/practice/autoPauseCalculator'
 
 const defaultThresholds: ProgressiveThresholds = {
   encouragementMs: 15000,

@@ -140,7 +140,7 @@ vi.mock('@/constants/zIndex', () => ({
 }))
 
 // Mock child components that are heavy to render
-vi.mock('../AbacusDock', () => ({
+vi.mock('../../practice/input/AbacusDock', () => ({
   AbacusDock: () => null,
 }))
 vi.mock('../../practice/LiveResultsPanel', () => ({
@@ -155,10 +155,10 @@ vi.mock('../../practice/MobileResultsSummary', () => ({
 vi.mock('../../practice/ObserverTransitionView', () => ({
   ObserverTransitionView: () => null,
 }))
-vi.mock('../../practice/PracticeFeedback', () => ({
+vi.mock('@/lib/curriculum/parts/arithmetic/browser/PracticeFeedback', () => ({
   PracticeFeedback: () => null,
 }))
-vi.mock('../../practice/PurposeBadge', () => ({
+vi.mock('@/lib/curriculum/parts/arithmetic/browser/PurposeBadge', () => ({
   PurposeBadge: () => null,
 }))
 vi.mock('../../practice/SessionPlanOverview', () => ({
@@ -167,7 +167,7 @@ vi.mock('../../practice/SessionPlanOverview', () => ({
 vi.mock('../../practice/SessionProgressIndicator', () => ({
   SessionProgressIndicator: () => null,
 }))
-vi.mock('../../practice/VerticalProblem', () => ({
+vi.mock('@/lib/curriculum/parts/arithmetic/browser/VerticalProblem', () => ({
   VerticalProblem: () => null,
 }))
 vi.mock('../../vision/ObserverVisionFeed', () => ({

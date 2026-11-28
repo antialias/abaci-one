@@ -7,7 +7,7 @@ import {
   OFFERING_HELP_CLIPS,
   TRY_USING_HELP,
 } from '@/lib/audio/clips/assistance'
-import type { AssistanceStateName } from './useProgressiveAssistance'
+import type { AssistanceStateName } from '@/lib/curriculum/parts/arithmetic/browser/useProgressiveAssistance'
 
 interface UsePracticeAssistanceAudioOptions {
   assistanceState: AssistanceStateName

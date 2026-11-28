@@ -2,8 +2,8 @@
 
 import { useTheme } from '@/contexts/ThemeContext'
 import type { ProblemSlot } from '@/db/schema/session-plans'
-import { Tooltip, TooltipProvider } from '../ui/Tooltip'
-import { css } from '../../../styled-system/css'
+import { Tooltip, TooltipProvider } from '@/components/ui/Tooltip'
+import { css } from '@styled/css'
 
 type Purpose = 'focus' | 'reinforce' | 'review' | 'challenge'
 

@@ -20,11 +20,11 @@ import { useMemo } from 'react'
 import { itemSlotIndexOfRow, tryKindOfRow, tryRoundOfRow } from '@/db/schema/legacy-try-fields'
 import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import type { ProblemSlot, SessionPart, SlotResult } from '@/db/schema/session-plans'
+import { extractTargetSkillName } from '@/lib/curriculum/parts/arithmetic/browser/PurposeBadge'
 import { DEFAULT_MAX_ROUNDS } from '@/lib/curriculum/parts/cursor/retry-rounds'
 import { css } from '../../../styled-system/css'
 import { Tooltip } from '../ui/Tooltip'
 import { formatMs } from './autoPauseCalculator'
-import { extractTargetSkillName } from './PurposeBadge'
 import { getPurposeColors, getPurposeConfig } from './purposeExplanations'
 
 /**

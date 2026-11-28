@@ -16,12 +16,12 @@ vi.mock('@/contexts/ThemeContext', () => ({
 }))
 
 // Mock Panda CSS
-vi.mock('../../../../styled-system/css', () => ({
+vi.mock('@styled/css', () => ({
   css: vi.fn(() => 'mocked-css-class'),
 }))
 
 // Mock Tooltip (render children and content directly for testability)
-vi.mock('../../ui/Tooltip', () => ({
+vi.mock('@/components/ui/Tooltip', () => ({
   Tooltip: ({ children, content }: { children: React.ReactNode; content: React.ReactNode }) =>
     React.createElement('div', { 'data-testid': 'tooltip' }, [
       React.createElement('div', { key: 'trigger', 'data-testid': 'tooltip-trigger' }, children),

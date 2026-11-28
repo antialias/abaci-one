@@ -17,7 +17,7 @@ import { css } from '../../../styled-system/css'
 import type { GenerationTrace, SlotResult } from '@/db/schema/session-plans'
 import type { SkillBktResult } from '@/lib/curriculum/bkt'
 import { formatSkillLabel, isLikelyCause, type WeakSkillInfo } from './weakSkillUtils'
-import { LinearProblem } from './LinearProblem'
+import { LinearProblem } from '@/lib/curriculum/parts/arithmetic/browser/LinearProblem'
 
 export interface AnnotatedProblemProps {
   /** Problem terms (positive for addition, negative for subtraction) */

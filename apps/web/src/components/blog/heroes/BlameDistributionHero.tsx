@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { css } from '../../../../styled-system/css'
-import { VerticalProblem } from '@/components/practice/VerticalProblem'
+import { VerticalProblem } from '@/lib/curriculum/parts/arithmetic/browser/VerticalProblem'
 import { updateOnIncorrect } from '@/lib/curriculum/bkt/conjunctive-bkt'
 import { getDefaultParams } from '@/lib/curriculum/bkt/skill-priors'
 import { formatSkillLabel } from '@/components/practice/weakSkillUtils'

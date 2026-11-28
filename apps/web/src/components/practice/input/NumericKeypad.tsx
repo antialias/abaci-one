@@ -6,7 +6,7 @@ import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
 import 'react-simple-keyboard/build/css/index.css'
 import './NumericKeypad.css'
-import { css } from '../../../styled-system/css'
+import { css } from '@styled/css'
 import {
   BKSP_KEY,
   ENTER_KEY,

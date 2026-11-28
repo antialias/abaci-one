@@ -52,7 +52,8 @@ const OTHER_RECORDS: Record<string, string> = {
   'lib/curriculum/parts/arithmetic/browser/useDigitEntry.ts':
     'the attempt on screen (practice-kinds K5a-1: moved from useInteractionPhase.ts)',
   'components/practice/redoReturnTarget.ts': 'the current item',
-  'components/practice/RetryTransitionScreen.tsx': 'its epochNumber prop (the retry round shown)',
+  'lib/curriculum/parts/arithmetic/browser/RetryTransitionScreen.tsx':
+    'its epochNumber prop (the retry round shown; practice-kinds K5a-2: moved from components/practice/)',
   'app/practice/[studentId]/PracticeClient.tsx':
     "the submission's round and the do-over's redoContext",
   'hooks/useSessionBroadcast.ts': "the broadcast's retry context",

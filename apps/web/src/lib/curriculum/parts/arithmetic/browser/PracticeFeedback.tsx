@@ -1,7 +1,7 @@
 'use client'
 
+import { css, cx } from '@styled/css'
 import { useTheme } from '@/contexts/ThemeContext'
-import { css, cx } from '../../../styled-system/css'
 
 interface PracticeFeedbackProps {
   /** Whether the answer was correct */

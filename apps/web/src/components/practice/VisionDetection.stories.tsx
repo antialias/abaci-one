@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { useState, useEffect } from 'react'
 import { css } from '../../../styled-system/css'
-import { VerticalProblem } from './VerticalProblem'
+import { VerticalProblem } from '@/lib/curriculum/parts/arithmetic/browser/VerticalProblem'
 
 /**
  * Stories demonstrating the vision-powered abacus detection feature.
