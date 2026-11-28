@@ -910,9 +910,10 @@ test.describe('session report views (Phases 4c-4e)', () => {
       expect(await hear('session-ended', (d) => d?.sessionId === plan.id)).toMatchObject({
         playerId,
       })
+      // End early is a completed session (§8 item 7)
       const last = await hear(
         'classroom-session-summary',
-        (d) => d?.sessionId === plan.id && d.outcome !== 'in_progress'
+        (d) => d?.sessionId === plan.id && d.outcome === 'completed'
       )
       expect(last.rowVersion).toBeGreaterThan(summary.rowVersion)
     } finally {
