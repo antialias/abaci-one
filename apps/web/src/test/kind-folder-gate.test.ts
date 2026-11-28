@@ -102,6 +102,10 @@ const FOLDER_EXEMPT: Record<string, { modules: string[]; why: string }> = {
     modules: [`${A}/result-view`],
     why: "arithmetic's part overview (K5)",
   },
+  'components/practice/hooks/useInteractionPhase.ts': {
+    modules: [`${A}/browser/useDigitEntry`],
+    why: "the try lifecycle composed with arithmetic's digit entry, for ActiveSession (K5a-1; K5a-3's shell deletes it)",
+  },
   'components/practice/redoReturnTarget.ts': {
     modules: [`${A}/state`],
     why: "arithmetic's current problem (K5, the shell)",
@@ -368,7 +372,7 @@ describe('kind-folder gate: a kind folder is imported only by the registries and
       modules.filter((m) => !imported.get(file)?.has(m)).map((m) => `${file} -> ${m}`)
     )
     expect(stale).toEqual([])
-    expect(Object.keys(FOLDER_EXEMPT)).toHaveLength(16)
+    expect(Object.keys(FOLDER_EXEMPT)).toHaveLength(17)
   })
 })
 

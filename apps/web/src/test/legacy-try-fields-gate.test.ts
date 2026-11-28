@@ -49,7 +49,8 @@ const OTHER_RECORDS: Record<string, string> = {
     "the retry queue's entries, stored under the first kind's names (practice-kinds K3)",
   'components/practice/ActiveSession.tsx':
     'the current item, the attempt on screen, the submission built from it',
-  'components/practice/hooks/useInteractionPhase.ts': 'the attempt on screen',
+  'lib/curriculum/parts/arithmetic/browser/useDigitEntry.ts':
+    'the attempt on screen (practice-kinds K5a-1: moved from useInteractionPhase.ts)',
   'components/practice/redoReturnTarget.ts': 'the current item',
   'components/practice/RetryTransitionScreen.tsx': 'its epochNumber prop (the retry round shown)',
   'app/practice/[studentId]/PracticeClient.tsx':

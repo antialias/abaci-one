@@ -1,22 +1,27 @@
 /**
  * @vitest-environment jsdom
+ *
+ * Arithmetic's digit entry (practice-kinds plan §4 K5a-1): prefix sums,
+ * disambiguation and help mode.
+ *
+ * Split from `components/practice/hooks/__tests__/useInteractionPhase.test.ts`
+ * with every case kept and its body unchanged: the hook cases still render
+ * `useInteractionPhase`, the generic lifecycle composed with this entry, so
+ * they run exactly as they did. The composition-order case at the end is new.
  */
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { useInteractionPhase } from '@/components/practice/hooks/useInteractionPhase'
 import type { GeneratedProblem } from '@/db/schema/session-plans'
 import {
-  type ActivePhase,
-  addPauseToActivePhase,
+  type ActiveProblem,
   computeHelpContext,
   computePrefixSums,
   createAttemptInput,
   findMatchedPrefixIndex,
-  foldHiddenSpanIntoActivePhase,
-  getActivePhaseAttempt,
   isDigitConsistent,
   MANUAL_SUBMIT_THRESHOLD,
-  useInteractionPhase,
-} from '../useInteractionPhase'
+} from '../useDigitEntry'
 
 // =============================================================================
 // Test Fixtures
@@ -274,109 +279,7 @@ describe('createAttemptInput', () => {
 })
 
 // =============================================================================
-// Pure helpers: pause / hidden-span accounting (#156)
-// =============================================================================
-
-/** Build an inputting ActivePhase with a controlled attempt. */
-function inputtingPhase(
-  startTime: number,
-  accPause = 0,
-  accHidden = 0
-): Extract<ActivePhase, { phase: 'inputting' }> {
-  return {
-    phase: 'inputting',
-    attempt: {
-      ...createAttemptInput(simpleProblem, 0, 0),
-      startTime,
-      accumulatedPauseMs: accPause,
-      accumulatedHiddenMs: accHidden,
-    },
-  }
-}
-
-describe('addPauseToActivePhase', () => {
-  it('adds pause time to accumulatedPauseMs only (hidden:false)', () => {
-    const next = addPauseToActivePhase(inputtingPhase(1000, 500, 0), 2000, { hidden: false })
-    const attempt = getActivePhaseAttempt(next)!
-    expect(attempt.accumulatedPauseMs).toBe(2500)
-    expect(attempt.accumulatedHiddenMs).toBe(0)
-  })
-
-  it('adds hidden time to both accumulatedPauseMs and accumulatedHiddenMs (hidden:true)', () => {
-    const next = addPauseToActivePhase(inputtingPhase(1000, 500, 100), 2000, { hidden: true })
-    const attempt = getActivePhaseAttempt(next)!
-    expect(attempt.accumulatedPauseMs).toBe(2500)
-    expect(attempt.accumulatedHiddenMs).toBe(2100)
-  })
-
-  it('is a no-op for a non-positive span (returns the same phase)', () => {
-    const phase = inputtingPhase(1000, 500, 0)
-    expect(addPauseToActivePhase(phase, 0, { hidden: true })).toBe(phase)
-    expect(addPauseToActivePhase(phase, -50, { hidden: true })).toBe(phase)
-  })
-
-  it('is a no-op for phases without an attempt', () => {
-    const loading: ActivePhase = { phase: 'loading' }
-    const complete: ActivePhase = { phase: 'complete' }
-    expect(addPauseToActivePhase(loading, 1000, { hidden: true })).toBe(loading)
-    expect(addPauseToActivePhase(complete, 1000, { hidden: true })).toBe(complete)
-  })
-
-  it('folds into the incoming attempt for a transitioning phase', () => {
-    const transitioning: ActivePhase = {
-      phase: 'transitioning',
-      outgoing: {
-        key: '0-0',
-        problem: simpleProblem,
-        userAnswer: '12',
-        result: 'correct',
-        partIndex: 0,
-      },
-      incoming: {
-        ...createAttemptInput(simpleProblem, 1, 0),
-        startTime: 5000,
-        accumulatedPauseMs: 0,
-        accumulatedHiddenMs: 0,
-      },
-    }
-    const next = addPauseToActivePhase(transitioning, 3000, { hidden: true })
-    const attempt = getActivePhaseAttempt(next)!
-    expect(attempt.accumulatedPauseMs).toBe(3000)
-    expect(attempt.accumulatedHiddenMs).toBe(3000)
-  })
-})
-
-describe('foldHiddenSpanIntoActivePhase', () => {
-  it('folds the full span when hidden started after the attempt began', () => {
-    // hiddenAt (2000) > startTime (1000): span = now(5000) - 2000 = 3000
-    const next = foldHiddenSpanIntoActivePhase(inputtingPhase(1000), 2000, 5000)
-    expect(getActivePhaseAttempt(next)!.accumulatedHiddenMs).toBe(3000)
-  })
-
-  it('clamps to the attempt lifetime when the span straddled a problem transition', () => {
-    // A new attempt started at 4000 while the tab was already hidden (hiddenAt
-    // 2000). Clamp to startTime: span = now(5000) - max(2000, 4000) = 1000,
-    // never the full 3000 — so the new attempt can't go negative.
-    const next = foldHiddenSpanIntoActivePhase(inputtingPhase(4000), 2000, 5000)
-    expect(getActivePhaseAttempt(next)!.accumulatedHiddenMs).toBe(1000)
-  })
-
-  it('is a no-op for a phase without an attempt', () => {
-    const loading: ActivePhase = { phase: 'loading' }
-    expect(foldHiddenSpanIntoActivePhase(loading, 2000, 5000)).toBe(loading)
-  })
-})
-
-describe('getActivePhaseAttempt', () => {
-  it('returns the attempt for attempt-carrying phases and null otherwise', () => {
-    expect(getActivePhaseAttempt(inputtingPhase(1000))).not.toBeNull()
-    expect(getActivePhaseAttempt({ phase: 'loading' })).toBeNull()
-    expect(getActivePhaseAttempt({ phase: 'complete' })).toBeNull()
-  })
-})
-
-// =============================================================================
-// Hook Tests: Initial State
+// Hook Tests (through useInteractionPhase, the composition)
 // =============================================================================
 
 describe('useInteractionPhase', () => {
@@ -389,21 +292,6 @@ describe('useInteractionPhase', () => {
   })
 
   describe('initial state', () => {
-    it('starts in loading phase', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-      expect(result.current.phase).toEqual({ phase: 'loading' })
-    })
-
-    it('has correct UI predicates in loading phase', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-      expect(result.current.canAcceptInput).toBe(false)
-      expect(result.current.showAsCompleted).toBe(false)
-      expect(result.current.showHelpOverlay).toBe(false)
-      expect(result.current.showInputArea).toBe(false)
-      expect(result.current.showFeedback).toBe(false)
-      expect(result.current.inputIsFocused).toBe(false)
-    })
-
     it('has empty computed values in loading phase', () => {
       const { result } = renderHook(() => useInteractionPhase())
       expect(result.current.prefixSums).toEqual([])
@@ -418,36 +306,6 @@ describe('useInteractionPhase', () => {
   // ===========================================================================
 
   describe('loadProblem: loading → inputting', () => {
-    it('transitions to inputting phase', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      expect(result.current.phase.phase).toBe('inputting')
-      if (result.current.phase.phase === 'inputting') {
-        expect(result.current.phase.attempt.problem).toBe(simpleProblem)
-        expect(result.current.phase.attempt.slotIndex).toBe(0)
-        expect(result.current.phase.attempt.partIndex).toBe(0)
-      }
-    })
-
-    it('sets correct UI predicates in inputting phase', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      expect(result.current.canAcceptInput).toBe(true)
-      expect(result.current.showAsCompleted).toBe(false)
-      expect(result.current.showHelpOverlay).toBe(false)
-      expect(result.current.showInputArea).toBe(true)
-      expect(result.current.showFeedback).toBe(false)
-      expect(result.current.inputIsFocused).toBe(true)
-    })
-
     it('computes prefix sums', () => {
       const { result } = renderHook(() => useInteractionPhase())
 
@@ -866,581 +724,6 @@ describe('useInteractionPhase', () => {
     })
   })
 
-  describe('startSubmit: inputting → submitting', () => {
-    it('transitions to submitting phase', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      act(() => {
-        result.current.handleDigit('1')
-        result.current.handleDigit('2')
-      })
-
-      act(() => {
-        result.current.startSubmit()
-      })
-
-      expect(result.current.phase.phase).toBe('submitting')
-    })
-
-    it('preserves attempt state', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      act(() => {
-        result.current.handleDigit('1')
-        result.current.handleDigit('2')
-      })
-
-      act(() => {
-        result.current.startSubmit()
-      })
-
-      if (result.current.phase.phase === 'submitting') {
-        expect(result.current.phase.attempt.userAnswer).toBe('12')
-      }
-    })
-
-    it('sets showInputArea true but canAcceptInput false', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      act(() => {
-        result.current.startSubmit()
-      })
-
-      expect(result.current.showInputArea).toBe(true)
-      expect(result.current.canAcceptInput).toBe(false)
-    })
-  })
-
-  describe('completeSubmit: submitting → showingFeedback', () => {
-    it('transitions to showingFeedback with correct result', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      act(() => {
-        result.current.handleDigit('1')
-        result.current.handleDigit('2')
-      })
-
-      act(() => {
-        result.current.startSubmit()
-      })
-
-      act(() => {
-        result.current.completeSubmit('correct')
-      })
-
-      expect(result.current.phase.phase).toBe('showingFeedback')
-      if (result.current.phase.phase === 'showingFeedback') {
-        expect(result.current.phase.result).toBe('correct')
-      }
-    })
-
-    it('sets showAsCompleted true for correct', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.startSubmit()
-        result.current.completeSubmit('correct')
-      })
-
-      expect(result.current.showAsCompleted).toBe(true)
-    })
-
-    it('sets showFeedback true for incorrect', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.startSubmit()
-        result.current.completeSubmit('incorrect')
-      })
-
-      expect(result.current.showFeedback).toBe(true)
-    })
-
-    it('sets showFeedback false for correct', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.startSubmit()
-        result.current.completeSubmit('correct')
-      })
-
-      expect(result.current.showFeedback).toBe(false)
-    })
-  })
-
-  describe('startTransition: showingFeedback → transitioning', () => {
-    it('transitions with outgoing and incoming attempts', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.handleDigit('1')
-        result.current.handleDigit('2')
-        result.current.startSubmit()
-        result.current.completeSubmit('correct')
-      })
-
-      const nextProblem = createTestProblem([5, 6])
-
-      act(() => {
-        result.current.startTransition(nextProblem, 1)
-      })
-
-      expect(result.current.phase.phase).toBe('transitioning')
-      if (result.current.phase.phase === 'transitioning') {
-        expect(result.current.phase.incoming.epochNumber).toBe(0)
-        expect(result.current.phase.outgoing.userAnswer).toBe('12')
-        expect(result.current.phase.outgoing.result).toBe('correct')
-        expect(result.current.phase.incoming.problem).toBe(nextProblem)
-        expect(result.current.phase.incoming.slotIndex).toBe(1)
-      }
-    })
-
-    it('does nothing if not in showingFeedback', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      const nextProblem = createTestProblem([5, 6])
-
-      act(() => {
-        result.current.startTransition(nextProblem, 1)
-      })
-
-      expect(result.current.phase.phase).toBe('inputting')
-    })
-  })
-
-  describe('completeTransition: transitioning → inputting', () => {
-    it('transitions to inputting with incoming attempt', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.handleDigit('1')
-        result.current.handleDigit('2')
-        result.current.startSubmit()
-        result.current.completeSubmit('correct')
-      })
-
-      const nextProblem = createTestProblem([5, 6])
-
-      act(() => {
-        result.current.startTransition(nextProblem, 1)
-      })
-
-      act(() => {
-        result.current.completeTransition()
-      })
-
-      expect(result.current.phase.phase).toBe('inputting')
-      if (result.current.phase.phase === 'inputting') {
-        expect(result.current.phase.attempt.problem).toBe(nextProblem)
-        expect(result.current.phase.attempt.slotIndex).toBe(1)
-      }
-    })
-  })
-
-  describe('clearToLoading', () => {
-    it('returns to loading phase from any phase', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      act(() => {
-        result.current.clearToLoading()
-      })
-
-      expect(result.current.phase.phase).toBe('loading')
-    })
-
-    it('re-shows the active problem when its key is unchanged (resync after a failed write)', () => {
-      const activeProblem = {
-        problem: simpleProblem,
-        slotIndex: 2,
-        partIndex: 0,
-        epochNumber: 1,
-        key: 'normal-0-2-1',
-      }
-      const { result } = renderHook(() =>
-        useInteractionPhase({ initialProblem: activeProblem, activeProblem })
-      )
-      act(() => {
-        result.current.handleDigit('1')
-      })
-      expect(result.current.attempt?.userAnswer).toBe('1')
-
-      act(() => {
-        result.current.clearToLoading()
-      })
-
-      expect(result.current.phase.phase).toBe('inputting')
-      expect(result.current.attempt?.problem).toBe(simpleProblem)
-      expect(result.current.attempt?.userAnswer).toBe('')
-      expect(result.current.attempt?.epochNumber).toBe(1)
-    })
-  })
-
-  describe('pause/resume', () => {
-    it('pauses and stores resume phase', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      act(() => {
-        result.current.pause()
-      })
-
-      expect(result.current.phase.phase).toBe('paused')
-      if (result.current.phase.phase === 'paused') {
-        expect(result.current.phase.resumePhase.phase).toBe('inputting')
-      }
-    })
-
-    it('resumes to previous phase', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.handleDigit('1')
-      })
-
-      act(() => {
-        result.current.pause()
-      })
-
-      act(() => {
-        result.current.resume()
-      })
-
-      expect(result.current.phase.phase).toBe('inputting')
-      if (result.current.phase.phase === 'inputting') {
-        expect(result.current.phase.attempt.userAnswer).toBe('1')
-      }
-    })
-
-    it('does nothing when pausing from loading', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.pause()
-      })
-
-      expect(result.current.phase.phase).toBe('loading')
-    })
-
-    it('does nothing when already paused', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      act(() => {
-        result.current.pause()
-      })
-
-      const pausedPhase = result.current.phase
-
-      act(() => {
-        result.current.pause()
-      })
-
-      expect(result.current.phase).toEqual(pausedPhase)
-    })
-
-    it('can pause from helpMode', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.enterHelpMode(1)
-      })
-
-      act(() => {
-        result.current.pause()
-      })
-
-      expect(result.current.phase.phase).toBe('paused')
-      if (result.current.phase.phase === 'paused') {
-        expect(result.current.phase.resumePhase.phase).toBe('helpMode')
-      }
-    })
-
-    it('can pause from submitting', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.startSubmit()
-      })
-
-      act(() => {
-        result.current.pause()
-      })
-
-      expect(result.current.phase.phase).toBe('paused')
-      if (result.current.phase.phase === 'paused') {
-        expect(result.current.phase.resumePhase.phase).toBe('submitting')
-      }
-    })
-  })
-
-  // ===========================================================================
-  // Visibility layer (#156): hidden-time exclusion
-  // ===========================================================================
-
-  describe('visibility layer (hidden-time exclusion)', () => {
-    const HOUR = 60 * 60 * 1000
-
-    function setVisibilityState(state: 'hidden' | 'visible') {
-      Object.defineProperty(document, 'visibilityState', {
-        configurable: true,
-        get: () => state,
-      })
-    }
-    function hide() {
-      setVisibilityState('hidden')
-      act(() => {
-        document.dispatchEvent(new Event('visibilitychange'))
-      })
-    }
-    function show() {
-      setVisibilityState('visible')
-      act(() => {
-        document.dispatchEvent(new Event('visibilitychange'))
-      })
-    }
-
-    afterEach(() => {
-      setVisibilityState('visible')
-    })
-
-    it('folds an 8h hidden span into the current attempt (pause + hidden audit)', () => {
-      vi.setSystemTime(1_000_000)
-      const { result } = renderHook(() => useInteractionPhase())
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      }) // startTime = 1_000_000
-
-      vi.setSystemTime(1_005_000) // 5s of visible work
-      hide() // arm at 1_005_000
-
-      vi.setSystemTime(1_005_000 + 8 * HOUR)
-      show() // fold [1_005_000, +8h]
-
-      const attempt = result.current.attempt!
-      expect(attempt.accumulatedHiddenMs).toBe(8 * HOUR)
-      expect(attempt.accumulatedPauseMs).toBe(8 * HOUR)
-    })
-
-    it('folds only once for duplicate hidden signals (pagehide then visibilitychange)', () => {
-      vi.setSystemTime(1_000_000)
-      const { result } = renderHook(() => useInteractionPhase())
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      vi.setSystemTime(1_002_000)
-      // iOS Safari can emit pagehide before visibilitychange.
-      act(() => {
-        window.dispatchEvent(new Event('pagehide'))
-      })
-      hide() // second hidden signal — must NOT re-arm
-
-      vi.setSystemTime(1_002_000 + 60_000)
-      show()
-
-      // Single span from the FIRST arm (1_002_000) → 60s, not doubled.
-      expect(result.current.attempt!.accumulatedHiddenMs).toBe(60_000)
-    })
-
-    it('does not fold when the tab is hidden while already paused (pause clock owns it)', () => {
-      vi.setSystemTime(1_000_000)
-      const { result } = renderHook(() => useInteractionPhase())
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      act(() => {
-        result.current.pause()
-      }) // paused at 1_000_000
-      hide() // arm() must early-return (phase paused)
-
-      vi.setSystemTime(1_000_000 + 120_000)
-      show() // fold() sees no armed ref → no-op (also visible before resume)
-
-      act(() => {
-        result.current.resume()
-      }) // pause span folded (120s)
-
-      const attempt = result.current.attempt!
-      expect(attempt.accumulatedHiddenMs).toBe(0)
-      expect(attempt.accumulatedPauseMs).toBe(120_000)
-    })
-
-    it('hands a hidden span off to the pause clock without double-counting (pause while hidden)', () => {
-      vi.setSystemTime(1_000_000)
-      const { result } = renderHook(() => useInteractionPhase())
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      hide() // arm at 1_000_000
-
-      vi.setSystemTime(1_010_000) // 10s hidden
-      act(() => {
-        result.current.pause() // folds hidden 10s, clears ref, pauseStartedAt=1_010_000
-      })
-
-      show() // visible while paused → fold no-op
-      vi.setSystemTime(1_030_000) // 20s more (paused)
-      act(() => {
-        result.current.resume() // folds pause 20s
-      })
-
-      const attempt = result.current.attempt!
-      expect(attempt.accumulatedHiddenMs).toBe(10_000)
-      // 10s hidden + 20s pause — the hidden span is not double-counted.
-      expect(attempt.accumulatedPauseMs).toBe(30_000)
-    })
-
-    it('re-arms on teacher remote-resume while still hidden (only post-resume hidden folded)', () => {
-      vi.setSystemTime(1_000_000)
-      const { result } = renderHook(() => useInteractionPhase())
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      act(() => {
-        result.current.pause() // manual pause at 1_000_000 (tab visible)
-      })
-      hide() // tab goes hidden while paused — arm() early-returns
-
-      vi.setSystemTime(1_010_000) // 10s paused-while-hidden
-      act(() => {
-        result.current.resume() // stillHidden → folds pause 10s AND re-arms at 1_010_000
-      })
-
-      vi.setSystemTime(1_025_000) // 15s more hidden
-      show() // fold [1_010_000, 1_025_000] = 15s
-
-      const attempt = result.current.attempt!
-      expect(attempt.accumulatedPauseMs).toBe(25_000) // 10s pause + 15s hidden
-      expect(attempt.accumulatedHiddenMs).toBe(15_000) // only the post-resume hidden portion
-    })
-
-    it('accumulates across multiple hide/show cycles', () => {
-      vi.setSystemTime(1_000_000)
-      const { result } = renderHook(() => useInteractionPhase())
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      hide()
-      vi.setSystemTime(1_030_000) // +30s
-      show()
-
-      vi.setSystemTime(1_040_000) // 10s visible
-      hide()
-      vi.setSystemTime(1_060_000) // +20s
-      show()
-
-      expect(result.current.attempt!.accumulatedHiddenMs).toBe(50_000) // 30 + 20
-    })
-
-    it('clamps a span that straddles a problem load so the new attempt never goes negative', () => {
-      vi.setSystemTime(1_000_000)
-      const { result } = renderHook(() => useInteractionPhase())
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-      hide() // arm at 1_000_000
-
-      vi.setSystemTime(1_050_000)
-      act(() => {
-        result.current.loadProblem(twoDigitProblem, 1, 0) // new attempt startTime=1_050_000
-      })
-
-      vi.setSystemTime(1_080_000)
-      show() // clamp: 1_080_000 - max(1_000_000, 1_050_000) = 30s (not 80s)
-
-      const attempt = result.current.attempt!
-      expect(attempt.startTime).toBe(1_050_000)
-      expect(attempt.accumulatedHiddenMs).toBe(30_000)
-      const responseTimeMs = 1_080_000 - attempt.startTime - attempt.accumulatedPauseMs
-      expect(responseTimeMs).toBeGreaterThanOrEqual(0)
-    })
-
-    it('resets hidden accounting for a fresh attempt', () => {
-      vi.setSystemTime(1_000_000)
-      const { result } = renderHook(() => useInteractionPhase())
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-      hide()
-      vi.setSystemTime(1_030_000)
-      show()
-      expect(result.current.attempt!.accumulatedHiddenMs).toBe(30_000)
-
-      act(() => {
-        result.current.loadProblem(twoDigitProblem, 1, 0)
-      })
-      expect(result.current.attempt!.accumulatedHiddenMs).toBe(0)
-    })
-
-    it('is a no-op when the tab becomes visible with no prior hidden span', () => {
-      vi.setSystemTime(1_000_000)
-      const { result } = renderHook(() => useInteractionPhase())
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-      show() // no arm before
-      const attempt = result.current.attempt!
-      expect(attempt.accumulatedHiddenMs).toBe(0)
-      expect(attempt.accumulatedPauseMs).toBe(0)
-    })
-
-    it('removes all visibility listeners on unmount', () => {
-      const removeDocSpy = vi.spyOn(document, 'removeEventListener')
-      const removeWinSpy = vi.spyOn(window, 'removeEventListener')
-      const { unmount } = renderHook(() => useInteractionPhase())
-      act(() => {
-        unmount()
-      })
-      expect(removeDocSpy).toHaveBeenCalledWith('visibilitychange', expect.any(Function))
-      expect(removeWinSpy).toHaveBeenCalledWith('pagehide', expect.any(Function))
-      expect(removeWinSpy).toHaveBeenCalledWith('pageshow', expect.any(Function))
-      removeDocSpy.mockRestore()
-      removeWinSpy.mockRestore()
-    })
-  })
-
   // ===========================================================================
   // Computed Values
   // ===========================================================================
@@ -1822,19 +1105,6 @@ describe('useInteractionPhase', () => {
   // ===========================================================================
 
   describe('exported state from hook', () => {
-    it('exports attempt correctly', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.handleDigit('1')
-      })
-
-      expect(result.current.attempt).not.toBeNull()
-      expect(result.current.attempt?.userAnswer).toBe('1')
-      expect(result.current.attempt?.problem).toBe(simpleProblem)
-    })
-
     it('exports helpContext when in helpMode', () => {
       const { result } = renderHook(() => useInteractionPhase())
 
@@ -1857,87 +1127,6 @@ describe('useInteractionPhase', () => {
       })
 
       expect(result.current.helpContext).toBeNull()
-    })
-
-    it('exports outgoingAttempt during transition', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-      const nextProblem = createTestProblem([5, 6])
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.handleDigit('1')
-        result.current.handleDigit('2')
-        result.current.startSubmit()
-        result.current.completeSubmit('correct')
-        result.current.startTransition(nextProblem, 1)
-      })
-
-      expect(result.current.outgoingAttempt).not.toBeNull()
-      expect(result.current.outgoingAttempt?.userAnswer).toBe('12')
-      expect(result.current.outgoingAttempt?.result).toBe('correct')
-    })
-
-    it('exports null outgoingAttempt when not transitioning', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      expect(result.current.outgoingAttempt).toBeNull()
-    })
-
-    it('exports isTransitioning correctly', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-      const nextProblem = createTestProblem([5, 6])
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      expect(result.current.isTransitioning).toBe(false)
-
-      act(() => {
-        result.current.handleDigit('1')
-        result.current.handleDigit('2')
-        result.current.startSubmit()
-        result.current.completeSubmit('correct')
-        result.current.startTransition(nextProblem, 1)
-      })
-
-      expect(result.current.isTransitioning).toBe(true)
-    })
-
-    it('exports isPaused correctly', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      expect(result.current.isPaused).toBe(false)
-
-      act(() => {
-        result.current.pause()
-      })
-
-      expect(result.current.isPaused).toBe(true)
-    })
-
-    it('exports isSubmitting correctly', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-
-      expect(result.current.isSubmitting).toBe(false)
-
-      act(() => {
-        result.current.startSubmit()
-      })
-
-      expect(result.current.isSubmitting).toBe(true)
     })
   })
 
@@ -1981,60 +1170,6 @@ describe('useInteractionPhase', () => {
         // Help is for the term AFTER the first prefix sum (index 1)
         expect(result.current.phase.helpContext.termIndex).toBe(1)
         expect(result.current.phase.attempt.userAnswer).toBe('')
-      }
-    })
-  })
-
-  // ===========================================================================
-  // Full Flow Tests
-  // ===========================================================================
-
-  describe('full correct answer flow', () => {
-    it('loading → inputting → submitting → showingFeedback → transitioning → inputting', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      // Start
-      expect(result.current.phase.phase).toBe('loading')
-
-      // Load problem
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-      })
-      expect(result.current.phase.phase).toBe('inputting')
-
-      // Enter answer
-      act(() => {
-        result.current.handleDigit('1')
-        result.current.handleDigit('2')
-      })
-
-      // Submit
-      act(() => {
-        result.current.startSubmit()
-      })
-      expect(result.current.phase.phase).toBe('submitting')
-
-      // Complete submit
-      act(() => {
-        result.current.completeSubmit('correct')
-      })
-      expect(result.current.phase.phase).toBe('showingFeedback')
-      expect(result.current.showAsCompleted).toBe(true)
-
-      // Start transition
-      const nextProblem = createTestProblem([5, 6])
-      act(() => {
-        result.current.startTransition(nextProblem, 1)
-      })
-      expect(result.current.phase.phase).toBe('transitioning')
-
-      // Complete transition
-      act(() => {
-        result.current.completeTransition()
-      })
-      expect(result.current.phase.phase).toBe('inputting')
-      if (result.current.phase.phase === 'inputting') {
-        expect(result.current.phase.attempt.problem).toBe(nextProblem)
       }
     })
   })
@@ -2185,116 +1320,6 @@ describe('useInteractionPhase', () => {
     })
   })
 
-  // ===========================================================================
-  // Complete phase
-  // ===========================================================================
-
-  describe('markComplete', () => {
-    it('transitions to complete phase', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.markComplete()
-      })
-
-      expect(result.current.phase.phase).toBe('complete')
-      expect(result.current.isComplete).toBe(true)
-    })
-
-    it('cannot pause from complete phase', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.markComplete()
-      })
-
-      act(() => {
-        result.current.pause()
-      })
-
-      expect(result.current.phase.phase).toBe('complete')
-    })
-  })
-
-  // ===========================================================================
-  // Paused phase transitions
-  // ===========================================================================
-
-  describe('completeSubmit while paused', () => {
-    it('updates resumePhase from submitting to showingFeedback', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.startSubmit()
-      })
-
-      act(() => {
-        result.current.pause()
-      })
-
-      expect(result.current.phase.phase).toBe('paused')
-
-      // Complete submit while paused
-      act(() => {
-        result.current.completeSubmit('correct')
-      })
-
-      // Should still be paused but resumePhase updated
-      expect(result.current.phase.phase).toBe('paused')
-      if (result.current.phase.phase === 'paused') {
-        expect(result.current.phase.resumePhase.phase).toBe('showingFeedback')
-        if (result.current.phase.resumePhase.phase === 'showingFeedback') {
-          expect(result.current.phase.resumePhase.result).toBe('correct')
-        }
-      }
-    })
-  })
-
-  describe('completeTransition while paused', () => {
-    it('updates resumePhase from transitioning to inputting', () => {
-      const { result } = renderHook(() => useInteractionPhase())
-      const nextProblem = createTestProblem([7, 8])
-
-      // Get to transitioning phase
-      act(() => {
-        result.current.loadProblem(simpleProblem, 0, 0)
-        result.current.handleDigit('1')
-        result.current.handleDigit('2')
-        result.current.startSubmit()
-      })
-
-      act(() => {
-        result.current.completeSubmit('correct')
-      })
-
-      act(() => {
-        result.current.startTransition(nextProblem, 1)
-      })
-
-      // Now pause during transition
-      act(() => {
-        result.current.pause()
-      })
-
-      expect(result.current.phase.phase).toBe('paused')
-      if (result.current.phase.phase === 'paused') {
-        expect(result.current.phase.resumePhase.phase).toBe('transitioning')
-      }
-
-      // Complete transition while paused
-      act(() => {
-        result.current.completeTransition()
-      })
-
-      // Should still be paused but resumePhase updated
-      expect(result.current.phase.phase).toBe('paused')
-      if (result.current.phase.phase === 'paused') {
-        expect(result.current.phase.resumePhase.phase).toBe('inputting')
-      }
-    })
-  })
-
   describe('enterHelpMode from helpMode', () => {
     it('allows navigating to a different term', () => {
       const { result } = renderHook(() => useInteractionPhase())
@@ -2320,6 +1345,54 @@ describe('useInteractionPhase', () => {
         // Answer should be cleared when switching terms
         expect(result.current.phase.attempt.userAnswer).toBe('')
       }
+    })
+  })
+
+  // ===========================================================================
+  // Composition order (new in K5a-1)
+  // ===========================================================================
+
+  describe('composition order', () => {
+    // The entry's effect (the disambiguation timer) runs before the
+    // lifecycle's (the active problem), as when they were one hook: when both
+    // act in one render, the problem change wins.
+    it('a problem change wins over an overdue disambiguation in the same render', () => {
+      const ambiguousProblem = createTestProblem([2, 1, 30]) // "3" is ambiguous
+      const nextProblem = createTestProblem([5, 6])
+      const shown: ActiveProblem = {
+        problem: ambiguousProblem,
+        slotIndex: 0,
+        partIndex: 0,
+        key: 'a',
+      }
+      const next: ActiveProblem = { problem: nextProblem, slotIndex: 1, partIndex: 0, key: 'b' }
+      const { result, rerender } = renderHook(
+        ({ activeProblem }) => useInteractionPhase({ activeProblem }),
+        { initialProps: { activeProblem: shown } }
+      )
+
+      act(() => {
+        result.current.loadProblem(ambiguousProblem, 0, 0)
+      })
+      act(() => {
+        result.current.handleDigit('3')
+      })
+      expect(result.current.phase.phase).toBe('awaitingDisambiguation')
+
+      // Paused past the help delay: on resume the timer is overdue
+      act(() => {
+        result.current.pause()
+      })
+      act(() => {
+        vi.advanceTimersByTime(5000)
+      })
+      act(() => {
+        result.current.resume()
+        rerender({ activeProblem: next })
+      })
+
+      expect(result.current.phase.phase).toBe('inputting')
+      expect(result.current.attempt?.problem).toBe(nextProblem)
     })
   })
 })
