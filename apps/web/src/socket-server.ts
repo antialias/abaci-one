@@ -381,7 +381,10 @@ export function initializeSocketServer(httpServer: HTTPServer) {
   // connection with no identity is anonymous (share links, remote-camera
   // phones). Handlers read `socket.data.viewer` and ignore payload ids.
   io.use((socket, next) => {
-    resolveSocketViewer(socket.request.headers)
+    const encrypted = Boolean(
+      (socket.request.socket as { encrypted?: boolean } | undefined)?.encrypted
+    )
+    resolveSocketViewer(socket.request.headers, { encrypted })
       .then((viewer) => {
         socket.data.viewer = viewer
       })
@@ -1157,23 +1160,28 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     // Track readiness per socket for disconnect cleanup
     const coPlayReadySessions = new Map<string, { observerId: string }>()
 
+    // The observer is the socket's verified viewer, never the payload's
+    // `observerId`: the kid's tab makes it a co-player (playerId and userId)
+    // in the game break's room. A socket with no viewer is dropped.
     socket.on(
       'observer-coplay-ready',
-      (data: { sessionId: string; observerId: string; player: unknown }) => {
-        console.log(
-          `[CoPlay] Observer ready: session=${data.sessionId}, observer=${data.observerId}`
-        )
-        coPlayReadySessions.set(data.sessionId, { observerId: data.observerId })
-        socket.to(`session:${data.sessionId}`).emit('observer-coplay-ready', data)
+      (data: { sessionId: string; observerId?: string; player: unknown }) => {
+        const observerId = socketViewerId(socket)
+        if (!observerId || !data?.sessionId) return
+        console.log(`[CoPlay] Observer ready: session=${data.sessionId}, observer=${observerId}`)
+        coPlayReadySessions.set(data.sessionId, { observerId })
+        socket
+          .to(`session:${data.sessionId}`)
+          .emit('observer-coplay-ready', { ...data, observerId })
       }
     )
 
-    socket.on('observer-coplay-leave', (data: { sessionId: string; observerId: string }) => {
-      console.log(
-        `[CoPlay] Observer leaving: session=${data.sessionId}, observer=${data.observerId}`
-      )
+    socket.on('observer-coplay-leave', (data: { sessionId: string; observerId?: string }) => {
+      const observerId = socketViewerId(socket)
+      if (!observerId || !data?.sessionId) return
+      console.log(`[CoPlay] Observer leaving: session=${data.sessionId}, observer=${observerId}`)
       coPlayReadySessions.delete(data.sessionId)
-      socket.to(`session:${data.sessionId}`).emit('observer-coplay-leave', data)
+      socket.to(`session:${data.sessionId}`).emit('observer-coplay-leave', { ...data, observerId })
     })
 
     // Session Observation: Broadcast tutorial state (from student's client)

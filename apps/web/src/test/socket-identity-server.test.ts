@@ -10,6 +10,7 @@
  * - arcade: `join-arcade-session`, `game-move`, `join-room` and
  *   `players-updated` need a member of the room, `cursor-update` is stamped
  *   with the sender's own id;
+ * - co-play readiness is relayed as the sender (a socket with no viewer is dropped);
  * - an old tab's payload shape (with ids) is still accepted from its owner.
  * The session rooms' handlers are covered in session-room-access.test.ts
  * and session-report-push.test.ts.
@@ -220,6 +221,33 @@ describe('socket identity on the real server', () => {
     sock.emit('join-user-channel', {})
     await joined(sock, 'user:parent')
     expect((await roomsOf(sock)).has('user:stranger')).toBe(false)
+  })
+
+  it('co-play: the observer is the sender, never the payload; an anonymous socket is dropped', async () => {
+    // The kid's tab listens in the session room (admission is session-room-access's job)
+    const kid = await client(await cookieFor('member'))
+    await io.in(kid.id!).socketsJoin('session:s1')
+    const ready = collect(kid, 'observer-coplay-ready')
+    const leave = collect(kid, 'observer-coplay-leave')
+    const player = { name: 'Fake', emoji: 'x', color: '#000' }
+
+    const anonymous = await client()
+    anonymous.emit('observer-coplay-ready', { sessionId: 's1', observerId: 'parent', player })
+    anonymous.emit('observer-coplay-leave', { sessionId: 's1', observerId: 'parent' })
+    await drained(anonymous)
+
+    // A stranger naming the parent: relayed as the stranger. Anything the
+    // anonymous socket got relayed would have reached the kid before this
+    const stranger = await client(await cookieFor('stranger'))
+    const heard = next(kid, 'observer-coplay-ready', 5000)
+    stranger.emit('observer-coplay-ready', { sessionId: 's1', observerId: 'parent', player })
+    expect(await heard).toMatchObject({ sessionId: 's1', observerId: 'stranger', player })
+    const left = next(kid, 'observer-coplay-leave', 5000)
+    stranger.emit('observer-coplay-leave', { sessionId: 's1', observerId: 'parent' })
+    expect(await left).toEqual({ sessionId: 's1', observerId: 'stranger' })
+
+    expect(ready.map((r) => r.observerId)).toEqual(['stranger'])
+    expect(leave.map((r) => r.observerId)).toEqual(['stranger'])
   })
 
   describe('arcade: own id plus room membership', () => {
