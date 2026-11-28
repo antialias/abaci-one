@@ -23,8 +23,16 @@ import {
 type Handler = (...args: any[]) => void
 interface MockSocket {
   on: ReturnType<typeof vi.fn>
+  off: ReturnType<typeof vi.fn>
   emit: ReturnType<typeof vi.fn>
   disconnect: ReturnType<typeof vi.fn>
+  connected: boolean
+  /** The socket's manager: its reconnect delays and its transport */
+  io: {
+    reconnectionDelay: ReturnType<typeof vi.fn>
+    reconnectionDelayMax: ReturnType<typeof vi.fn>
+    engine: { close: ReturnType<typeof vi.fn> }
+  }
   fire: (event: string, ...args: any[]) => void
 }
 let sockets: MockSocket[] = []
@@ -37,8 +45,17 @@ vi.mock('@/lib/socket', () => ({
         if (!handlers[event]) handlers[event] = []
         handlers[event].push(h)
       }) as ReturnType<typeof vi.fn>,
+      off: vi.fn((event: string, h: Handler) => {
+        handlers[event] = (handlers[event] ?? []).filter((x) => x !== h)
+      }) as ReturnType<typeof vi.fn>,
       emit: vi.fn(),
       disconnect: vi.fn(),
+      connected: false,
+      io: {
+        reconnectionDelay: vi.fn((v?: number) => (v === undefined ? 1000 : undefined)),
+        reconnectionDelayMax: vi.fn((v?: number) => (v === undefined ? 5000 : undefined)),
+        engine: { close: vi.fn() },
+      },
       fire: (event, ...args) => {
         for (const h of handlers[event] ?? []) h(...args)
       },
@@ -51,11 +68,18 @@ vi.mock('@/lib/socket', () => ({
 const { api } = vi.hoisted(() => ({ api: vi.fn() }))
 vi.mock('@/lib/queryClient', () => ({ api }))
 
+import { ClassroomLiveNotice } from '@/components/classroom/ClassroomLiveNotice'
 import { useChildSessionsSocket } from '@/hooks/useChildSessionsSocket'
 import { type ActiveSessionInfo, useActiveSessionsInClassroom } from '@/hooks/useClassroom'
 import { useClassroomSocket } from '@/hooks/useClassroomSocket'
 import { useSessionHistory } from '@/hooks/useSessionHistory'
 import { ActiveSessionCard, SessionItem } from '../VirtualizedSessionList'
+
+/** The practice page's teacher notice, fed by the hook. */
+function LiveNoticePage() {
+  const { live } = useClassroomSocket('cls-1')
+  return <ClassroomLiveNotice state={live} isDark={false} />
+}
 
 function client() {
   return new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -343,6 +367,97 @@ describe('teacher cards: the teacher-only classroom room (no poll)', () => {
     expect(invalidated()).toBe(false)
     act(() => socket.fire('student-entered', { playerName: 'Kid' }))
     expect(invalidated()).toBe(true)
+  })
+
+  it('a transient join failure pauses the feed, rejoins on socket.io’s next connect, and refetches', () => {
+    const qc = client()
+    seededCard(qc)
+    const { result } = renderHook(() => useClassroomSocket('cls-1'), { wrapper: wrapperOf(qc) })
+    const socket = sockets[0]
+    const joins = () =>
+      socket.emit.mock.calls.filter(([event]: [string]) => event === 'join-classroom').length
+    const invalidated = () => qc.getQueryState(classroomKeys.activeSessions('cls-1'))?.isInvalidated
+    expect(result.current.live).toBe('connecting')
+    act(() => socket.fire('connect'))
+    expect(joins()).toBe(1)
+
+    act(() =>
+      socket.fire('channel-error', {
+        channel: 'classroom',
+        id: 'cls-1',
+        error: 'Failed to join classroom',
+        code: 'transient',
+      })
+    )
+    expect(result.current.live).toBe('paused')
+    // The transport is dropped so socket.io's own backoff reconnects, slower each time
+    expect(socket.io.engine.close).toHaveBeenCalledTimes(1)
+    expect(socket.io.reconnectionDelay).toHaveBeenCalledWith(2000)
+    expect(socket.disconnect).not.toHaveBeenCalled()
+    expect(invalidated()).toBe(false)
+
+    act(() => socket.fire('disconnect', 'forced close'))
+    act(() => socket.fire('connect'))
+    expect(joins()).toBe(2)
+    act(() => socket.fire('channel-joined', { channel: 'classroom', id: 'cls-1' }))
+    expect(result.current.live).toBe('live')
+    expect(invalidated()).toBe(true)
+    expect(socket.io.reconnectionDelay).toHaveBeenLastCalledWith(1000)
+  })
+
+  it('a refused join does not retry and says the feed is off', () => {
+    const qc = client()
+    const { result } = renderHook(() => useClassroomSocket('cls-1'), { wrapper: wrapperOf(qc) })
+    const socket = sockets[0]
+    act(() => socket.fire('connect'))
+    // Another classroom's refusal is not this one's
+    act(() =>
+      socket.fire('channel-error', {
+        channel: 'classroom',
+        id: 'cls-2',
+        error: 'x',
+        code: 'refused',
+      })
+    )
+    expect(result.current.live).toBe('connecting')
+    act(() =>
+      socket.fire('channel-error', {
+        channel: 'classroom',
+        id: 'cls-1',
+        error: 'Not the teacher of this classroom',
+        code: 'refused',
+      })
+    )
+    expect(result.current.live).toBe('refused')
+    expect(socket.disconnect).toHaveBeenCalledTimes(1)
+    expect(socket.io.engine.close).not.toHaveBeenCalled()
+    act(() => socket.fire('connect'))
+    expect(socket.emit.mock.calls.filter(([e]: [string]) => e === 'join-classroom')).toHaveLength(1)
+    act(() => socket.fire('disconnect'))
+    expect(result.current.live).toBe('refused')
+  })
+
+  it('the practice page shows the paused feed plainly, and nothing once live', () => {
+    const qc = client()
+    const view = render(<LiveNoticePage />, { wrapper: wrapperOf(qc) })
+    const socket = sockets[0]
+    expect(view.queryByRole('status')).toBeNull() // first connect: no flash
+    act(() => socket.fire('connect'))
+    act(() => socket.fire('disconnect', 'transport close'))
+    expect(view.getByRole('status').textContent).toBe('Live updates paused, reconnecting…')
+    act(() => socket.fire('connect'))
+    act(() =>
+      socket.fire('channel-error', {
+        channel: 'classroom',
+        id: 'cls-1',
+        error: 'x',
+        code: 'transient',
+      })
+    )
+    expect(view.getByRole('status').textContent).toBe('Live updates paused, reconnecting…')
+    act(() => socket.fire('connect'))
+    act(() => socket.fire('channel-joined', { channel: 'classroom', id: 'cls-1' }))
+    expect(view.queryByRole('status')).toBeNull()
   })
 
   it('an end pushed before the join completed is still reflected (the join refetches)', async () => {

@@ -447,6 +447,13 @@ export interface SkillTutorialStateEvent {
 }
 
 /**
+ * Why a `join-classroom` / `join-player` failed: `'refused'`, the viewer may
+ * not join and asking again changes nothing; `'transient'`, the server could
+ * not check (a database error), and the client may ask again.
+ */
+export type ChannelErrorCode = 'refused' | 'transient'
+
+/**
  * Control actions a teacher can send to a student's tutorial
  */
 export type SkillTutorialControlAction =
@@ -594,8 +601,13 @@ export interface ClassroomServerToClientEvents {
 
   /** An accepted `join-classroom` / `join-player` */
   'channel-joined': (data: { channel: 'classroom' | 'player'; id: string }) => void
-  /** A refused `join-classroom` / `join-player`: nothing was joined */
-  'channel-error': (data: { channel: 'classroom' | 'player'; id: string; error: string }) => void
+  /** A failed `join-classroom` / `join-player`: nothing was joined */
+  'channel-error': (data: {
+    channel: 'classroom' | 'player'
+    id: string
+    error: string
+    code: ChannelErrorCode
+  }) => void
 
   // Skill tutorial: the kid's state goes to the teacher-only `classroom:<id>`
   // of each classroom the kid is enrolled in; the teacher's controls go to the

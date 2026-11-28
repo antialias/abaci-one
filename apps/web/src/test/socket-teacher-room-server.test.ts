@@ -20,6 +20,11 @@ import type { Socket as ClientSocket } from 'socket.io-client'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
 import type { SessionPlan } from '@/db/schema/session-plans'
+import {
+  type ClassroomLiveState,
+  followClassroomChannel,
+} from '@/lib/classroom/classroom-channel-client'
+import { MAX_TUTORIAL_MESSAGE_CHARS } from '@/lib/classroom/classroom-room-access'
 import { enterClassroom, leaveClassroom } from '@/lib/classroom/presence-manager'
 import {
   emitEnrollmentCompleted,
@@ -182,6 +187,39 @@ const tutorialState = (playerId: string, skillTitle: string) => ({
 })
 
 const ACKS = new Set(['channel-joined', 'channel-error'])
+
+/** A tutorial step as the kid's launcher broadcasts it. */
+const STEP = {
+  currentStepIndex: 1,
+  totalSteps: 4,
+  currentMultiStep: 0,
+  totalMultiSteps: 2,
+  currentValue: 3,
+  targetValue: 5,
+  startValue: 3,
+  isStepCompleted: false,
+  problem: '3 +2 = 5',
+  description: 'Add two',
+  currentInstruction: 'Move two earth beads up',
+}
+
+/** Follow the teacher room as the teacher's page does, until `until` (or forever). */
+function following(sock: ClientSocket, until: ClassroomLiveState) {
+  const states: ClassroomLiveState[] = []
+  let joins = 0
+  const reached = new Promise<void>((resolve) => {
+    followClassroomChannel(sock, CLASSROOM, {
+      onState: (state) => {
+        states.push(state)
+        if (state === until) resolve()
+      },
+      onJoined: () => {
+        joins += 1
+      },
+    })
+  })
+  return { states, reached, joins: () => joins }
+}
 
 describe('PR 3: classroom:<id> is the teacher-only room', () => {
   let eph: EphemeralDbResult
@@ -412,6 +450,142 @@ describe('PR 3: classroom:<id> is the teacher-only room', () => {
         action: { type: 'previous-step' },
       })
       expect(await steered).toEqual({ playerId: 'kid-b', action: { type: 'previous-step' } })
+    })
+  })
+
+  describe('the teacher’s live feed: a failed join is transient or a refusal', () => {
+    it('channel-error says which: code refused for a non-teacher, transient when the check fails', async () => {
+      const parentB = await client(await cookieFor('parent-b'))
+      const refused = next(parentB, 'channel-error', 5000)
+      parentB.emit('join-classroom', { classroomId: CLASSROOM })
+      expect(await refused).toMatchObject({ channel: 'classroom', id: CLASSROOM, code: 'refused' })
+      const stranger = next(parentB, 'channel-error', 5000)
+      parentB.emit('join-player', { playerId: 'kid-a' })
+      expect(await stranger).toMatchObject({ channel: 'player', id: 'kid-a', code: 'refused' })
+
+      const teacher = await client(await cookieFor('teacher'))
+      vi.spyOn(getCurrentEphemeralDb().query.classrooms, 'findFirst').mockRejectedValueOnce(
+        new Error('database is locked')
+      )
+      const failed = next(teacher, 'channel-error', 5000)
+      teacher.emit('join-classroom', { classroomId: CLASSROOM })
+      expect(await failed).toMatchObject({ channel: 'classroom', id: CLASSROOM, code: 'transient' })
+      expect((await roomsOf(teacher)).has(`classroom:${CLASSROOM}`)).toBe(false)
+    })
+
+    it('a transient failure recovers: socket.io reconnects on its own, the rejoin goes live', async () => {
+      const teacher = await client(await cookieFor('teacher'), {
+        reconnection: true,
+        reconnectionDelay: 20,
+        reconnectionDelayMax: 100,
+      })
+      const firstId = teacher.id
+      const findFirst = vi
+        .spyOn(getCurrentEphemeralDb().query.classrooms, 'findFirst')
+        .mockRejectedValueOnce(new Error('database is locked'))
+      const feed = following(teacher, 'live')
+      await feed.reached
+      expect(feed.states[0]).toBe('paused')
+      expect(feed.states.at(-1)).toBe('live')
+      expect(feed.joins()).toBe(1)
+      expect(findFirst).toHaveBeenCalledTimes(2)
+      expect(teacher.id).not.toBe(firstId) // a new connection, made by socket.io's reconnect
+      expect((await roomsOf(teacher)).has(`classroom:${CLASSROOM}`)).toBe(true)
+      // The backoff is back to its own after the join
+      expect(teacher.io.reconnectionDelay()).toBe(20)
+    })
+
+    it('a refusal does not retry: the socket closes for good', async () => {
+      const parentB = await client(await cookieFor('parent-b'), {
+        reconnection: true,
+        reconnectionDelay: 20,
+      })
+      const findFirst = vi.spyOn(getCurrentEphemeralDb().query.classrooms, 'findFirst')
+      const feed = following(parentB, 'refused')
+      await feed.reached
+      expect(feed.states).toEqual(['refused'])
+      expect(parentB.connected).toBe(false)
+      expect(parentB.active).toBe(false) // socket.io will not reconnect it
+      expect(findFirst).toHaveBeenCalledTimes(1)
+      expect(feed.joins()).toBe(0)
+    })
+  })
+
+  describe('the tutorial relays forward known fields only', () => {
+    it('skill-tutorial-state: the known fields, the name from the database; malformed or oversized dropped', async () => {
+      const teacher = await teacherView()
+      const kidA = await kidDevice('parent-a', 'kid-a')
+      const heard = hearing(teacher)
+      const relayed = next(teacher, 'skill-tutorial-state', 5000)
+      kidA.emit('skill-tutorial-state', {
+        ...tutorialState('kid-a', 'real'),
+        playerName: 'Not kid-a',
+        injected: { a: 1 },
+        tutorialState: { ...STEP, injected: '<img>' },
+      })
+      expect(await relayed).toEqual({
+        playerId: 'kid-a',
+        playerName: 'kid-a',
+        launcherState: 'tutorial',
+        skillId: 's',
+        skillTitle: 'real',
+        tutorialState: STEP,
+      })
+
+      kidA.emit('skill-tutorial-state', {
+        ...tutorialState('kid-a', 'oversized'),
+        skillTitle: 'x'.repeat(MAX_TUTORIAL_MESSAGE_CHARS),
+      })
+      kidA.emit('skill-tutorial-state', { ...tutorialState('kid-a', 'bad'), launcherState: 'x' })
+      kidA.emit('skill-tutorial-state', {
+        ...tutorialState('kid-a', 'bad step'),
+        tutorialState: { ...STEP, currentValue: 'three' },
+      })
+      const last = next(teacher, 'skill-tutorial-state', 5000)
+      kidA.emit('skill-tutorial-state', tutorialState('kid-a', 'after'))
+      expect(await last).toMatchObject({ skillTitle: 'after' })
+      expect(
+        heard.filter((h) => h.event === 'skill-tutorial-state').map((h) => h.data.skillTitle)
+      ).toEqual(['real', 'after'])
+    })
+
+    it('skill-tutorial-control: the player and a known action only; unknown or oversized dropped', async () => {
+      const teacher = await teacherView()
+      const kidA = await kidDevice('parent-a', 'kid-a')
+      const heard = hearing(kidA)
+      const steered = next(kidA, 'skill-tutorial-control', 5000)
+      teacher.emit('skill-tutorial-control', {
+        playerId: 'kid-a',
+        injected: true,
+        action: { type: 'go-to-step', stepIndex: 2, injected: 'x' },
+      })
+      expect(await steered).toEqual({
+        playerId: 'kid-a',
+        action: { type: 'go-to-step', stepIndex: 2 },
+      })
+
+      teacher.emit('skill-tutorial-control', { playerId: 'kid-a', action: { type: 'reload' } })
+      teacher.emit('skill-tutorial-control', {
+        playerId: 'kid-a',
+        action: { type: 'go-to-step', stepIndex: -1 },
+      })
+      teacher.emit('skill-tutorial-control', {
+        playerId: 'kid-a',
+        padding: 'x'.repeat(MAX_TUTORIAL_MESSAGE_CHARS),
+        action: { type: 'next-step' },
+      })
+      const last = next(kidA, 'skill-tutorial-control', 5000)
+      teacher.emit('skill-tutorial-control', {
+        playerId: 'kid-a',
+        action: { type: 'set-abacus-value', value: 7 },
+      })
+      expect(await last).toEqual({
+        playerId: 'kid-a',
+        action: { type: 'set-abacus-value', value: 7 },
+      })
+      expect(
+        heard.filter((h) => h.event === 'skill-tutorial-control').map((h) => h.data.action.type)
+      ).toEqual(['go-to-step', 'set-abacus-value'])
     })
   })
 

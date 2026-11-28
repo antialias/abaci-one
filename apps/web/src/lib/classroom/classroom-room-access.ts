@@ -21,15 +21,28 @@
  *
  * Every check uses the socket's verified viewer (`socket.data.viewer`); an id
  * in a payload is the subject of the check, never the one checked. A join
- * answers `channel-joined { channel, id }`; a refused one answers
- * `channel-error { channel, id, error }` and joins nothing.
+ * answers `channel-joined { channel, id }`; one that fails answers
+ * `channel-error { channel, id, error, code }` and joins nothing: `code` is
+ * `'refused'` when the viewer may not join (asking again changes nothing) and
+ * `'transient'` when the check itself failed (the client may ask again).
  * Leaving is never checked: it only takes the socket out.
+ *
+ * The tutorial relays forward only the fields `socket-events.ts` names, each
+ * checked for its type, the player's name taken from the database; a malformed
+ * or oversized message is dropped, never forwarded in part.
  */
 
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { type SocketViewerData, socketViewerId } from '@/lib/socket-viewer'
 import { canPerformAction } from './access-control'
+import type {
+  ChannelErrorCode,
+  SkillTutorialControlAction,
+  SkillTutorialControlEvent,
+  SkillTutorialStateEvent,
+  TutorialStepState,
+} from './socket-events'
 
 /** A classroom's channel: the teacher-only room. */
 export function classroomRoom(classroomId: string): string {
@@ -78,10 +91,113 @@ export interface ClassroomChannelServer {
   to(room: string): { emit(event: string, data: unknown): unknown }
 }
 
-/** A skill tutorial broadcast or control: about one player. */
-interface TutorialMessage {
+/**
+ * The largest tutorial state or control relayed, in characters of JSON. A real
+ * state is a few hundred characters (three short texts and some numbers).
+ */
+export const MAX_TUTORIAL_MESSAGE_CHARS = 8192
+
+/** The JSON length of `data`; anything that will not serialise counts as too long. */
+function jsonLength(data: unknown): number {
+  try {
+    return JSON.stringify(data)?.length ?? 0
+  } catch {
+    return Number.POSITIVE_INFINITY
+  }
+}
+
+const isText = (v: unknown): v is string => typeof v === 'string'
+const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
+const LAUNCHER_STATES: ReadonlySet<unknown> = new Set<SkillTutorialStateEvent['launcherState']>([
+  'intro',
+  'tutorial',
+  'complete',
+])
+
+/** A tutorial step's state, rebuilt from its known fields; null if any is malformed. */
+function tutorialStepOf(v: any): TutorialStepState | null {
+  const numbers = [
+    'currentStepIndex',
+    'totalSteps',
+    'currentMultiStep',
+    'totalMultiSteps',
+    'currentValue',
+    'targetValue',
+    'startValue',
+  ] as const
+  const texts = ['problem', 'description', 'currentInstruction'] as const
+  if (!v || typeof v !== 'object') return null
+  if (!numbers.every((k) => isNumber(v[k])) || !texts.every((k) => isText(v[k]))) return null
+  if (typeof v.isStepCompleted !== 'boolean') return null
+  return {
+    currentStepIndex: v.currentStepIndex,
+    totalSteps: v.totalSteps,
+    currentMultiStep: v.currentMultiStep,
+    totalMultiSteps: v.totalMultiSteps,
+    currentValue: v.currentValue,
+    targetValue: v.targetValue,
+    startValue: v.startValue,
+    isStepCompleted: v.isStepCompleted,
+    problem: v.problem,
+    description: v.description,
+    currentInstruction: v.currentInstruction,
+  }
+}
+
+/**
+ * The relayed tutorial state: the sender's known fields with the player's
+ * name as the database has it. Null if a field is malformed.
+ */
+export function tutorialStateToRelay(
+  data: any,
+  playerId: string,
+  playerName: string
+): SkillTutorialStateEvent | null {
+  if (!LAUNCHER_STATES.has(data?.launcherState)) return null
+  if (!isText(data.skillId) || !isText(data.skillTitle)) return null
+  const relayed: SkillTutorialStateEvent = {
+    playerId,
+    playerName,
+    launcherState: data.launcherState,
+    skillId: data.skillId,
+    skillTitle: data.skillTitle,
+  }
+  if (data.tutorialState !== undefined) {
+    const step = tutorialStepOf(data.tutorialState)
+    if (!step) return null
+    relayed.tutorialState = step
+  }
+  return relayed
+}
+
+/** A teacher's tutorial control action, rebuilt from its known fields; null if unknown. */
+function controlActionOf(v: any): SkillTutorialControlAction | null {
+  switch (v?.type) {
+    case 'start-tutorial':
+    case 'skip-tutorial':
+    case 'next-step':
+    case 'previous-step':
+    case 'advance-multi-step':
+    case 'previous-multi-step':
+      return { type: v.type }
+    case 'go-to-step':
+      return Number.isInteger(v.stepIndex) && v.stepIndex >= 0
+        ? { type: 'go-to-step', stepIndex: v.stepIndex }
+        : null
+    case 'set-abacus-value':
+      return isNumber(v.value) ? { type: 'set-abacus-value', value: v.value } : null
+    default:
+      return null
+  }
+}
+
+/** The relayed tutorial control: the player and a known action only. Null if unknown. */
+export function tutorialControlToRelay(
+  data: any,
   playerId: string
-  [key: string]: unknown
+): SkillTutorialControlEvent | null {
+  const action = controlActionOf(data?.action)
+  return action ? { playerId, action } : null
 }
 
 /**
@@ -92,9 +208,14 @@ export function registerClassroomChannels(
   socket: ClassroomChannelSocket,
   io: ClassroomChannelServer
 ): void {
-  const refuse = (channel: 'classroom' | 'player', id: string, error: string) => {
-    console.log(`⚠️ join-${channel} refused for ${id}: ${error}`)
-    socket.emit('channel-error', { channel, id, error })
+  const refuse = (
+    channel: 'classroom' | 'player',
+    id: string,
+    error: string,
+    code: ChannelErrorCode = 'refused'
+  ) => {
+    console.log(`⚠️ join-${channel} ${code} for ${id}: ${error}`)
+    socket.emit('channel-error', { channel, id, error, code })
   }
 
   socket.on('join-classroom', async (request: { classroomId?: unknown }) => {
@@ -108,7 +229,7 @@ export function registerClassroomChannels(
       socket.emit('channel-joined', { channel: 'classroom', id: classroomId })
     } catch (error) {
       console.error('Error joining classroom channel:', error)
-      refuse('classroom', classroomId, 'Failed to join classroom')
+      refuse('classroom', classroomId, 'Failed to join classroom', 'transient')
     }
   })
 
@@ -129,7 +250,7 @@ export function registerClassroomChannels(
       socket.emit('channel-joined', { channel: 'player', id: playerId })
     } catch (error) {
       console.error('Error joining player channel:', error)
-      refuse('player', playerId, 'Failed to join player')
+      refuse('player', playerId, 'Failed to join player', 'transient')
     }
   })
 
@@ -139,9 +260,13 @@ export function registerClassroomChannels(
   })
 
   // The student's device tells its teachers where its tutorial is
-  socket.on('skill-tutorial-state', async (data: TutorialMessage) => {
+  socket.on('skill-tutorial-state', async (data: unknown) => {
     const viewerId = socketViewerId(socket)
-    const playerId = typeof data?.playerId === 'string' ? data.playerId : ''
+    const playerId = typeof (data as any)?.playerId === 'string' ? (data as any).playerId : ''
+    if (jsonLength(data) > MAX_TUTORIAL_MESSAGE_CHARS) {
+      console.log(`⚠️ skill-tutorial-state dropped for ${playerId}: oversized`)
+      return
+    }
     try {
       if (
         !viewerId ||
@@ -151,17 +276,32 @@ export function registerClassroomChannels(
         console.log(`⚠️ skill-tutorial-state dropped for ${playerId}: not the player's device`)
         return
       }
+      const player = await db.query.players.findFirst({
+        where: eq(schema.players.id, playerId),
+        columns: { name: true },
+      })
+      const relayed = player ? tutorialStateToRelay(data, playerId, player.name) : null
+      if (!relayed) {
+        console.log(`⚠️ skill-tutorial-state dropped for ${playerId}: malformed`)
+        return
+      }
       const rooms = await teacherRoomsOf(playerId)
-      if (rooms.length > 0) socket.to(rooms).emit('skill-tutorial-state', data)
+      if (rooms.length > 0) socket.to(rooms).emit('skill-tutorial-state', relayed)
     } catch (error) {
       console.error('Error relaying skill tutorial state:', error)
     }
   })
 
   // The teacher steers a present student's tutorial, on the student's channel
-  socket.on('skill-tutorial-control', async (data: TutorialMessage) => {
+  socket.on('skill-tutorial-control', async (data: unknown) => {
     const viewerId = socketViewerId(socket)
-    const playerId = typeof data?.playerId === 'string' ? data.playerId : ''
+    const playerId = typeof (data as any)?.playerId === 'string' ? (data as any).playerId : ''
+    const relayed =
+      jsonLength(data) <= MAX_TUTORIAL_MESSAGE_CHARS ? tutorialControlToRelay(data, playerId) : null
+    if (!relayed) {
+      console.log(`⚠️ skill-tutorial-control dropped for ${playerId}: malformed or oversized`)
+      return
+    }
     try {
       if (
         !viewerId ||
@@ -171,7 +311,7 @@ export function registerClassroomChannels(
         console.log(`⚠️ skill-tutorial-control dropped for ${playerId}: may not control it`)
         return
       }
-      io.to(playerRoom(playerId)).emit('skill-tutorial-control', data)
+      io.to(playerRoom(playerId)).emit('skill-tutorial-control', relayed)
     } catch (error) {
       console.error('Error relaying skill tutorial control:', error)
     }
