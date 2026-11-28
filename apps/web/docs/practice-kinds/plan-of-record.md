@@ -2,7 +2,7 @@
 
 Companion to the [session architecture plan](../session-architecture/plan-of-record.md) (Phases 1–6 live on prod 2026-11-27, PRs #239–#275) and its [findings](../session-architecture/findings.md). That rework is the foundation: one flow machine owns the rhythm, every write is a CAS on `rowVersion`, one report serves every view, every try has an id, and a part is known to structure only through `PartKind`. This document settles how **many kinds of practice**, each in several **presentations**, plug into that session with no edit outside their own folder.
 
-Paths are under `apps/web/src/`; `L/` is the ledger checkout (`~/projects/soroban-abacus-flashcards-practice/apps/web/`, read-only). Every code claim was re-read at `c12abd87f`. Rev. 2 answers [review 1](review-1.md) (R1–R19); §8 records each finding and what changed.
+Paths are under `apps/web/src/`; `L/` is the ledger checkout (`~/projects/soroban-abacus-flashcards-practice/apps/web/`, read-only). Every code claim was re-read at `c12abd87f`. Rev. 2 answers [review 1](review-1.md) (R1–R19); §8 records each finding and what changed. The owner took every §7 recommendation on 2026-11-27.
 
 **The bar.** Adding a kind or a presentation = one new folder plus one line in each registry (server and browser). Every view (kid's screen, transition, summary, share link and OG, live observer, dashboard lists, adult review, MCP tools, song) handles it with no edit. Tests enforce this (§4 Phase K4). The rhythm `part, (break, part)*, end` then song and summary does not change.
 
@@ -551,7 +551,9 @@ Both proofs are the test of decisions K1–K11: each PR's file list is its evide
 16. **Widening `partWeights`** (K6b) touches stored preferences read by `StartPracticeModalContext.tsx:341` with a three-key default; a K5 image reading a four-key value ignores the fourth. The widening is additive JSON; no migration.
 17. **The ledger adapter** (§3.4) depends on amendments to the ledger plan that are filed, not built, here; until they land the ledger ingests arithmetic tries only. Not a blocker for any phase.
 
-## 7. Open questions for the owner (one recommendation each, ordered by how much the answer changes the plan)
+## 7. Owner questions (one recommendation each, ordered by how much the answer changes the plan)
+
+**Decided 2026-11-27: the owner took all eight as recommended** ("Yes go with your recommendations"). Each line below keeps the question and its recommendation, which is now the decision.
 
 1. **The submit poll (§6.14).** After a retry-round answer today the screen polls for up to half a second for the next problem to appear. Shall the new shell replace that with reading the next problem straight from the server's reply, which it already has in hand? **Recommend yes:** no timer, no half-second stall, the same function the server used to decide. This is the only behaviour change in the browser split; K5a-3 waits on this answer. The alternative is to carry the poll into the shell, which puts a timer in generic code under a rule that forbids new ones.
 2. **Does the session length include game breaks?** Today it does not: 12 minutes means 12 minutes of practice plus up to two 5-minute games, and only the fixed three-part shape bounds that. With more kinds there could be more parts and more breaks. **Recommend: keep today's meaning and keep three parts the default cap**, so every existing adult's setting means what it meant and today's plans are identical; show "+ up to N min of games" in the modal so the total is honest. Lifting the cap, or making the length include breaks, is one policy field each, when you want it.
