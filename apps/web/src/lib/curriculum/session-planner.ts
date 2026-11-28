@@ -29,6 +29,8 @@ import { isCountedTry, sameProblem } from '@/db/schema/session-plan-helpers'
 import {
   currentItemOf,
   doOverStamp,
+  evidenceOfRow,
+  evidencePartsOf,
   isClientTryId,
   mintTryId,
   normalizeTries,
@@ -99,6 +101,7 @@ import { explainLinearReadiness } from './linear-readiness'
 import { resolveEnabledPartTypes } from './part-gating'
 import { arithmeticCursorSlotIndex } from './parts/arithmetic/session-view'
 import type { AnyPartKind } from './parts/kind'
+import { masteryModeOf } from './parts/presentations'
 import { isPartPlayable, kindIdOf, partKindOf } from './parts/registry'
 import { generateProblemFromConstraints } from './problem-generator'
 import {
@@ -120,6 +123,7 @@ import {
 import { getWeakSkillIds, type SessionMode } from './session-mode'
 import { describeSkippedPart } from './skipped-parts'
 import { sanitizeResultTiming } from './timing/response-time-guard'
+import { asTryEvidence } from './try-evidence'
 import { weightOfTry } from './try-weight'
 
 // ============================================================================
@@ -1183,16 +1187,30 @@ export async function getMostRecentCompletedSession(playerId: string): Promise<S
 }
 
 /**
- * Result from a problem with session context for traceability
+ * One recorded try in a student's history, with its session and what it is
+ * evidence of (practice-kinds plan §1.3, K1b). The stored row is whole, so
+ * every reader of its shared fields reads it as before; the evidence readers
+ * read `evidence` and `mode` (`evidenceSkillsOf`, `try-evidence.ts`).
+ *
+ * The plan names this `Try & { … }`; the history reads the row as stored,
+ * not normalized, because normalizing needs the plan's `parts` (its slots),
+ * which this query skips by design (amendment A7).
  */
-export interface ProblemResultWithContext extends SlotResult {
+export interface HistoryTry extends SlotResult {
   /** Session ID this result came from */
   sessionId: string
   /** When the session was completed */
   sessionCompletedAt: Date
-  /** Part type (abacus/visualization/linear) */
-  partType: SessionPartType
+  /** What the try is evidence of: stamped (null = not counted), else derived (§3.1) */
+  evidence: TryEvidence | null
+  /** The presentation it was practiced in (`evidence.presentation`); null when not evidence */
+  presentation: string | null
+  /** The mastery mode it counts toward, resolved now (`masteryModeOf`); null = none */
+  mode: string | null
 }
+
+/** The history row's name before K1b, kept for its readers */
+export type ProblemResultWithContext = HistoryTry
 
 /**
  * Get recent problem results across multiple sessions for skills analysis
@@ -1240,12 +1258,14 @@ export async function batchGetRecentSessionResults(
       playerId: schema.sessionPlans.playerId,
       completedAt: schema.sessionPlans.completedAt,
       results: schema.sessionPlans.results,
-      // Extract lightweight [{n: partNumber, t: type}, ...] from parts JSON
+      // Extract lightweight [{n: partNumber, t: type, k: kind}, ...] from the
+      // parts JSON, in order (a row's `partIndex` is a position in it),
       // instead of fetching the entire parts column with all slots/problems
       partTypeMap: sql<string>`(
         SELECT json_group_array(json_object(
           'n', json_extract(value, '$.partNumber'),
-          't', json_extract(value, '$.type')
+          't', json_extract(value, '$.type'),
+          'k', json_extract(value, '$.kind')
         )) FROM json_each(${schema.sessionPlans.parts})
       )`,
     })
@@ -1274,28 +1294,32 @@ export async function batchGetRecentSessionResults(
       resultMap.set(session.playerId, list)
     }
 
-    // Build partNumber→type lookup from the lightweight extraction
-    const partTypes = JSON.parse(session.partTypeMap || '[]') as Array<{ n: number; t: string }>
-    const typeByPartNumber = new Map(partTypes.map((p) => [p.n, p.t]))
+    // The parts as the evidence derivation reads them, from the extraction
+    const parts = evidencePartsOf(session.partTypeMap)
 
     for (const result of session.results) {
+      // What the row is evidence of: stamped, else derived from its part
+      // (§3.1). A row of a kind this image does not know derives none, and
+      // a stamped row says its own presentation: neither is called 'linear'.
+      const evidence = asTryEvidence(evidenceOfRow(result, parts))
       // Some pre-schema fixtures (e.g. validation seed plans) carry result
       // entries that don't match SlotResult — missing skillsExercised,
       // partNumber, etc. Skip them so downstream consumers can assume the
-      // SlotResult contract holds. Real practice records always have at
-      // least `skillsExercised: []` from `recordSlotResult`.
-      if (!Array.isArray((result as Partial<SlotResult>).skillsExercised)) continue
+      // contract holds: a row has evidence (any kind's, K1b) or at least
+      // arithmetic's `skillsExercised: []` from `recordSlotResult`.
+      if (evidence === null && !Array.isArray((result as Partial<SlotResult>).skillsExercised))
+        continue
       // Practice-only do-overs (Phase 1) carry no evidence for any history
       // reader: readiness, the linear gate, skill metrics, leaderboards, MCP.
       if (!isCountedTry(result)) continue
-
-      const partType = (typeByPartNumber.get(result.partNumber) ?? 'linear') as SessionPartType
 
       list.push({
         ...result,
         sessionId: session.id,
         sessionCompletedAt: session.completedAt,
-        partType,
+        evidence,
+        presentation: evidence?.presentation ?? null,
+        mode: evidence ? masteryModeOf(evidence.presentation) : null,
       })
     }
   }

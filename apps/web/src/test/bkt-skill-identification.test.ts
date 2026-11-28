@@ -18,11 +18,12 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import type { SkillSet } from '@/types/tutorial'
-import { computeBktFromHistory } from '@/lib/curriculum/bkt'
 import type { SkillBktResult } from '@/lib/curriculum/bkt'
+import { computeBktFromHistory } from '@/lib/curriculum/bkt'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import { historyTryOf } from '@/test/fixtures/history-try'
 import { withSeededRandom } from '@/test/journey-simulator/SeededRandom'
+import type { SkillSet } from '@/types/tutorial'
 
 /**
  * Helper to create a valid ProblemResultWithContext
@@ -35,26 +36,28 @@ function createResult(
   isCorrect: boolean,
   responseTimeMs: number
 ): ProblemResultWithContext {
-  return {
-    sessionId,
-    partNumber: 1,
-    slotIndex,
-    problem: {
-      terms: [1, 2],
-      answer: 3,
-      skillsRequired: skillsExercised,
+  return historyTryOf(
+    {
+      sessionId,
+      partNumber: 1,
+      slotIndex,
+      problem: {
+        terms: [1, 2],
+        answer: 3,
+        skillsRequired: skillsExercised,
+      },
+      studentAnswer: isCorrect ? 3 : 4,
+      isCorrect,
+      responseTimeMs,
+      skillsExercised,
+      usedOnScreenAbacus: false,
+      timestamp,
+      hadHelp: false,
+      incorrectAttempts: 0,
+      sessionCompletedAt: timestamp,
     },
-    studentAnswer: isCorrect ? 3 : 4,
-    isCorrect,
-    responseTimeMs,
-    skillsExercised,
-    usedOnScreenAbacus: false,
-    timestamp,
-    hadHelp: false,
-    incorrectAttempts: 0,
-    sessionCompletedAt: timestamp,
-    partType: 'abacus',
-  }
+    'abacus'
+  )
 }
 
 // All skills in the system
@@ -160,26 +163,30 @@ function generateSyntheticResults(
     const containsWeakSkill = problemSkills.includes(weakSkill)
 
     const isCorrect = !containsWeakSkill // Fail only when weak skill is present
-    results.push({
-      sessionId: `test-session-${i}`,
-      partNumber: 1,
-      slotIndex: i,
-      problem: {
-        terms: [1, 2],
-        answer: 3,
-        skillsRequired: problemSkills,
-      },
-      studentAnswer: isCorrect ? 3 : 4,
-      timestamp: new Date(baseTime + i * 5000),
-      skillsExercised: problemSkills,
-      isCorrect,
-      responseTimeMs: containsWeakSkill ? 8000 : 3000, // Slower on weak skill
-      usedOnScreenAbacus: false,
-      hadHelp: false,
-      incorrectAttempts: 0,
-      sessionCompletedAt: new Date(baseTime + i * 5000),
-      partType: 'abacus',
-    })
+    results.push(
+      historyTryOf(
+        {
+          sessionId: `test-session-${i}`,
+          partNumber: 1,
+          slotIndex: i,
+          problem: {
+            terms: [1, 2],
+            answer: 3,
+            skillsRequired: problemSkills,
+          },
+          studentAnswer: isCorrect ? 3 : 4,
+          timestamp: new Date(baseTime + i * 5000),
+          skillsExercised: problemSkills,
+          isCorrect,
+          responseTimeMs: containsWeakSkill ? 8000 : 3000, // Slower on weak skill
+          usedOnScreenAbacus: false,
+          hadHelp: false,
+          incorrectAttempts: 0,
+          sessionCompletedAt: new Date(baseTime + i * 5000),
+        },
+        'abacus'
+      )
+    )
   }
 
   return results

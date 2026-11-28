@@ -16,6 +16,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { computeBktFromHistory } from '@/lib/curriculum/bkt'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import { historyTryOf } from '@/test/fixtures/history-try'
 import type { SkillSet } from '@/types/tutorial'
 import { createEmptySkillSet } from '@/types/tutorial'
 import {
@@ -154,26 +155,28 @@ function createResultFromProblem(
   isCorrect: boolean,
   timestamp: Date
 ): ProblemResultWithContext {
-  return {
-    sessionId: 'bkt-test-session',
-    partNumber: 1,
-    slotIndex: 0,
-    problem: {
-      terms: problem.terms,
-      answer: problem.answer,
-      skillsRequired: problem.skillsUsed,
+  return historyTryOf(
+    {
+      sessionId: 'bkt-test-session',
+      partNumber: 1,
+      slotIndex: 0,
+      problem: {
+        terms: problem.terms,
+        answer: problem.answer,
+        skillsRequired: problem.skillsUsed,
+      },
+      studentAnswer: isCorrect ? problem.answer : problem.answer + 1,
+      isCorrect,
+      responseTimeMs: isCorrect ? 3000 : 8000,
+      skillsExercised: problem.skillsUsed,
+      usedOnScreenAbacus: false,
+      timestamp,
+      hadHelp: false,
+      incorrectAttempts: 0,
+      sessionCompletedAt: timestamp,
     },
-    studentAnswer: isCorrect ? problem.answer : problem.answer + 1,
-    isCorrect,
-    responseTimeMs: isCorrect ? 3000 : 8000,
-    skillsExercised: problem.skillsUsed,
-    usedOnScreenAbacus: false,
-    timestamp,
-    hadHelp: false,
-    incorrectAttempts: 0,
-    sessionCompletedAt: timestamp,
-    partType: 'abacus',
-  }
+    'abacus'
+  )
 }
 
 // ============================================================================

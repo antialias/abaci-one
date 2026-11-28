@@ -8978,13 +8978,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
   "recentResults": [
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "linear",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isRetry": false,
       "masteryWeight": 1,
+      "mode": "linear",
       "partNumber": 3,
-      "partType": "linear",
+      "presentation": "linear",
       "problem": {
         "answer": 27,
         "skillsRequired": [
@@ -9009,13 +9016,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "linear",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isRetry": false,
       "masteryWeight": 1,
+      "mode": "linear",
       "partNumber": 3,
-      "partType": "linear",
+      "presentation": "linear",
       "problem": {
         "answer": 25,
         "skillsRequired": [
@@ -9040,13 +9054,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "linear",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isRetry": false,
       "masteryWeight": 1,
+      "mode": "linear",
       "partNumber": 3,
-      "partType": "linear",
+      "presentation": "linear",
       "problem": {
         "answer": 23,
         "skillsRequired": [
@@ -9071,15 +9092,22 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "abacus",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isManualRedo": true,
       "isRetry": false,
       "masteryWeight": 1,
+      "mode": "abacus",
       "originalSlotIndex": 2,
       "partNumber": 1,
-      "partType": "abacus",
+      "presentation": "abacus",
       "problem": {
         "answer": 7,
         "skillsRequired": [
@@ -9104,14 +9132,21 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 2,
+      "evidence": {
+        "presentation": "visualization",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 1,
       "isCorrect": false,
       "isRetry": true,
       "masteryWeight": 0,
+      "mode": "visualization",
       "originalSlotIndex": 1,
       "partNumber": 2,
-      "partType": "visualization",
+      "presentation": "visualization",
       "problem": {
         "answer": 15,
         "skillsRequired": [
@@ -9136,14 +9171,21 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 1,
+      "evidence": {
+        "presentation": "visualization",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 1,
       "isCorrect": false,
       "isRetry": true,
       "masteryWeight": 0,
+      "mode": "visualization",
       "originalSlotIndex": 1,
       "partNumber": 2,
-      "partType": "visualization",
+      "presentation": "visualization",
       "problem": {
         "answer": 15,
         "skillsRequired": [
@@ -9168,13 +9210,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "visualization",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isRetry": false,
       "masteryWeight": 1,
+      "mode": "visualization",
       "partNumber": 2,
-      "partType": "visualization",
+      "presentation": "visualization",
       "problem": {
         "answer": 17,
         "skillsRequired": [
@@ -9199,13 +9248,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "visualization",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 1,
       "isCorrect": false,
       "isRetry": false,
       "masteryWeight": 0,
+      "mode": "visualization",
       "partNumber": 2,
-      "partType": "visualization",
+      "presentation": "visualization",
       "problem": {
         "answer": 15,
         "skillsRequired": [
@@ -9230,13 +9286,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "visualization",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isRetry": false,
       "masteryWeight": 1,
+      "mode": "visualization",
       "partNumber": 2,
-      "partType": "visualization",
+      "presentation": "visualization",
       "problem": {
         "answer": 13,
         "skillsRequired": [
@@ -9261,13 +9324,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "visualization",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 1,
       "isCorrect": false,
       "isRetry": false,
       "masteryWeight": 0,
+      "mode": "visualization",
       "partNumber": 2,
-      "partType": "visualization",
+      "presentation": "visualization",
       "problem": {
         "answer": 13,
         "skillsRequired": [
@@ -9292,14 +9362,21 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 1,
+      "evidence": {
+        "presentation": "abacus",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isRetry": true,
       "masteryWeight": 0.5,
+      "mode": "abacus",
       "originalSlotIndex": 0,
       "partNumber": 1,
-      "partType": "abacus",
+      "presentation": "abacus",
       "problem": {
         "answer": 3,
         "skillsRequired": [
@@ -9324,13 +9401,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "abacus",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isRetry": false,
       "masteryWeight": 1,
+      "mode": "abacus",
       "partNumber": 1,
-      "partType": "abacus",
+      "presentation": "abacus",
       "problem": {
         "answer": 7,
         "skillsRequired": [
@@ -9355,13 +9439,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "abacus",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isRetry": false,
       "masteryWeight": 1,
+      "mode": "abacus",
       "partNumber": 1,
-      "partType": "abacus",
+      "presentation": "abacus",
       "problem": {
         "answer": 7,
         "skillsRequired": [
@@ -9386,13 +9477,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "abacus",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isRetry": false,
       "masteryWeight": 1,
+      "mode": "abacus",
       "partNumber": 1,
-      "partType": "abacus",
+      "presentation": "abacus",
       "problem": {
         "answer": 5,
         "skillsRequired": [
@@ -9417,13 +9515,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "abacus",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isRetry": false,
       "masteryWeight": 1,
+      "mode": "abacus",
       "partNumber": 1,
-      "partType": "abacus",
+      "presentation": "abacus",
       "problem": {
         "answer": 5,
         "skillsRequired": [
@@ -9448,13 +9553,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "abacus",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 1,
       "isCorrect": false,
       "isRetry": false,
       "masteryWeight": 0,
+      "mode": "abacus",
       "partNumber": 1,
-      "partType": "abacus",
+      "presentation": "abacus",
       "problem": {
         "answer": 3,
         "skillsRequired": [
@@ -9479,13 +9591,20 @@ exports[`Phase 6b-1: finished pre-3a sessions render as they did under 6b-0 > hi
     },
     {
       "epochNumber": 0,
+      "evidence": {
+        "presentation": "abacus",
+        "skills": [
+          "basic.directAddition",
+        ],
+      },
       "hadHelp": false,
       "incorrectAttempts": 0,
       "isCorrect": true,
       "isRetry": false,
       "masteryWeight": 1,
+      "mode": "abacus",
       "partNumber": 1,
-      "partType": "abacus",
+      "presentation": "abacus",
       "problem": {
         "answer": 3,
         "skillsRequired": [

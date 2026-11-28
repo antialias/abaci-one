@@ -5,15 +5,16 @@
  * (ramp) and moves to pure mental linear. Signal = first-attempt correctness on that
  * category's linear-with-abacus attempts, over a tunable window behind a volume floor.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import type { SkillCategoryKey } from '@/constants/skillCategories'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import { type HistoryRowInput, historyTryOf } from '@/test/fixtures/history-try'
 import {
-  deriveLinearGateState,
-  resolveLinearGateThresholds,
-  linearPartUsesAbacus,
   DEFAULT_LINEAR_GATE_THRESHOLDS,
+  deriveLinearGateState,
   type LinearCategoryGate,
+  linearPartUsesAbacus,
+  resolveLinearGateThresholds,
 } from '../linear-gate'
 
 const T = DEFAULT_LINEAR_GATE_THRESHOLDS // 0.85 accuracy / 15 window / 20 floor
@@ -39,15 +40,17 @@ function lin(
     source = 'practice',
     at = 0,
   } = opts
-  return {
-    skillsExercised: [skill],
-    isCorrect,
-    partType,
-    isRetry,
-    epochNumber,
-    source,
-    timestamp: new Date(1_700_000_000_000 + at * 1000).toISOString(),
-  } as unknown as ProblemResultWithContext
+  return historyTryOf(
+    {
+      skillsExercised: [skill],
+      isCorrect,
+      isRetry,
+      epochNumber,
+      source,
+      timestamp: new Date(1_700_000_000_000 + at * 1000).toISOString(),
+    } as unknown as HistoryRowInput,
+    partType
+  )
 }
 
 function manyLinear(n: number, correctAt: (i: number) => boolean): ProblemResultWithContext[] {

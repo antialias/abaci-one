@@ -12,9 +12,10 @@
  */
 
 import type { SessionPlan } from '@/db/schema/session-plans'
-import { BKT_THRESHOLDS } from './config/bkt-integration'
-import type { SkillBktResult } from './bkt/types'
+import { evidenceSkillsOf } from '@/lib/curriculum/try-evidence'
 import { computeBktFromHistory } from './bkt/compute-bkt'
+import type { SkillBktResult } from './bkt/types'
+import { BKT_THRESHOLDS } from './config/bkt-integration'
 import type { ProblemResultWithContext } from './session-planner'
 
 // ============================================================================
@@ -565,7 +566,7 @@ export function calculateCategorySpeed(
     if (r.responseTimeMs > 120000) return false // Exclude >2 min
 
     // Check if any exercised skill is in this category and mastered
-    return r.skillsExercised?.some((skillId) => {
+    return evidenceSkillsOf(r).some((skillId) => {
       const skillCategory = getSkillCategory(skillId)
       return skillCategory === category && masteredSkillIds.has(skillId)
     })

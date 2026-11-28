@@ -239,8 +239,12 @@ function bktView(result: BktComputeResult, skills: ReadonlySet<string> | null) {
     skills: keep(result.skills),
     interventionNeeded: ids(result.interventionNeeded),
     strengths: ids(result.strengths),
+    // A mode none of the profile's own skills reached is left out: the S2
+    // rows (counted since K1b, never before) can open one alone. The snapshot
+    // recorded before K1b has no such entry, so this hides nothing it holds.
     byMode: Object.fromEntries(
       Object.entries(result.byMode ?? {})
+        .filter(([, r]) => skills === null || !r || kept(r.skills).length > 0)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([mode, r]) => [
           mode,
@@ -320,4 +324,103 @@ describe('K1b: BKT parity over every seeded profile, before and after the reader
     },
     60_000
   )
+})
+
+/** One plain arithmetic row (pre-K1: no envelope) */
+function plainRow(slotIndex: number, over: Record<string, unknown> = {}): SlotResult {
+  return {
+    slotId: `slot-${slotIndex}`,
+    partNumber: 1,
+    slotIndex,
+    problem: { terms: [1, 2], answer: 3, skillsRequired: ['basic.directAddition'] },
+    studentAnswer: 3,
+    isCorrect: true,
+    responseTimeMs: 4_000,
+    skillsExercised: ['basic.directAddition'],
+    usedOnScreenAbacus: false,
+    timestamp: new Date(BASE + slotIndex * 10_000),
+    hadHelp: false,
+    incorrectAttempts: 0,
+    ...over,
+  } as SlotResult
+}
+
+/** One session stored, read back through both paths, rows keyed by responseTimeMs */
+async function readOne(parts: unknown[], results: SlotResult[]) {
+  const { playerId } = await createTestStudent(ephemeralDb.db, 'k1b-one')
+  await store(playerId, [
+    {
+      id: 'one',
+      status: 'completed',
+      parts: parts as SessionPart[],
+      results,
+      completedAt: new Date(BASE + 3_600_000),
+    },
+  ])
+  const history = (await batchGetRecentSessionResults([playerId], 50)).get(playerId) ?? []
+  const sql = (await batchGetRecentBktEvidence([playerId], 50)).get(playerId) ?? []
+  const view = (rows: { responseTimeMs: number; mode?: string | null; evidence?: unknown }[]) =>
+    rows
+      .map((r) => [r.responseTimeMs, r.evidence ?? null, r.mode ?? null] as const)
+      .sort(([a], [b]) => a - b)
+  return { history: view(history), sql: view(sql), historyRows: history, sqlRows: sql }
+}
+
+describe('K1b: what the readers read now', () => {
+  it('counts the S2 rows (evidence, no skillsExercised) on both paths, in their mode', async () => {
+    const { history, sqlEvidence } = await readProfile(0)
+    for (const rows of [history, sqlEvidence]) {
+      const bkt = computeBktFromHistory(rows)
+      expect(bkt.skills.find((s) => s.skillId === S2_SKILL)?.opportunities).toBe(2)
+      expect(bkt.byMode?.abacus?.skills.find((s) => s.skillId === S2_SKILL)?.opportunities).toBe(2)
+    }
+  })
+
+  it('follows evidence.skills over skillsExercised when the two differ', async () => {
+    const { historyRows, sqlRows } = await readOne(
+      [{ partNumber: 1, type: 'abacus' }],
+      [
+        plainRow(0, {
+          responseTimeMs: 1,
+          evidence: { skills: ['basic.heavenBead'], presentation: 'visualization' },
+        }),
+      ]
+    )
+    for (const rows of [historyRows, sqlRows]) {
+      const skills = computeBktFromHistory(rows).skills.map((s) => s.skillId)
+      expect(skills).toEqual(['basic.heavenBead'])
+      expect(rows[0].mode).toBe('visualization')
+    }
+  })
+
+  it("never labels a part of another kind 'linear'; an untyped arithmetic part still is", async () => {
+    const { history, sql } = await readOne(
+      [{ partNumber: 1, kind: 'read_abacus' }, { partNumber: 2 }],
+      [
+        // a kind this image does not know, stamped: its own presentation is its mode
+        plainRow(0, {
+          responseTimeMs: 1,
+          evidence: { skills: ['basic.directAddition'], presentation: 'read_abacus.flash' },
+        }),
+        // the same kind, unstamped: no evidence (before K1b the history said 'linear')
+        plainRow(1, { responseTimeMs: 2 }),
+        // an arithmetic part with no type and a row with no evidence: 'linear', as before
+        plainRow(2, { responseTimeMs: 3, partNumber: 2 }),
+        // a pre-schema row with neither evidence nor a skillsExercised array: dropped
+        plainRow(3, { responseTimeMs: 4, partNumber: 2, skillsExercised: undefined }),
+      ]
+    )
+    const flash = { skills: ['basic.directAddition'], presentation: 'read_abacus.flash' }
+    const linear = { skills: ['basic.directAddition'], presentation: 'linear' }
+    // The history keeps a row with a skillsExercised array (it counts toward nothing)
+    expect(history).toEqual([
+      [1, flash, 'read_abacus.flash'],
+      [2, null, null],
+      [3, linear, 'linear'],
+    ])
+    expect(sql).toEqual([
+      [1, flash, 'read_abacus.flash'],
+      [3, linear, 'linear'],
+    ])
+  })
 })

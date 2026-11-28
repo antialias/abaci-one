@@ -11,6 +11,7 @@ import {
 } from '@/lib/curriculum/linear-entry-policy'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import type { SkillReadinessResult } from '@/lib/curriculum/skill-readiness'
+import { historyTryOf } from '@/test/fixtures/history-try'
 
 const SKILL = 'basic.directAddition'
 let slot = 0
@@ -29,25 +30,27 @@ function result(
   slot++
   // Newest first in the array = newest timestamp; each call is one minute older.
   const timestamp = new Date(Date.UTC(2026, 8, 1, 12, 0, 0) - slot * 60_000)
-  return {
-    sessionId: `s${Math.ceil(slot / 5)}`,
-    partNumber: 1,
-    slotIndex: slot,
-    slotId: `slot-${slot}`,
-    problem: { terms: opts.terms ?? [1, 2, 3], answer: 6, skillsRequired: [opts.skill ?? SKILL] },
-    studentAnswer: isCorrect ? 6 : 7,
-    isCorrect,
-    responseTimeMs: opts.ms ?? 6_000,
-    skillsExercised: [opts.skill ?? SKILL],
-    usedOnScreenAbacus: false,
-    timestamp,
-    hadHelp: opts.hadHelp ?? false,
-    incorrectAttempts: 0,
-    sessionCompletedAt: timestamp,
-    partType: 'visualization',
-    source: opts.source,
-    isRetry: opts.isRetry,
-  }
+  return historyTryOf(
+    {
+      sessionId: `s${Math.ceil(slot / 5)}`,
+      partNumber: 1,
+      slotIndex: slot,
+      slotId: `slot-${slot}`,
+      problem: { terms: opts.terms ?? [1, 2, 3], answer: 6, skillsRequired: [opts.skill ?? SKILL] },
+      studentAnswer: isCorrect ? 6 : 7,
+      isCorrect,
+      responseTimeMs: opts.ms ?? 6_000,
+      skillsExercised: [opts.skill ?? SKILL],
+      usedOnScreenAbacus: false,
+      timestamp,
+      hadHelp: opts.hadHelp ?? false,
+      incorrectAttempts: 0,
+      sessionCompletedAt: timestamp,
+      source: opts.source,
+      isRetry: opts.isRetry,
+    },
+    'visualization'
+  )
 }
 
 function readiness(over: { mastery?: boolean; volume?: boolean } = {}): SkillReadinessResult {

@@ -68,6 +68,7 @@ import { computeStudentSkillMetrics } from '@/lib/curriculum/skill-metrics'
 import { assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
 import { calculateSessionTrends } from '@/lib/curriculum/trends'
 import { extractSessionStats } from '@/lib/session-song/extract-session-stats'
+import { historyTryOf } from '@/test/fixtures/history-try'
 import {
   createEphemeralDatabase,
   createTestStudent,
@@ -210,12 +211,12 @@ const base = baseResults()
 const withPractice = [...base, ...practiceRows()]
 
 function asHistory(results: SlotResult[]): ProblemResultWithContext[] {
-  return results.map((r) => ({
-    ...r,
-    sessionId: 'plan-inv',
-    sessionCompletedAt: new Date(BASE + 3_600_000),
-    partType: r.partNumber === 1 ? 'abacus' : 'linear',
-  }))
+  return results.map((r) =>
+    historyTryOf(
+      { ...r, sessionId: 'plan-inv', sessionCompletedAt: new Date(BASE + 3_600_000) },
+      r.partNumber === 1 ? 'abacus' : 'linear'
+    )
+  )
 }
 
 /** Asserts the reader ignores the practice-only rows. */

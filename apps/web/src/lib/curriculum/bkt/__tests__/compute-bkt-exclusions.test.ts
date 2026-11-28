@@ -13,30 +13,33 @@
 import { describe, expect, it } from 'vitest'
 import { computeBktFromHistory } from '@/lib/curriculum/bkt'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import { historyTryOf } from '@/test/fixtures/history-try'
 
 const SKILL = 'basic.directAddition'
 const BASE_TS = new Date('2025-01-01T10:00:00Z').getTime()
 
 function makeResult(overrides: Partial<ProblemResultWithContext> = {}): ProblemResultWithContext {
   const timestamp = overrides.timestamp ?? new Date(BASE_TS)
-  return {
-    slotId: 'slot-0',
-    partNumber: 1,
-    slotIndex: 0,
-    problem: {} as ProblemResultWithContext['problem'],
-    studentAnswer: 3,
-    isCorrect: true,
-    responseTimeMs: 5000,
-    skillsExercised: [SKILL],
-    usedOnScreenAbacus: false,
-    hadHelp: false,
-    incorrectAttempts: 0,
-    sessionId: 'session-0',
-    sessionCompletedAt: new Date(BASE_TS),
-    partType: 'abacus',
-    ...overrides,
-    timestamp,
-  }
+  return historyTryOf(
+    {
+      slotId: 'slot-0',
+      partNumber: 1,
+      slotIndex: 0,
+      problem: {} as ProblemResultWithContext['problem'],
+      studentAnswer: 3,
+      isCorrect: true,
+      responseTimeMs: 5000,
+      skillsExercised: [SKILL],
+      usedOnScreenAbacus: false,
+      hadHelp: false,
+      incorrectAttempts: 0,
+      sessionId: 'session-0',
+      sessionCompletedAt: new Date(BASE_TS),
+      ...overrides,
+      timestamp,
+    },
+    'abacus'
+  )
 }
 
 function skillFor(history: ProblemResultWithContext[]) {
@@ -57,7 +60,12 @@ describe('compute-bkt teacher-excluded exclusion', () => {
     const withoutWrong = skillFor(threeCorrect())
     const withExcludedWrong = skillFor([
       ...threeCorrect(),
-      makeResult({ slotIndex: 3, isCorrect: false, timestamp: wrongTs, source: 'teacher-excluded' }),
+      makeResult({
+        slotIndex: 3,
+        isCorrect: false,
+        timestamp: wrongTs,
+        source: 'teacher-excluded',
+      }),
     ])
     const withCountedWrong = skillFor([
       ...threeCorrect(),
@@ -83,7 +91,12 @@ describe('compute-bkt teacher-excluded exclusion', () => {
 
     const skill = skillFor([
       ...threeCorrect(),
-      makeResult({ slotIndex: 3, isCorrect: true, timestamp: excludedLaterTs, source: 'teacher-excluded' }),
+      makeResult({
+        slotIndex: 3,
+        isCorrect: true,
+        timestamp: excludedLaterTs,
+        source: 'teacher-excluded',
+      }),
     ])
     expect(skill?.lastPracticedAt?.getTime()).toBe(lastCorrectTs)
   })
@@ -109,7 +122,12 @@ describe('compute-bkt teacher-excluded exclusion', () => {
     const base = skillFor(threeCorrect())
     const withRefresh = skillFor([
       ...threeCorrect(),
-      makeResult({ slotIndex: 3, isCorrect: true, timestamp: refreshTs, source: 'recency-refresh' }),
+      makeResult({
+        slotIndex: 3,
+        isCorrect: true,
+        timestamp: refreshTs,
+        source: 'recency-refresh',
+      }),
     ])
     // pKnown unchanged by the sentinel...
     expect(withRefresh!.pKnown).toBeCloseTo(base!.pKnown, 10)

@@ -27,6 +27,7 @@ import type {
   SessionPlan,
 } from '@/db/schema/session-plans'
 import type { ObserverPosition, PracticeItemRef } from '@/lib/classroom/socket-events'
+import { arithmeticPresentations } from './presentations'
 import type { ArithmeticState } from './state'
 
 /** The plan fields this module reads (position through `partStateOf`). */
@@ -196,25 +197,15 @@ export interface ArithmeticTransitionView {
   presentation: SessionPartType
 }
 
-const LABELS: Record<SessionPartType, string> = {
-  abacus: 'Abacus',
-  visualization: 'Visualization',
-  linear: 'Equations',
-}
-
-const EMOJIS: Record<SessionPartType, string> = {
-  abacus: '🧮',
-  visualization: '🧠',
-  linear: '✏️',
-}
-
+/** Label, emoji and the physical abacus from the part's presentation (`presentations.ts`) */
 export function arithmeticTransitionView(
   part: Pick<SessionPart, 'type'>
 ): ArithmeticTransitionView {
+  const presentation = arithmeticPresentations.get(part.type)
   return {
     kind: 'arithmetic',
-    label: LABELS[part.type] ?? part.type,
-    emoji: EMOJIS[part.type] ?? '⭐',
+    label: presentation?.label ?? part.type,
+    emoji: presentation?.emoji ?? '⭐',
     needsPhysicalAbacus: part.type === 'abacus',
     presentation: part.type,
   }

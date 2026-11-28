@@ -31,6 +31,7 @@ import { deriveLinearGateState } from '@/lib/curriculum/linear-gate'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
 import { weightOfTry } from '@/lib/curriculum/try-weight'
+import { historyTryOf } from '@/test/fixtures/history-try'
 
 const A = 'basic.directAddition'
 const H = 'basic.heavenBead'
@@ -38,26 +39,31 @@ const F = 'fiveComplements.4=5-1'
 const BASE_TS = new Date('2025-03-01T10:00:00Z').getTime()
 
 let n = 0
-function legacy(over: Partial<ProblemResultWithContext>): ProblemResultWithContext {
+function legacy(
+  over: Partial<ProblemResultWithContext> & { partType?: string }
+): ProblemResultWithContext {
   n += 1
-  return {
-    slotId: `slot-${n}`,
-    partNumber: 1,
-    slotIndex: n,
-    problem: { terms: [n, 1], answer: n + 1 } as never,
-    studentAnswer: n + 1,
-    isCorrect: true,
-    responseTimeMs: 4000,
-    skillsExercised: [A],
-    usedOnScreenAbacus: false,
-    hadHelp: false,
-    incorrectAttempts: 0,
-    sessionId: 'legacy-1',
-    sessionCompletedAt: new Date(BASE_TS + 3_600_000),
-    partType: 'abacus',
-    timestamp: new Date(BASE_TS + n * 60_000),
-    ...over,
-  }
+  const { partType = 'abacus', ...rest } = over
+  return historyTryOf(
+    {
+      slotId: `slot-${n}`,
+      partNumber: 1,
+      slotIndex: n,
+      problem: { terms: [n, 1], answer: n + 1 } as never,
+      studentAnswer: n + 1,
+      isCorrect: true,
+      responseTimeMs: 4000,
+      skillsExercised: [A],
+      usedOnScreenAbacus: false,
+      hadHelp: false,
+      incorrectAttempts: 0,
+      sessionId: 'legacy-1',
+      sessionCompletedAt: new Date(BASE_TS + 3_600_000),
+      timestamp: new Date(BASE_TS + n * 60_000),
+      ...rest,
+    },
+    partType
+  )
 }
 
 /** Two legacy sessions: first tries, wrong tries, weighted retries, do-overs, worksheet rows. */

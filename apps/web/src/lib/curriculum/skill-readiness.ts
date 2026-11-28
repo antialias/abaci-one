@@ -19,6 +19,7 @@ import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import type { SkillBktResult } from '@/lib/curriculum/bkt/types'
 import { READINESS_THRESHOLDS } from '@/lib/curriculum/config/readiness-thresholds'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
+import { evidenceSkillsOf } from '@/lib/curriculum/try-evidence'
 
 // =============================================================================
 // Types
@@ -78,7 +79,7 @@ export function filterResultsForSkill(
 ): ProblemResultWithContext[] {
   return allResults.filter(
     (r) =>
-      r.skillsExercised.includes(skillId) &&
+      evidenceSkillsOf(r).includes(skillId) &&
       r.source !== 'recency-refresh' &&
       tryKindOfRow(r) !== 'retry' &&
       isCountedTry(r)

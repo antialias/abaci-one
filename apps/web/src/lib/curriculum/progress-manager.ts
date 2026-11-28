@@ -44,6 +44,7 @@ import type {
   SerializedSlotResult,
   TimingReviewData,
 } from '@/lib/curriculum/timing/review-types'
+import { evidenceSkillsOf } from '@/lib/curriculum/try-evidence'
 
 // ============================================================================
 // CURRICULUM POSITION OPERATIONS
@@ -563,7 +564,7 @@ function selectReportRows(where: SQL | undefined, limit: number) {
 function toPracticeSession(session: ReportRow, report: SessionReport): SessionHistoryEntry {
   // Practice-only do-overs count nowhere (not attempted, not timed)
   const results = countedTries(session.results)
-  const skillsUsed = [...new Set(results.flatMap((r) => r.skillsExercised || []))]
+  const skillsUsed = [...new Set(results.flatMap((r) => evidenceSkillsOf(r)))]
   const { totals, time } = report
   return {
     id: session.id,
@@ -1067,7 +1068,7 @@ export async function analyzeSkillPerformance(playerId: string): Promise<SkillPe
   >()
 
   for (const result of sessionResults) {
-    for (const skillId of result.skillsExercised) {
+    for (const skillId of evidenceSkillsOf(result)) {
       if (!skillStats.has(skillId)) {
         skillStats.set(skillId, { attempts: 0, correct: 0, responseTimes: [] })
       }

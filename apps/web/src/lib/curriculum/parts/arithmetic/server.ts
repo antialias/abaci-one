@@ -48,7 +48,7 @@ export function redeemByDoOver(
  * A part stored without one (old or hand-made rows), or no part at all, is
  * 'linear', main's default for evidence (`bktMode`, `evidence-query.ts`).
  */
-export function arithmeticPresentationOf(part: Pick<SessionPart, 'type'> | undefined): string {
+export function arithmeticPresentationOf(part: { type?: unknown } | undefined): string {
   return typeof part?.type === 'string' ? part.type : 'linear'
 }
 
@@ -62,7 +62,7 @@ export function arithmeticPresentationOf(part: Pick<SessionPart, 'type'> | undef
  * (`session-planner.ts` history, `evidence-query.ts` `toBktEvidence`).
  */
 export function arithmeticEvidenceOf(
-  part: Pick<SessionPart, 'type'> | undefined,
+  part: { type?: unknown } | undefined,
   row: Pick<SlotResult, 'skillsExercised'>
 ): TryEvidence | null {
   const skills: unknown = row.skillsExercised

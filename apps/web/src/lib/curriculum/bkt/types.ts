@@ -4,7 +4,7 @@
  * These types are used throughout the BKT computation module.
  */
 
-import type { SessionPartType, SlotResult } from '@/db/schema/session-plans'
+import type { SlotResult, TryEvidence } from '@/db/schema/session-plans'
 
 /**
  * The minimal persisted attempt data required to replay BKT.
@@ -15,7 +15,6 @@ import type { SessionPartType, SlotResult } from '@/db/schema/session-plans'
  */
 export type BktEvidence = Pick<
   SlotResult,
-  | 'skillsExercised'
   | 'isCorrect'
   | 'responseTimeMs'
   | 'hadHelp'
@@ -33,8 +32,16 @@ export type BktEvidence = Pick<
 > & {
   /** JSON persistence serializes Date values as ISO strings. */
   timestamp: Date | string
-  /** Practice mode for per-mode BKT; absent on legacy evidence. */
-  partType?: SessionPartType
+  /**
+   * What the try is evidence of (practice-kinds plan §3.1): resolved by the
+   * history and the SQL projection (stamped, else derived); null = not
+   * evidence. BKT reads it through `evidenceSkillsOf` (`try-evidence.ts`).
+   */
+  evidence?: TryEvidence | null
+  /** The mastery mode, from `masteryModeOf(evidence.presentation)`; keys per-mode BKT. null = none */
+  mode?: string | null
+  /** A row built by hand (fixtures, simulations) with no `evidence`: what it is evidence of (A4) */
+  skillsExercised?: SlotResult['skillsExercised']
 }
 
 /**
@@ -149,6 +156,6 @@ export interface BktComputeResult {
   interventionNeeded: SkillBktResult[]
   /** Skills that appear mastered (high pKnown with confidence) */
   strengths: SkillBktResult[]
-  /** Per-mode BKT results. Only populated when results have partType. */
+  /** Per-mode BKT results, keyed by mastery mode. Only populated when results have a mode. */
   byMode?: Partial<Record<string, BktModeResult>>
 }

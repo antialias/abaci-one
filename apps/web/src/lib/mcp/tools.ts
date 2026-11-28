@@ -34,6 +34,7 @@ import {
 } from '@/lib/curriculum/session-planner'
 import { type SessionReportSummary, summarizeSessionReport } from '@/lib/curriculum/session-report'
 import { buildSessionReports } from '@/lib/curriculum/session-report-batch'
+import { evidenceSkillsOf } from '@/lib/curriculum/try-evidence'
 import { generateShareId, isValidShareId } from '@/lib/generateShareId'
 import {
   createSessionShare,
@@ -539,7 +540,7 @@ export async function getSkills(playerId: string, status?: string, category?: st
   >()
 
   for (const result of sessionResults) {
-    for (const skillId of result.skillsExercised) {
+    for (const skillId of evidenceSkillsOf(result)) {
       if (!skillStats.has(skillId)) {
         skillStats.set(skillId, {
           attempts: 0,
@@ -621,7 +622,8 @@ export async function getRecentErrors(
     .filter((r) => !r.isCorrect && r.timestamp >= cutoffDate)
     .map((r) => ({
       timestamp: r.timestamp,
-      skillsExercised: r.skillsExercised,
+      // The tool's field keeps its name; its value is the try's evidence skills
+      skillsExercised: evidenceSkillsOf(r),
       responseTimeMs: r.responseTimeMs,
     }))
 

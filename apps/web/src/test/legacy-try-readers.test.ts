@@ -30,6 +30,7 @@ import { deriveLinearGateState } from '@/lib/curriculum/linear-gate'
 import type { ProblemResultWithContext } from '@/lib/curriculum/session-planner'
 import { assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
 import { evidenceWeightOf } from '@/lib/curriculum/try-weight'
+import { historyTryOf } from '@/test/fixtures/history-try'
 
 const A = 'basic.directAddition'
 const F = 'fiveComplements.4=5-1'
@@ -76,24 +77,26 @@ function row(
   n += 1
   const problem = problemOf(partNumber, slotIndex) as { answer: number }
   const isCorrect = over.isCorrect ?? true
-  return {
-    slotId: `p${partNumber}s${slotIndex}`,
-    partNumber: partNumber as never,
-    slotIndex,
-    problem: problem as never,
-    studentAnswer: isCorrect ? problem.answer : 0,
-    isCorrect,
-    responseTimeMs: 4000,
-    skillsExercised: [A],
-    usedOnScreenAbacus: false,
-    hadHelp: false,
-    incorrectAttempts: 0,
-    sessionId,
-    sessionCompletedAt: new Date(BASE_TS + 3_600_000),
-    partType: partNumber === 1 ? 'abacus' : 'linear',
-    timestamp: new Date(BASE_TS + n * 60_000),
-    ...over,
-  }
+  return historyTryOf(
+    {
+      slotId: `p${partNumber}s${slotIndex}`,
+      partNumber: partNumber as never,
+      slotIndex,
+      problem: problem as never,
+      studentAnswer: isCorrect ? problem.answer : 0,
+      isCorrect,
+      responseTimeMs: 4000,
+      skillsExercised: [A],
+      usedOnScreenAbacus: false,
+      hadHelp: false,
+      incorrectAttempts: 0,
+      sessionId,
+      sessionCompletedAt: new Date(BASE_TS + 3_600_000),
+      timestamp: new Date(BASE_TS + n * 60_000),
+      ...over,
+    },
+    partNumber === 1 ? 'abacus' : 'linear'
+  )
 }
 
 // ---------------------------------------------------------------------------

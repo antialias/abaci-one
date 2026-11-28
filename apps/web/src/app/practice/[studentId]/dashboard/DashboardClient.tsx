@@ -63,6 +63,7 @@ import {
   isBktConfident,
   ROTATION_MULTIPLIERS,
 } from '@/lib/curriculum/config'
+import { registeredPresentations } from '@/lib/curriculum/parts/presentations'
 import type { SessionDates } from '@/lib/curriculum/progress-manager'
 import type { PaceAssessment, ProblemResultWithContext } from '@/lib/curriculum/server'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
@@ -75,6 +76,7 @@ import {
   classifyAttemptTiming,
   getEffectiveResponseTimeMs,
 } from '@/lib/curriculum/timing/effective-time'
+import { evidenceSkillsOf } from '@/lib/curriculum/try-evidence'
 import { api } from '@/lib/queryClient'
 import { curriculumKeys, playerKeys, sessionHistoryKeys } from '@/lib/queryKeys'
 import { css } from '../../../../../styled-system/css'
@@ -370,6 +372,16 @@ function computeSkillHealthSummary(
   }
 }
 
+/**
+ * The per-mode mastery chips, one per mastery mode of the registered
+ * presentations, in registration order (practice-kinds plan K1b, R7/R8).
+ */
+const MASTERY_MODE_CHIPS = registeredPresentations.flatMap((p, i, all) =>
+  p.masteryMode !== null && all.findIndex((q) => q.masteryMode === p.masteryMode) === i
+    ? [{ mode: p.masteryMode, emoji: p.emoji, label: p.label }]
+    : []
+)
+
 function processSkills(
   skills: PlayerSkillMastery[],
   problemHistory: ProblemResultWithContext[],
@@ -390,7 +402,7 @@ function processSkills(
   >()
 
   for (const problem of problemHistory) {
-    for (const skillId of problem.skillsExercised) {
+    for (const skillId of evidenceSkillsOf(problem)) {
       if (!skillStats.has(skillId)) {
         skillStats.set(skillId, {
           problems: [],
@@ -867,6 +879,8 @@ export function SkillCard({
       {(() => {
         const modeEntries = Object.entries(skill.pKnownByMode)
         if (modeEntries.length < 2) return null
+        // The dashboard's own short chips for arithmetic's modes; a mode it
+        // has none for shows its presentation's emoji and label
         const modeLabels: Record<string, { emoji: string; short: string }> = {
           abacus: { emoji: '\u{1F9EE}', short: 'Ab' },
           visualization: { emoji: '\u{1F9E0}', short: 'Viz' },
@@ -882,10 +896,10 @@ export function SkillCard({
               marginBottom: '0.25rem',
             })}
           >
-            {(['abacus', 'visualization', 'linear'] as const).map((mode) => {
+            {MASTERY_MODE_CHIPS.map(({ mode, emoji, label }) => {
               const pk = skill.pKnownByMode[mode]
               if (pk === undefined) return null
-              const info = modeLabels[mode]
+              const info = modeLabels[mode] ?? { emoji, short: label }
               const pct = Math.round(pk * 100)
               return (
                 <span

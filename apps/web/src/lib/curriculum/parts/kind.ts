@@ -69,6 +69,33 @@ export interface AttemptPresentation {
   input: string
 }
 
+/**
+ * How a kind's items are shown and answered (practice-kinds plan §1.3, K1).
+ * A kind has one or more; a part names one. Registered per kind
+ * (`arithmetic/presentations.ts`) and looked up by id
+ * (`parts/presentations.ts`); `PartKind.presentations` joins the contract in
+ * K3.
+ */
+export interface Presentation {
+  /** Stored on a try's evidence (`evidence.presentation`) and, from K3, on a part */
+  id: string
+  label: string
+  emoji: string
+  /**
+   * The mode this presentation's evidence counts toward, resolved at read
+   * time (`masteryModeOf`), never stamped; null = its tries are not evidence
+   */
+  masteryMode: string | null
+  /** The ledger's presentation axes (§3.4); data the adapter copies */
+  axes: AttemptPresentation
+  /** Whether the kid works this presentation on the physical abacus */
+  needsPhysicalAbacus(part: StoredPart): boolean
+  /** false for a timed presentation: the shell never auto-pauses mid-item */
+  autoPause: boolean
+  /** Time-estimate multiplier; default 1 (moves here from `time-estimation.ts` in K6) */
+  timeMultiplier?: number
+}
+
 /** The BKT modes; a kind whose tries are not BKT evidence answers null. */
 export type BktMode = 'abacus' | 'visualization' | 'linear'
 

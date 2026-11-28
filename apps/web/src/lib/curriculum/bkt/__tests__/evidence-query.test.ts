@@ -149,7 +149,8 @@ describe('batchGetRecentBktEvidence', () => {
 
     expect(evidence).toEqual([
       expect.objectContaining({
-        skillsExercised: ['fiveComplement.add.4'],
+        evidence: { skills: ['fiveComplement.add.4'], presentation: 'abacus' },
+        mode: 'abacus',
         isCorrect: false,
         responseTimeMs: 30_000,
         hadHelp: true,
@@ -157,11 +158,11 @@ describe('batchGetRecentBktEvidence', () => {
         source: 'teacher-corrected',
         originalSource: 'practice',
         timingReview,
-        partType: 'abacus',
       }),
     ])
     expect('problem' in evidence![0]).toBe(false)
     expect('sessionId' in evidence![0]).toBe(false)
+    expect('skillsExercised' in evidence![0]).toBe(false)
   })
 
   it('enforces the recent-session limit per player inside the query', async () => {
@@ -182,7 +183,7 @@ describe('batchGetRecentBktEvidence', () => {
     }
 
     const evidence = (await batchGetRecentBktEvidence([playerId], 2)).get(playerId)!
-    expect(evidence.map((item) => item.skillsExercised[0])).toEqual(['skill-4', 'skill-3'])
+    expect(evidence.map((item) => item.evidence?.skills[0])).toEqual(['skill-4', 'skill-3'])
   })
 
   it('filters session status and null completion dates before ranking', async () => {
@@ -222,7 +223,10 @@ describe('batchGetRecentBktEvidence', () => {
     })
 
     const evidence = (await batchGetRecentBktEvidence([playerId])).get(playerId)!
-    expect(evidence.map((item) => item.skillsExercised[0]).sort()).toEqual(['completed', 'refresh'])
+    expect(evidence.map((item) => item.evidence?.skills[0]).sort()).toEqual([
+      'completed',
+      'refresh',
+    ])
   })
 
   it('chunks large player lists without losing or mixing evidence', async () => {
@@ -241,7 +245,7 @@ describe('batchGetRecentBktEvidence', () => {
     const result = await batchGetRecentBktEvidence([...playerIds, playerIds[0]])
     expect(result.size).toBe(playerIds.length)
     playerIds.forEach((playerId, index) => {
-      expect(result.get(playerId)?.[0].skillsExercised).toEqual([`chunk-skill-${index}`])
+      expect(result.get(playerId)?.[0].evidence?.skills).toEqual([`chunk-skill-${index}`])
     })
   })
 
@@ -523,12 +527,16 @@ describe('batchGetRecentBktEvidence', () => {
     expect((await bkt(a))[0].opportunities).toBe(4)
   })
 
-  // Practice kinds K0 (plan of record §4, reviews R1 and S2): the SQL path's
-  // `toBktEvidence` guard (`if (!Array.isArray(raw.skillsExercised)) return
-  // null`) pinned as it stands, beside the same pin on
-  // `batchGetRecentSessionResults`. K1b changes it knowingly (to "has
-  // `evidence` or a `skillsExercised` array") and updates this test with the reason.
-  it('yields no evidence for a row without a skillsExercised array; [] is evidence (pinned before K1b)', async () => {
+  // Practice kinds K0 pinned the SQL path's guard (`if
+  // (!Array.isArray(raw.skillsExercised)) return null`, reviews R1 and S2)
+  // beside the same pin on `batchGetRecentSessionResults`: a row carrying only
+  // K1's envelope `evidence` yielded none. K1b changes it on purpose (plan of
+  // record §4) to "has `evidence` or a `skillsExercised` array", read from
+  // `$.evidence`: the evidence-only row is evidence now. A row with neither
+  // still yields none, an unstamped row's evidence is still its
+  // `skillsExercised` (amendment A4, so `[]` is still evidence of nothing),
+  // and a stamped `null` is recorded, not counted.
+  it('yields evidence for a row with evidence or a skillsExercised array; [] is evidence (K1b)', async () => {
     const { playerId } = await createTestStudent(ephemeralDb.db, 'skills-guard')
     const { skillsExercised: _omitted, ...withoutSkills } = makeSlotResult({
       responseTimeMs: 1_001,
@@ -541,26 +549,30 @@ describe('batchGetRecentBktEvidence', () => {
         withoutSkills as SlotResult,
         makeSlotResult({ responseTimeMs: 1_002, skillsExercised: null as never }),
         makeSlotResult({ responseTimeMs: 1_003, skillsExercised: 'basic.directAddition' as never }),
-        // a row carrying only K1's envelope `evidence` yields none today
+        // a row carrying only K1's envelope `evidence` (none before K1b)
         {
           ...withoutSkills,
           responseTimeMs: 1_004,
           evidence: { skills: ['basic.directAddition'], presentation: 'linear' },
         } as unknown as SlotResult,
+        // stamped null: recorded, not counted, whatever skillsExercised says
+        makeSlotResult({ responseTimeMs: 1_005, evidence: null }),
       ],
     })
 
     const evidence = (await batchGetRecentBktEvidence([playerId])).get(playerId) ?? []
-    expect(evidence).toHaveLength(1)
-    expect(evidence[0]).toMatchObject({ skillsExercised: [], responseTimeMs: 1_000 })
+    expect(evidence.map((e) => [e.responseTimeMs, e.evidence?.skills, e.mode]).sort()).toEqual([
+      [1_000, [], 'linear'],
+      [1_004, ['basic.directAddition'], 'linear'],
+    ])
   })
 
-  describe("the part kind's bktMode decides the mode (Phase 2)", () => {
+  describe("the try's evidence decides the mode (Phase 2; K1b: presentation, not bktMode)", () => {
     afterEach(() => {
       vi.restoreAllMocks()
     })
 
-    it('excludes rows of a part whose kind answers bktMode null; keeps the rest', async () => {
+    it('excludes rows of a part of a kind this image does not know; keeps the rest', async () => {
       const { playerId } = await createTestStudent(ephemeralDb.db, 'bkt-mode-null')
       const nullKindPart = { kind: 'read_abacus', partNumber: 2, content: { items: [] } }
       await insertSession({
@@ -573,14 +585,14 @@ describe('batchGetRecentBktEvidence', () => {
         ],
       })
 
-      // 'read_abacus' is no kind this image knows: bktModeOf answers null
+      // 'read_abacus' is no kind this image knows: its unstamped rows have no evidence
       const evidence = (await batchGetRecentBktEvidence([playerId])).get(playerId)!
-      expect(evidence.map((e) => [e.skillsExercised, e.partType])).toEqual([
+      expect(evidence.map((e) => [e.evidence?.skills, e.mode])).toEqual([
         [['basic.directAddition'], 'abacus'],
       ])
     })
 
-    it('excludes every row of a registered kind whose bktMode is null', async () => {
+    it('excludes every row of a registered kind whose evidenceOf is null', async () => {
       const { playerId } = await createTestStudent(ephemeralDb.db, 'bkt-mode-null-registered')
       await insertSession({
         id: 'bkt-mode-null-registered-session',
@@ -591,7 +603,7 @@ describe('batchGetRecentBktEvidence', () => {
         ],
         results: [makeSlotResult({ partNumber: 1 }), makeSlotResult({ partNumber: 2 })],
       })
-      vi.spyOn(arithmeticKind, 'bktMode').mockReturnValue(null)
+      vi.spyOn(arithmeticKind, 'evidenceOf').mockReturnValue(null)
 
       expect((await batchGetRecentBktEvidence([playerId])).get(playerId)).toEqual([])
     })
@@ -614,7 +626,7 @@ describe('batchGetRecentBktEvidence', () => {
 
       const modes = (await batchGetRecentBktEvidence([playerId]))
         .get(playerId)!
-        .map((e) => e.partType)
+        .map((e) => e.mode)
         .sort()
       expect(modes).toEqual(['abacus', 'linear', 'visualization'])
     })
@@ -630,9 +642,7 @@ describe('batchGetRecentBktEvidence', () => {
         results: [makeSlotResult({ partNumber: 1 }), makeSlotResult({ partNumber: 2 })],
       })
 
-      const modes = (await batchGetRecentBktEvidence([playerId]))
-        .get(playerId)!
-        .map((e) => e.partType)
+      const modes = (await batchGetRecentBktEvidence([playerId])).get(playerId)!.map((e) => e.mode)
       expect(modes).toEqual(['linear', 'linear'])
     })
   })

@@ -9,6 +9,7 @@
 import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import { BKT_THRESHOLDS } from '../config/bkt-integration'
 import { getEffectiveResponseTimeMs } from '../timing/effective-time'
+import { evidenceSkillsOf } from '../try-evidence'
 import { evidenceWeightOf } from '../try-weight'
 import { calculateConfidence, getUncertaintyRange } from './confidence'
 import { type BlameMethod, updateOnCorrect, updateOnIncorrectWithMethod } from './conjunctive-bkt'
@@ -110,8 +111,9 @@ export function computeBktFromHistory(
 
   // Process each problem result
   for (const result of sorted) {
-    // Extract skill IDs from the result (skillsExercised tracks what was actually used)
-    const skillIds = result.skillsExercised ?? []
+    // The skills the try is evidence of (`evidence.skills`; none for a row
+    // that is not evidence)
+    const skillIds = evidenceSkillsOf(result)
     if (skillIds.length === 0) continue
 
     // Teacher/parent excluded this attempt from tracking (mastery scope,
@@ -149,13 +151,13 @@ export function computeBktFromHistory(
       }
     }
 
-    // Initialize per-mode skill states if this result has a partType
-    const partType = (result as { partType?: string }).partType
-    if (partType) {
-      if (!modeSkillStates.has(partType)) {
-        modeSkillStates.set(partType, new Map())
+    // Initialize per-mode skill states if this result has a mastery mode
+    const mode = result.mode
+    if (mode) {
+      if (!modeSkillStates.has(mode)) {
+        modeSkillStates.set(mode, new Map())
       }
-      const modeMap = modeSkillStates.get(partType)!
+      const modeMap = modeSkillStates.get(mode)!
       for (const skillId of skillIds) {
         if (!modeMap.has(skillId)) {
           const params = getDefaultParams(skillId)
@@ -181,8 +183,8 @@ export function computeBktFromHistory(
           state.lastPracticedAt = timestamp
         }
         // Also update mode-specific lastPracticedAt
-        if (partType) {
-          const modeState = modeSkillStates.get(partType)?.get(skillId)
+        if (mode) {
+          const modeState = modeSkillStates.get(mode)?.get(skillId)
           if (modeState && (!modeState.lastPracticedAt || timestamp > modeState.lastPracticedAt)) {
             modeState.lastPracticedAt = timestamp
           }
@@ -266,8 +268,8 @@ export function computeBktFromHistory(
     }
 
     // Per-mode BKT updates (independent computation using mode-specific priors)
-    if (partType) {
-      const modeMap = modeSkillStates.get(partType)!
+    if (mode) {
+      const modeMap = modeSkillStates.get(mode)!
       const modeSkillRecords = skillIds.map((skillId: string) => {
         const modeState = modeMap.get(skillId)!
         return {
