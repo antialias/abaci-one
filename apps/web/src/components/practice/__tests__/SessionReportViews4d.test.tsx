@@ -52,8 +52,8 @@ vi.mock('@/lib/socket', () => ({
       disconnect: vi.fn(),
       connected: false,
       io: {
-        reconnectionDelay: vi.fn((v?: number) => (v === undefined ? 1000 : undefined)),
-        reconnectionDelayMax: vi.fn((v?: number) => (v === undefined ? 5000 : undefined)),
+        reconnectionDelay: vi.fn((v?: number): any => (v === undefined ? 1000 : undefined)),
+        reconnectionDelayMax: vi.fn((v?: number): any => (v === undefined ? 5000 : undefined)),
         engine: { close: vi.fn() },
       },
       fire: (event, ...args) => {
@@ -375,7 +375,7 @@ describe('teacher cards: the teacher-only classroom room (no poll)', () => {
     const { result } = renderHook(() => useClassroomSocket('cls-1'), { wrapper: wrapperOf(qc) })
     const socket = sockets[0]
     const joins = () =>
-      socket.emit.mock.calls.filter(([event]: [string]) => event === 'join-classroom').length
+      socket.emit.mock.calls.filter(([event]: any[]) => event === 'join-classroom').length
     const invalidated = () => qc.getQueryState(classroomKeys.activeSessions('cls-1'))?.isInvalidated
     expect(result.current.live).toBe('connecting')
     act(() => socket.fire('connect'))
@@ -432,7 +432,7 @@ describe('teacher cards: the teacher-only classroom room (no poll)', () => {
     expect(socket.disconnect).toHaveBeenCalledTimes(1)
     expect(socket.io.engine.close).not.toHaveBeenCalled()
     act(() => socket.fire('connect'))
-    expect(socket.emit.mock.calls.filter(([e]: [string]) => e === 'join-classroom')).toHaveLength(1)
+    expect(socket.emit.mock.calls.filter(([e]: any[]) => e === 'join-classroom')).toHaveLength(1)
     act(() => socket.fire('disconnect'))
     expect(result.current.live).toBe('refused')
   })
