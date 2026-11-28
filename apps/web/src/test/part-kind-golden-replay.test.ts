@@ -42,6 +42,13 @@
  * A try that clears a skipped break's leftover legacy fields no longer bumps
  * `flowVersion` or moves `flowUpdatedAt` (P5a-3 (2), P6b-5). Every other
  * line is as before.
+ *
+ * Practice-kinds K1a re-recorded it for additive fields only: every stored
+ * try gained its envelope (`itemId`, `outcome`, `answer`, `evidence`,
+ * `payload`; plan §1.3, §3.1). Every other line, `isCorrect` included, is as
+ * before. Judge parity: the server's judge agrees with the client's verdict
+ * on every try of every scenario (a disagreement is logged, never stored;
+ * checked after each scenario below).
  */
 
 import { eq } from 'drizzle-orm'
@@ -341,15 +348,24 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
   let n = 0
   const next = () => tid(++n)
 
+  let warn: ReturnType<typeof vi.spyOn>
+
   beforeEach(async () => {
     eph = createEphemeralDatabase()
     setCurrentEphemeralDb(eph.db)
     ;({ playerId } = await createTestStudent(eph.db, 'golden'))
     n = 0
+    warn = vi.spyOn(console, 'warn')
   })
   afterEach(() => {
+    // Judge parity (K1a): the server's judge never disagreed with the client
+    const disagreements = warn.mock.calls.filter((c) =>
+      String(c[0]).includes('judge disagrees with the client verdict')
+    )
+    warn.mockRestore()
     setCurrentEphemeralDb(null)
     eph.cleanup()
+    expect(disagreements).toEqual([])
   })
 
   it('first tries through every part, with breaks: transitions and completion', async () => {

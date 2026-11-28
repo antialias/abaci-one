@@ -134,6 +134,13 @@ function rowOf(parts: SessionPart[], spec: TrySpec, n: number): SlotResult {
     round,
     practiceOnly: false,
     partIndex: spec.partIndex,
+    // The try envelope, as the recorders stamp it from K1a on (practice-kinds
+    // plan §1.3): every report built from these rows reads as before
+    itemId: slot.slotId,
+    outcome: 'answered',
+    answer: base.studentAnswer,
+    evidence: { skills: base.skillsExercised, presentation: part.type },
+    payload: { kind: 'arithmetic' },
   }
 }
 

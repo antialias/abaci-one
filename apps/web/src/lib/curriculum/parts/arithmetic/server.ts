@@ -10,8 +10,9 @@
  * either side; the name follows the plan's module layout.
  */
 
-import type { SessionPart } from '@/db/schema/session-plans'
-import type { KindTry, PartKind } from '../kind'
+import type { SessionPart, SlotResult, TryEvidence } from '@/db/schema/session-plans'
+import type { KindTry, KindTryRecord, PartKind } from '../kind'
+import { formatProblemExpression } from './describe'
 import { arithmeticProgress } from './report'
 import {
   type ArithmeticContent,
@@ -40,6 +41,33 @@ export function redeemByDoOver(
   const slotIndex = slots.findIndex((s) => s.slotId === t.itemId)
   if (slotIndex < 0) return state
   return redeemSlot(state, slotIndex)
+}
+
+/**
+ * The presentation an arithmetic part's tries were practiced in: its `type`.
+ * A part stored without one (old or hand-made rows), or no part at all, is
+ * 'linear', main's default for evidence (`bktMode`, `evidence-query.ts`).
+ */
+export function arithmeticPresentationOf(part: Pick<SessionPart, 'type'> | undefined): string {
+  return typeof part?.type === 'string' ? part.type : 'linear'
+}
+
+/**
+ * What an arithmetic try is evidence of: the skills the row says it exercised
+ * and its part's presentation. `skillsExercised` is today's evidence, the
+ * list every BKT reader and the skill-attempt bump read; it is not always the
+ * problem's `skillsRequired` (seeded rows store every skill a problem used,
+ * the journey simulator the skills it challenged). A row without a
+ * `skillsExercised` array is not evidence, as every reader skips it today
+ * (`session-planner.ts` history, `evidence-query.ts` `toBktEvidence`).
+ */
+export function arithmeticEvidenceOf(
+  part: Pick<SessionPart, 'type'> | undefined,
+  row: Pick<SlotResult, 'skillsExercised'>
+): TryEvidence | null {
+  const skills: unknown = row.skillsExercised
+  if (!Array.isArray(skills)) return null
+  return { skills: skills as string[], presentation: arithmeticPresentationOf(part) }
 }
 
 export const arithmeticKind: PartKind<
@@ -88,6 +116,22 @@ export const arithmeticKind: PartKind<
     const problem = slots.find((s) => s.slotId === itemId)?.problem
     return problem !== undefined && answer === problem.answer
   },
+
+  evidenceOf: (part, t: KindTryRecord) => arithmeticEvidenceOf(part, t.result),
+
+  describe(_part, t) {
+    const problem = t.payload.problem as SlotResult['problem'] | undefined
+    if (!problem || !Array.isArray(problem.terms)) return 'a problem'
+    return formatProblemExpression(problem.terms, problem.answer)
+  },
+
+  // The stored payload is `{ kind: 'arithmetic' }`: the snapshot stays at top
+  // level (K6, K14), and the in-memory payload lifts it
+  payloadOf: (row) => ({
+    ...(row.payload ?? { kind: 'arithmetic' }),
+    problem: row.problem,
+    usedOnScreenAbacus: row.usedOnScreenAbacus,
+  }),
 
   // What the ledger adapter copies today (L/ledger/adapters/problem-result.ts)
   presentationOf: (part) => ({

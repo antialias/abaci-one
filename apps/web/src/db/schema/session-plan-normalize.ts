@@ -10,6 +10,7 @@
  */
 
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
+import { arithmeticEvidenceOf, arithmeticKind } from '@/lib/curriculum/parts/arithmetic/server'
 import {
   type ArithmeticState,
   arithmeticPartStateOf,
@@ -25,7 +26,10 @@ import type {
   SessionPart,
   SessionPlan,
   SlotResult,
+  TryEvidence,
   TryKind,
+  TryOutcome,
+  TryPayload,
 } from './session-plans'
 
 export interface Try {
@@ -49,7 +53,19 @@ export interface Try {
   /** Voided by worksheet unapproval (Phase 3a): counts nowhere */
   voided: boolean
   isCorrect: boolean
+  /**
+   * The top-level `studentAnswer`, as every reader of it shows it today (a
+   * skip's is the correct answer, the legacy projection, S4). The envelope's
+   * `answer` (null unless answered) is `envelopeOfRow(result).answer`; this
+   * field moves to it when its readers do (K5b).
+   */
   answer: number
+  /** Stamped from K1a on; 'answered' for older rows (a skip read from them is wrong either way) */
+  outcome: TryOutcome
+  /** What the try is evidence of: stamped (null = not counted), else derived (§3.1) */
+  evidence: TryEvidence | null
+  /** The kind's payload, completed by its `payloadOf` (arithmetic lifts the top-level snapshot) */
+  payload: TryPayload
   /** As stored; readers weigh the row through `evidenceWeightOf` (try-weight.ts) */
   masteryWeight: number | undefined
   recordedAt: SlotResult['timestamp']
@@ -117,6 +133,66 @@ export function resolveItemId(result: SlotResult, parts: readonly SessionPart[])
   return `legacy-item:${result.partNumber}:${slotIndex}`
 }
 
+/** The part a row belongs to: its stamped `partIndex`, else the part its `partNumber` names. */
+function partIndexOfRow(result: SlotResult, parts: readonly SessionPart[]): number {
+  return result.partIndex ?? parts.findIndex((p) => p.partNumber === result.partNumber)
+}
+
+/** The envelope fields of a try (practice-kinds plan §1.3, §3.1). */
+export type TryEnvelope = Required<
+  Pick<SlotResult, 'itemId' | 'outcome' | 'answer' | 'evidence' | 'payload'>
+>
+
+/**
+ * A row's envelope (practice-kinds plan §3.1). Stamped fields win; a row
+ * stored without them (before K1a, or by a pre-K1 image after a rollback,
+ * R13) derives them: the item `resolveItemId` names, `outcome: 'answered'`,
+ * its `studentAnswer`, its kind's evidence and payload. A row whose part is
+ * not in `parts` is a legacy arithmetic row ('linear', as every evidence
+ * reader defaults it); a part of a kind this image does not know is not
+ * evidence.
+ *
+ * The writers other than the live recorders (worksheet approval, seeds) stamp
+ * what this derives, so their rows read the same stamped or not (R16).
+ */
+export function envelopeOfRow(result: SlotResult, parts: readonly SessionPart[]): TryEnvelope {
+  const part = parts[partIndexOfRow(result, parts)]
+  const outcome = result.outcome ?? 'answered'
+  let evidence: TryEvidence | null
+  if (result.evidence !== undefined) evidence = result.evidence
+  else if (!part) evidence = arithmeticEvidenceOf(undefined, result)
+  else {
+    const kind = findPartKind(part)
+    evidence = kind
+      ? kind.evidenceOf(part, { result, outcome, payload: completedPayloadOf(result, part) })
+      : null
+  }
+  return {
+    itemId: result.itemId ?? resolveItemId(result, parts),
+    outcome,
+    answer:
+      result.answer !== undefined
+        ? result.answer
+        : outcome === 'answered'
+          ? result.studentAnswer
+          : null,
+    evidence,
+    payload: result.payload ?? { kind: part ? kindIdOf(part) : 'arithmetic' },
+  }
+}
+
+/**
+ * A row's payload as readers see it: completed by its kind's `payloadOf`
+ * (arithmetic lifts `problem` and `usedOnScreenAbacus`); a row whose part is
+ * not in `parts` is legacy arithmetic; a kind this image does not know keeps
+ * what is stored.
+ */
+function completedPayloadOf(result: SlotResult, part: SessionPart | undefined): TryPayload {
+  const kind = part ? findPartKind(part) : arithmeticKind
+  if (kind) return kind.payloadOf(result)
+  return result.payload ?? { kind: part ? kindIdOf(part) : 'arithmetic' }
+}
+
 /**
  * A do-over's round and practice-only flag from the item's earlier tries:
  * round = prior tries that are not practice-only (M23), practice-only = the
@@ -144,8 +220,10 @@ export function normalizeTry(
   parts: readonly SessionPart[],
   prior: readonly Try[]
 ): Try {
-  const itemId = resolveItemId(result, parts)
+  const envelope = envelopeOfRow(result, parts)
+  const itemId = envelope.itemId
   const ofItem = prior.filter((t) => t.itemId === itemId)
+  const partIndex = partIndexOfRow(result, parts)
 
   let kind: TryKind
   let round: number
@@ -170,7 +248,7 @@ export function normalizeTry(
   return {
     tryId: tryIdOf(result, arrayIndex, planId),
     itemId,
-    partIndex: result.partIndex ?? parts.findIndex((p) => p.partNumber === result.partNumber),
+    partIndex,
     partNumber: result.partNumber,
     kind,
     round,
@@ -179,6 +257,9 @@ export function normalizeTry(
     voided: result.voided === true,
     isCorrect: result.isCorrect,
     answer: result.studentAnswer,
+    outcome: envelope.outcome,
+    evidence: envelope.evidence,
+    payload: completedPayloadOf(result, parts[partIndex]),
     masteryWeight: result.masteryWeight,
     recordedAt: result.timestamp,
     arrayIndex,

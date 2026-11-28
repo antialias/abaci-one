@@ -1,6 +1,7 @@
 import { createId } from '@paralleldrive/cuid2'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '../../db'
+import { envelopeOfRow } from '../../db/schema/session-plan-normalize'
 import type { SessionPart, SessionSummary, SlotResult } from '../../db/schema/session-plans'
 import type { GameResultsReport } from '../arcade/game-sdk/types'
 import { directEnrollStudent } from '../classroom/enrollment-manager'
@@ -235,6 +236,9 @@ export async function createTestStudent(
             estimatedMinutes: 30,
           },
         ]
+        // The try envelope as the normalizer derives it (practice-kinds plan
+        // R16): the seeded rows read the same stamped or not
+        const sessionResults = orderedResults.map((r) => ({ ...r, ...envelopeOfRow(r, parts) }))
 
         const summary: SessionSummary = {
           focusDescription: `Test session ${sessionNumber} for ${profile.name} (${sessionAgeDays} days ago)`,
@@ -270,7 +274,7 @@ export async function createTestStudent(
             avgResponseTimeMs: 5000,
           },
           adjustments: [],
-          results: orderedResults,
+          results: sessionResults,
           createdAt: sessionStartTime,
           approvedAt: sessionStartTime,
           startedAt: sessionStartTime,

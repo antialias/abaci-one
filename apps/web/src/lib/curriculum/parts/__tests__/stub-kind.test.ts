@@ -42,8 +42,12 @@ describe('a stub kind against the contract', () => {
     expect(importsOf(read('fixtures/read-abacus-kind.ts'))).toEqual(['../../kind'])
     const contract = read('../kind.ts')
     expect(contract).not.toMatch(SLOT_WORDS)
-    expect(importsOf(contract)).toEqual(['@/db/schema/session-plans']) // `import type { TryKind }`
-    expect(contract).toMatch(/^import type \{ TryKind \} from '@\/db\/schema\/session-plans'$/m)
+    // Type-only: the try kind and, from K1a (practice-kinds plan §1.3), the
+    // envelope's types; the stored row is named `StoredTry`, not by its shape
+    expect(importsOf(contract)).toEqual(['@/db/schema/session-plans'])
+    expect(contract).toMatch(
+      /^import type \{\s*StoredTry,\s*TryEvidence,\s*TryKind,\s*TryOutcome,\s*TryPayload,\s*\} from '@\/db\/schema\/session-plans'$/m
+    )
   })
 
   it('is assignable to the registry type and plays through by the contract alone', () => {
