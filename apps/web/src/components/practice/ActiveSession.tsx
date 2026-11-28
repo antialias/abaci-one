@@ -23,7 +23,6 @@ import {
   type OnScreenItem,
 } from '@/lib/curriculum/parts/arithmetic/session-view'
 import { getCurrentProblemInfo, MAX_RETRY_EPOCHS } from '@/lib/curriculum/parts/arithmetic/state'
-import { applyResponseTimeGuard } from '@/lib/curriculum/timing/response-time-guard'
 import { css } from '../../../styled-system/css'
 import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'
 import { BrowseModeView } from './BrowseModeView'
@@ -59,6 +58,7 @@ import {
   useInteractionPhase,
 } from './hooks/useInteractionPhase'
 import { useProgressiveAssistance } from './hooks/useProgressiveAssistance'
+import { tryResponseTime } from './hooks/useTryLifecycle'
 import { LinearProblem } from './LinearProblem'
 // Audio disabled for practice sessions (use abacus / visualize)
 import { NumericKeypad } from './NumericKeypad'
@@ -1432,11 +1432,9 @@ export function ActiveSession({
     // the capture-time timing guard (#156): caps idle/backgrounded or
     // clock-anomaly deltas at this child's auto-pause threshold and flags the
     // sample (raw preserved) so #157/#158 can quarantine and review it.
-    const rawResponseTimeMs = Date.now() - attemptData.startTime - attemptData.accumulatedPauseMs
-    const timingGuard = applyResponseTimeGuard(
-      rawResponseTimeMs,
-      assistance.machineState.context.thresholds.autoPauseMs,
-      'client'
+    const timingGuard = tryResponseTime(
+      attemptData,
+      assistance.machineState.context.thresholds.autoPauseMs
     )
     const isCorrect = answerNum === attemptData.problem.answer
     // The round of the problem on screen, not the plan's (which can lag)
@@ -1693,11 +1691,9 @@ export function ActiveSession({
     // Record as incorrect with help. Same capture-time timing guard (#156) as
     // handleSubmit — a skip after a long idle/backgrounded stretch must not
     // store an unbounded response time.
-    const rawResponseTimeMs = Date.now() - attempt.startTime - attempt.accumulatedPauseMs
-    const timingGuard = applyResponseTimeGuard(
-      rawResponseTimeMs,
-      assistance.machineState.context.thresholds.autoPauseMs,
-      'client'
+    const timingGuard = tryResponseTime(
+      attempt,
+      assistance.machineState.context.thresholds.autoPauseMs
     )
     const result: SlotResultSubmission & { partIndex: number; tryId: string } = {
       ...answeredProblemIdentity(plan, attempt),
