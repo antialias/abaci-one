@@ -470,7 +470,8 @@ describe('batchGetRecentSessionResults', () => {
   // "has `evidence` or a `skillsExercised` array": the evidence-only row is
   // now kept. A row with neither is still dropped, and an unstamped row's
   // evidence is still derived from its `skillsExercised` (amendment A4), so
-  // the other rows read as before.
+  // the other rows read as before. A stamped `null` is recorded, not counted
+  // (§1.3): dropped whatever its skillsExercised, as the SQL path drops it (A8).
   it('keeps rows with evidence or a skillsExercised array (K1b)', async () => {
     const { playerId } = await createTestStudent(ephemeralDb.db, 'row-filter')
     const at = new Date('2025-01-01T10:00:00Z')
@@ -488,6 +489,7 @@ describe('batchGetRecentSessionResults', () => {
         withoutSkills as SlotResult,
         row('null-skills', { skillsExercised: null }),
         row('string-skills', { skillsExercised: 'basic.directAddition' }),
+        row('null-evidence', { evidence: null }),
         // a row carrying only K1's envelope `evidence` (dropped before K1b)
         row('evidence-only', {
           skillsExercised: undefined,

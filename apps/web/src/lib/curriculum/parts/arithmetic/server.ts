@@ -46,7 +46,8 @@ export function redeemByDoOver(
 /**
  * The presentation an arithmetic part's tries were practiced in: its `type`.
  * A part stored without one (old or hand-made rows), or no part at all, is
- * 'linear', main's default for evidence (`bktMode`, `evidence-query.ts`).
+ * 'linear', as every evidence reader read it before K1b (`partType ??
+ * 'linear'`); `evidenceOfRow` derives an unstamped row's evidence from it.
  */
 export function arithmeticPresentationOf(part: { type?: unknown } | undefined): string {
   return typeof part?.type === 'string' ? part.type : 'linear'

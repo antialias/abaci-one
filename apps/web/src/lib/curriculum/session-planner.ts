@@ -29,12 +29,12 @@ import { isCountedTry, sameProblem } from '@/db/schema/session-plan-helpers'
 import {
   currentItemOf,
   doOverStamp,
-  evidenceOfRow,
   evidencePartsOf,
   isClientTryId,
   mintTryId,
   normalizeTries,
   partStateOf,
+  resolvedEvidenceOfRow,
 } from '@/db/schema/session-plan-normalize'
 import {
   calculateSessionHealth,
@@ -101,7 +101,6 @@ import { explainLinearReadiness } from './linear-readiness'
 import { resolveEnabledPartTypes } from './part-gating'
 import { arithmeticCursorSlotIndex } from './parts/arithmetic/session-view'
 import type { AnyPartKind } from './parts/kind'
-import { masteryModeOf } from './parts/presentations'
 import { isPartPlayable, kindIdOf, partKindOf } from './parts/registry'
 import { generateProblemFromConstraints } from './problem-generator'
 import {
@@ -123,7 +122,6 @@ import {
 import { getWeakSkillIds, type SessionMode } from './session-mode'
 import { describeSkippedPart } from './skipped-parts'
 import { sanitizeResultTiming } from './timing/response-time-guard'
-import { asTryEvidence } from './try-evidence'
 import { weightOfTry } from './try-weight'
 
 // ============================================================================
@@ -1201,12 +1199,12 @@ export interface HistoryTry extends SlotResult {
   sessionId: string
   /** When the session was completed */
   sessionCompletedAt: Date
-  /** What the try is evidence of: stamped (null = not counted), else derived (§3.1) */
-  evidence: TryEvidence | null
-  /** The presentation it was practiced in (`evidence.presentation`); null when not evidence */
-  presentation: string | null
-  /** The mastery mode it counts toward, resolved now (`masteryModeOf`); null = none */
-  mode: string | null
+  /** What the try is evidence of: stamped, else derived (§3.1) */
+  evidence: TryEvidence
+  /** The presentation it was practiced in (`evidence.presentation`) */
+  presentation: string
+  /** The mastery mode it counts toward, resolved now (`masteryModeOf`) */
+  mode: string
 }
 
 /** The history row's name before K1b, kept for its readers */
@@ -1298,17 +1296,14 @@ export async function batchGetRecentSessionResults(
     const parts = evidencePartsOf(session.partTypeMap)
 
     for (const result of session.results) {
-      // What the row is evidence of: stamped, else derived from its part
-      // (§3.1). A row of a kind this image does not know derives none, and
-      // a stamped row says its own presentation: neither is called 'linear'.
-      const evidence = asTryEvidence(evidenceOfRow(result, parts))
-      // Some pre-schema fixtures (e.g. validation seed plans) carry result
-      // entries that don't match SlotResult — missing skillsExercised,
-      // partNumber, etc. Skip them so downstream consumers can assume the
-      // contract holds: a row has evidence (any kind's, K1b) or at least
-      // arithmetic's `skillsExercised: []` from `recordSlotResult`.
-      if (evidence === null && !Array.isArray((result as Partial<SlotResult>).skillsExercised))
-        continue
+      // What the row is evidence of and the mode it counts toward: stamped,
+      // else derived from its part (§3.1), as the SQL path derives it. A row
+      // with none counts toward nothing and is left out, as SQL leaves it:
+      // a stamped `null` (recorded, not counted, §1.3), a kind this image
+      // does not know (never called 'linear'), and pre-schema fixtures
+      // (e.g. validation seed plans) with no `skillsExercised` array.
+      const resolved = resolvedEvidenceOfRow(result, parts)
+      if (!resolved) continue
       // Practice-only do-overs (Phase 1) carry no evidence for any history
       // reader: readiness, the linear gate, skill metrics, leaderboards, MCP.
       if (!isCountedTry(result)) continue
@@ -1317,9 +1312,7 @@ export async function batchGetRecentSessionResults(
         ...result,
         sessionId: session.id,
         sessionCompletedAt: session.completedAt,
-        evidence,
-        presentation: evidence?.presentation ?? null,
-        mode: evidence ? masteryModeOf(evidence.presentation) : null,
+        ...resolved,
       })
     }
   }

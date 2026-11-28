@@ -7,10 +7,11 @@
  * row's `source`, `voided` and `practiceOnly`, read by each reader as before
  * (amendment A5: "has evidence" is not "counts").
  *
- * Client-safe: no server imports.
+ * Client-safe: no server imports (`parts/presentations` is data).
  */
 
 import type { TryEvidence } from '@/db/schema/session-plans'
+import { masteryModeOf } from '@/lib/curriculum/parts/presentations'
 
 /**
  * A row as an evidence reader holds it. A history row (`HistoryTry`) and an
@@ -26,14 +27,18 @@ export interface EvidenceRow {
 
 /**
  * The skills a row is evidence of: `evidence.skills`; none when `evidence`
- * is null (recorded, not counted) or its presentation resolves to no mode. A
- * row without the field at all reads `skillsExercised`, which is what the
- * normalizer derives for it (arithmetic's evidence, amendment A4).
+ * is null (recorded, not counted) or its presentation counts toward no mode.
+ * A history or SQL row carries its resolved `mode`; a plan's own row
+ * (`SkillsPanel`, `progress-manager`) has none, so it is resolved here
+ * (`masteryModeOf`). A row without the field at all reads `skillsExercised`,
+ * which is what the normalizer derives for it (arithmetic's evidence,
+ * amendment A4).
  */
 export function evidenceSkillsOf(row: EvidenceRow): readonly string[] {
   if (row.evidence === undefined) return row.skillsExercised ?? []
-  if (row.evidence === null || row.mode === null) return []
-  return row.evidence.skills
+  if (row.evidence === null) return []
+  const mode = row.mode === undefined ? masteryModeOf(row.evidence.presentation) : row.mode
+  return mode === null ? [] : row.evidence.skills
 }
 
 /**

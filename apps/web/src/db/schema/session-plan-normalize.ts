@@ -17,7 +17,9 @@ import {
   type CurrentPlanItem,
   expectedArithmeticItem,
 } from '@/lib/curriculum/parts/arithmetic/state'
+import { masteryModeOf } from '@/lib/curriculum/parts/presentations'
 import { findPartKind, kindIdOf } from '@/lib/curriculum/parts/registry'
+import { asTryEvidence } from '@/lib/curriculum/try-evidence'
 import { itemSlotIndexOfRow, tryKindOfRow, tryRoundOfRow } from './legacy-try-fields'
 import { sameProblem } from './session-plan-helpers'
 import type {
@@ -236,6 +238,37 @@ export function evidenceOfRow(
   if (!kind) return null
   const outcome = result.outcome ?? 'answered'
   return kind.evidenceOf(part, { result, outcome, payload: completedPayloadOf(result, part) })
+}
+
+/** A row's evidence as every evidence reader resolves it (K1b) */
+export interface ResolvedEvidence {
+  evidence: TryEvidence
+  /** `evidence.presentation` */
+  presentation: string
+  /** The mastery mode it counts toward, resolved now (`masteryModeOf`) */
+  mode: string
+}
+
+/**
+ * What a stored row counts toward, the one derivation the in-JS history
+ * (`batchGetRecentSessionResults`) and the SQL evidence projection
+ * (`batchGetRecentBktEvidence`) share: its evidence (`evidenceOfRow`, as
+ * readers trust it, `asTryEvidence`) and the mode its presentation counts
+ * toward. Null, counted toward nothing, when the row has no evidence (a
+ * stamped `null`: recorded, not counted, §1.3; a kind this image does not
+ * know; a pre-schema row with no `skillsExercised` array) or its presentation
+ * counts toward no mode. Whether it counts at all (`source`, `voided`,
+ * `practiceOnly`) is each reader's (amendment A5).
+ */
+export function resolvedEvidenceOfRow(
+  result: SlotResult,
+  parts: readonly EvidencePart[]
+): ResolvedEvidence | null {
+  const evidence = asTryEvidence(evidenceOfRow(result, parts))
+  if (!evidence) return null
+  const mode = masteryModeOf(evidence.presentation)
+  if (mode === null) return null
+  return { evidence, presentation: evidence.presentation, mode }
 }
 
 /**

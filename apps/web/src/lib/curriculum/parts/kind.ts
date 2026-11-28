@@ -74,9 +74,9 @@ export interface AttemptPresentation {
  * A kind has one or more; a part names one. Registered per kind
  * (`arithmetic/presentations.ts`) and looked up by id
  * (`parts/presentations.ts`); `PartKind.presentations` joins the contract in
- * K3.
+ * K3. `Part` is the kind's stored part, as in `PartKind`.
  */
-export interface Presentation {
+export interface Presentation<Part extends StoredPart = StoredPart> {
   /** Stored on a try's evidence (`evidence.presentation`) and, from K3, on a part */
   id: string
   label: string
@@ -89,7 +89,7 @@ export interface Presentation {
   /** The ledger's presentation axes (§3.4); data the adapter copies */
   axes: AttemptPresentation
   /** Whether the kid works this presentation on the physical abacus */
-  needsPhysicalAbacus(part: StoredPart): boolean
+  needsPhysicalAbacus(part: Part): boolean
   /** false for a timed presentation: the shell never auto-pauses mid-item */
   autoPause: boolean
   /** Time-estimate multiplier; default 1 (moves here from `time-estimation.ts` in K6) */

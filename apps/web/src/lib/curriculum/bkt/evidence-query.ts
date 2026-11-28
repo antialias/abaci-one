@@ -5,12 +5,10 @@ import { db } from '@/db'
 import { legacyTryFieldsOfProjection } from '@/db/schema/legacy-try-fields'
 import {
   type EvidencePart,
-  evidenceOfRow,
   evidencePartsOf,
+  resolvedEvidenceOfRow,
 } from '@/db/schema/session-plan-normalize'
 import type { SlotResult, TryKind } from '@/db/schema/session-plans'
-import { masteryModeOf } from '../parts/presentations'
-import { asTryEvidence } from '../try-evidence'
 import type { BktEvidence } from './types'
 
 /**
@@ -90,26 +88,21 @@ function toBktEvidence(
   raw: RawProjectedEvidence,
   parts: readonly EvidencePart[]
 ): BktEvidence | null {
-  // What the row is evidence of: stamped (`json_type` tells a stamped null
-  // from no stamp), else derived from its part as the in-JS history derives
-  // it (§3.1; arithmetic: a `skillsExercised` array and the part's type,
-  // 'linear' for a row naming no part; a kind this image does not know: none)
+  // What the row is evidence of and its mode, derived as the in-JS history
+  // derives it (`resolvedEvidenceOfRow`): stamped (`json_type` tells a
+  // stamped null from no stamp), else from its part (§3.1)
   const stamped = raw.evidenceType !== null && raw.evidenceType !== undefined
-  const evidence = asTryEvidence(
-    evidenceOfRow(
-      {
-        skillsExercised: raw.skillsExercised,
-        partNumber: optionalNumber(raw.partNumber),
-        partIndex: optionalNumber(raw.partIndex),
-        ...(stamped ? { evidence: raw.evidence } : {}),
-      } as SlotResult,
-      parts
-    )
+  const resolved = resolvedEvidenceOfRow(
+    {
+      skillsExercised: raw.skillsExercised,
+      partNumber: optionalNumber(raw.partNumber),
+      partIndex: optionalNumber(raw.partIndex),
+      ...(stamped ? { evidence: raw.evidence } : {}),
+    } as SlotResult,
+    parts
   )
-  if (!evidence) return null
-  // A presentation whose evidence counts toward no mode is not evidence
-  const mode = masteryModeOf(evidence.presentation)
-  if (mode === null) return null
+  if (!resolved) return null
+  const { evidence, mode } = resolved
 
   const timestamp = normalizeTimestamp(raw.timestamp)
   if (!timestamp) return null

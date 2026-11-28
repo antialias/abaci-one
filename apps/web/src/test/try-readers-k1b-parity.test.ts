@@ -6,28 +6,32 @@
  * envelope K1a writes (`evidence.skills`, `mode` from
  * `masteryModeOf(evidence.presentation)`). BKT parity is the gate.
  *
- * Every seeded profile (`lib/seed/profiles.ts`), its rows made by the real
- * seed generator (`generateSlotResults`, `seededSessionRows`) under a seeded
- * `Math.random`, is stored in an ephemeral database as a mix of:
+ * Differential, in one run: `src/test/pre-k1b/` holds VERBATIM copies of
+ * the readers at origin/main `76b2cc46c`, before K1b (the in-JS history with
+ * its `skillsExercised` filter and `partType ?? 'linear'`, the SQL
+ * projection's `toBktEvidence` with `bktModeOf`, `computeBktFromHistory`
+ * keyed by `partType`, readiness and the linear gate). Both are run on the
+ * same stored rows, for every seeded profile (`lib/seed/profiles.ts`), and
+ * must agree on pKnown, classification, opportunities, per-mode BKT,
+ * readiness and the linear gate, through both the in-JS history and the SQL
+ * evidence projection. No recorded snapshot: a seed change re-runs both.
+ *
+ * The rows, made by the real seed generator (`generateSlotResults`,
+ * `seededSessionRows`) under a seeded `Math.random`, mix:
  * - rows stamped with the envelope (spread over abacus, visualization and
  *   linear parts);
  * - `simulateLegacyData` rows, which the seeder leaves pre-K1 (amendment A6);
  * - one session of unstamped rows in parts stored without a `type` (they
  *   resolve to `linear`, as before);
+ * - retries, do-overs, a voided row, a teacher-excluded row and a
+ *   practice-only do-over in every session;
  * - a recency-refresh sentinel in a plan with no parts (`linear`);
  * - a stamped row with `evidence: null` and no `skillsExercised` (what the
  *   K1a recorder writes for a row that is not evidence);
  * - two rows with `evidence` and no `skillsExercised` (S2: the row a new kind
  *   writes), on a skill of their own.
- *
- * The parity snapshot (`__snapshots__/try-readers-k1b-parity.test.ts.snap`)
- * was recorded by this file against the readers BEFORE K1b (origin/main
- * `76b2cc46c`: the in-JS history filter on `skillsExercised` with
- * `partType ?? 'linear'`, and the SQL path's `toBktEvidence`) and must pass
- * unchanged after it: pKnown, classification, opportunities, per-mode BKT,
- * readiness and the linear gate, through both the in-JS history and the SQL
- * evidence projection. The S2 rows were dropped before K1b, so the snapshot
- * covers the profile's own skills; what K1b adds for S2 is asserted after.
+ * The S2 rows were dropped before K1b, so old and new are compared on the
+ * profile's own skills; what K1b adds for S2 is asserted after.
  */
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -49,6 +53,11 @@ import {
   getCurrentEphemeralDb,
   setCurrentEphemeralDb,
 } from '@/test/journey-simulator/EphemeralDatabase'
+import { computeBktFromHistory as oldComputeBktFromHistory } from '@/test/pre-k1b/compute-bkt'
+import { batchGetRecentBktEvidence as oldBatchGetRecentBktEvidence } from '@/test/pre-k1b/evidence-query'
+import { batchGetRecentSessionResults as oldBatchGetRecentSessionResults } from '@/test/pre-k1b/history'
+import { deriveLinearGateState as oldDeriveLinearGateState } from '@/test/pre-k1b/linear-gate'
+import { assessAllSkillsReadiness as oldAssessAllSkillsReadiness } from '@/test/pre-k1b/skill-readiness'
 
 vi.mock('server-only', () => ({}))
 
@@ -125,12 +134,46 @@ function fixtureOf(profileIndex: number): { sessions: StoredSession[]; skills: S
     // A stamped row that is not evidence: `evidence: null`, no skillsExercised
     const { skillsExercised: _none, ...notEvidence } = rows[0]
     const last = rows.length * 10_000
+    // Retries, do-overs and the rows that count nowhere or at zero weight,
+    // copied from the session's own rows (stamped or not, as they are)
+    const at = (i: number) => stored[i % stored.length]
+    const extra = (i: number, n: number, over: Partial<SlotResult>): SlotResult => ({
+      ...at(i),
+      tryId: `${at(i).tryId ?? at(i).slotId}-x${n}`,
+      timestamp: new Date(start + last + n * 1_000),
+      ...over,
+    })
+    const extras: SlotResult[] = stored.length
+      ? [
+          extra(1, 1, { isCorrect: false, masteryWeight: 0 }),
+          extra(1, 2, {
+            isRetry: true,
+            epochNumber: 1,
+            kind: 'retry',
+            round: 1,
+            masteryWeight: 0.5,
+          }),
+          extra(2, 3, {
+            isRetry: true,
+            epochNumber: 2,
+            kind: 'retry',
+            round: 2,
+            isCorrect: false,
+            masteryWeight: 0,
+          }),
+          extra(3, 4, { isManualRedo: true, kind: 'do_over', round: 0, masteryWeight: 1 }),
+          extra(4, 5, { voided: true }),
+          extra(5, 6, { source: 'teacher-excluded', isCorrect: false }),
+          extra(6, 7, { isManualRedo: true, kind: 'do_over', round: 1, practiceOnly: true }),
+        ]
+      : []
     sessions.push({
       id: `p${profileIndex}-c${ci}`,
       status: 'completed',
       parts,
       results: [
         ...stored,
+        ...extras,
         {
           ...notEvidence,
           timestamp: new Date(start + last),
@@ -141,7 +184,7 @@ function fixtureOf(profileIndex: number): { sessions: StoredSession[]; skills: S
           payload: { kind: 'arithmetic' },
         } as SlotResult,
       ],
-      completedAt: new Date(start + last + 5_000),
+      completedAt: new Date(start + last + 10_000),
     })
   })
 
@@ -240,8 +283,7 @@ function bktView(result: BktComputeResult, skills: ReadonlySet<string> | null) {
     interventionNeeded: ids(result.interventionNeeded),
     strengths: ids(result.strengths),
     // A mode none of the profile's own skills reached is left out: the S2
-    // rows (counted since K1b, never before) can open one alone. The snapshot
-    // recorded before K1b has no such entry, so this hides nothing it holds.
+    // rows (counted since K1b, never before) can open one alone.
     byMode: Object.fromEntries(
       Object.entries(result.byMode ?? {})
         .filter(([, r]) => skills === null || !r || kept(r.skills).length > 0)
@@ -282,7 +324,7 @@ afterEach(() => {
   ephemeralDb.cleanup()
 })
 
-/** The profile's fixture stored, read back through both evidence paths. */
+/** The profile's fixture stored, read back through both evidence paths, old and new. */
 async function readProfile(profileIndex: number) {
   const rng = new SeededRandom(1_000 + profileIndex)
   const random = vi.spyOn(Math, 'random').mockImplementation(() => rng.next())
@@ -290,37 +332,47 @@ async function readProfile(profileIndex: number) {
   random.mockRestore()
   const { playerId } = await createTestStudent(ephemeralDb.db, `k1b-${profileIndex}`)
   await store(playerId, sessions)
-  const history = (await batchGetRecentSessionResults([playerId], 5_000)).get(playerId) ?? []
-  const sqlEvidence = (await batchGetRecentBktEvidence([playerId], 5_000)).get(playerId) ?? []
-  return { history, sqlEvidence, skills, sessions }
+  const ids = [playerId]
+  const history = (await batchGetRecentSessionResults(ids, 5_000)).get(playerId) ?? []
+  const sqlEvidence = (await batchGetRecentBktEvidence(ids, 5_000)).get(playerId) ?? []
+  const oldHistory = (await oldBatchGetRecentSessionResults(ids, 5_000)).get(playerId) ?? []
+  const oldSqlEvidence = (await oldBatchGetRecentBktEvidence(ids, 5_000)).get(playerId) ?? []
+  return { history, sqlEvidence, oldHistory, oldSqlEvidence, skills, sessions }
 }
 
-describe('K1b: BKT parity over every seeded profile, before and after the readers move', () => {
+describe('K1b: BKT parity over every seeded profile, old readers against new', () => {
   it.each(TEST_PROFILES.map((p, i) => [p.name, i] as const))(
-    '%s: BKT, readiness and the linear gate as before K1b, on both paths',
+    '%s: BKT, readiness and the linear gate as the pre-K1b readers, on both paths',
     async (_name, profileIndex) => {
-      const { history, sqlEvidence, skills } = await readProfile(profileIndex)
+      const { history, sqlEvidence, oldHistory, oldSqlEvidence, skills } =
+        await readProfile(profileIndex)
       const bkt = computeBktFromHistory(history)
       const sqlBkt = computeBktFromHistory(sqlEvidence)
+      const oldBkt = oldComputeBktFromHistory(oldHistory)
+      const oldSqlBkt = oldComputeBktFromHistory(oldSqlEvidence)
 
-      // The two paths agree on every skill, the S2 rows' included
+      // The fixture reaches BKT at all (a profile with history has skills)
+      if (oldHistory.length > 0) expect(oldBkt.skills.length).toBeGreaterThan(0)
+
+      // New: the two paths agree on every skill, the S2 rows' included
       expect(bktView(sqlBkt, null)).toEqual(bktView(bkt, null))
+      // Old against new, on the profile's own skills, per path
+      expect(bktView(bkt, skills)).toEqual(bktView(oldBkt, skills))
+      expect(bktView(sqlBkt, skills)).toEqual(bktView(oldSqlBkt, skills))
 
       const categories = [...new Set([...skills].map((s) => s.split('.')[0]))].sort()
-      const gate = (thresholds: typeof DEFAULT_LINEAR_GATE_THRESHOLDS) =>
-        Object.fromEntries(
-          deriveLinearGateState({ problemHistory: history, categories, thresholds })
+      const loose = { minAccuracy: 0.6, accuracyWindowSize: 3, minOpportunities: 1 }
+      const sorted = <V>(m: Map<string, V>) => [...m].sort(([a], [b]) => a.localeCompare(b))
+      expect(sorted(assessAllSkillsReadiness(history, bkt.skills, skills))).toEqual(
+        sorted(oldAssessAllSkillsReadiness(oldHistory, oldBkt.skills, skills))
+      )
+      for (const thresholds of [DEFAULT_LINEAR_GATE_THRESHOLDS, loose]) {
+        expect(
+          sorted(deriveLinearGateState({ problemHistory: history, categories, thresholds }))
+        ).toEqual(
+          sorted(oldDeriveLinearGateState({ problemHistory: oldHistory, categories, thresholds }))
         )
-      expect({
-        bkt: bktView(bkt, skills),
-        readiness: Object.fromEntries(
-          [...assessAllSkillsReadiness(history, bkt.skills, skills)].sort(([a], [b]) =>
-            a.localeCompare(b)
-          )
-        ),
-        gate: gate(DEFAULT_LINEAR_GATE_THRESHOLDS),
-        looseGate: gate({ minAccuracy: 0.6, accuracyWindowSize: 3, minOpportunities: 1 }),
-      }).toMatchSnapshot()
+      }
     },
     60_000
   )
@@ -393,7 +445,7 @@ describe('K1b: what the readers read now', () => {
     }
   })
 
-  it("never labels a part of another kind 'linear'; an untyped arithmetic part still is", async () => {
+  it("never labels a part of another kind 'linear'; both paths keep the same rows", async () => {
     const { history, sql } = await readOne(
       [{ partNumber: 1, kind: 'read_abacus' }, { partNumber: 2 }],
       [
@@ -408,19 +460,16 @@ describe('K1b: what the readers read now', () => {
         plainRow(2, { responseTimeMs: 3, partNumber: 2 }),
         // a pre-schema row with neither evidence nor a skillsExercised array: dropped
         plainRow(3, { responseTimeMs: 4, partNumber: 2, skillsExercised: undefined }),
+        // stamped null, skillsExercised or not: recorded, not counted (§1.3)
+        plainRow(4, { responseTimeMs: 5, partNumber: 2, evidence: null }),
       ]
     )
     const flash = { skills: ['basic.directAddition'], presentation: 'read_abacus.flash' }
     const linear = { skills: ['basic.directAddition'], presentation: 'linear' }
-    // The history keeps a row with a skillsExercised array (it counts toward nothing)
     expect(history).toEqual([
       [1, flash, 'read_abacus.flash'],
-      [2, null, null],
       [3, linear, 'linear'],
     ])
-    expect(sql).toEqual([
-      [1, flash, 'read_abacus.flash'],
-      [3, linear, 'linear'],
-    ])
+    expect(sql).toEqual(history)
   })
 })

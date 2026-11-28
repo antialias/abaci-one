@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { AnyPartKind, KindTry } from '../kind'
-import { bktModeOf, findPartKind, isPartPlayable, plannedItemCount } from '../registry'
+import { findPartKind, isPartPlayable, plannedItemCount } from '../registry'
 import { type ReadAbacusPart, readAbacusKind } from './fixtures/read-abacus-kind'
 
 const read = (rel: string) => readFileSync(path.join(__dirname, rel), 'utf8')
@@ -76,9 +76,8 @@ describe('a stub kind against the contract', () => {
     expect(kind.bktMode(part)).toBeNull()
   })
 
-  it('a kind this image does not know: no kind, not evidence, not abandoned, no planned items', () => {
+  it('a kind this image does not know: no kind, not abandoned, no planned items', () => {
     expect(findPartKind(part)).toBeUndefined()
-    expect(bktModeOf(part)).toBeNull()
     expect(isPartPlayable(part)).toBe(true)
     expect(plannedItemCount(part)).toBe(0)
   })

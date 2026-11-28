@@ -4,8 +4,11 @@
  * id), which is how every BKT reader keyed the part's `type` before K1b.
  *
  * Registered here so K3 adds them to `arithmeticKind.presentations` without
- * reopening the file (R15). Label, emoji and `needsPhysicalAbacus` are what
- * the part transition screen shows (`arithmeticTransitionView` reads them).
+ * reopening the file (R15). The part transition screen shows the label and
+ * emoji (`arithmeticTransitionView` reads them). `needsPhysicalAbacus` is
+ * §1.1's: linear follows the part's `useAbacus` (the ramp). The transition
+ * view still asks `type === 'abacus'` until K3 makes it read this, since a
+ * ramp part would newly prompt for the abacus (amendment A10).
  *
  * `axes` are each presentation's ledger axes as `arithmeticKind.presentationOf`
  * answers for a part of that type, except `abacusAvailable`, which a part
@@ -16,9 +19,10 @@
  * Client-safe: data only.
  */
 
+import type { SessionPart } from '@/db/schema/session-plans'
 import type { Presentation } from '../kind'
 
-const abacus: Presentation = {
+const abacus: Presentation<SessionPart> = {
   id: 'abacus',
   label: 'Abacus',
   emoji: '🧮',
@@ -28,7 +32,7 @@ const abacus: Presentation = {
   autoPause: true,
 }
 
-const visualization: Presentation = {
+const visualization: Presentation<SessionPart> = {
   id: 'visualization',
   label: 'Visualization',
   emoji: '🧠',
@@ -38,17 +42,17 @@ const visualization: Presentation = {
   autoPause: true,
 }
 
-const linear: Presentation = {
+const linear: Presentation<SessionPart> = {
   id: 'linear',
   label: 'Equations',
   emoji: '✏️',
   masteryMode: 'linear',
   axes: { layer: 'linear', modality: 'visual', abacusAvailable: false, input: 'keypad' },
-  needsPhysicalAbacus: () => false,
+  needsPhysicalAbacus: (part) => part.useAbacus === true,
   autoPause: true,
 }
 
 /** Arithmetic's presentations, in offer order (abacus, visualization, linear; `part-gating.ts`) */
-export const arithmeticPresentations: ReadonlyMap<string, Presentation> = new Map(
+export const arithmeticPresentations: ReadonlyMap<string, Presentation<SessionPart>> = new Map(
   [abacus, visualization, linear].map((p) => [p.id, p])
 )
