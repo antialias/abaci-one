@@ -311,9 +311,18 @@ afterEach(() => {
   eph.cleanup()
 })
 
-/** JSON with the generated player id replaced, so the snapshot is stable */
+/**
+ * JSON with the generated player id replaced, so the snapshot is stable, and
+ * without the glitch fields (practice-kinds K5a-3c R1, additive), which these
+ * rows have none of: asserted empty here, so the 6b-0 snapshot stays as
+ * recorded.
+ */
 function stable(value: unknown): unknown {
-  return JSON.parse(JSON.stringify(value).replaceAll(playerId, '<player>'))
+  return JSON.parse(JSON.stringify(value).replaceAll(playerId, '<player>'), (key, v) => {
+    if (key !== 'glitches') return v
+    expect(v === 0 || (v as { count?: number }).count === 0).toBe(true)
+    return undefined
+  })
 }
 
 describe('Phase 6b-1: finished pre-3a sessions render as they did under 6b-0', () => {

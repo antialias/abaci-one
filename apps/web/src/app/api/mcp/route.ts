@@ -23,6 +23,7 @@ import {
 } from '@/lib/mcp/song-tools'
 import {
   MCP_TOOLS,
+  getGlitch,
   listStudents,
   verifyPlayerAccess,
   getStudentOverview,
@@ -237,6 +238,10 @@ async function executeTool(
   // Tools that don't require a player_id
   if (toolName === 'list_students') {
     return listStudents(userId)
+  }
+  // Filters its rows through verifyPlayerAccess itself (one ref, many sessions)
+  if (toolName === 'get_glitch') {
+    return getGlitch(userId, args.ref as string)
   }
 
   // All other tools require player_id

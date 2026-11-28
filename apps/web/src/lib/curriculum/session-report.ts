@@ -3,7 +3,8 @@
  * for every view of a session (summary, share link, observer, dashboard, MCP,
  * song). Views stop counting `results` themselves; they read this.
  *
- * `buildSessionReport` is pure over `{ plan, tries, gameResults, song, now }`.
+ * `buildSessionReport` is pure over `{ plan, tries, gameResults, song, glitches,
+ * now }`.
  * The server loads those (`session-report-server.ts`) and pushes the report
  * after every committed row write; `useSessionReport` reads it.
  *
@@ -157,6 +158,26 @@ export interface SessionReport {
   /** Where the kid is; null unless the session is in progress */
   position: SessionReportPosition | null
   tries: TryRow[]
+  /** The session's glitch rows (practice-kinds §8 A23.3; additive, K5a-3c R1) */
+  glitches: SessionReportGlitches
+}
+
+/**
+ * The session's glitches (A23.3, A23.9 R1). `byKind` counts every row;
+ * `count` and `refs` leave out `save_delayed`, which the summary's line does
+ * not name (the pill and the counter are its signal), so `count` is the
+ * number of references the line lists. Oldest first.
+ */
+export interface SessionReportGlitches {
+  count: number
+  byKind: Record<string, number>
+  refs: string[]
+}
+
+/** A glitch row as the report reads it (`loadGlitches`) */
+export interface SessionReportGlitchInput {
+  ref: string
+  kind: string
 }
 
 /** The session's song row, as the report reads it. */
@@ -200,6 +221,8 @@ export interface SessionReportInput {
   gameResults?: readonly ReportGameResult[]
   /** The session's latest song row, if any */
   song?: SessionReportSongInput | null
+  /** The session's glitch rows, oldest first (`loadGlitches`); none when absent */
+  glitches?: readonly SessionReportGlitchInput[]
   /** Epoch ms; the end of a live session's wall time */
   now: number
 }
@@ -664,6 +687,19 @@ function segmentOf(plan: ReportPlan, breaks: readonly BreakReportRow[]): Segment
   return { kind: 'part', partIndex: plan.currentPartIndex }
 }
 
+/** The kind the summary's line leaves out (A23.9 R1) */
+const OFF_THE_LINE_GLITCH = 'save_delayed'
+
+function glitchesOf(rows: readonly SessionReportGlitchInput[] | undefined): SessionReportGlitches {
+  const byKind: Record<string, number> = {}
+  const refs: string[] = []
+  for (const row of rows ?? []) {
+    byKind[row.kind] = (byKind[row.kind] ?? 0) + 1
+    if (row.kind !== OFF_THE_LINE_GLITCH) refs.push(row.ref)
+  }
+  return { count: refs.length, byKind, refs }
+}
+
 function songOf(song: SessionReportSongInput | null | undefined): SessionReportSong {
   if (!song) return { status: 'none' }
   const status: SessionSongStatus =
@@ -800,6 +836,7 @@ export function buildSessionReport(input: SessionReportInput): SessionReport {
       effectiveMs: effectiveMsOf(t),
       recordedAt: msOf(t.recordedAt),
     })),
+    glitches: glitchesOf(input.glitches),
   }
 }
 
@@ -825,7 +862,14 @@ export type SessionReportSummary = Pick<
   | 'time'
   | 'totals'
   | 'position'
->
+> & {
+  /**
+   * The summary line's glitch count (`save_delayed` left out), without the
+   * refs; shaped as the report's own field so a whole report still reads as
+   * a summary.
+   */
+  glitches: Pick<SessionReportGlitches, 'count'>
+}
 
 export function summarizeSessionReport(report: SessionReport): SessionReportSummary {
   return {
@@ -839,5 +883,6 @@ export function summarizeSessionReport(report: SessionReport): SessionReportSumm
     time: report.time,
     totals: report.totals,
     position: report.position,
+    glitches: { count: report.glitches.count },
   }
 }
