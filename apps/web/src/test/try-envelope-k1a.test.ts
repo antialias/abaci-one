@@ -54,6 +54,7 @@ import {
   recordSlotResult,
 } from '@/lib/curriculum/session-planner'
 import { assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
+import { practiceJudgeDisagreementsTotal, practiceTriesJudgedTotal } from '@/lib/metrics'
 import { generateSlotResults, seededSessionRows } from '@/lib/seed/helpers'
 import { TEST_PROFILES } from '@/lib/seed/profiles'
 import { convertToSlotResults } from '@/lib/worksheet-parsing/session-converter'
@@ -383,6 +384,100 @@ describe('K1a: the try envelope through the recorders', () => {
     ).toBeGreaterThanOrEqual(1)
     expect((await getSessionPlan(planId))!.results).toHaveLength(1)
     expect(disagreements()).toHaveLength(1)
+  })
+
+  describe('judge parity counters (plan §8, amendment A1)', () => {
+    /** A counter's series as `label=value,…` → count, read through prom-client. */
+    async function series(counter: typeof practiceTriesJudgedTotal) {
+      const { values } = await counter.get()
+      return Object.fromEntries(
+        values.map((v) => [
+          Object.entries(v.labels)
+            .map(([k, l]) => `${k}=${l}`)
+            .join(','),
+          v.value,
+        ])
+      )
+    }
+    const judged = () => series(practiceTriesJudgedTotal)
+    const disagreed = () => series(practiceJudgeDisagreementsTotal)
+
+    beforeEach(() => {
+      practiceTriesJudgedTotal.reset()
+      practiceJudgeDisagreementsTotal.reset()
+    })
+
+    it('counts every recorded try once, by kind and outcome; no disagreement, none counted', async () => {
+      await recordedSession()
+      expect(await judged()).toEqual({
+        'kind=arithmetic,outcome=answered': 5,
+        'kind=arithmetic,outcome=skipped': 2,
+      })
+      expect(await disagreed()).toEqual({})
+    })
+
+    it('one recorded try with a disagreement: judged once, one disagreement for its recorder', async () => {
+      const planId = await insertPlan(playerId)
+      const before = (await getSessionPlan(planId))!
+      const plan = await recordSlotResult(planId, {
+        ...answerBody(before, 1, false),
+        isCorrect: true,
+      })
+      expect(await judged()).toEqual({ 'kind=arithmetic,outcome=answered': 1 })
+      expect(await disagreed()).toEqual({ 'kind=arithmetic,recorder=slot': 1 })
+
+      // A do-over the client calls right with a wrong answer: the redo recorder's
+      const slot = plan.parts[0].slots[0]
+      await recordRedoResult(
+        planId,
+        {
+          tryId: tid(2),
+          slotId: slot.slotId,
+          slotIndex: 0,
+          problem: slot.problem!,
+          studentAnswer: slot.problem!.answer + 1,
+          isCorrect: true,
+          responseTimeMs: 2000,
+          skillsExercised: slot.problem!.skillsRequired,
+          usedOnScreenAbacus: false,
+          hadHelp: false,
+          incorrectAttempts: 0,
+        },
+        { itemId: slot.slotId, originalPartIndex: 0, originalSlotIndex: 0 }
+      )
+      expect(await judged()).toEqual({ 'kind=arithmetic,outcome=answered': 2 })
+      expect(await disagreed()).toEqual({
+        'kind=arithmetic,recorder=slot': 1,
+        'kind=arithmetic,recorder=redo': 1,
+      })
+    })
+
+    it('two racing tries for one item count once, not once per CAS round', async () => {
+      const planId = await insertPlan(playerId)
+      const before = (await getSessionPlan(planId))!
+      const wrongCalledRight = { ...answerBody(before, 1, false), isCorrect: true }
+      const settled = await Promise.allSettled([
+        recordSlotResult(planId, wrongCalledRight),
+        recordSlotResult(planId, { ...wrongCalledRight, tryId: tid(2) }),
+      ])
+      expect(settled.map((s) => s.status).sort()).toEqual(['fulfilled', 'rejected'])
+      expect(
+        warn.mock.calls.filter((c) => c[0] === '[withRowCas] lost a write race; re-reading').length
+      ).toBeGreaterThanOrEqual(1)
+      expect(await judged()).toEqual({ 'kind=arithmetic,outcome=answered': 1 })
+      expect(await disagreed()).toEqual({ 'kind=arithmetic,recorder=slot': 1 })
+    })
+
+    it('a duplicate tryId the recorder ignores is not counted, raced or resent', async () => {
+      const planId = await insertPlan(playerId)
+      const before = (await getSessionPlan(planId))!
+      const body = { ...answerBody(before, 1, false), isCorrect: true }
+      await Promise.allSettled([recordSlotResult(planId, body), recordSlotResult(planId, body)])
+      await recordSlotResult(planId, body)
+      expect((await getSessionPlan(planId))!.results).toHaveLength(1)
+      expect(await judged()).toEqual({ 'kind=arithmetic,outcome=answered': 1 })
+      expect(await disagreed()).toEqual({ 'kind=arithmetic,recorder=slot': 1 })
+    })
   })
 
   it("the skill-attempt bump reads evidence.skills: the row's skillsExercised", async () => {
