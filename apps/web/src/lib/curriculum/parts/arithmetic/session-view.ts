@@ -7,7 +7,7 @@
  * `position`. They never read an arithmetic part's slots or the legacy
  * encoding of its cursor (`currentSlotIndex`, `retryState`, §1.1): where they
  * show something only arithmetic has (its per-slot dots, a problem's number
- * in the dots, the size of a retry round, the legacy observer fields), they
+ * in the dots, the size of a retry round, the observer's dots), they
  * ask this module.
  *
  * The cursor is read through `partStateOf`, so it follows the server's read
@@ -169,25 +169,18 @@ export function arithmeticDotsPosition(plan: ArithmeticViewPlan): ArithmeticDots
 
 /**
  * The position fields of a `practice-state` broadcast, from the server's plan
- * and the item on the kid's screen. They are the fields observers read today
- * (their dots, the problem number, the stats feed's parts and tries), computed
- * exactly as the kid's screen computed them before Phase 5b, plus
- * `currentItem`: a do-over shows its own part and slot, otherwise the plan's
- * cursor; the problem number is the cursor's (a do-over does not move it).
+ * and the item on the kid's screen: the plan's parts and tries (the observer's
+ * dots and its try list, the stats feed) and `currentItem`, the item on screen
+ * (a do-over's own item, else the one the plan expects), by which observers
+ * place the current dot (`arithmeticObserverDotsOf`).
  */
 export function arithmeticObserverPosition(
   plan: ArithmeticViewPlan,
   item: OnScreenItem | null
 ): ObserverPosition {
-  const doOverSlot =
-    item?.doOver === true ? arithmeticSlotOf(plan.parts[item.partIndex], item.itemId) : null
   return {
     sessionParts: plan.parts,
-    currentPartIndex: doOverSlot && item ? item.partIndex : plan.currentPartIndex,
-    currentSlotIndex: doOverSlot ? doOverSlot.slotIndex : cursorOf(plan, plan.currentPartIndex),
     slotResults: plan.results,
-    currentProblemNumber: arithmeticCursorLinearIndex(plan) + 1,
-    totalProblems: arithmeticSlotTotal(plan.parts),
     ...(item ? { currentItem: { partIndex: item.partIndex, itemId: item.itemId } } : {}),
   }
 }

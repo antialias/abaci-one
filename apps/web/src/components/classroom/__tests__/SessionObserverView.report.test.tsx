@@ -407,8 +407,6 @@ describe('SessionObserverView: live, with a broadcast state', () => {
       isCorrect: null,
       timing: { startedAt: 1, elapsed: 2000 },
       purpose: 'focus',
-      currentProblemNumber: 9,
-      totalProblems: 10,
       sessionParts: fixtureParts(),
       currentPartIndex: 2,
       currentSlotIndex: 1,

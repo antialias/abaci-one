@@ -17,8 +17,12 @@
  * acting on an attempt refetches the list and the recovered estimate together.
  */
 
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { type ReviewTryTarget, reviewAttemptPath } from '@/lib/curriculum/review-try-path'
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { reviewTryPath } from '@/lib/curriculum/review-try-path'
+// Type-only: erased at compile time, so no server runtime is pulled into the
+// client bundle. Keeps the request body in sync with the domain module.
+import type { SlotResultReviewAction } from '@/lib/curriculum/session-review'
+import type { TimingReviewData } from '@/lib/curriculum/timing/review-types'
 import { api } from '@/lib/queryClient'
 import {
   curriculumKeys,
@@ -26,10 +30,6 @@ import {
   sessionPlanKeys,
   timingReviewKeys,
 } from '@/lib/queryKeys'
-// Type-only: erased at compile time, so no server runtime is pulled into the
-// client bundle. Keeps the request body in sync with the domain module.
-import type { SlotResultReviewAction } from '@/lib/curriculum/session-review'
-import type { TimingReviewData } from '@/lib/curriculum/timing/review-types'
 
 /**
  * Load the player's flagged/unresolved attempts plus the pace assessment
@@ -76,9 +76,11 @@ async function throwOnError(res: Response, fallback: string): Promise<unknown> {
   return res.json()
 }
 
-export interface ReviewSlotResultVars extends ReviewTryTarget {
+export interface ReviewSlotResultVars {
   playerId: string
   planId: string
+  /** The try's id (`tryIdOf`), the `tries/[tryId]` address */
+  tryId: string
   action: SlotResultReviewAction
 }
 
@@ -91,10 +93,9 @@ function patchReviewAction({
   playerId,
   planId,
   tryId,
-  resultIndex,
   action,
 }: ReviewSlotResultVars): Promise<unknown> {
-  return api(reviewAttemptPath(playerId, planId, { tryId, resultIndex }), {
+  return api(reviewTryPath(playerId, planId, tryId), {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(action),
@@ -112,10 +113,7 @@ export function useReviewSlotResult() {
 }
 
 /** Target for a fixed-action review mutation (the action is baked in). */
-export interface TimingReviewTarget extends ReviewTryTarget {
-  playerId: string
-  planId: string
-}
+export type TimingReviewTarget = Omit<ReviewSlotResultVars, 'action'>
 
 /**
  * Confirm a flagged timing as genuine ("this time is real — keep it"): the value

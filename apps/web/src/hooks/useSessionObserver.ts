@@ -2,16 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
-import type {
-  SessionFlowState,
-  SessionPart,
-  SessionPartType,
-  SlotResult,
-} from '@/db/schema/session-plans'
+import type { SessionFlowState, SessionPart, SlotResult } from '@/db/schema/session-plans'
 import type {
   AbacusControlEvent,
   PartTransitionCompleteEvent,
   PartTransitionEvent,
+  PartTransitionSide,
+  PracticeItemRef,
   PracticeStateEvent,
   SessionEndedEvent,
   SessionFlowStateEvent,
@@ -70,15 +67,13 @@ export interface ObservedSessionState {
   complexity?: ObservedComplexity
   /** When this state was received */
   receivedAt: number
-  /** Current problem number (1-indexed for display) */
-  currentProblemNumber: number
-  /** Total problems in the session */
-  totalProblems: number
+  /** The item on the kid's screen (absent from kid screens older than Phase 5b) */
+  currentItem?: PracticeItemRef
   /** Session structure for progress indicator */
   sessionParts?: SessionPart[]
-  /** Current part index for progress indicator */
+  /** The current dot's part: `currentItem`'s */
   currentPartIndex?: number
-  /** Current slot index within the part */
+  /** The current dot's slot within the part: `currentItem`'s */
   currentSlotIndex?: number
   /** Accumulated results for progress indicator */
   slotResults?: SlotResult[]
@@ -88,10 +83,10 @@ export interface ObservedSessionState {
  * State of a part transition being observed
  */
 export interface ObservedTransitionState {
-  /** Part type transitioning FROM (null if session start) */
-  previousPartType: SessionPartType | null
-  /** Part type transitioning TO */
-  nextPartType: SessionPartType
+  /** The part transitioning FROM, as its kind names it (null at session start) */
+  previous: PartTransitionSide | null
+  /** The part transitioning TO (null from a kid screen older than Phase 5b) */
+  next: PartTransitionSide | null
   /** Timestamp when countdown started (for sync) */
   countdownStartTime: number
   /** Countdown duration in ms */
@@ -323,7 +318,7 @@ export function useSessionObserver(
         phase: data.phase,
         answer: data.studentAnswer,
         isCorrect: data.isCorrect,
-        problemNumber: data.currentProblemNumber,
+        currentItem: data.currentItem,
       })
 
       const currentProblem = data.currentProblem as {
@@ -340,9 +335,8 @@ export function useSessionObserver(
         purpose: data.purpose,
         complexity: data.complexity,
         receivedAt: Date.now(),
-        currentProblemNumber: data.currentProblemNumber,
-        totalProblems: data.totalProblems,
-        // Session structure for progress indicator (the arithmetic dots' legacy wire)
+        currentItem: data.currentItem,
+        // The dots: the plan's parts and tries, the current dot at `currentItem`
         ...arithmeticObserverDotsOf(data),
       })
     })
@@ -350,14 +344,14 @@ export function useSessionObserver(
     // Listen for part transition events
     socket.on('part-transition', (data: PartTransitionEvent) => {
       console.log('[SessionObserver] Received part-transition:', {
-        previousPartType: data.previousPartType,
-        nextPartType: data.nextPartType,
+        previous: data.previous?.label ?? null,
+        next: data.next?.label ?? null,
         countdownDurationMs: data.countdownDurationMs,
       })
 
       setTransitionState({
-        previousPartType: data.previousPartType,
-        nextPartType: data.nextPartType,
+        previous: data.previous ?? null,
+        next: data.next ?? null,
         countdownStartTime: data.countdownStartTime,
         countdownDurationMs: data.countdownDurationMs,
       })

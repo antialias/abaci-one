@@ -39,11 +39,7 @@ describe('useSessionBroadcast - vision frame broadcasting', () => {
     complexity: undefined,
     item: { partIndex: 0, itemId: 'test-slot-0', doOver: false, round: 0 },
     position: {
-      currentProblemNumber: 1,
-      totalProblems: 10,
       sessionParts: [],
-      currentPartIndex: 0,
-      currentSlotIndex: 0,
       slotResults: [],
       currentItem: { partIndex: 0, itemId: 'test-slot-0' },
     },

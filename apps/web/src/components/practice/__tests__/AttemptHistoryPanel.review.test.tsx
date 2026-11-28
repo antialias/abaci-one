@@ -2,7 +2,7 @@
  * The attempt panel's review actions address a try by its id (session
  * architecture §10 P6b1-12): `tries/[tryId]`, with the id the views give
  * (`attemptHistoryOf`: the stored id, else `legacy:<planId>:<index>` for a row
- * from before Phase 1), never `results/[resultIndex]`.
+ * from before Phase 1).
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'

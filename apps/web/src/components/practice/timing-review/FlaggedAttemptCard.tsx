@@ -10,12 +10,8 @@
  * success invalidates the review, session, and curriculum (pace) caches.
  */
 
-import { useState, type ReactNode } from 'react'
-import {
-  useConfirmTiming,
-  useReviewSlotResult,
-  useUnconfirmTiming,
-} from '@/hooks/useTimingReview'
+import { type ReactNode, useState } from 'react'
+import { useConfirmTiming, useReviewSlotResult, useUnconfirmTiming } from '@/hooks/useTimingReview'
 import type { SlotResultReviewAction } from '@/lib/curriculum/session-review'
 import type { FlaggedAttempt } from '@/lib/curriculum/timing/review-types'
 import { css } from '../../../../styled-system/css'
@@ -111,7 +107,13 @@ function StatusPill({
     >
       <span
         aria-hidden="true"
-        className={css({ width: '0.5rem', height: '0.5rem', borderRadius: 'full', backgroundColor: 'currentColor', flexShrink: 0 })}
+        className={css({
+          width: '0.5rem',
+          height: '0.5rem',
+          borderRadius: 'full',
+          backgroundColor: 'currentColor',
+          flexShrink: 0,
+        })}
       />
       {children}
     </span>
@@ -369,7 +371,11 @@ function ActionGroup({
           </span>
           <span
             data-element="action-group-caption"
-            className={css({ fontSize: '0.75rem', color: 'gray.500', _dark: { color: 'gray.400' } })}
+            className={css({
+              fontSize: '0.75rem',
+              color: 'gray.500',
+              _dark: { color: 'gray.400' },
+            })}
           >
             {caption}
           </span>
@@ -430,13 +436,7 @@ export function FlaggedAttemptCard({ playerId, attempt }: FlaggedAttemptCardProp
   const actionError =
     reviewMutation.error ?? confirmMutation.error ?? unconfirmMutation.error ?? null
 
-  // `resultIndex` is the address an older server understands: it sent no `tryId` (D9, §10 P6b1-12a)
-  const target = {
-    playerId,
-    planId: attempt.sessionId,
-    tryId: attempt.tryId,
-    resultIndex: attempt.resultIndex,
-  }
+  const target = { playerId, planId: attempt.sessionId, tryId: attempt.tryId }
 
   function runAction(action: SlotResultReviewAction) {
     reviewMutation.mutate({ ...target, action })
@@ -577,9 +577,7 @@ export function FlaggedAttemptCard({ playerId, attempt }: FlaggedAttemptCardProp
         {adjustedMs != null && (
           <DetailRow label="Your manual time" value={formatDuration(adjustedMs)} />
         )}
-        {result.capReason != null && (
-          <DetailRow label="Cap reason" value={result.capReason} />
-        )}
+        {result.capReason != null && <DetailRow label="Cap reason" value={result.capReason} />}
         {result.capThresholdMs != null && (
           <DetailRow label="Cap threshold" value={formatDuration(result.capThresholdMs)} />
         )}
@@ -595,7 +593,12 @@ export function FlaggedAttemptCard({ playerId, attempt }: FlaggedAttemptCardProp
       {actionError && (
         <p
           data-element="action-error"
-          className={css({ fontSize: '0.8rem', color: 'red.600', margin: 0, _dark: { color: 'red.400' } })}
+          className={css({
+            fontSize: '0.8rem',
+            color: 'red.600',
+            margin: 0,
+            _dark: { color: 'red.400' },
+          })}
         >
           {actionError instanceof Error ? actionError.message : 'Action failed'}
         </p>
@@ -770,10 +773,19 @@ export function FlaggedAttemptCard({ playerId, attempt }: FlaggedAttemptCardProp
       {showSetTime && !omittedFromTiming && (
         <div
           data-element="set-time-form"
-          className={css({ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' })}
+          className={css({
+            display: 'flex',
+            gap: '0.5rem',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+          })}
         >
           <label
-            className={css({ fontSize: '0.82rem', color: 'gray.600', _dark: { color: 'gray.400' } })}
+            className={css({
+              fontSize: '0.82rem',
+              color: 'gray.600',
+              _dark: { color: 'gray.400' },
+            })}
           >
             Actual time (seconds):
           </label>

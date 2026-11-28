@@ -1,13 +1,11 @@
 /**
  * @vitest-environment node
  *
- * The two review routes (#158; session architecture §10 P6b1-12):
- * `tries/[tryId]`, which every client uses since P6b1-12, and
- * `results/[resultIndex]`, kept for open tabs on older bundles (D9). Both hand
- * the request to `reviewTry`, so for the same try they answer the same: auth,
- * the CAS write, and the response the clients read. A row recorded before
- * Phase 1 has no stored `tryId`; it is addressed as `legacy:<planId>:<index>`,
- * the id `tryIdOf` gives it, so the clients can address every try they show.
+ * The review route (#158; session architecture §10 P6b1-12): `tries/[tryId]`,
+ * the only one since P6b1-12b deleted `results/[resultIndex]`. Auth, the CAS
+ * write, and the response the clients read. A row recorded before Phase 1 has
+ * no stored `tryId`; it is addressed as `legacy:<planId>:<index>`, the id
+ * `tryIdOf` gives it, so the clients can address every try they show.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -36,10 +34,7 @@ vi.mock('@/lib/viewer', () => ({ getUserId: async () => 'adult' }))
 const allowed = vi.hoisted(() => ({ value: true }))
 vi.mock('@/lib/classroom', () => ({ canPerformAction: async () => allowed.value }))
 
-// After the mocks: the routes load `@/db` (the factory reads the imports above)
-const { PATCH: byIndex } = await import(
-  '@/app/api/curriculum/[playerId]/sessions/plans/[planId]/results/[resultIndex]/route'
-)
+// After the mocks: the route loads `@/db` (the factory reads the imports above)
 const { PATCH: byTryId } = await import(
   '@/app/api/curriculum/[playerId]/sessions/plans/[planId]/tries/[tryId]/route'
 )
@@ -137,123 +132,82 @@ async function patch(handler: unknown, params: Record<string, string>, body: unk
   return { status: response.status, body: await response.json() }
 }
 
-/** The same try reviewed through each route, on twin plans; the answers with the ids aligned */
-async function bothRoutes(index: number, body: unknown) {
+/** Review try `index` of a fresh plan as the clients address it: the id `tryIdOf` gives, URL-encoded */
+async function review(index: number, body: unknown) {
   await insertPlan('plan-new')
-  await insertPlan('plan-old')
-  const results = tries()
-  // what the clients send: the try id the views give (`tryIdOf`), URL-encoded
-  const tryId = tryIdOf(results[index], index, 'plan-new')
+  const tryId = tryIdOf(tries()[index], index, 'plan-new')
   const encoded = reviewTryPath(playerId, 'plan-new', tryId).split('/tries/')[1]
-  const viaTryId = await patch(byTryId, { planId: 'plan-new', tryId: encoded }, body)
-  const viaIndex = await patch(byIndex, { planId: 'plan-old', resultIndex: String(index) }, body)
-  return {
-    tryId,
-    viaTryId,
-    viaIndex: JSON.parse(JSON.stringify(viaIndex).replaceAll('plan-old', 'plan-new')),
-  }
+  return { tryId, answer: await patch(byTryId, { planId: 'plan-new', tryId: encoded }, body) }
 }
 
-describe('review routes: tries/[tryId] and results/[resultIndex] answer the same', () => {
+describe('review route: tries/[tryId]', () => {
   it('a try with a stored id: mark_correct', async () => {
-    const { viaTryId, viaIndex } = await bothRoutes(0, { action: 'mark_correct' })
-    expect(viaTryId.status).toBe(200)
-    expect(viaTryId).toEqual(viaIndex)
-    expect(viaTryId.body.plan.results[0]).toMatchObject({ isCorrect: true, tryId: STORED_ID })
-    expect(viaTryId.body.plan.rowVersion).toBe(1)
+    const { answer } = await review(0, { action: 'mark_correct' })
+    expect(answer.status).toBe(200)
+    expect(answer.body.plan.results[0]).toMatchObject({ isCorrect: true, tryId: STORED_ID })
+    expect(answer.body.plan.rowVersion).toBe(1)
   })
 
   it('a try from before Phase 1 (no stored id), by its legacy id: exclude, then include', async () => {
-    const { tryId, viaTryId, viaIndex } = await bothRoutes(1, { action: 'exclude' })
+    const { tryId, answer } = await review(1, { action: 'exclude' })
     expect(tryId).toBe('legacy:plan-new:1')
-    expect(viaTryId.status).toBe(200)
-    expect(viaTryId).toEqual(viaIndex)
-    expect(viaTryId.body.plan.results[1]).not.toHaveProperty('tryId') // no id is stamped on it
-    expect(viaTryId.body.plan.results[1].source).toBe('teacher-excluded')
+    expect(answer.status).toBe(200)
+    expect(answer.body.plan.results[1]).not.toHaveProperty('tryId') // no id is stamped on it
+    expect(answer.body.plan.results[1].source).toBe('teacher-excluded')
 
     const included = await patch(byTryId, { planId: 'plan-new', tryId }, { action: 'include' })
-    const includedOld = await patch(
-      byIndex,
-      { planId: 'plan-old', resultIndex: '1' },
-      { action: 'include' }
-    )
-    expect(included).toEqual(
-      JSON.parse(JSON.stringify(includedOld).replaceAll('plan-old', 'plan-new'))
-    )
+    expect(included.status).toBe(200)
+    expect(included.body.plan.results[1].source).not.toBe('teacher-excluded')
     expect(included.body.plan.rowVersion).toBe(2)
   })
 
   it('the timing actions the review page sends (set_time, confirm_timing)', async () => {
-    const set = await bothRoutes(1, { action: 'set_time', adjustedResponseTimeMs: 4000 })
-    expect(set.viaTryId.status).toBe(200)
-    expect(set.viaTryId).toEqual(set.viaIndex)
+    const set = await review(1, { action: 'set_time', adjustedResponseTimeMs: 4000 })
+    expect(set.answer.status).toBe(200)
+    expect(set.answer.body.plan.results[1].timingReview?.adjustedResponseTimeMs).toBe(4000)
     const confirm = await patch(
       byTryId,
       { planId: 'plan-new', tryId: STORED_ID },
       { action: 'confirm_timing' }
     )
-    const confirmOld = await patch(
-      byIndex,
-      { planId: 'plan-old', resultIndex: '0' },
-      { action: 'confirm_timing' }
-    )
-    expect(confirm).toEqual(
-      JSON.parse(JSON.stringify(confirmOld).replaceAll('plan-old', 'plan-new'))
-    )
+    expect(confirm.status).toBe(200)
+    expect(confirm.body.plan.results[0].timingReview?.timingConfirmed).toBe(true)
   })
 
-  it('refuse alike: not authorized (403), not the player (404); only the miss differs', async () => {
+  it('the plan it answers carries no legacy wire field (P6b1-16 removed them)', async () => {
+    const { answer } = await review(0, { action: 'exclude' })
+    for (const field of ['currentSlotIndex', 'retryState', 'breakStartedAt', 'breakResults']) {
+      expect(answer.body.plan).not.toHaveProperty(field)
+    }
+  })
+
+  it('refuses: not authorized (403), not the player (404), an unknown id (404)', async () => {
     await insertPlan('plan-new')
     allowed.value = false
-    const denied = await patch(
-      byTryId,
-      { planId: 'plan-new', tryId: STORED_ID },
-      { action: 'exclude' }
-    )
-    const deniedOld = await patch(
-      byIndex,
-      { planId: 'plan-new', resultIndex: '0' },
-      { action: 'exclude' }
-    )
-    expect(denied).toEqual({ status: 403, body: { error: 'Not authorized' } })
-    expect(deniedOld).toEqual(denied)
+    expect(
+      await patch(byTryId, { planId: 'plan-new', tryId: STORED_ID }, { action: 'exclude' })
+    ).toEqual({ status: 403, body: { error: 'Not authorized' } })
     allowed.value = true
 
     const elsewhere = { playerId: 'someone-else', planId: 'plan-new' }
     const notYours = await patch(byTryId, { ...elsewhere, tryId: STORED_ID }, { action: 'exclude' })
-    const notYoursOld = await patch(
-      byIndex,
-      { ...elsewhere, resultIndex: '0' },
-      { action: 'exclude' }
-    )
     expect(notYours.status).toBe(404)
-    expect(notYoursOld).toEqual(notYours)
 
-    // An unknown id is a 404; an index past the end a 400 (the old route's own check)
     expect(
       await patch(
         byTryId,
         { planId: 'plan-new', tryId: 'legacy:plan-new:9' },
         { action: 'exclude' }
       )
-    ).toEqual({
-      status: 404,
-      body: { error: 'Try not found' },
-    })
-    expect(
-      await patch(byIndex, { planId: 'plan-new', resultIndex: '9' }, { action: 'exclude' })
-    ).toEqual({ status: 400, body: { error: 'Result index out of bounds' } })
+    ).toEqual({ status: 404, body: { error: 'Try not found' } })
   })
 
   it('the review page gets each flagged try with the id its card sends (stored or legacy)', async () => {
     // 8h a try: flagged (Tier 1) whatever the child's pace
     await insertPlan('plan-new', { responseTimeMs: 28_860_000 })
     const { flagged } = await getTimingReviewData(playerId)
-    expect(flagged.map((f) => [f.tryId, f.resultIndex])).toEqual(
-      expect.arrayContaining([
-        [STORED_ID, 0],
-        ['legacy:plan-new:1', 1],
-      ])
+    expect(flagged.map((f) => f.tryId)).toEqual(
+      expect.arrayContaining([STORED_ID, 'legacy:plan-new:1'])
     )
     for (const f of flagged) {
       const omitted = await patch(
@@ -262,7 +216,10 @@ describe('review routes: tries/[tryId] and results/[resultIndex] answer the same
         { action: 'exclude', scope: 'timing' }
       )
       expect(omitted.status).toBe(200)
-      expect(omitted.body.plan.results[f.resultIndex].timingReview?.omitFromTiming).toBe(true)
+      const index = omitted.body.plan.results.findIndex(
+        (r: SlotResult, i: number) => tryIdOf(r, i, f.sessionId) === f.tryId
+      )
+      expect(omitted.body.plan.results[index].timingReview?.omitFromTiming).toBe(true)
     }
   })
 })

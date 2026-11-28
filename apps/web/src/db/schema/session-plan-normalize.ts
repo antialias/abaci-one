@@ -24,7 +24,6 @@ import type {
   SessionAdjustment,
   SessionPart,
   SessionPlan,
-  SessionRetryState,
   SlotResult,
   TryKind,
 } from './session-plans'
@@ -388,57 +387,6 @@ export function currentBreakOf(plan: CurrentBreakSource): CurrentBreak | null {
   if (!last) return pending
   if (state === 'break_active' && last.endedAt !== undefined) return pending
   return { startedAt: last.startedAt, game: last.game ?? null, results: last.results ?? null }
-}
-
-/**
- * The legacy wire fields: what the plan's legacy position and break columns
- * told a client, derived from the new columns for bundles that still read
- * them (D9, §10 P6b1-16). Every path that sends a plan to a browser spreads
- * these over the plan. Until 6b-1 the routes passed the columns through.
- *
- * - `currentSlotIndex`, `retryState`: a bundle from Phase 6a resolves the
- *   current item from them alone (`arithmeticStateOf`), and checks each
- *   `part_states` entry against them (P5a-8, legacy wins on a mismatch); a
- *   bundle from 6b-0 falls back to them for a part without an entry. So they
- *   are the parts' states in the legacy encoding: the current part's cursor
- *   (0 past the last part, as move-on wrote it) and every part's retry state.
- * - `breakStartedAt`: bundles before 6b-0 time the break from it, read only in
- *   a break state, where it is the start of the break the kid is in (P6b-3).
- * - `breakResults`: bundles before 6b-0 restore the results screen from it in
- *   `break_results`; without it they acknowledge the results unseen.
- *
- * `breakReason` and `breakSelectedGame` are not derived: no client reads
- * them but a trace log line. These stay until a deliberate removal at least
- * one release after Phase 6b-2.
- */
-export interface LegacyWireFields {
-  currentSlotIndex: number
-  retryState: SessionRetryState
-  breakStartedAt: number | null
-  breakResults: GameResultsReport | null
-}
-
-export function legacyWireFieldsOf(plan: PartStateSource & CurrentBreakSource): LegacyWireFields {
-  const retryState: SessionRetryState = {}
-  plan.parts.forEach((part, partIndex) => {
-    if (kindIdOf(part) !== 'arithmetic') return
-    const retry = arithmeticPartStateOf(plan, partIndex).retry
-    if (retry) retryState[partIndex] = retry
-  })
-  const current = plan.parts[plan.currentPartIndex]
-  const currentSlotIndex =
-    current && kindIdOf(current) === 'arithmetic'
-      ? arithmeticPartStateOf(plan, plan.currentPartIndex).slotIndex
-      : 0
-  const currentBreak = currentBreakOf(plan)
-  const startedMs =
-    currentBreak?.startedAt != null ? new Date(currentBreak.startedAt).getTime() : null
-  return {
-    currentSlotIndex,
-    retryState,
-    breakStartedAt: startedMs == null || Number.isNaN(startedMs) ? null : startedMs,
-    breakResults: currentBreak?.results ?? null,
-  }
 }
 
 // ============================================================================

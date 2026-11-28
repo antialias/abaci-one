@@ -30,17 +30,9 @@ export interface FlaggedAttempt {
   completedAt: string | null
   /**
    * The try's id (`tryIdOf`: its stored id, else `legacy:<planId>:<index>`),
-   * the `tries/[tryId]` PATCH target (§10 P6b1-12). This server always sends
-   * it; it is optional because a client can still be handed an attempt by a
-   * server from before P6b1-12 (a pod not yet rolled, or a rollback), which
-   * sends `resultIndex` only. Required again once P6b1-12b lands.
+   * the `tries/[tryId]` PATCH target (§10 P6b1-12).
    */
-  tryId?: string
-  /**
-   * Index into the session plan's `results` array: the `results/[resultIndex]`
-   * target of bundles from before P6b1-12, still sent for their open tabs (D9).
-   */
-  resultIndex: number
+  tryId: string
   tier: 'tier1' | 'tier2'
   reason?: AttemptTimingReason
   /** Effective timing (ms) this attempt currently contributes, or null if omitted. */

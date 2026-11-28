@@ -2,8 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import type React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { curriculumKeys, timingReviewKeys } from '@/lib/queryKeys'
 import type { TimingReviewData } from '@/lib/curriculum/timing/review-types'
+import { curriculumKeys, timingReviewKeys } from '@/lib/queryKeys'
 import {
   useConfirmTiming,
   useReviewSlotResult,
@@ -105,55 +105,6 @@ describe('useReviewSlotResult (write) invalidates the review cache', () => {
       expect.objectContaining({ method: 'PATCH' })
     )
     expect(spy).toHaveBeenCalledWith({ queryKey: timingReviewKeys.detail('player-1') })
-  })
-
-  it('an attempt from an older server (no tryId) goes to the index route, never tries/undefined (D9, §10 P6b1-12a)', async () => {
-    vi.mocked(global.fetch).mockResolvedValue({ ok: true, json: async () => ({}) } as Response)
-
-    const { result } = renderHook(() => useReviewSlotResult(), { wrapper })
-
-    // What a pod from before P6b1-12 sends: resultIndex only
-    result.current.mutate({
-      playerId: 'player-1',
-      planId: 'session-1',
-      tryId: undefined,
-      resultIndex: 3,
-      action: { action: 'confirm_timing' },
-    })
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/3',
-      expect.objectContaining({ method: 'PATCH' })
-    )
-  })
-
-  it('with both, the id wins; with neither, nothing is sent', async () => {
-    vi.mocked(global.fetch).mockResolvedValue({ ok: true, json: async () => ({}) } as Response)
-
-    const { result } = renderHook(() => useReviewSlotResult(), { wrapper })
-    result.current.mutate({
-      playerId: 'player-1',
-      planId: 'session-1',
-      tryId: 'legacy:session-1:3',
-      resultIndex: 3,
-      action: { action: 'confirm_timing' },
-    })
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(global.fetch).toHaveBeenLastCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/tries/legacy%3Asession-1%3A3',
-      expect.objectContaining({ method: 'PATCH' })
-    )
-
-    vi.mocked(global.fetch).mockClear()
-    const { result: bare } = renderHook(() => useReviewSlotResult(), { wrapper })
-    bare.current.mutate({
-      playerId: 'player-1',
-      planId: 'session-1',
-      action: { action: 'confirm_timing' },
-    })
-    await waitFor(() => expect(bare.current.isError).toBe(true))
-    expect(global.fetch).not.toHaveBeenCalled()
   })
 })
 

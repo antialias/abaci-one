@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
-import type { SessionPartType } from '@/db/schema/session-plans'
+import type { PartTransitionSide } from '@/lib/classroom/socket-events'
 import { css } from '../../../styled-system/css'
 
 // ============================================================================
@@ -17,10 +17,10 @@ import { css } from '../../../styled-system/css'
 // ============================================================================
 
 export interface ObserverTransitionViewProps {
-  /** Part type transitioning FROM (null if session start) */
-  previousPartType: SessionPartType | null
-  /** Part type transitioning TO */
-  nextPartType: SessionPartType
+  /** The part transitioning FROM, as its kind names it (null at session start) */
+  previous: PartTransitionSide | null
+  /** The part transitioning TO (null when an older kid screen did not say) */
+  next: PartTransitionSide | null
   /** Timestamp when countdown started (for sync) */
   countdownStartTime: number
   /** Countdown duration in ms */
@@ -34,38 +34,12 @@ export interface ObserverTransitionViewProps {
 }
 
 // ============================================================================
-// Helper Functions
-// ============================================================================
-
-function getPartTypeEmoji(type: SessionPartType): string {
-  switch (type) {
-    case 'abacus':
-      return '🧮'
-    case 'visualization':
-      return '🧠'
-    case 'linear':
-      return '✏️'
-  }
-}
-
-function getPartTypeLabel(type: SessionPartType): string {
-  switch (type) {
-    case 'abacus':
-      return 'Abacus'
-    case 'visualization':
-      return 'Visualization'
-    case 'linear':
-      return 'Equations'
-  }
-}
-
-// ============================================================================
 // Component
 // ============================================================================
 
 export function ObserverTransitionView({
-  previousPartType,
-  nextPartType,
+  previous,
+  next,
   countdownStartTime,
   countdownDurationMs,
   student,
@@ -180,20 +154,20 @@ export function ObserverTransitionView({
           fontSize: '0.875rem',
         })}
       >
-        {previousPartType && (
+        {previous && (
           <>
-            <span className={css({ opacity: 0.5 })}>{getPartTypeEmoji(previousPartType)}</span>
+            <span className={css({ opacity: 0.5 })}>{previous.emoji}</span>
             <span className={css({ color: isDark ? 'gray.500' : 'gray.400' })}>→</span>
           </>
         )}
-        <span>{getPartTypeEmoji(nextPartType)}</span>
+        <span>{next?.emoji}</span>
         <span
           className={css({
             fontWeight: '500',
             color: isDark ? 'gray.300' : 'gray.600',
           })}
         >
-          {getPartTypeLabel(nextPartType)}
+          {next?.label}
         </span>
       </div>
 

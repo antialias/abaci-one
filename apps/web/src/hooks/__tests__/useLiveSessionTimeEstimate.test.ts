@@ -1,5 +1,5 @@
-import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { act, renderHook } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SessionPart, SlotResult } from '@/db/schema/session-plans'
 
 // ============================================================================
@@ -52,8 +52,8 @@ vi.mock('@/lib/socket', () => ({
   }),
 }))
 
-import { useLiveSessionTimeEstimate } from '../useLiveSessionTimeEstimate'
 import { createSocket } from '@/lib/socket'
+import { useLiveSessionTimeEstimate } from '../useLiveSessionTimeEstimate'
 
 // ============================================================================
 // Helpers
@@ -223,8 +223,6 @@ describe('useLiveSessionTimeEstimate', () => {
 
     act(() => {
       latestSocket!.fire('session-stats', {
-        currentProblemNumber: 4,
-        totalProblems: 10,
         slotResults: liveResults,
       })
     })

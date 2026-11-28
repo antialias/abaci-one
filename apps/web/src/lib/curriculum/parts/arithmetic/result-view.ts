@@ -225,32 +225,38 @@ export function triesBeforeItem(
 }
 
 // ============================================================================
-// Observer dots (the legacy wire, P5b-2)
+// Observer dots
 // ============================================================================
 
 /** The props of the observer's arithmetic dots, from a `practice-state` broadcast. */
 export interface ArithmeticObserverDots {
   sessionParts?: SessionPart[]
-  currentPartIndex?: number
-  currentSlotIndex?: number
   slotResults?: SlotResult[]
+  /** The current dot's part: the item on the kid's screen */
+  currentPartIndex?: number
+  /** The current dot's slot: the item on the kid's screen (absent when the part has no such item) */
+  currentSlotIndex?: number
 }
 
 /**
- * Decodes the arithmetic position fields of a broadcast (the encoder is
- * `arithmeticObserverPosition` in `session-view.ts`). Legacy wire, retired
- * with Phase 6 once observers read `currentItem` (§10 P5b-2).
+ * Decodes the arithmetic fields of a broadcast (the encoder is
+ * `arithmeticObserverPosition` in `session-view.ts`): the current dot is the
+ * slot of `currentItem`, the item on the kid's screen (§10 P6b1-13).
  */
 export function arithmeticObserverDotsOf(
-  event: Pick<
-    PracticeStateEvent,
-    'sessionParts' | 'currentPartIndex' | 'currentSlotIndex' | 'slotResults'
-  >
+  event: Pick<PracticeStateEvent, 'sessionParts' | 'slotResults' | 'currentItem'>
 ): ArithmeticObserverDots {
+  const sessionParts = event.sessionParts as SessionPart[] | undefined
+  const item = event.currentItem
+  const slotIndex =
+    item && sessionParts
+      ? arithmeticSlotsOf(sessionParts[item.partIndex]).findIndex((s) => s.slotId === item.itemId)
+      : -1
   return {
-    sessionParts: event.sessionParts as SessionPart[] | undefined,
-    currentPartIndex: event.currentPartIndex,
-    currentSlotIndex: event.currentSlotIndex,
+    sessionParts,
     slotResults: event.slotResults as SlotResult[] | undefined,
+    ...(item && slotIndex >= 0
+      ? { currentPartIndex: item.partIndex, currentSlotIndex: slotIndex }
+      : {}),
   }
 }

@@ -212,25 +212,19 @@ export interface PracticeStateEvent {
   /** Complexity data for tooltip display */
   complexity?: BroadcastComplexity
   /**
-   * The position fields below come from the server's plan and the item on the
-   * kid's screen (Phase 5b), computed by the arithmetic kind's view
+   * The fields below come from the server's plan and the item on the kid's
+   * screen (Phase 5b), computed by the arithmetic kind's view
    * (`parts/arithmetic/session-view.ts`, `arithmeticObserverPosition`), not
-   * from copies the kid's screen keeps. They are the fields observers read
-   * today; counts come from the session report (Phase 4).
+   * from copies the kid's screen keeps. Counts come from the session report
+   * (Phase 4). The legacy position fields (`currentProblemNumber`,
+   * `totalProblems`, `currentPartIndex`, `currentSlotIndex`) are gone (§10
+   * P6b1-13): observers place the current dot by `currentItem`.
    */
-  /** The dots' number of the plan's cursor (1-indexed; a do-over does not move it) */
-  currentProblemNumber: number
-  /** Problems planned (the dots' count) */
-  totalProblems: number
-  /** Session structure for progress indicator */
-  sessionParts?: unknown[] // SessionPart[] - sent for observer progress display
-  /** Part of the dot shown as current: a do-over's own part, else the plan's */
-  currentPartIndex?: number
-  /** Slot of the dot shown as current: a do-over's own slot, else the plan's cursor */
-  currentSlotIndex?: number
+  /** The plan's parts (the dots, and the problems the observer lists tries against) */
+  sessionParts?: unknown[] // SessionPart[]
   /** The plan's tries, for the observer's dots and the stats feed */
-  slotResults?: unknown[] // SlotResult[] - for observer progress display
-  /** The item on the kid's screen (Phase 5b; absent from older kid screens) */
+  slotResults?: unknown[] // SlotResult[]
+  /** The item on the kid's screen: a do-over's own item, else the one the plan expects */
   currentItem?: PracticeItemRef
 }
 
@@ -243,13 +237,7 @@ export interface PracticeItemRef {
 /** The position fields of a `practice-state` broadcast (Phase 5b). */
 export type ObserverPosition = Pick<
   PracticeStateEvent,
-  | 'sessionParts'
-  | 'currentPartIndex'
-  | 'currentSlotIndex'
-  | 'slotResults'
-  | 'currentProblemNumber'
-  | 'totalProblems'
-  | 'currentItem'
+  'sessionParts' | 'slotResults' | 'currentItem'
 >
 
 export interface TutorialStateEvent {
@@ -293,27 +281,20 @@ export interface SessionResumedEvent {
 export interface PartTransitionEvent {
   sessionId: string
   /** The part we're transitioning FROM, as its kind names it (null at session start; Phase 5b) */
-  previous?: PartTransitionSide | null
+  previous: PartTransitionSide | null
   /** The part we're transitioning TO, as its kind names it (Phase 5b) */
-  next?: PartTransitionSide
-  /**
-   * Arithmetic presentation we're transitioning FROM (null if session start).
-   * Kept for observers that read it (`ObserverTransitionView`) and for one
-   * release of older observer bundles (D9); `previous` is the kind's answer.
-   */
-  previousPartType: 'abacus' | 'visualization' | 'linear' | null
-  /** Arithmetic presentation we're transitioning TO (legacy; see `previousPartType`) */
-  nextPartType: 'abacus' | 'visualization' | 'linear'
+  next: PartTransitionSide
   /** Timestamp when countdown started (for sync) */
   countdownStartTime: number
   /** Countdown duration in ms */
   countdownDurationMs: number
 }
 
-/** A part as the transition names it: its kind and the label its kind gives it (§1.3). */
+/** A part as the transition names it: its kind, and the label and emoji its kind gives it (§1.3). */
 export interface PartTransitionSide {
   kind: string
   label: string
+  emoji: string
 }
 
 /**

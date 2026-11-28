@@ -89,8 +89,8 @@ const VALID_SCOPES: readonly SlotReviewScope[] = ['timing', 'mastery', 'both']
 
 /**
  * Translate a request body into a typed {@link SlotResultReviewAction}.
- * Throws {@link SessionReviewError} (400) on anything unrecognized. Shared by
- * the `tries/[tryId]` and the legacy `results/[resultIndex]` routes.
+ * Throws {@link SessionReviewError} (400) on anything unrecognized. Used by the
+ * `tries/[tryId]` route.
  */
 export function parseSlotResultReviewAction(body: unknown): SlotResultReviewAction {
   const { action, scope, adjustedResponseTimeMs } = (body ?? {}) as {
@@ -318,10 +318,10 @@ export interface ApplySlotResultReviewParams {
   /** Expected owner; enforced against the loaded plan (returns 404 on mismatch). */
   playerId: string
   /**
-   * The try to review: by `tryId` (a stored id, or `legacy:<planId>:<index>` for
-   * a row without one), or by its position in `results` (the legacy route).
+   * The try to review, by `tryId`: a stored id, or `legacy:<planId>:<index>`
+   * for a row without one.
    */
-  target: { tryId: string } | { resultIndex: number }
+  target: { tryId: string }
   /** User ID of the acting adult (stamped into the audit fields). */
   reviewerUserId: string
   action: SlotResultReviewAction
@@ -329,9 +329,9 @@ export interface ApplySlotResultReviewParams {
 }
 
 /**
- * Load the plan, verify ownership + index, apply the review action, and persist
+ * Load the plan, verify ownership, find the try, apply the review action, and persist
  * via `updateSessionPlanResults`. Restricted to finished sessions is enforced
- * by the caller (the results route only exposes this for review); the plan
+ * by the caller (the review route only exposes this for review); the plan
  * itself may be in any status here since the review UI targets history.
  */
 export async function applySlotResultReview(
@@ -347,16 +347,8 @@ export async function applySlotResultReview(
       throw new SessionReviewError('Plan not found', 404)
     }
 
-    let resultIndex: number
-    if ('tryId' in target) {
-      resultIndex = findTryIndex(plan.id, plan.results, target.tryId)
-      if (resultIndex < 0) throw new SessionReviewError('Try not found', 404)
-    } else {
-      resultIndex = target.resultIndex
-      if (!Number.isInteger(resultIndex) || resultIndex < 0 || resultIndex >= plan.results.length) {
-        throw new SessionReviewError('Result index out of bounds', 400)
-      }
-    }
+    const resultIndex = findTryIndex(plan.id, plan.results, target.tryId)
+    if (resultIndex < 0) throw new SessionReviewError('Try not found', 404)
 
     const tryRecord = normalizeTries(plan.id, plan.parts, plan.results).find(
       (t) => t.arrayIndex === resultIndex

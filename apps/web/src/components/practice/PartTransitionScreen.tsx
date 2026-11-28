@@ -40,7 +40,6 @@ const COUNTDOWN_UPDATE_INTERVAL_MS = 100
  * arithmetic's messages.
  */
 export interface PartTransitionView extends PartTransitionSide {
-  emoji: string
   needsPhysicalAbacus: boolean
   presentation?: SessionPartType
 }

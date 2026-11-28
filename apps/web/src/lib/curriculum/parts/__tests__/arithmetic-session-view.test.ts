@@ -1,12 +1,13 @@
 /**
  * The arithmetic kind's client view (Phase 5b): what the session screens read
  * of an arithmetic part instead of its slots and the legacy cursor columns.
- * The observer position must be the fields the kid's screen broadcast before
- * Phase 5b, computed from the plan and the item on screen.
+ * The observer is sent the plan's parts and tries and the item on screen, and
+ * places its current dot by that item (§10 P6b1-13).
  */
 
 import { describe, expect, it } from 'vitest'
 import type { ProblemSlot, SessionPart, SlotResult } from '@/db/schema/session-plans'
+import { arithmeticObserverDotsOf } from '../arithmetic/result-view'
 import {
   type ArithmeticViewPlan,
   arithmeticCursorLinearIndex,
@@ -85,38 +86,50 @@ describe('arithmetic session view', () => {
     })
   })
 
-  it('derives the legacy observer fields from the plan and the item on screen', () => {
+  it('sends the plan and the item on screen; the observer places its dot by the item', () => {
     const results = [result(1, 0, true)]
-    expect(
-      arithmeticObserverPosition(plan({ results }), {
-        partIndex: 1,
-        itemId: 'p1s2',
-        doOver: false,
-      })
-    ).toEqual({
+    const position = arithmeticObserverPosition(plan({ results }), {
+      partIndex: 1,
+      itemId: 'p1s2',
+      doOver: false,
+    })
+    expect(position).toEqual({
       sessionParts: parts,
+      slotResults: results,
+      currentItem: { partIndex: 1, itemId: 'p1s2' },
+    })
+    expect(arithmeticObserverDotsOf(position)).toEqual({
+      sessionParts: parts,
+      slotResults: results,
       currentPartIndex: 1,
       currentSlotIndex: 2,
-      slotResults: results,
-      currentProblemNumber: 6,
-      totalProblems: 7,
-      currentItem: { partIndex: 1, itemId: 'p1s2' },
     })
   })
 
-  it('shows a do-over at its own slot, with the cursor problem number', () => {
+  it('shows a do-over at its own slot; the DVR number stays the cursor', () => {
     const position = arithmeticObserverPosition(plan(), {
       partIndex: 0,
       itemId: 'p0s1',
       doOver: true,
     })
-    expect(position.currentPartIndex).toBe(0)
-    expect(position.currentSlotIndex).toBe(1)
-    expect(position.currentProblemNumber).toBe(6)
     expect(position.currentItem).toEqual({ partIndex: 0, itemId: 'p0s1' })
+    expect(arithmeticObserverDotsOf(position)).toMatchObject({
+      currentPartIndex: 0,
+      currentSlotIndex: 1,
+    })
+    expect(arithmeticCursorLinearIndex(plan()) + 1).toBe(6)
   })
 
-  it('keeps the parked cursor during a retry round and sizes the round', () => {
+  it('no current dot for an item the parts do not have', () => {
+    const position = arithmeticObserverPosition(plan(), {
+      partIndex: 1,
+      itemId: 'nope',
+      doOver: false,
+    })
+    expect(arithmeticObserverDotsOf(position)).not.toHaveProperty('currentSlotIndex')
+  })
+
+  it('during a retry round: the kid keeps the parked cursor, the observer shows the retry item', () => {
     const retrying = plan({
       currentPartIndex: 0,
       partStates: {
@@ -141,8 +154,14 @@ describe('arithmetic session view', () => {
       itemId: 'p0s0',
       doOver: false,
     })
-    expect(position.currentSlotIndex).toBe(3)
-    expect(position.currentProblemNumber).toBe(4)
+    // the kid's dots and the DVR number: the cursor, parked at the part's end
+    expect(arithmeticDotsPosition(retrying).currentSlotIndex).toBe(3)
+    expect(arithmeticCursorLinearIndex(retrying) + 1).toBe(4)
+    // the observer's current dot: the retry item on the kid's screen (§10 P6b1-13)
+    expect(arithmeticObserverDotsOf(position)).toMatchObject({
+      currentPartIndex: 0,
+      currentSlotIndex: 0,
+    })
   })
 
   it('omits currentItem with nothing on screen', () => {

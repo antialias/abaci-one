@@ -26,6 +26,7 @@ import {
   registerSessionControls,
   registerSessionRoomJoins,
 } from './lib/classroom/session-room-access'
+import type { PartTransitionEvent } from './lib/classroom/socket-events'
 import { registerSessionReportJoin } from './lib/curriculum/session-report-access'
 import { registerSessionReportPush } from './lib/curriculum/session-report-server'
 import { socketConnections, socketConnectionsTotal } from './lib/metrics'
@@ -1077,25 +1078,15 @@ export function initializeSocketServer(httpServer: HTTPServer) {
           phase: data.phase as PracticeStateInput['phase'],
           studentAnswer: data.studentAnswer as string,
           isCorrect: data.isCorrect as boolean | null,
-          currentProblemNumber: data.currentProblemNumber as number,
         }
         VisionRecorder.getInstance().onPracticeState(data.sessionId, practiceState)
       }
     })
 
     // Session Observation: Broadcast part transition (from student's client)
-    socket.on(
-      'part-transition',
-      (data: {
-        sessionId: string
-        previousPartType: string | null
-        nextPartType: string
-        countdownStartTime: number
-        countdownDurationMs: number
-      }) => {
-        socket.to(`session:${data.sessionId}`).emit('part-transition', data)
-      }
-    )
+    socket.on('part-transition', (data: PartTransitionEvent) => {
+      socket.to(`session:${data.sessionId}`).emit('part-transition', data)
+    })
 
     // Session Observation: Broadcast part transition complete (from student's client)
     socket.on('part-transition-complete', (data: { sessionId: string }) => {

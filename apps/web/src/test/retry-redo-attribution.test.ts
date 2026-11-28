@@ -703,11 +703,11 @@ describe('retry and do-over attribution', () => {
       expect((await getSessionPlan(plan.id))!.results).toHaveLength(0)
     })
 
-    it('reaches the same row by tryId, by legacy tryId and by result index', async () => {
+    it('reaches the same row by tryId and by legacy tryId', async () => {
       let plan = await newPlan(playerId, 3)
       plan = await answerShown(plan, false, tid(5))
       plan = await answerShown(plan, false)
-      const review = (target: { tryId: string } | { resultIndex: number }, at: string) =>
+      const review = (target: { tryId: string }, at: string) =>
         applySlotResultReview({
           planId: plan.id,
           playerId,
@@ -718,12 +718,10 @@ describe('retry and do-over attribution', () => {
         })
       const byId = await review({ tryId: tid(5) }, '2026-01-01T00:00:00Z')
       expect(byId.results[0].timingReview?.reviewedAt).toBe('2026-01-01T00:00:00.000Z')
-      const byIndex = await review({ resultIndex: 0 }, '2026-01-02T00:00:00Z')
-      expect(byIndex.results[0].timingReview?.reviewedAt).toBe('2026-01-02T00:00:00.000Z')
 
       // A row without a stored tryId (recorded before Phase 1) answers to its legacy id
-      const legacy: SlotResult[] = byIndex.results.map(({ tryId: _t, ...r }, i) =>
-        i === 1 ? (r as SlotResult) : byIndex.results[i]
+      const legacy: SlotResult[] = byId.results.map(({ tryId: _t, ...r }, i) =>
+        i === 1 ? (r as SlotResult) : byId.results[i]
       )
       await eph.db
         .update(schema.sessionPlans)

@@ -1,8 +1,7 @@
 import { and, eq, gte, inArray } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { db, schema } from '@/db'
-import { legacyWireFieldsOf } from '@/db/schema/session-plan-normalize'
-import type { SessionPlan, GameBreakSettings } from '@/db/schema/session-plans'
+import type { GameBreakSettings, SessionPlan } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
 import {
@@ -29,8 +28,6 @@ function serializePlan(plan: SessionPlan) {
     approvedAt: plan.approvedAt instanceof Date ? plan.approvedAt.getTime() : plan.approvedAt,
     startedAt: plan.startedAt instanceof Date ? plan.startedAt.getTime() : plan.startedAt,
     completedAt: plan.completedAt instanceof Date ? plan.completedAt.getTime() : plan.completedAt,
-    // The legacy position and break fields, derived, for older bundles (D9, §10 P6b1-16)
-    ...legacyWireFieldsOf(plan),
   }
 }
 
