@@ -1,14 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import type { Socket } from 'socket.io-client'
-import { createSocket } from '@/lib/socket'
-import { css } from '../../../../styled-system/css'
 import { useToast } from '@/components/common/ToastContext'
 import { PageWithNav } from '@/components/PageWithNav'
 import { useUserId } from '@/hooks/useUserId'
+import { createSocket } from '@/lib/socket'
 import { getRoomDisplayWithEmoji } from '@/utils/room-display'
+import { css } from '../../../../styled-system/css'
 
 interface Room {
   id: string
@@ -68,7 +68,7 @@ export default function RoomDetailPage() {
     sock.on('connect', () => {
       setIsConnected(true)
       // Join the room
-      sock.emit('join-room', { roomId, userId: userId })
+      sock.emit('join-room', { roomId })
     })
 
     sock.on('disconnect', () => {
@@ -118,7 +118,7 @@ export default function RoomDetailPage() {
     })
 
     return () => {
-      sock.emit('leave-room', { roomId, userId: userId })
+      sock.emit('leave-room', { roomId })
       sock.disconnect()
     }
   }, [roomId, userId])
@@ -129,7 +129,7 @@ export default function RoomDetailPage() {
 
     const handleFocus = () => {
       console.log('Window focused, notifying room of potential player changes')
-      socket.emit('players-updated', { roomId, userId: userId })
+      socket.emit('players-updated', { roomId })
     }
 
     window.addEventListener('focus', handleFocus)

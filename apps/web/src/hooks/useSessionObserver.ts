@@ -275,7 +275,8 @@ export function useSessionObserver(
       if (shareToken) {
         socket.emit('observe-session', { sessionId, shareToken })
       } else {
-        socket.emit('observe-session', { sessionId, observerId, playerId })
+        // The server admits the socket's verified viewer (not an id we send)
+        socket.emit('observe-session', { sessionId, playerId })
       }
       setIsObserving(true)
     }

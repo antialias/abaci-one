@@ -351,10 +351,17 @@ export interface SessionEndedEvent {
   outcome?: 'completed' | 'abandoned'
 }
 
-/** Join a session's gated report room (Phase 4a): a viewer with `observe`, or a share token. */
+/**
+ * Join a session's gated report room (Phase 4a): the socket's viewer with
+ * `observe` on the player, or a share token. The viewer is the one the
+ * server verified at the handshake, never an id in the payload.
+ */
 export interface SubscribeSessionReportRequest {
   sessionId: string
-  /** Authenticated viewer (checked with `canPerformAction(viewerId, playerId, 'observe')`) */
+  /**
+   * Ignored by the server (it checks the socket's verified viewer). Older
+   * clients still send it; new ones don't.
+   */
   viewerId?: string
   playerId?: string
   /** Share-link holder (checked with `validateSessionShare(token, { allowEnded: true })`) */
@@ -599,6 +606,7 @@ export interface ClassroomClientToServerEvents {
   'unsubscribe-session-report': (data: { sessionId: string }) => void
   'observe-session': (data: {
     sessionId: string
+    /** Ignored by the server (the observer is the socket's verified viewer); older clients send it */
     observerId?: string
     playerId?: string
     shareToken?: string

@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { createSocket } from '@/lib/socket'
 import { useGetRoomByCode, useJoinRoom, useRoomData } from '@/hooks/useRoomData'
+import { createSocket } from '@/lib/socket'
 import { getRoomDisplayWithEmoji } from '@/utils/room-display'
 
 interface RoomSwitchConfirmationProps {
@@ -374,7 +374,7 @@ export default function JoinRoomPage({ params }: { params: { code: string } }) {
         socket.on('connect', () => {
           console.log('[Join Page] Socket connected, joining user channel')
           // Join user-specific channel to receive moderation events
-          socket?.emit('join-user-channel', { userId })
+          socket?.emit('join-user-channel', {})
         })
 
         socket.on('join-request-approved', (data: { roomId: string; requestId: string }) => {

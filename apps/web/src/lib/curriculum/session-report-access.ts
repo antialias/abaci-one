@@ -8,26 +8,53 @@
  * - a share holder: `validateSessionShare(token, { allowEnded: true })` for a
  *   share of this session (an expired-by-completion share only once the
  *   session has ended, as the token report route);
- * - a signed-in viewer: `canPerformAction(viewerId, playerId, 'observe')`, and
- *   the session must be that player's.
- * Like `observe-session`, the viewer id is the one the client sends (sockets
- * carry no server-verified identity yet; §10 P4a-9).
+ * - a viewer (signed in or a guest): `canPerformAction(viewerId, playerId,
+ *   'observe')`, and the session must be that player's.
+ * The viewer id is the socket's verified one (`socket.data.viewer`, set at the
+ * handshake by `resolveSocketViewer`); an id in the payload is ignored, so
+ * naming someone else's id grants nothing.
  */
 
 import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { isEndedOutcome, sessionOutcome } from '@/db/schema/session-plan-normalize'
 import type { SubscribeSessionReportRequest } from '@/lib/classroom/socket-events'
+import { type SocketViewerData, socketViewerId } from '@/lib/socket-viewer'
 
 export type SessionReportJoinDecision = { ok: true } | { ok: false; error: string }
 
 /**
- * `action` is the access level a signed-in viewer needs (default `observe`,
+ * A join's check: the session, the share token or player it names, and the
+ * socket's verified viewer id (never one from the payload).
+ */
+export interface SessionJoinCheck {
+  sessionId: string
+  playerId?: string
+  shareToken?: string
+  /** The socket's verified viewer (`socketViewerId`), or null/absent when anonymous */
+  viewerId?: string | null
+}
+
+/**
+ * The check for a join request: the payload's session, player and share
+ * token, and the socket's verified viewer. A payload's `viewerId` (older
+ * clients still send one) is dropped.
+ */
+export function joinCheckOf(
+  request: SubscribeSessionReportRequest | undefined,
+  socket: { data: SocketViewerData }
+): SessionJoinCheck {
+  const { sessionId, playerId, shareToken } = request ?? ({} as SubscribeSessionReportRequest)
+  return { sessionId, playerId, shareToken, viewerId: socketViewerId(socket) }
+}
+
+/**
+ * `action` is the access level a viewer needs (default `observe`,
  * the report room's and the live room's; the history list's stats feed asks
  * `view`, Phase 4c). A share holder is checked the same way at every level.
  */
 export async function authorizeSessionReportJoin(
-  request: SubscribeSessionReportRequest,
+  request: SessionJoinCheck,
   action: 'observe' | 'view' = 'observe'
 ): Promise<SessionReportJoinDecision> {
   const { sessionId, viewerId, playerId, shareToken } = request ?? ({} as never)
@@ -70,6 +97,8 @@ export interface SessionReportSocket {
   join(room: string): unknown
   leave(room: string): unknown
   emit(event: string, data: unknown): unknown
+  /** `viewer`: the handshake's verified viewer */
+  data: SocketViewerData
 }
 
 /** Register `subscribe-session-report` / `unsubscribe-session-report` on a connected socket. */
@@ -77,7 +106,7 @@ export function registerSessionReportJoin(socket: SessionReportSocket): void {
   socket.on('subscribe-session-report', async (request: SubscribeSessionReportRequest) => {
     const sessionId = String(request?.sessionId ?? '')
     try {
-      const decision = await authorizeSessionReportJoin(request)
+      const decision = await authorizeSessionReportJoin(joinCheckOf(request, socket))
       if (!decision.ok) {
         socket.emit('session-report-error', { sessionId, error: decision.error })
         return

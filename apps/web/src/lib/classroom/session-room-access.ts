@@ -18,9 +18,10 @@
  * calls `authorizeSessionRoomJoin`). The history list's live estimate
  * (`subscribe-session-stats`) joins a separate feed, `session-stats:<id>`, at
  * level `view` (what the dashboard needs): it hears `session-stats` (the
- * kid's parts and tries) and `session-ended`, never `practice-state`. Like
- * those checks, `viewerId` is what the client sends: sockets carry no server-
- * verified identity yet (§10 P4c-3).
+ * kid's parts and tries) and `session-ended`, never `practice-state`. The
+ * viewer is the socket's verified one (`socket.data.viewer`, from the
+ * handshake's cookies); an id in the payload (`viewerId`, `observerId`) is
+ * ignored, so naming someone else's id grants nothing.
  */
 
 import { eq } from 'drizzle-orm'
@@ -31,9 +32,12 @@ import type {
 } from '@/lib/classroom/socket-events'
 import {
   authorizeSessionReportJoin,
+  joinCheckOf,
+  type SessionJoinCheck,
   type SessionReportJoinDecision,
   type SessionReportSocket,
 } from '@/lib/curriculum/session-report-access'
+import { type SocketViewerData, socketViewerId } from '@/lib/socket-viewer'
 
 /** The live room of a session (the kid's broadcasts, observers' controls). */
 export function sessionRoom(sessionId: string): string {
@@ -48,11 +52,12 @@ export function sessionStatsRoom(sessionId: string): string {
 /** The access level each room needs of a signed-in viewer. */
 export type SessionRoomLevel = 'observe' | 'view'
 
-/** The credential a join of `session:<id>` carries; `playerId` may be omitted. */
+/** What a join of `session:<id>` sends; `playerId` may be omitted. */
 export type SessionRoomJoinRequest = SubscribeSessionReportRequest
 
+/** `request.viewerId` is the socket's verified viewer (`joinCheckOf`), never the payload's. */
 export async function authorizeSessionRoomJoin(
-  request: SessionRoomJoinRequest,
+  request: SessionJoinCheck,
   level: SessionRoomLevel = 'observe'
 ): Promise<SessionReportJoinDecision> {
   const { sessionId, viewerId, playerId, shareToken } = request ?? ({} as never)
@@ -99,7 +104,7 @@ export function registerSessionRoomJoins(socket: SessionReportSocket): void {
       const decision =
         label === 'join-session' && request?.shareToken
           ? ({ ok: false, error: 'Share links observe through observe-session' } as const)
-          : await authorizeSessionRoomJoin(request, level)
+          : await authorizeSessionRoomJoin(joinCheckOf(request, socket), level)
       if (!decision.ok) {
         console.log(`⚠️ ${label} refused for session ${sessionId}: ${decision.error}`)
         socket.emit('session-room-error', { sessionId, error: decision.error })
@@ -162,7 +167,7 @@ export function isSessionRoomMember(socket: SessionRoomMember, sessionId: string
 /** The socket surface the control relays need. */
 export interface SessionControlSocket extends SessionRoomMember {
   on(event: string, handler: (data: any) => void): unknown
-  data: SharedSessionsData
+  data: SharedSessionsData & SocketViewerData
 }
 
 /** The server surface the control relays emit through (a socket.io `Server`). */
@@ -227,9 +232,13 @@ export function mayActInSession(socket: SessionControlSocket, sessionId: string)
   return isSessionRoomMember(socket, sessionId) && !isSharedSession(socket, sessionId)
 }
 
-/** An observer join's credential (`observe-session`). */
+/**
+ * An observer join (`observe-session`): the session and its player, or a
+ * share token. `observerId` is what older clients send; it is ignored.
+ */
 export interface ObserveSessionRequest {
   sessionId: string
+  /** Ignored: the observer is the socket's verified viewer */
   observerId?: string
   playerId?: string
   shareToken?: string
@@ -237,7 +246,15 @@ export interface ObserveSessionRequest {
 
 /** The socket surface `observe-session` needs. */
 export interface ObserveSessionSocket extends SessionReportSocket {
-  data: SharedSessionsData
+  data: SharedSessionsData & SocketViewerData
+}
+
+/** An admitted observer join: `observerId` is the verified viewer (null for a share holder). */
+export interface AdmittedObserver {
+  sessionId: string
+  observerId: string | null
+  shareToken?: string
+  shared: boolean
 }
 
 /**
@@ -248,10 +265,11 @@ export interface ObserveSessionSocket extends SessionReportSocket {
  */
 export function registerObserveSession(
   socket: ObserveSessionSocket,
-  onAdmitted: (request: ObserveSessionRequest & { shared: boolean }) => Promise<void> | void
+  onAdmitted: (observer: AdmittedObserver) => Promise<void> | void
 ): void {
   socket.on('observe-session', async (request: ObserveSessionRequest) => {
-    const { sessionId, observerId, playerId, shareToken } = request ?? ({} as never)
+    const { sessionId, playerId, shareToken } = request ?? ({} as never)
+    const observerId = socketViewerId(socket)
     try {
       const decision = await authorizeSessionRoomJoin({
         sessionId,
@@ -267,7 +285,7 @@ export function registerObserveSession(
       const shared = typeof shareToken === 'string' && !!shareToken
       if (shared) markSharedSession(socket, sessionId)
       await socket.join(sessionRoom(sessionId))
-      await onAdmitted({ ...request, shared })
+      await onAdmitted({ sessionId, observerId, shareToken, shared })
     } catch (error) {
       console.error('Error starting session observation:', error)
       socket.emit('observe-error', { error: 'Failed to start observation' })

@@ -63,9 +63,9 @@ describe('useSessionObserver - the session ends', () => {
       const { result } = renderHook(() =>
         useSessionObserver(SESSION_ID, 'observer-456', 'player-789', true)
       )
+      // No observer id: the server admits the socket's own verified viewer
       expect(mockSocket.emit).toHaveBeenCalledWith('observe-session', {
         sessionId: SESSION_ID,
-        observerId: 'observer-456',
         playerId: 'player-789',
       })
       act(() => handlers.get('practice-state')?.(practiceState()))

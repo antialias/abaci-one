@@ -82,7 +82,6 @@ describe('useSessionReport', () => {
     act(() => sockets[0].fire('connect'))
     expect(sockets[0].emit).toHaveBeenCalledWith('subscribe-session-report', {
       sessionId: base.sessionId,
-      viewerId: 'parent-1',
       playerId: 'fx-player',
     })
     await waitFor(() => expect(result.current.data?.rowVersion).toBe(15))
@@ -105,7 +104,6 @@ describe('useSessionReport', () => {
     act(() => sockets[0].fire('connect'))
     expect(sockets[0].emit).toHaveBeenCalledWith('subscribe-session-report', {
       sessionId: base.sessionId,
-      viewerId: 'parent-1',
       playerId: 'fx-player',
     })
   })

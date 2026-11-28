@@ -1,12 +1,12 @@
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { PreviewModeContext } from '@/contexts/PreviewModeContext'
+import type { RetryState } from '@/lib/arcade/error-handling'
 import type { GameMove } from '@/lib/arcade/validation'
 import { useArcadeSocket } from './useArcadeSocket'
 import {
   type UseOptimisticGameStateOptions,
   useOptimisticGameState,
 } from './useOptimisticGameState'
-import type { RetryState } from '@/lib/arcade/error-handling'
-import { PreviewModeContext } from '@/contexts/PreviewModeContext'
 
 export interface UseArcadeSessionOptions<TState> extends UseOptimisticGameStateOptions<TState> {
   /**
@@ -102,14 +102,13 @@ export interface UseArcadeSessionReturn<TState> {
 
   /**
    * Send cursor position update to other players (ephemeral, real-time)
-   * @param playerId - The player ID sending the cursor update
-   * @param userId - The session/viewer ID that owns this cursor
+   * @param playerId - The player ID sending the cursor update (the server
+   *   stamps the cursor with this connection's verified user id)
    * @param cursorPosition - SVG coordinates, or null when cursor leaves the map
    * @param hoveredRegionId - Region being hovered (from local hit-testing), or null
    */
   sendCursorUpdate: (
     playerId: string,
-    userId: string,
     cursorPosition: { x: number; y: number } | null,
     hoveredRegionId: string | null
   ) => void
@@ -259,7 +258,7 @@ export function useArcadeSession<TState>(
 
         // Wait a tiny bit for server state to propagate, then retry
         setTimeout(() => {
-          socketSendMove(userId, data.move, roomId)
+          socketSendMove(data.move, roomId)
         }, 10 * retryCount)
 
         // Don't show error to user - we're handling it automatically
@@ -302,7 +301,7 @@ export function useArcadeSession<TState>(
   // Auto-join session when connected
   useEffect(() => {
     if (connected && autoJoin && userId) {
-      joinSession(userId, roomId)
+      joinSession(roomId)
     }
   }, [connected, autoJoin, userId, roomId, joinSession])
 
@@ -324,19 +323,19 @@ export function useArcadeSession<TState>(
       optimistic.applyOptimisticMove(fullMove)
 
       // Send to server with roomId for room-based games
-      socketSendMove(userId, fullMove, roomId)
+      socketSendMove(fullMove, roomId)
     },
-    [userId, roomId, optimistic.applyOptimisticMove, socketSendMove]
+    [roomId, optimistic.applyOptimisticMove, socketSendMove]
   )
 
   const exitSession = useCallback(() => {
-    socketExitSession(userId)
+    socketExitSession()
     optimistic.reset()
-  }, [userId, socketExitSession, optimistic.reset])
+  }, [socketExitSession, optimistic.reset])
 
   const refresh = useCallback(() => {
     if (connected && userId) {
-      joinSession(userId, roomId)
+      joinSession(roomId)
     }
   }, [connected, userId, roomId, joinSession])
 
@@ -344,12 +343,11 @@ export function useArcadeSession<TState>(
   const sendCursorUpdate = useCallback(
     (
       playerId: string,
-      sessionUserId: string,
       cursorPosition: { x: number; y: number } | null,
       hoveredRegionId: string | null
     ) => {
       if (!roomId) return // Only works in room-based games
-      socketSendCursorUpdate(roomId, playerId, sessionUserId, cursorPosition, hoveredRegionId)
+      socketSendCursorUpdate(roomId, playerId, cursorPosition, hoveredRegionId)
     },
     [roomId, socketSendCursorUpdate]
   )

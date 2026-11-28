@@ -3,8 +3,8 @@
 import { css } from '@styled/css'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useGameMode, useUserId } from '@/lib/arcade/game-sdk'
+import { CROP_MODE_EVENT, CROP_UPDATE_EVENT, type CropModeEventDetail } from '../customCrops'
 import { getAssistanceLevel, getFilteredMapDataBySizesSync } from '../maps'
-import { CROP_UPDATE_EVENT, CROP_MODE_EVENT, type CropModeEventDetail } from '../customCrops'
 import { useKnowYourWorld } from '../Provider'
 import { GameInfoPanel } from './GameInfoPanel'
 import { MapRenderer } from './MapRenderer'
@@ -35,11 +35,12 @@ export function PlayingPhase() {
     return Array.from(activePlayers)[0] || ''
   }, [activePlayers, players])
 
-  // Wrap sendCursorUpdate to include localPlayerId and viewerId (session ID)
+  // Wrap sendCursorUpdate to include localPlayerId (the server stamps the
+  // cursor with this connection's user id)
   const handleCursorUpdate = useCallback(
     (cursorPosition: { x: number; y: number } | null, hoveredRegionId: string | null) => {
       if (viewerId) {
-        sendCursorUpdate(localPlayerId, viewerId, cursorPosition, hoveredRegionId)
+        sendCursorUpdate(localPlayerId, cursorPosition, hoveredRegionId)
       }
     },
     [localPlayerId, viewerId, sendCursorUpdate]
