@@ -81,3 +81,33 @@ export function expectedItemOf(
     ? { item, itemId: position.itemId, round: position.round }
     : null
 }
+
+/**
+ * Item `itemId` of a part, as its kind holds it (`itemOf`): a do-over's item.
+ * Null when the part has no such item or its kind is unknown to this image.
+ */
+export function partItemOf(part: StoredPart, itemId: string): unknown | null {
+  const kind = findPartKind(part)
+  if (!kind) return null
+  return kind.itemOf(kind.contentOf(part), itemId) ?? null
+}
+
+/**
+ * The item after `itemId` in its part's order (`items()`), as its kind holds
+ * it (`itemOf`): where a first-round try mid-part goes next. Null after the
+ * last item, for an item the part does not have, or for an unknown kind.
+ */
+export function partItemAfter(
+  part: StoredPart,
+  itemId: string
+): { item: unknown; itemId: string } | null {
+  const kind = findPartKind(part)
+  if (!kind) return null
+  const content = kind.contentOf(part)
+  const refs = kind.items(content)
+  const index = refs.findIndex((ref) => ref.itemId === itemId)
+  if (index < 0 || index + 1 >= refs.length) return null
+  const next = refs[index + 1].itemId
+  const item = kind.itemOf(content, next)
+  return item === null || item === undefined ? null : { item, itemId: next }
+}

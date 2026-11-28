@@ -1,144 +1,70 @@
 'use client'
 
+/**
+ * Arithmetic's item view (practice-kinds plan §1.3, §4 K5a-3b): a problem on
+ * screen and everything a kid does with it, inside the session shell. Moved
+ * from `ActiveSession.tsx` with its markup, timings and data attributes
+ * unchanged; the shell kept the kind-blind half (the try lifecycle, the
+ * submit path and its feedback timing, the do-over, browse, the broadcast,
+ * resync, the pause modal and the round interlude).
+ *
+ * Arithmetic's here: digit entry and help (`useDigitEntry`, called as the
+ * shell's child so its effects run before the lifecycle's, A18(2)), the
+ * progressive assistance and its auto-pause, the abacus dock and the
+ * keypad, the teacher's abacus control, vision training frames, the slide
+ * between problems, and the record and do-over bodies. The problem is drawn
+ * by presentation: abacus and visualization vertically, linear as a number
+ * sentence.
+ */
+
 import { animated, useSpring } from '@react-spring/web'
+import { useAbacusDisplay } from '@soroban/abacus-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import { DecompositionProvider } from '@/components/decomposition'
+import { DebugOverlay } from '@/components/practice/DebugOverlay'
+import { AbacusDock } from '@/components/practice/input/AbacusDock'
+// Audio disabled for practice sessions (use abacus / visualize)
+import { NumericKeypad } from '@/components/practice/input/NumericKeypad'
+import { useHasPhysicalKeyboard } from '@/components/practice/input/useDeviceDetection'
+import type { ItemViewProps } from '@/components/practice/session/sessionKind'
+import type { PauseInfo } from '@/components/practice/session/types'
 import { useMyAbacus } from '@/contexts/MyAbacusContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { sameProblem } from '@/db/schema/session-plan-helpers'
-import type {
-  ProblemSlot,
-  SessionHealth,
-  SessionPart,
-  SessionPlan,
-  SlotResult,
-  SlotResultSubmission,
-} from '@/db/schema/session-plans'
-import {
-  extractTargetSkillName,
-  PurposeBadge,
-} from '@/lib/curriculum/parts/arithmetic/browser/PurposeBadge'
-import { RetryTransitionScreen } from '@/lib/curriculum/parts/arithmetic/browser/RetryTransitionScreen'
-import {
-  arithmeticCursorLinearIndex,
-  arithmeticRetryRoundSize,
-  arithmeticSlotAt,
-  arithmeticSlotOf,
-  arithmeticSlotOfProblem,
-  type OnScreenItem,
-} from '@/lib/curriculum/parts/arithmetic/session-view'
-import { getCurrentProblemInfo, MAX_RETRY_EPOCHS } from '@/lib/curriculum/parts/arithmetic/state'
-import { css } from '../../../styled-system/css'
-import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'
-import { BrowseModeView } from './BrowseModeView'
-import { SessionPausedModal } from './SessionPausedModal'
-
-// Re-export types for consumers
-export type { AutoPauseStats, PauseInfo }
-
-/**
- * Student info needed for the pause modal
- */
-export interface StudentInfo {
-  id: string
-  name: string
-  emoji: string
-  color: string
-}
-
-import { useAbacusDisplay } from '@soroban/abacus-react'
-import type { ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
+import type { ProblemSlot, SessionPart, SessionPlan } from '@/db/schema/session-plans'
 import { useSetRemoteCameraSession } from '@/hooks/useSessionPlan'
-import { AssistanceDebugPanel } from '@/lib/curriculum/parts/arithmetic/browser/AssistanceDebugPanel'
-import { generateCoachHint } from '@/lib/curriculum/parts/arithmetic/browser/coachHintGenerator'
-import { DecompositionSection } from '@/lib/curriculum/parts/arithmetic/browser/DecompositionSection'
-import { LinearProblem } from '@/lib/curriculum/parts/arithmetic/browser/LinearProblem'
-import { PracticeFeedback } from '@/lib/curriculum/parts/arithmetic/browser/PracticeFeedback'
-import { PracticeHelpOverlay } from '@/lib/curriculum/parts/arithmetic/browser/PracticeHelpOverlay'
-import { ProblemDebugPanel } from '@/lib/curriculum/parts/arithmetic/browser/ProblemDebugPanel'
-import { ProgressiveAssistanceUI } from '@/lib/curriculum/parts/arithmetic/browser/ProgressiveAssistanceUI'
-import { useProgressiveAssistance } from '@/lib/curriculum/parts/arithmetic/browser/useProgressiveAssistance'
-import { VerticalProblem } from '@/lib/curriculum/parts/arithmetic/browser/VerticalProblem'
-import { DecompositionProvider } from '../decomposition'
-import { DebugOverlay } from './DebugOverlay'
+import { css } from '../../../../../../styled-system/css'
+import { arithmeticPresentationOf } from '../presentations'
+import { arithmeticSlotAt, arithmeticSlotOf } from '../session-view'
+import type { ArithmeticItem } from '../state'
+import { AssistanceDebugPanel } from './AssistanceDebugPanel'
+import { generateCoachHint } from './coachHintGenerator'
+import { DecompositionSection } from './DecompositionSection'
+import { LinearProblem } from './LinearProblem'
+import { PracticeFeedback } from './PracticeFeedback'
+import { PracticeHelpOverlay } from './PracticeHelpOverlay'
+import { ProblemDebugPanel } from './ProblemDebugPanel'
+import { ProgressiveAssistanceUI } from './ProgressiveAssistanceUI'
+import { PurposeBadge } from './PurposeBadge'
 import {
   type AttemptInput,
+  type DigitEntryPhase,
   findMatchedPrefixIndex,
-  useInteractionPhase,
-} from './hooks/useInteractionPhase'
-import { tryResponseTime } from './hooks/useTryLifecycle'
-import { AbacusDock } from './input/AbacusDock'
-// Audio disabled for practice sessions (use abacus / visualize)
-import { NumericKeypad } from './input/NumericKeypad'
-import { useHasPhysicalKeyboard } from './input/useDeviceDetection'
-import {
-  chooseAdvanceTarget,
-  chooseRedoReturnTarget,
-  type RedoWriteOutcome,
-  type TransitionTarget,
-} from './redoReturnTarget'
+  type InitialProblemData,
+  type OutgoingAttempt,
+  useDigitEntry,
+} from './useDigitEntry'
+import { useProgressiveAssistance } from './useProgressiveAssistance'
+import { VerticalProblem } from './VerticalProblem'
 
-/**
- * Timing data for the current problem attempt
- */
-export interface AttemptTimingData {
-  /** When the current attempt started */
-  startTime: number
-  /** Accumulated pause time in ms */
-  accumulatedPauseMs: number
-}
-
-/**
- * Complexity data for broadcast (simplified for transmission)
- */
-export interface BroadcastComplexity {
-  /** Complexity bounds from slot constraints */
-  bounds?: { min?: number; max?: number }
-  /** Total complexity cost from generation trace */
-  totalCost?: number
-  /** Number of steps (for per-term average) */
-  stepCount?: number
-  /** Pre-formatted target skill name */
-  targetSkillName?: string
-}
-
-/**
- * Broadcast state for session observation
- * This is sent to teachers observing the session in real-time
- */
-export interface BroadcastState {
-  /** Current problem being worked on */
-  currentProblem: {
-    terms: number[]
-    answer: number
-  }
-  /** Unique slot ID for this problem (same ID used in answer validation) */
-  slotId: string
-  /** Current phase of the interaction */
-  phase: 'problem' | 'feedback' | 'tutorial'
-  /** Student's current answer (empty string if not yet started typing) */
-  studentAnswer: string
-  /** Whether the answer is correct (null if not yet submitted) */
-  isCorrect: boolean | null
-  /** When the current attempt started (timestamp) */
-  startedAt: number
-  /** Purpose of this problem slot (why this problem was selected) */
-  purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
-  /** Complexity data for tooltip display */
-  complexity?: BroadcastComplexity
-  /**
-   * The item on screen: the problem's own part and item, whether it is a
-   * do-over, and its retry round. Position and counts are not here (Phase
-   * 5b): the page takes them from the server's plan and the report.
-   */
-  item: BroadcastItem
-}
-
-/** The item on screen, as `BroadcastState` names it. */
-export interface BroadcastItem extends OnScreenItem {
-  /** Retry round of the problem on screen (0 = original; a do-over is 0) */
-  round: number
-}
+/** Arithmetic's item view props: the shell's, over arithmetic's try types. */
+export type ArithmeticItemViewProps = ItemViewProps<
+  InitialProblemData,
+  AttemptInput,
+  OutgoingAttempt,
+  DigitEntryPhase,
+  number
+>
 
 /**
  * Identity of the problem an attempt answers, as the server matches it: the
@@ -146,149 +72,29 @@ export interface BroadcastItem extends OnScreenItem {
  * lag one problem behind an optimistic advance), plus the try id minted when
  * the problem was shown (the server records a try id once).
  */
-function answeredProblemIdentity(plan: SessionPlan, attempt: AttemptInput) {
+export function answeredProblemIdentity(parts: SessionPlan['parts'], attempt: AttemptInput) {
   return {
     tryId: attempt.tryId,
     partIndex: attempt.partIndex,
-    slotId: arithmeticSlotAt(plan.parts, attempt.partIndex, attempt.slotIndex)?.slotId ?? '',
+    slotId: arithmeticSlotAt(parts, attempt.partIndex, attempt.slotIndex)?.slotId ?? '',
     slotIndex: attempt.slotIndex,
     epochNumber: attempt.epochNumber ?? 0,
   }
 }
 
-/**
- * A do-over the kid chose by tapping a dot: the item, by its id (Phase 5b).
- * Where the session goes after it is the server's plan, never a remembered
- * position.
- */
-export interface ActiveRedo {
-  isActive: boolean
-  /** Part of the item being redone */
-  partIndex: number
-  /** The item being redone (today its slot id) */
-  itemId: string
-  /** The dots' index of the item (its number on screen is `linearIndex + 1`) */
-  linearIndex: number
-  /** The latest result of the item when it was tapped */
-  originalResult: SlotResult
+/** How each presentation draws its problem. */
+const PRESENTATION_DISPLAY: Record<string, 'vertical' | 'linear'> = {
+  abacus: 'vertical',
+  visualization: 'vertical',
+  linear: 'linear',
 }
 
-/** A do-over write: the screen's try and the item redone, sent as a `record_try` do-over. */
-export interface RecordRedoParams {
-  playerId: string
-  planId: string
-  result: Omit<SlotResult, 'timestamp' | 'partNumber'> & { tryId: string }
-  redoContext: {
-    /** The item redone (Phase 5b); the server also reads `result.slotId` */
-    itemId: string
-    /** Legacy position of the item, which servers up to Phase 5 match by */
-    originalPartIndex: number
-    originalSlotIndex: number
-    /** Read only by servers from before Phase 1 */
-    originalWasCorrect: boolean
-  }
-}
-
-/**
- * The do-over write for a tapped item: the result names the item
- * (`slotId = itemId`) and `redoContext.itemId` names it to a server from Phase
- * 5a on; the item's slot index rides beside it for servers before that (the
- * indices must agree with the id).
- */
-export function doOverWriteOf({
-  playerId,
-  planId,
-  redo,
-  slotIndex,
-  result,
-  originalWasCorrect,
-}: {
-  playerId: string
-  planId: string
-  redo: Pick<ActiveRedo, 'partIndex' | 'itemId'>
-  /** The item's slot index, read off the item by the kind's view */
-  slotIndex: number
-  result: Omit<SlotResult, 'timestamp' | 'partNumber'> & { tryId: string }
-  originalWasCorrect: boolean
-}): RecordRedoParams {
-  return {
-    playerId,
-    planId,
-    result: { ...result, slotId: redo.itemId, slotIndex, originalSlotIndex: slotIndex },
-    redoContext: {
-      itemId: redo.itemId,
-      originalPartIndex: redo.partIndex,
-      originalSlotIndex: slotIndex,
-      // For servers from before Phase 1; a current server derives it
-      originalWasCorrect,
-    },
-  }
-}
-
-interface ActiveSessionProps {
-  plan: SessionPlan
-  /** Historical results from prior completed sessions for threshold calculation */
-  historicalResults?: SlotResult[]
-  /** Student info for display in pause modal */
-  student: StudentInfo
-  /**
-   * Called when a problem is answered. Resolves to the plan the server
-   * returned, or null when the write was dropped behind a failure or failed
-   * (the page then resyncs the screen)
-   */
-  onAnswer: (
-    result: SlotResultSubmission & { partIndex: number; tryId: string }
-  ) => Promise<SessionPlan | null>
-  /** Called when session is ended early */
-  onEndEarly: (reason?: string) => void
-  /** Called when session is paused (with info about why) - for external HUD updates */
-  onPause?: (pauseInfo: PauseInfo) => void
-  /** Called when session is resumed - for external HUD updates */
-  onResume?: () => void
-  /** Called with timing data when it changes (for external timing display) */
-  onTimingUpdate?: (timing: AttemptTimingData | null) => void
-  /** Called with broadcast state when it changes (for session observation) */
-  onBroadcastStateChange?: (state: BroadcastState | null) => void
-  /** Whether browse mode is active (controlled externally via toggle in PracticeSubNav) */
-  isBrowseMode?: boolean
-  /** Controlled browse index (linear problem index) */
-  browseIndex?: number
-  /** Called when browse index changes (for external navigation from progress indicator) */
-  onBrowseIndexChange?: (index: number) => void
-  /** Teacher abacus control received from observing teacher */
-  teacherControl?: ReceivedAbacusControl | null
-  /** Called after teacher control has been handled (to clear the state) */
-  onTeacherControlHandled?: () => void
-  /** Teacher-initiated pause request (from observing teacher) */
-  teacherPauseRequest?: { message?: string } | null
-  /** Called after teacher pause has been handled (to clear the state) */
-  onTeacherPauseHandled?: () => void
-  /** Teacher-initiated resume request (from observing teacher) */
-  teacherResumeRequest?: boolean
-  /** Called after teacher resume has been handled (to clear the state) */
-  onTeacherResumeHandled?: () => void
-  /** Manual pause request from parent (HUD pause button) */
-  manualPauseRequest?: boolean
-  /** Called after manual pause has been handled (to clear the state) */
-  onManualPauseHandled?: () => void
-  /** Redo state - when set, show a redo problem instead of current session problem */
-  redoState?: ActiveRedo | null
-  /** Called to record a redo result (separate from onAnswer since it doesn't advance position) */
-  onRecordRedo?: (params: RecordRedoParams) => Promise<SessionPlan | null>
-  /** Called when the redo is complete or cancelled */
-  onRedoComplete?: () => void
-  /** Called to cancel the redo without recording */
-  onCancelRedo?: () => void
-  /** Called when a result is edited in browse mode (to trigger refetch) */
-  onResultEdited?: () => void
-  /** When true, show the debug overlay with submit buttons */
-  debug?: boolean
-  /**
-   * Bumped by the parent after a server write failed and the plan was
-   * refetched: re-show the server's current problem even if its key is the
-   * one already on screen.
-   */
-  resyncRequest?: number
+/** The problem display of a part's presentation (its `format` for an id this table lacks). */
+function presentationDisplayOf(part: SessionPart): 'vertical' | 'linear' {
+  return (
+    PRESENTATION_DISPLAY[arithmeticPresentationOf(part)] ??
+    (part.format === 'vertical' ? 'vertical' : 'linear')
+  )
 }
 
 /**
@@ -320,51 +126,26 @@ function calculateAbacusColumns(terms: number[]): number {
  */
 const SHOW_LINEAR_PREFIX_HINT = true
 
-/**
- * ActiveSession - The main practice session component
- *
- * Features:
- * - Three-part session structure (abacus, visualization, linear)
- * - Part-specific display and instructions
- * - Adaptive input (keyboard on desktop, on-screen keypad on mobile)
- * - Session health indicators
- * - On-screen abacus toggle (for abacus part only)
- * - Teacher controls (pause, end early)
- *
- * State Architecture:
- * - Uses useInteractionPhase hook for interaction state machine
- * - Single source of truth for all UI state
- * - Explicit phase transitions instead of boolean flags
- */
-export function ActiveSession({
+export function ArithmeticItemView({
   plan,
-  historicalResults,
   student,
-  onAnswer,
-  onEndEarly,
-  onPause,
-  onResume,
-  onTimingUpdate,
-  onBroadcastStateChange,
-  isBrowseMode: isBrowseModeProp = false,
-  browseIndex: browseIndexProp,
-  onBrowseIndexChange,
+  historicalResults,
+  state,
+  lifecycle,
+  channel,
+  feedback,
+  redo,
+  itemKey,
+  shown,
+  slidePending,
+  handle,
+  hidden,
+  banner,
+  overlays,
   teacherControl,
   onTeacherControlHandled,
-  teacherPauseRequest,
-  onTeacherPauseHandled,
-  teacherResumeRequest,
-  onTeacherResumeHandled,
-  manualPauseRequest,
-  onManualPauseHandled,
-  redoState,
-  onRecordRedo,
-  onRedoComplete,
-  onCancelRedo,
-  onResultEdited,
-  debug = false,
-  resyncRequest = 0,
-}: ActiveSessionProps) {
+  debug,
+}: ArithmeticItemViewProps) {
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
 
@@ -475,82 +256,40 @@ export function ActiveSession({
     ]
   )
 
-  // Compute initial problem from plan for SSR hydration (must be before useInteractionPhase)
-  // Uses getCurrentProblemInfo to account for retry epochs
-  const currentProblemInfo = useMemo(() => getCurrentProblemInfo(plan), [plan])
+  // The item the plan shows, as the shell derived it (the kind's expectedItem
+  // over the part's state; it accounts for retry rounds)
+  const shownItem = shown?.item as ArithmeticItem | undefined
+  const currentProblemInfo = shownItem?.problem
+    ? { ...shownItem, problem: shownItem.problem }
+    : null
 
-  const initialProblem = useMemo(() => {
-    if (currentProblemInfo) {
-      return {
-        problem: currentProblemInfo.problem,
-        slotIndex: currentProblemInfo.originalSlotIndex,
-        partIndex: plan.currentPartIndex,
-        epochNumber: currentProblemInfo.epochNumber,
-      }
-    }
-    return undefined
-  }, [currentProblemInfo, plan.currentPartIndex])
-
-  // ============================================================================
-  // SINGLE SOURCE OF TRUTH: Which problem should be displayed right now
-  // ============================================================================
-  // This computed value derives the active problem from redoState + plan.
-  // The hook reacts to changes in activeProblem.key to load new problems, eliminating
-  // the need for synchronization effects between redoState and phase.attempt.problem.
-  const activeProblem = useMemo(() => {
-    // Redo mode takes priority - user clicked on a problem to redo
-    if (redoState?.isActive) {
-      const redo = arithmeticSlotOf(plan.parts[redoState.partIndex], redoState.itemId)
-      const redoProblem = redo?.slot.problem
-      if (redo && redoProblem) {
-        return {
-          problem: redoProblem,
-          slotIndex: redo.slotIndex,
-          partIndex: redoState.partIndex,
-          key: `redo-${redoState.partIndex}-${redoState.itemId}`,
-        }
-      }
-    }
-
-    // Normal mode: use currentProblemInfo (handles epochs/retries correctly)
-    if (currentProblemInfo?.problem) {
-      return {
-        problem: currentProblemInfo.problem,
-        slotIndex: currentProblemInfo.originalSlotIndex,
-        partIndex: plan.currentPartIndex,
-        epochNumber: currentProblemInfo.epochNumber,
-        key: `normal-${plan.currentPartIndex}-${currentProblemInfo.originalSlotIndex}-${currentProblemInfo.epochNumber ?? 0}`,
-      }
-    }
-
-    return null
-  }, [redoState, plan.parts, plan.currentPartIndex, currentProblemInfo])
+  // Redo mode: the item being redone, by its id
+  const isInRedoMode = redo?.isActive ?? false
+  const redoItem = useMemo(
+    () => (redo?.isActive ? arithmeticSlotOf(plan.parts[redo.partIndex], redo.itemId) : null),
+    [redo, plan.parts]
+  )
+  const redoSlot = redoItem?.slot ?? null
 
   // LINEAR parts drop the bead-help scaffolding (prefix-sum / disambiguation / help
   // coach): the horizontal number sentence uses free digit entry + a forced submit.
   // The working abacus itself is a SEPARATE concern (see showAbacusDock / useAbacus):
   // it stays ON during the linear-with-abacus ramp and only goes away for mental
-  // (post-gate) linear. Keyed off the part of the problem actually loaded into the
-  // interaction hook (activeProblem.partIndex), which matches the on-screen problem
+  // (post-gate) linear. Keyed off the part of the problem the shell loads (a
+  // do-over's part when one is on screen), which matches the on-screen problem
   // even in redo mode.
-  const activePartIndex = activeProblem?.partIndex ?? plan.currentPartIndex
-  const isLinearActive = plan.parts[activePartIndex]?.format === 'linear'
+  const activePartIndex =
+    isInRedoMode && redo && redoSlot?.problem ? redo.partIndex : plan.currentPartIndex
+  // One source for the layout and the help scaffolding: the part's presentation
+  const activePart = plan.parts[activePartIndex]
+  const isLinearActive = activePart ? presentationDisplayOf(activePart) === 'linear' : false
 
-  // Interaction state machine - single source of truth for UI state
+  // Digit entry and help, over the phase the shell's lifecycle holds. Called
+  // here, in the shell's child, so its effects run before the lifecycle's
+  // (practice-kinds A18(2)).
   const {
-    phase,
-    attempt,
     helpContext,
-    outgoingAttempt,
-    canAcceptInput,
-    showAsCompleted,
     showHelpOverlay,
-    showInputArea,
-    showFeedback,
-    inputIsFocused,
-    isTransitioning,
-    isPaused,
-    isSubmitting,
     prefixSums,
     prefixMatch,
     matchedPrefixIndex,
@@ -563,42 +302,33 @@ export function ActiveSession({
     exitHelpMode,
     clearAnswer,
     setAnswer,
-    startSubmit,
-    completeSubmit,
-    startTransition,
-    completeTransition,
-    clearToLoading,
-    pause,
-    resume,
-  } = useInteractionPhase({
-    initialProblem,
-    activeProblem,
-    disableAbacusScaffolding: isLinearActive,
-  })
+  } = useDigitEntry(state, { disableAbacusScaffolding: isLinearActive })
 
-  // A server write failed and the plan was refetched (resyncRequest bumped):
-  // drop whatever is on screen and load the server's current problem. Loading
-  // re-reads activeProblem even when its key has not changed.
-  const handledResyncRef = useRef(resyncRequest)
-  useEffect(() => {
-    if (resyncRequest === handledResyncRef.current) return
-    handledResyncRef.current = resyncRequest
-    clearToLoading()
-  }, [resyncRequest, clearToLoading])
+  const {
+    phase,
+    attempt,
+    outgoingAttempt,
+    canAcceptInput,
+    showAsCompleted,
+    showInputArea,
+    showFeedback,
+    inputIsFocused,
+    isPaused,
+    isSubmitting,
+    completeTransition,
+  } = lifecycle
 
   // Format of the OUTGOING problem's part (may differ from the current part at a
   // part boundary), so the sliding-away problem keeps its own vertical/linear shape.
-  const outgoingFormat =
-    outgoingAttempt != null ? plan.parts[outgoingAttempt.partIndex]?.format : undefined
+  const outgoingPart = outgoingAttempt != null ? plan.parts[outgoingAttempt.partIndex] : undefined
+  const outgoingFormat = outgoingPart ? presentationDisplayOf(outgoingPart) : undefined
 
   // Progressive assistance state machine — subsumes auto-pause timer
   const handleAutoPause = useCallback(
     (info: PauseInfo) => {
-      setPauseInfo(info)
-      pause()
-      onPause?.(info)
+      channel.pause(info)
     },
-    [pause, onPause]
+    [channel]
   )
 
   // Combine historical results from prior sessions with current session results.
@@ -626,6 +356,10 @@ export function ActiveSession({
     onAutoPause: handleAutoPause,
   })
 
+  // The shell resumes the session (the kid or the teacher): the assistance
+  // machine hears it first, as it always has
+  handle.current = { onResumed: assistance.onResumed }
+
   // Sync assistance machine with interaction phase transitions
   const prevPhaseRef = useRef(phase.phase)
   useEffect(() => {
@@ -644,161 +378,16 @@ export function ActiveSession({
   }, [phase.phase, assistance.onHelpEntered, assistance.onHelpExited])
 
   // Notify assistance machine when problem changes
-  const prevActiveProblemKeyRef = useRef(activeProblem?.key)
+  const prevActiveProblemKeyRef = useRef(itemKey)
   useEffect(() => {
     const prevKey = prevActiveProblemKeyRef.current
-    const currKey = activeProblem?.key
+    const currKey = itemKey
     prevActiveProblemKeyRef.current = currKey
 
     if (prevKey !== undefined && currKey !== prevKey) {
       assistance.onProblemChanged()
     }
-  }, [activeProblem?.key, assistance.onProblemChanged])
-
-  // Notify parent of timing data changes for external timing display
-  useEffect(() => {
-    if (onTimingUpdate) {
-      if (attempt) {
-        onTimingUpdate({
-          startTime: attempt.startTime,
-          accumulatedPauseMs: attempt.accumulatedPauseMs,
-        })
-      } else {
-        onTimingUpdate(null)
-      }
-    }
-  }, [onTimingUpdate, attempt?.startTime, attempt?.accumulatedPauseMs])
-
-  // Audio disabled for practice sessions (use abacus / visualize)
-
-  // The item last broadcast as on screen: the problem sliding off during a
-  // transition is that item, with its own round and do-over flag (the redo
-  // state may already be cleared by then)
-  const lastBroadcastItemRef = useRef<{
-    item: BroadcastItem
-    problem: { terms: number[]; answer: number }
-  } | null>(null)
-
-  // Notify parent of broadcast state changes for session observation
-  useEffect(() => {
-    if (!onBroadcastStateChange) return
-
-    // Helper to extract complexity data from a slot
-    const extractComplexity = (slot: ProblemSlot | undefined): BroadcastComplexity | undefined => {
-      if (!slot) return undefined
-
-      const bounds = slot.complexityBounds
-      const trace = slot.problem?.generationTrace
-      const hasBounds = bounds && (bounds.min !== undefined || bounds.max !== undefined)
-      const hasCost = trace?.totalComplexityCost !== undefined
-
-      if (!hasBounds && !hasCost) return undefined
-
-      return {
-        bounds: hasBounds ? { min: bounds?.min, max: bounds?.max } : undefined,
-        totalCost: trace?.totalComplexityCost,
-        stepCount: trace?.steps?.length,
-        targetSkillName: extractTargetSkillName(slot) ?? undefined,
-      }
-    }
-
-    const doOver = redoState?.isActive ?? false
-
-    // During transitioning, we show the outgoing (answered) problem, not the incoming one
-    if (phase.phase === 'transitioning' && outgoingAttempt) {
-      const shown = lastBroadcastItemRef.current
-      const outgoingItem =
-        shown &&
-        shown.item.partIndex === outgoingAttempt.partIndex &&
-        sameProblem(shown.problem, outgoingAttempt.problem)
-          ? shown.item
-          : null
-      const outgoingSlot = outgoingItem
-        ? arithmeticSlotOf(plan.parts[outgoingItem.partIndex], outgoingItem.itemId)?.slot
-        : arithmeticSlotOfProblem(plan.parts, outgoingAttempt.partIndex, outgoingAttempt.problem)
-      onBroadcastStateChange({
-        currentProblem: {
-          terms: outgoingAttempt.problem.terms,
-          answer: outgoingAttempt.problem.answer,
-        },
-        slotId: outgoingSlot?.slotId ?? '',
-        phase: 'feedback',
-        studentAnswer: outgoingAttempt.userAnswer,
-        isCorrect: outgoingAttempt.result === 'correct',
-        startedAt: attempt?.startTime ?? Date.now(),
-        purpose: outgoingSlot?.purpose ?? 'focus',
-        complexity: extractComplexity(outgoingSlot),
-        item: outgoingItem ?? {
-          partIndex: outgoingAttempt.partIndex,
-          itemId: outgoingSlot?.slotId ?? '',
-          doOver,
-          round: 0,
-        },
-      })
-      return
-    }
-
-    if (!attempt) {
-      onBroadcastStateChange(null)
-      return
-    }
-
-    // The slot of the problem on screen (its own part and slot: a retry's
-    // original slot, a do-over's slot), not the plan's cursor
-    const slot = arithmeticSlotAt(plan.parts, attempt.partIndex, attempt.slotIndex)
-
-    // Map internal phase to broadcast phase
-    let broadcastPhase: 'problem' | 'feedback' | 'tutorial'
-    if (phase.phase === 'helpMode') {
-      broadcastPhase = 'tutorial'
-    } else if (phase.phase === 'showingFeedback') {
-      broadcastPhase = 'feedback'
-    } else {
-      broadcastPhase = 'problem'
-    }
-
-    // Determine if answer is correct (only known in feedback phase)
-    let isCorrect: boolean | null = null
-    if (phase.phase === 'showingFeedback') {
-      // Use the result stored in the phase, not calculated from attempt
-      isCorrect = phase.result === 'correct'
-    }
-
-    const item: BroadcastItem = {
-      partIndex: attempt.partIndex,
-      itemId: slot?.slotId ?? '',
-      doOver,
-      round: attempt.epochNumber ?? 0,
-    }
-    lastBroadcastItemRef.current = { item, problem: attempt.problem }
-    onBroadcastStateChange({
-      currentProblem: {
-        terms: attempt.problem.terms,
-        answer: attempt.problem.answer,
-      },
-      slotId: slot?.slotId ?? '',
-      phase: broadcastPhase,
-      studentAnswer: attempt.userAnswer,
-      isCorrect,
-      startedAt: attempt.startTime,
-      purpose: slot?.purpose ?? 'focus',
-      complexity: extractComplexity(slot),
-      item,
-    })
-  }, [
-    onBroadcastStateChange,
-    attempt?.problem?.terms,
-    attempt?.problem?.answer,
-    attempt?.userAnswer,
-    attempt?.startTime,
-    attempt?.partIndex,
-    attempt?.slotIndex,
-    attempt?.epochNumber,
-    phase,
-    outgoingAttempt,
-    plan.parts,
-    redoState?.isActive,
-  ])
+  }, [itemKey, assistance.onProblemChanged])
 
   // Handle teacher abacus control events
   useEffect(() => {
@@ -851,130 +440,15 @@ export function ActiveSession({
     onTeacherControlHandled,
   ])
 
-  // Handle teacher-initiated pause requests
-  // Use a ref to track if we've handled this request to prevent duplicate handling
-  const handledPauseRef = useRef(false)
-  useEffect(() => {
-    if (!teacherPauseRequest) {
-      handledPauseRef.current = false
-      return
-    }
-    if (handledPauseRef.current) return
-    handledPauseRef.current = true
-
-    // Pause the session with teacher reason
-    const newPauseInfo: PauseInfo = {
-      pausedAt: new Date(),
-      reason: 'teacher',
-      teacherMessage: teacherPauseRequest.message,
-    }
-    setPauseInfo(newPauseInfo)
-    pause()
-    onPause?.(newPauseInfo)
-
-    // Clear the request after handling
-    onTeacherPauseHandled?.()
-  }, [teacherPauseRequest, pause, onPause, onTeacherPauseHandled])
-
-  // Handle teacher-initiated resume requests
-  // Use a ref to track if we've handled this request to prevent duplicate handling
-  const handledResumeRef = useRef(false)
-  useEffect(() => {
-    if (!teacherResumeRequest) {
-      handledResumeRef.current = false
-      return
-    }
-    if (handledResumeRef.current) return
-    handledResumeRef.current = true
-
-    // Resume the session
-    setPauseInfo(undefined)
-    assistance.onResumed()
-    resume()
-    onResume?.()
-
-    // Clear the request after handling
-    onTeacherResumeHandled?.()
-  }, [teacherResumeRequest, resume, onResume, onTeacherResumeHandled])
-
-  // Handle manual pause requests from parent (HUD pause button)
-  const handledManualPauseRef = useRef(false)
-  useEffect(() => {
-    if (!manualPauseRequest) {
-      handledManualPauseRef.current = false
-      return
-    }
-    if (handledManualPauseRef.current) return
-    handledManualPauseRef.current = true
-
-    // Pause the session with manual reason
-    const newPauseInfo: PauseInfo = {
-      pausedAt: new Date(),
-      reason: 'manual',
-    }
-    setPauseInfo(newPauseInfo)
-    pause()
-    onPause?.(newPauseInfo)
-
-    // Clear the request after handling
-    onManualPauseHandled?.()
-  }, [manualPauseRequest, pause, onPause, onManualPauseHandled])
-
   // Track which help elements have been individually dismissed
   // These reset when entering a new help session (helpContext changes)
   const [helpAbacusDismissed, setHelpAbacusDismissed] = useState(false)
   const [helpPanelDismissed, setHelpPanelDismissed] = useState(false)
   // Track when answer is fading out (for dream sequence)
   const [answerFadingOut, setAnswerFadingOut] = useState(false)
-  // Capture reveal policy at submit-time so feedback is stable even if plan advances.
-  const [showCorrectAnswerOnIncorrect, setShowCorrectAnswerOnIncorrect] = useState(true)
-
-  // Track pause info for displaying in the modal (single source of truth)
-  const [pauseInfo, setPauseInfo] = useState<PauseInfo | undefined>(undefined)
-
-  // Retry transition state - for showing transition screen between retry epochs
-  const [isInRetryTransition, setIsInRetryTransition] = useState(false)
-  const [retryTransitionData, setRetryTransitionData] = useState<{
-    epochNumber: number
-    problemCount: number
-  } | null>(null)
-  // Track previous epoch to detect epoch changes
-  const prevEpochRef = useRef<number>(0)
-
-  // Browse mode state - isBrowseMode is controlled via props
-  // browseIndex can be controlled (browseIndexProp + onBrowseIndexChange) or internal
-  const [internalBrowseIndex, setInternalBrowseIndex] = useState(0)
-
-  // Determine if browse index is controlled
-  const isControlledBrowseIndex = browseIndexProp !== undefined
-  const browseIndex = isControlledBrowseIndex ? browseIndexProp : internalBrowseIndex
-
-  // Unified setter that handles both controlled and uncontrolled modes
-  const setBrowseIndex = useCallback(
-    (index: number | ((prev: number) => number)) => {
-      const newIndex = typeof index === 'function' ? index(browseIndex) : index
-      if (isControlledBrowseIndex) {
-        onBrowseIndexChange?.(newIndex)
-      } else {
-        setInternalBrowseIndex(newIndex)
-      }
-    },
-    [browseIndex, isControlledBrowseIndex, onBrowseIndexChange]
-  )
-
-  // Compute current practice position as a linear index
-  // (the dots' coordinate, from the server's plan through the kind's view)
-  const currentPracticeLinearIndex = useMemo(() => arithmeticCursorLinearIndex(plan), [plan])
-
-  // When entering browse mode, initialize browseIndex to current problem
-  const prevBrowseModeProp = useRef(isBrowseModeProp)
-  useEffect(() => {
-    if (isBrowseModeProp && !prevBrowseModeProp.current) {
-      // Just entered browse mode - set to current practice position
-      setBrowseIndex(currentPracticeLinearIndex)
-    }
-    prevBrowseModeProp.current = isBrowseModeProp
-  }, [isBrowseModeProp, currentPracticeLinearIndex, setBrowseIndex])
+  // The reveal policy the shell captured at submit, so feedback is stable
+  // even if the plan advances (before any submit: reveal)
+  const showCorrectAnswerOnIncorrect = feedback?.showAnswer ?? true
 
   const handleDigitWithTimerReset = useCallback(
     (digit: string) => {
@@ -1004,8 +478,6 @@ export function ActiveSession({
   const outgoingRef = useRef<HTMLDivElement>(null)
   const activeRef = useRef<HTMLDivElement>(null)
 
-  // Track if we need to apply centering offset (set true when transition starts)
-  const needsCenteringOffsetRef = useRef(false)
   // Store the centering offset value for the animation end
   const centeringOffsetRef = useRef(0)
 
@@ -1031,9 +503,10 @@ export function ActiveSession({
     config: { tension: 280, friction: 14 },
   })
 
-  // Apply centering offset before paint to prevent jank
+  // Apply centering offset before paint to prevent jank. The shell sets
+  // `slidePending` when it starts a transition to the next problem.
   useLayoutEffect(() => {
-    if (needsCenteringOffsetRef.current && outgoingRef.current) {
+    if (slidePending.current && outgoingRef.current) {
       const outgoingWidth = outgoingRef.current.offsetWidth
       const gap = 32 // 2rem gap
       const centeringOffset = (outgoingWidth + gap) / 2
@@ -1046,7 +519,7 @@ export function ActiveSession({
         activeOpacity: 0,
       })
 
-      needsCenteringOffsetRef.current = false
+      slidePending.current = false
 
       // Start fade-in of new problem
       trackApi.start({
@@ -1070,7 +543,7 @@ export function ActiveSession({
         })
       }, 150)
     }
-  }, [outgoingAttempt, trackApi, completeTransition])
+  }, [outgoingAttempt, trackApi, completeTransition, slidePending])
 
   const hasPhysicalKeyboard = useHasPhysicalKeyboard()
 
@@ -1082,10 +555,9 @@ export function ActiveSession({
   }
   const showOnScreenKeypad = hasPhysicalKeyboard === false || keypadWasShownRef.current
 
-  // Current part from the plan; the item on it from getCurrentProblemInfo,
-  // which handles both original slots and retry epochs
-  const currentPartIndex = plan.currentPartIndex
-  const currentPart = plan.parts[currentPartIndex] as SessionPart | undefined
+  // Current part from the plan; the item on it from the shell (original
+  // slots and retry rounds alike)
+  const currentPart = plan.parts[plan.currentPartIndex] as SessionPart | undefined
   const regularSlot: ProblemSlot | undefined = currentProblemInfo
     ? {
         slotId: currentProblemInfo.slotId,
@@ -1095,68 +567,13 @@ export function ActiveSession({
         constraints: {},
       }
     : undefined
-  const sessionHealth = plan.sessionHealth as SessionHealth | null
-
-  // Redo mode: the item being redone, by its id
-  const isInRedoMode = redoState?.isActive ?? false
-  const redoItem = useMemo(
-    () =>
-      redoState?.isActive
-        ? arithmeticSlotOf(plan.parts[redoState.partIndex], redoState.itemId)
-        : null,
-    [redoState, plan.parts]
-  )
-  const redoSlot = redoItem?.slot ?? null
 
   // Use redo slot when in redo mode, otherwise regular slot
   const currentSlot = isInRedoMode && redoSlot ? redoSlot : regularSlot
-  // Whether the original redo problem was correct (for display and recording logic)
-  const redoOriginalWasCorrect = redoState?.originalResult?.isCorrect ?? false
-
-  // NOTE: Redo mode problem switching is now handled by the useInteractionPhase hook
-  // via the activeProblem prop. The hook reacts to activeProblem.key changes and
-  // loads the new problem automatically, eliminating synchronization bugs.
 
   // Retry epoch tracking
-  const inRetryEpoch = currentProblemInfo?.isRetry ?? false
+  const inRetryEpoch = currentProblemInfo ? currentProblemInfo.retryIndex !== null : false
   const retryEpochNumber = currentProblemInfo?.epochNumber ?? 0
-
-  // Session completion is the page's: it leaves for the summary when the
-  // server's plan has ended (Phase 5b removed this screen's own check of the
-  // part index running past the last part)
-
-  // Detect retry epoch transitions and show retry transition screen
-  useEffect(() => {
-    const currentEpoch = retryEpochNumber
-    const prevEpoch = prevEpochRef.current
-
-    // If we just entered a new retry epoch (epoch increased from 0 to 1, or 1 to 2)
-    if (currentEpoch > prevEpoch && currentEpoch > 0 && currentProblemInfo) {
-      // Get the count of problems in this retry epoch (the kind's view of the part)
-      const problemCount = arithmeticRetryRoundSize(plan, plan.currentPartIndex)
-
-      if (problemCount > 0) {
-        setRetryTransitionData({
-          epochNumber: currentEpoch,
-          problemCount,
-        })
-        setIsInRetryTransition(true)
-      }
-    }
-
-    prevEpochRef.current = currentEpoch
-  }, [retryEpochNumber, currentProblemInfo, plan])
-
-  // Handle retry transition screen completion
-  const handleRetryTransitionComplete = useCallback(() => {
-    setIsInRetryTransition(false)
-    setRetryTransitionData(null)
-  }, [])
-
-  // NOTE: Problem initialization is now handled by the useInteractionPhase hook
-  // via the activeProblem prop. Initial load uses initialProblem for SSR hydration,
-  // and subsequent changes (including redo mode and retry epochs) are detected via
-  // activeProblem.key changes.
 
   // Auto-trigger help when an unambiguous prefix sum is detected
   // The awaitingDisambiguation phase handles the timer and auto-transitions to helpMode when it expires
@@ -1241,26 +658,8 @@ export function ActiveSession({
     [setAnswer]
   )
 
-  // Where a submit goes after its feedback: slide to the target, or, with
-  // none, hand off to the session state (load whatever the plan shows)
-  const enactSubmitAdvance = useCallback(
-    (transitionTarget: TransitionTarget | null) => {
-      if (transitionTarget) {
-        needsCenteringOffsetRef.current = true
-        startTransition(
-          transitionTarget.problem,
-          transitionTarget.slotIndex,
-          transitionTarget.partIndex,
-          transitionTarget.epochNumber
-        )
-        return
-      }
-      clearToLoading()
-    },
-    [startTransition, clearToLoading]
-  )
-
-  // Handle submit
+  // Handle submit: arithmetic's checks, then the shell's submit path (the
+  // verdict, the write, the feedback and where the screen goes next)
   const handleSubmit = useCallback(async () => {
     // Allow submitting from inputting, awaitingDisambiguation, or helpMode
     if (
@@ -1290,157 +689,48 @@ export function ActiveSession({
       }
     }
 
-    // Transition to submitting phase
-    startSubmit()
-
-    // Subtract accumulated pause time to get actual response time, then apply
-    // the capture-time timing guard (#156): caps idle/backgrounded or
-    // clock-anomaly deltas at this child's auto-pause threshold and flags the
-    // sample (raw preserved) so #157/#158 can quarantine and review it.
-    const timingGuard = tryResponseTime(
-      attemptData,
-      assistance.machineState.context.thresholds.autoPauseMs
-    )
-    const isCorrect = answerNum === attemptData.problem.answer
-    // The round of the problem on screen, not the plan's (which can lag)
-    const answered = answeredProblemIdentity(plan, attemptData)
-    const epochNumberAtSubmit = answered.epochNumber
-    const redoReturnTargetAtSubmit: TransitionTarget | null = currentProblemInfo
-      ? {
-          problem: currentProblemInfo.problem,
-          slotIndex: currentProblemInfo.originalSlotIndex,
-          partIndex: plan.currentPartIndex,
-          epochNumber: currentProblemInfo.epochNumber,
+    const inHelpMode = phase.phase === 'helpMode'
+    await channel.submit(attemptData, {
+      answer: answerNum,
+      // The capture-time timing guard (#156) caps at this child's auto-pause threshold
+      capMs: assistance.machineState.context.thresholds.autoPauseMs,
+      onVerdict: (isCorrect) => {
+        // Notify assistance machine of incorrect answer
+        if (!isCorrect) {
+          assistance.onWrongAnswer()
         }
-      : null
-    const hasRetriesRemaining = epochNumberAtSubmit < MAX_RETRY_EPOCHS
-    // Only reveal the correct answer when retries are exhausted (epoch 2 wrong).
-    // Never reveal during manual redo — the kid chose to retry voluntarily and
-    // shouldn't get a free look at the answer.
-    setShowCorrectAnswerOnIncorrect(isCorrect || !hasRetriesRemaining)
 
-    // Notify assistance machine of incorrect answer
-    if (!isCorrect) {
-      assistance.onWrongAnswer()
-    }
-
-    // Collect vision training data if answer is correct and vision is enabled
-    // This runs in the background (fire-and-forget) to not block the UI
-    if (isCorrect) {
-      collectVisionTrainingData(attemptData.problem.answer, attemptData.slotIndex)
-    }
-
-    // Record the result
-    const result: Omit<SlotResult, 'timestamp' | 'partNumber'> & {
-      tryId: string
-      partIndex: number
-    } = {
-      // The round tells the server a resubmit from the next try of the same slot
-      ...answered,
-      problem: attemptData.problem,
-      studentAnswer: answerNum,
-      // The screen's own check, for display (the markers). Never sent: the
-      // try goes as record_try, and the server is the only judge
-      // (practice-kinds K4, amendments A1, A15)
-      isCorrect,
-      ...timingGuard,
-      hiddenTimeExcludedMs: attemptData.accumulatedHiddenMs || undefined,
-      skillsExercised: attemptData.problem.skillsRequired,
-      usedOnScreenAbacus: phase.phase === 'helpMode',
-      incorrectAttempts: assistance.machineState.context.wrongAttemptCount,
-      hadHelp:
-        phase.phase === 'helpMode' || assistance.machineState.context.helpedTermIndices.size > 0,
-    }
-
-    const isDoOver = isInRedoMode && !!redoState
-
-    // Where the screen goes after the feedback, decided once the write that
-    // decides it is in hand: from the plan at submit for a first-round try mid-
-    // part, else from the plan the write returned, through the same pure call
-    // the server made (getCurrentProblemInfo: the kind's expectedItem over the
-    // part's state). Never from a ref, a render or a timer (practice-kinds
-    // §6.14, §7 Q1).
-    let advanceTarget: TransitionTarget | null
-    if (isDoOver && redoState) {
-      // Every do-over is recorded. The server stamps its round and weight; a
-      // do-over of a problem already answered correctly is practice-only
-      // (weight 0, no effect on mastery, the score or the dot).
-      let redoOutcome: RedoWriteOutcome = { recorded: false }
-      if (onRecordRedo && redoItem) {
-        // The do-over names its item (Phase 5b). Use the special redo
-        // mutation. It can move the session on (a redeemed retry round), so
-        // the return target comes from its answer.
-        const redoPlan = await onRecordRedo(
-          doOverWriteOf({
-            playerId: student.id,
-            planId: plan.id,
-            redo: redoState,
-            slotIndex: redoItem.slotIndex,
-            result,
-            originalWasCorrect: redoOriginalWasCorrect,
-          })
-        )
-        redoOutcome = { recorded: true, plan: redoPlan }
-      }
-      advanceTarget = chooseRedoReturnTarget(plan, redoOutcome, redoReturnTargetAtSubmit)
-    } else {
-      const submission = { ...result, partIndex: answered.partIndex }
-      const nextSlot = arithmeticSlotAt(
-        plan.parts,
-        attemptData.partIndex,
-        attemptData.slotIndex + 1
-      )
-      if (epochNumberAtSubmit === 0 && nextSlot?.problem) {
-        // Optimistic submit: a first-round try mid-part advances at once to
-        // the part's next slot, without waiting for the server. The write
-        // queue in PracticeClient serializes the actual server writes.
-        void onAnswer(submission)
-        advanceTarget = {
-          problem: nextSlot.problem,
-          slotIndex: attemptData.slotIndex + 1,
-          partIndex: attemptData.partIndex,
-          epochNumber: 0,
-        }
-      } else {
-        // A retry round's next item, or what follows a part's last one, is
-        // the server's to decide: wait for its plan (null when the write was
-        // dropped or failed: the page resyncs, and nothing is derived)
-        advanceTarget = chooseAdvanceTarget(answered, await onAnswer(submission))
-      }
-    }
-
-    // Complete submit with result
-    completeSubmit(isCorrect ? 'correct' : 'incorrect')
-
-    // Wait for feedback display (UI pacing), then advance
-    setTimeout(
-      () => {
-        enactSubmitAdvance(advanceTarget)
-        if (isDoOver) {
-          onRedoComplete?.()
+        // Collect vision training data if answer is correct and vision is enabled
+        // This runs in the background (fire-and-forget) to not block the UI
+        if (isCorrect) {
+          collectVisionTrainingData(attemptData.problem.answer, attemptData.slotIndex)
         }
       },
-      isCorrect ? 500 : 1500
-    )
+      resultOf: ({ isCorrect, timing, hiddenTimeExcludedMs }) => ({
+        // The round tells the server a resubmit from the next try of the same slot
+        ...answeredProblemIdentity(plan.parts, attemptData),
+        problem: attemptData.problem,
+        studentAnswer: answerNum,
+        // The screen's own check, for display (the markers). Never sent: the
+        // try goes as record_try, and the server is the only judge
+        // (practice-kinds K4, amendments A1, A15)
+        isCorrect,
+        ...timing,
+        hiddenTimeExcludedMs,
+        skillsExercised: attemptData.problem.skillsRequired,
+        usedOnScreenAbacus: inHelpMode,
+        incorrectAttempts: assistance.machineState.context.wrongAttemptCount,
+        hadHelp: inHelpMode || assistance.machineState.context.helpedTermIndices.size > 0,
+      }),
+    })
   }, [
     phase,
-    onAnswer,
-    onRecordRedo,
-    student.id,
-    plan,
-    startSubmit,
-    completeSubmit,
-    enactSubmitAdvance,
-    currentProblemInfo?.epochNumber,
+    channel,
+    plan.parts,
     isDockedByUser,
     prefixSums,
     enterHelpMode,
     collectVisionTrainingData,
-    isInRedoMode,
-    redoState,
-    redoItem,
-    redoOriginalWasCorrect,
-    onRedoComplete,
     assistance.onWrongAnswer,
     assistance.machineState.context.wrongAttemptCount,
     assistance.machineState.context.helpedTermIndices,
@@ -1522,85 +812,39 @@ export function ActiveSession({
   // Auto-pause is now handled by the progressive assistance state machine
   // (useProgressiveAssistance hook, TIMER_AUTO_PAUSE event)
 
-  const handlePause = useCallback(
-    (info?: PauseInfo) => {
-      const newPauseInfo: PauseInfo = info ?? {
-        pausedAt: new Date(),
-        reason: 'manual',
-      }
-      setPauseInfo(newPauseInfo)
-      pause()
-      onPause?.(newPauseInfo)
-    },
-    [pause, onPause]
-  )
-
-  const handleResume = useCallback(() => {
-    setPauseInfo(undefined)
-    assistance.onResumed()
-    resume()
-    onResume?.()
-  }, [resume, onResume, assistance.onResumed])
-
-  // Handle skip (from progressive assistance) — show correct answer and advance
+  // Handle skip (from progressive assistance): the shell shows the correct
+  // answer, records the skip and moves on (a do-over's skip cancels it)
   const handleSkip = useCallback(async () => {
     if (!attempt) return
-
-    // In redo mode, cancel the redo instead
-    if (isInRedoMode && onCancelRedo) {
-      onCancelRedo()
-      return
-    }
-
-    // Record as incorrect with help. Same capture-time timing guard (#156) as
-    // handleSubmit — a skip after a long idle/backgrounded stretch must not
-    // store an unbounded response time.
-    const timingGuard = tryResponseTime(
-      attempt,
-      assistance.machineState.context.thresholds.autoPauseMs
-    )
-    const result: SlotResultSubmission & { partIndex: number; tryId: string } = {
-      ...answeredProblemIdentity(plan, attempt),
-      problem: attempt.problem,
-      studentAnswer: attempt.problem.answer, // Record the correct answer
-      // The screen's own check, for display; never sent (K4, amendment A15)
-      isCorrect: false,
-      // Sent as the envelope's outcome (practice-kinds §3.3)
-      outcome: 'skipped' as const,
-      ...timingGuard,
-      hiddenTimeExcludedMs: attempt.accumulatedHiddenMs || undefined,
-      skillsExercised: attempt.problem.skillsRequired,
-      usedOnScreenAbacus: false,
-      incorrectAttempts: assistance.machineState.context.wrongAttemptCount,
-      hadHelp: true,
-      helpTrigger: 'manual' as const,
-    }
-
-    // Show the correct answer briefly
-    setShowCorrectAnswerOnIncorrect(true)
-    setAnswer(String(attempt.problem.answer))
-    startSubmit()
-
-    // Fire-and-forget: mutation enters the queue, 1500ms feedback delay
-    // + clearToLoading provides enough time for the cache to update
-    void onAnswer(result)
-
-    completeSubmit('incorrect')
-
-    // Advance after showing the answer
-    setTimeout(() => {
-      clearToLoading()
-    }, 1500)
+    await channel.skip(attempt, {
+      // Same capture-time timing guard (#156) as a submit — a skip after a
+      // long idle/backgrounded stretch must not store an unbounded response time
+      capMs: assistance.machineState.context.thresholds.autoPauseMs,
+      // Show the correct answer briefly
+      reveal: () => setAnswer(String(attempt.problem.answer)),
+      // Record as incorrect with help
+      resultOf: ({ timing, hiddenTimeExcludedMs }) => ({
+        ...answeredProblemIdentity(plan.parts, attempt),
+        problem: attempt.problem,
+        studentAnswer: attempt.problem.answer, // Record the correct answer
+        // The screen's own check, for display; never sent (K4, amendment A15)
+        isCorrect: false,
+        // Sent as the envelope's outcome (practice-kinds §3.3)
+        outcome: 'skipped' as const,
+        ...timing,
+        hiddenTimeExcludedMs,
+        skillsExercised: attempt.problem.skillsRequired,
+        usedOnScreenAbacus: false,
+        incorrectAttempts: assistance.machineState.context.wrongAttemptCount,
+        hadHelp: true,
+        helpTrigger: 'manual' as const,
+      }),
+    })
   }, [
     attempt,
-    isInRedoMode,
-    onCancelRedo,
-    onAnswer,
-    currentProblemInfo,
+    channel,
+    plan.parts,
     setAnswer,
-    startSubmit,
-    completeSubmit,
-    clearToLoading,
     assistance.machineState.context.wrongAttemptCount,
     assistance.machineState.context.thresholds,
   ])
@@ -1612,68 +856,9 @@ export function ActiveSession({
     enterHelpMode(0)
   }, [enterHelpMode, isLinearActive])
 
-  const getHealthColor = (health: SessionHealth['overall']) => {
-    switch (health) {
-      case 'good':
-        return 'green.500'
-      case 'warning':
-        return 'yellow.500'
-      case 'struggling':
-        return 'red.500'
-      default:
-        return 'gray.500'
-    }
-  }
-
-  const getHealthEmoji = (health: SessionHealth['overall']) => {
-    switch (health) {
-      case 'good':
-        return '🟢'
-      case 'warning':
-        return '🟡'
-      case 'struggling':
-        return '🔴'
-      default:
-        return '⚪'
-    }
-  }
-
-  if (!currentPart || !attempt) {
-    return (
-      <div
-        data-component="active-session"
-        data-status="loading"
-        className={css({
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '300px',
-        })}
-      >
-        <div
-          className={css({
-            fontSize: '1.25rem',
-            color: isDark ? 'gray.400' : 'gray.500',
-          })}
-        >
-          Loading next problem...
-        </div>
-      </div>
-    )
-  }
-
-  // Browse mode - show the browse view instead of the practice view
-  if (isBrowseModeProp) {
-    return (
-      <BrowseModeView
-        plan={plan}
-        browseIndex={browseIndex}
-        currentPracticeIndex={currentPracticeLinearIndex}
-        studentId={student.id}
-        onResultEdited={onResultEdited}
-      />
-    )
-  }
+  // Loading or browsing: the shell draws its own screen; this view's hooks
+  // keep running (the help thresholds are computed once, on mount)
+  if (hidden || !currentPart || !attempt) return null
 
   // Check if we should show the abacus dock. The working abacus shows for abacus mode
   // AND the linear-with-abacus ramp phase — the planner sets useAbacus on ramp-linear
@@ -1734,67 +919,8 @@ export function ActiveSession({
             overflow: 'hidden',
           })}
         >
-          {/* Redo mode banner */}
-          {isInRedoMode && redoState && (
-            <div
-              data-element="redo-mode-banner"
-              className={css({
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.75rem',
-                padding: '0.5rem 1rem',
-                backgroundColor: isDark ? 'orange.900/80' : 'orange.100',
-                borderRadius: '12px',
-                border: '2px solid',
-                borderColor: isDark ? 'orange.600' : 'orange.400',
-                marginBottom: '0.5rem',
-              })}
-            >
-              <span className={css({ fontSize: '1.25rem' })}>🔄</span>
-              <span
-                className={css({
-                  fontWeight: '600',
-                  fontSize: '0.875rem',
-                  color: isDark ? 'orange.100' : 'orange.800',
-                })}
-              >
-                Redoing Problem #{redoState.linearIndex + 1}
-                {redoOriginalWasCorrect && (
-                  <span
-                    className={css({
-                      marginLeft: '0.5rem',
-                      fontWeight: '400',
-                      fontSize: '0.75rem',
-                      color: isDark ? 'orange.300' : 'orange.600',
-                    })}
-                  >
-                    (Practice Only)
-                  </span>
-                )}
-              </span>
-              <button
-                type="button"
-                onClick={onCancelRedo}
-                className={css({
-                  padding: '0.25rem 0.5rem',
-                  fontSize: '0.75rem',
-                  fontWeight: '500',
-                  color: isDark ? 'gray.300' : 'gray.600',
-                  backgroundColor: isDark ? 'gray.700' : 'gray.200',
-                  borderRadius: '6px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  _hover: {
-                    backgroundColor: isDark ? 'gray.600' : 'gray.300',
-                  },
-                })}
-              >
-                ← Back to #{currentPracticeLinearIndex + 1}
-              </button>
-            </div>
-          )}
+          {/* The shell's do-over banner */}
+          {banner}
 
           {/* Purpose badge with tooltip - shows retry indicator when in retry epoch */}
           {currentSlot && !isInRedoMode && (
@@ -1904,7 +1030,7 @@ export function ActiveSession({
                   position: 'relative' as const,
                 }}
               >
-                {currentPart.format === 'vertical' ? (
+                {presentationDisplayOf(currentPart) === 'vertical' ? (
                   <VerticalProblem
                     terms={attempt.problem.terms}
                     userAnswer={attempt.userAnswer}
@@ -2274,27 +1400,8 @@ export function ActiveSession({
           </div>
         ))}
 
-      {/* Session Paused Modal - rendered here as single source of truth */}
-      <SessionPausedModal
-        isOpen={isPaused}
-        student={student}
-        session={plan}
-        pauseInfo={pauseInfo}
-        onResume={handleResume}
-        onEndSession={() => onEndEarly('Session ended by user')}
-      />
-
-      {/* Retry Transition Screen - shown when entering a retry epoch */}
-      {retryTransitionData && (
-        <RetryTransitionScreen
-          isVisible={isInRetryTransition}
-          epochNumber={retryTransitionData.epochNumber}
-          problemCount={retryTransitionData.problemCount}
-          student={{ name: student.name, emoji: student.emoji }}
-          onComplete={handleRetryTransitionComplete}
-        />
-      )}
+      {/* The shell's overlays: the pause modal, the round interlude */}
+      {overlays}
     </div>
   )
 }
-export default ActiveSession

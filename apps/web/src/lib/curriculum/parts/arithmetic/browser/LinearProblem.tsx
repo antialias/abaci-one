@@ -39,7 +39,7 @@ export interface LinearProblemProps {
  *
  * The sentence never wraps on its own: its font size is `2rem` at most and shrinks
  * so that `terms + operator + answer box` fit the nearest `container-type: inline-size`
- * ancestor (ActiveSession's `problem-with-help`). Without such an ancestor, `cqw`
+ * ancestor (ItemView's `problem-with-help`). Without such an ancestor, `cqw`
  * falls back to the viewport width. Below the 1rem floor the row wraps as a last
  * resort: the answer box drops under the sentence and the sentence itself can only
  * break in front of an operator (each "+ 41" chunk is `nowrap`).

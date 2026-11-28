@@ -3,7 +3,7 @@
 /**
  * Arithmetic's digit entry (practice-kinds plan §2, §4 K5a-1): the typed
  * answer, prefix sums, disambiguation and help mode, inside the generic try
- * lifecycle (`components/practice/hooks/useTryLifecycle.ts`).
+ * lifecycle (`components/practice/session/useTryLifecycle.ts`).
  *
  * Arithmetic adds two phases inside inputting: `awaitingDisambiguation` (the
  * typed answer is an intermediate prefix sum and could also start the final
@@ -11,8 +11,8 @@
  * `helpMode` (bead help for one term). Both carry the attempt; the lifecycle
  * treats them as inputting.
  *
- * Extracted from `useInteractionPhase.ts` behaviour-identical; that file is
- * now the lifecycle composed with this hook.
+ * Extracted from `useInteractionPhase.ts` behaviour-identical (K5a-1). The
+ * item view (`ItemView`) calls it as the session shell's child (K5a-3b).
  */
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -26,7 +26,7 @@ import {
   type TryPhase,
   type TryPhaseState,
   type TryResult,
-} from '@/components/practice/hooks/useTryLifecycle'
+} from '@/components/practice/session/useTryLifecycle'
 import type { GeneratedProblem } from '@/db/schema/session-plans'
 
 // =============================================================================

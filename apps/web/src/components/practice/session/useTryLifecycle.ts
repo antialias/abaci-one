@@ -20,8 +20,9 @@
  * child's effects run before its parent's: when an item change and an entry
  * timer land in the same render, the item change wins.
  *
- * Extracted from `useInteractionPhase.ts` behaviour-identical; that file is
- * now this lifecycle composed with arithmetic's `useDigitEntry`.
+ * Extracted from `useInteractionPhase.ts` behaviour-identical (K5a-1). The
+ * session shell (`SessionShell`) holds it; a kind's item view calls its entry
+ * hook as the shell's child (K5a-3b), which keeps that order.
  */
 
 import {

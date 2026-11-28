@@ -15,7 +15,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { type ReactNode, useLayoutEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SessionHudData } from '@/components/practice'
-import type { RecordRedoParams } from '@/components/practice/ActiveSession'
+import type { RecordRedoParams } from '@/components/practice/session/types'
 import type { Player } from '@/db/schema/players'
 import type {
   BreakRecord,
@@ -69,7 +69,7 @@ function MockActiveSession(props: { plan: SessionPlan }) {
   return <div data-testid="active-session" />
 }
 vi.mock('@/components/practice', () => ({
-  ActiveSession: (props: { plan: SessionPlan }) => <MockActiveSession {...props} />,
+  SessionShell: (props: { plan: SessionPlan }) => <MockActiveSession {...props} />,
   PracticeErrorBoundary: ({ children }: { children: ReactNode }) => <>{children}</>,
   PracticeSubNav: ({ sessionHud }: { sessionHud?: unknown }) => {
     h.hud = sessionHud
@@ -479,8 +479,8 @@ describe('PracticeClient — a do-over names its item', () => {
     h.recordRedo.mockResolvedValue(null)
   })
 
-  it('sends the write ActiveSession builds, with itemId and slotId = itemId, and marks it', async () => {
-    const { doOverWriteOf } = await import('@/components/practice/ActiveSession')
+  it('sends the write the session builds, with itemId and slotId = itemId, and marks it', async () => {
+    const { doOverWriteOf } = await import('@/lib/curriculum/parts/arithmetic/browser')
     const fixture = liveMidPartOneSession()
     renderPage(fixture.plan)
     const write = doOverWriteOf({

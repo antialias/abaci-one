@@ -7,7 +7,7 @@
  * The client picks the problem to show with getCurrentProblemInfo (which skips
  * retry items redeemed by a manual do-over); the server attributes the answer
  * with its own position (the part state's retry.currentEpochItems[currentRetryIndex]).
- * These tests drive both sides the way ActiveSession does and compare.
+ * These tests drive both sides the way the session shell does and compare.
  */
 
 import { eq } from 'drizzle-orm'
@@ -15,8 +15,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   chooseAdvanceTarget,
   chooseRedoReturnTarget,
-  type TransitionTarget,
-} from '@/components/practice/redoReturnTarget'
+  shownItemOf,
+} from '@/components/practice/session/advance'
+import type { ShownItem } from '@/components/practice/session/sessionKind'
 import * as schema from '@/db/schema'
 import { DEFAULT_GAME_BREAK_SETTINGS } from '@/db/schema/session-plan-helpers'
 import { legacyTryId } from '@/db/schema/session-plan-normalize'
@@ -25,6 +26,7 @@ import { computeBktFromHistory } from '@/lib/curriculum/bkt/compute-bkt'
 import { batchGetRecentBktEvidence } from '@/lib/curriculum/bkt/evidence-query'
 import { deriveLinearGateState } from '@/lib/curriculum/linear-gate'
 import {
+  type ArithmeticItem,
   arithmeticPartStateOf,
   getCurrentProblemInfo,
 } from '@/lib/curriculum/parts/arithmetic/state'
@@ -99,7 +101,7 @@ function expectNoLegacyTryFields(row: object) {
 /** A client-shaped try id (UUID) */
 const tid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 
-/** Answer whatever the client would show right now, the way ActiveSession submits it. */
+/** Answer whatever the client would show right now, the way the session shell submits it. */
 async function answerShown(
   plan: SessionPlan,
   correct: boolean,
@@ -122,7 +124,7 @@ async function answerShown(
   })
 }
 
-/** A manual do-over of slot `slotIndex` in part 0, the way ActiveSession submits it. */
+/** A manual do-over of slot `slotIndex` in part 0, the way the session shell submits it. */
 async function redo(
   plan: SessionPlan,
   slotIndex: number,
@@ -151,6 +153,22 @@ async function redo(
 
 /** A correct manual do-over of slot `slotIndex` in part 0 whose original was wrong. */
 const redoCorrect = (plan: SessionPlan, slotIndex: number) => redo(plan, slotIndex, true)
+
+/**
+ * The problem a shown item puts on screen, as arithmetic's try item names it
+ * (`arithmeticSessionKind.tryItemOf`): its problem, slot index, part and round.
+ */
+function problemOf(shown: ShownItem | null) {
+  if (!shown) return null
+  const item = shown.item as ArithmeticItem
+  if (!item.problem) return null
+  return {
+    problem: item.problem,
+    slotIndex: item.originalSlotIndex,
+    partIndex: shown.partIndex,
+    epochNumber: item.epochNumber,
+  }
+}
 
 describe('retry and do-over attribution', () => {
   let eph: EphemeralDbResult
@@ -342,14 +360,10 @@ describe('retry and do-over attribution', () => {
   })
 
   describe('the next item after a try that waits for its write (K5a-3a)', () => {
-    /** Where the answered problem was: as ActiveSession names it at submit. */
+    /** Where the answered problem was: as the session shell names it at submit. */
     const answeredAt = (plan: SessionPlan) => {
-      const info = getCurrentProblemInfo(plan)!
-      return {
-        partIndex: plan.currentPartIndex,
-        slotIndex: info.originalSlotIndex,
-        epochNumber: info.epochNumber,
-      }
+      const { partIndex, itemId, round } = shownItemOf(plan)!
+      return { partIndex, itemId, round }
     }
 
     it("slides to the retry round's next item, taken from the plan the server returned", async () => {
@@ -358,10 +372,10 @@ describe('retry and do-over attribution', () => {
       plan = await answerShown(plan, false)
       plan = await answerShown(plan, true) // round 1 = [slot 0, slot 1]
       const at = answeredAt(plan)
-      expect(at).toEqual({ partIndex: 0, slotIndex: 0, epochNumber: 1 })
+      expect(at).toEqual({ partIndex: 0, itemId: plan.parts[0].slots[0].slotId, round: 1 })
 
       const after = await answerShown(plan, true)
-      const target = chooseAdvanceTarget(at, after)
+      const target = problemOf(chooseAdvanceTarget(at, after))
       expect(target).toMatchObject({ partIndex: 0, slotIndex: 1, epochNumber: 1 })
       expect(target!.problem).toEqual(plan.parts[0].slots[1].problem)
 
@@ -418,17 +432,13 @@ describe('retry and do-over attribution', () => {
 
     it("returns the client to the server's next problem when a do-over redeems the current one", async () => {
       const before = await inRetryRound()
-      const shownAtSubmit = getCurrentProblemInfo(before)!
-      const targetAtSubmit: TransitionTarget = {
-        problem: shownAtSubmit.problem,
-        slotIndex: shownAtSubmit.originalSlotIndex,
-        partIndex: before.currentPartIndex,
-        epochNumber: shownAtSubmit.epochNumber,
-      }
-      expect(targetAtSubmit.slotIndex).toBe(0) // on screen: slot 0's retry
+      const targetAtSubmit = shownItemOf(before)
+      expect(problemOf(targetAtSubmit)!.slotIndex).toBe(0) // on screen: slot 0's retry
 
       const after = await redoCorrect(before, 0) // the kid redoes slot 0 itself
-      const target = chooseRedoReturnTarget(before, { recorded: true, plan: after }, targetAtSubmit)
+      const target = problemOf(
+        chooseRedoReturnTarget(before, { recorded: true, plan: after }, targetAtSubmit)
+      )
       expect(target).toMatchObject({ slotIndex: 1, partIndex: 0, epochNumber: 1 })
 
       // The answer the client sends from that target is accepted and attributed to slot 1
@@ -457,11 +467,11 @@ describe('retry and do-over attribution', () => {
       const after = await redoCorrect(before, 1)
       expect(chooseRedoReturnTarget(before, { recorded: true, plan: after }, null)).toBeNull()
       expect(chooseRedoReturnTarget(before, { recorded: true, plan: null }, null)).toBeNull()
-      const keep: TransitionTarget = {
-        problem: after.parts[0].slots[1].problem!,
-        slotIndex: 1,
+      const keep: ShownItem = {
         partIndex: 0,
-        epochNumber: 1,
+        itemId: after.parts[0].slots[1].slotId,
+        round: 1,
+        item: { problem: after.parts[0].slots[1].problem, originalSlotIndex: 1, epochNumber: 1 },
       }
       expect(chooseRedoReturnTarget(before, { recorded: false }, keep)).toBe(keep)
     })

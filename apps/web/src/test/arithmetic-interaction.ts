@@ -1,14 +1,14 @@
-'use client'
-
 /**
- * The practice screen's interaction state machine: the generic try lifecycle
- * (`useTryLifecycle`) composed with arithmetic's digit entry
- * (`parts/arithmetic/browser/useDigitEntry`), practice-kinds plan §4 K5a-1.
- * Its public shape is the one `ActiveSession` has always used; K5a-3's
- * session shell replaces it.
+ * For tests: the generic try lifecycle (`useTryLifecycle`) composed with
+ * arithmetic's digit entry (`parts/arithmetic/browser/useDigitEntry`) in one
+ * hook, the shape `useInteractionPhase.ts` had (practice-kinds K5a-1). That
+ * file is gone (K5a-3b: the session shell holds the lifecycle and arithmetic's
+ * item view, its child, the entry); the hook cases of `useTryLifecycle.test.ts`
+ * and `useDigitEntry.test.ts` render this composition, unchanged.
  */
 
 import { useCallback } from 'react'
+import { useTryLifecycle, useTryPhaseState } from '@/components/practice/session/useTryLifecycle'
 import type { GeneratedProblem } from '@/db/schema/session-plans'
 import {
   type ActiveProblem,
@@ -22,37 +22,6 @@ import {
   type PrefixMatchResult,
   useDigitEntry,
 } from '@/lib/curriculum/parts/arithmetic/browser/useDigitEntry'
-import { useTryLifecycle, useTryPhaseState } from './useTryLifecycle'
-
-export type {
-  ActivePhase,
-  ActiveProblem,
-  AttemptInput,
-  DigitEntryPhase,
-  DisambiguationContext,
-  HelpContext,
-  InitialProblemData,
-  InteractionPhase,
-  OutgoingAttempt,
-  PrefixMatchResult,
-  ProblemContext,
-} from '@/lib/curriculum/parts/arithmetic/browser/useDigitEntry'
-export {
-  AMBIGUOUS_HELP_DELAY_MS,
-  computeHelpContext,
-  computePrefixSums,
-  createAttemptInput,
-  findMatchedPrefixIndex,
-  isDigitConsistent,
-  MANUAL_SUBMIT_THRESHOLD,
-} from '@/lib/curriculum/parts/arithmetic/browser/useDigitEntry'
-export {
-  addPauseToActivePhase,
-  foldHiddenSpanIntoActivePhase,
-  getActivePhase,
-  getActivePhaseAttempt,
-  transformActivePhase,
-} from './useTryLifecycle'
 
 // =============================================================================
 // Hook

@@ -350,11 +350,10 @@ export const Playground: Story = {
   render: () => <TermsPlayground />,
 }
 
-// Import the interaction hook and help components
-import {
-  useInteractionPhase,
-  computePrefixSums,
-} from '@/components/practice/hooks/useInteractionPhase'
+// Import the interaction hook (the lifecycle composed with digit entry, as the
+// session shell composes them) and help components
+import { useInteractionPhase } from '@/test/arithmetic-interaction'
+import { computePrefixSums } from './useDigitEntry'
 import { HelpAbacus } from '@/components/practice/HelpAbacus'
 import type { GeneratedProblem } from '@/db/schema/session-plans'
 

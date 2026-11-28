@@ -11,8 +11,8 @@
  */
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useInteractionPhase } from '@/components/practice/hooks/useInteractionPhase'
 import type { GeneratedProblem } from '@/db/schema/session-plans'
+import { useInteractionPhase } from '@/test/arithmetic-interaction'
 import {
   type ActiveProblem,
   computeHelpContext,
