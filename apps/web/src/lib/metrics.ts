@@ -22,7 +22,7 @@
  *   end({ status_code: '200' })
  */
 
-import { Registry, Counter, Histogram, Gauge, Summary, collectDefaultMetrics } from 'prom-client'
+import { Counter, collectDefaultMetrics, Gauge, Histogram, Registry, Summary } from 'prom-client'
 
 // Create a custom registry to avoid conflicts
 export const metricsRegistry = new Registry()
@@ -169,6 +169,25 @@ export const practiceResponseTime = new Histogram({
 export const practiceStreakMax = new Gauge({
   name: 'practice_streak_current_max',
   help: 'Current maximum streak across all active sessions',
+  registers: [metricsRegistry],
+})
+
+/**
+ * Judge parity (practice-kinds plan §8, amendment A1): every try the server
+ * judged, and the ones where its verdict differs from the client's. Counted
+ * once per recorded try, after its write commits. Low-cardinality labels only.
+ */
+export const practiceTriesJudgedTotal = new Counter({
+  name: 'practice_tries_judged_total',
+  help: 'Practice tries the server judged, once per recorded try',
+  labelNames: ['kind', 'outcome'], // kind: part kind ('arithmetic'); outcome: 'answered' | 'skipped'
+  registers: [metricsRegistry],
+})
+
+export const practiceJudgeDisagreementsTotal = new Counter({
+  name: 'practice_judge_disagreements_total',
+  help: "Recorded practice tries where the server's judge disagrees with the client's verdict",
+  labelNames: ['kind', 'recorder'], // recorder: 'slot' | 'redo'
   registers: [metricsRegistry],
 })
 
@@ -768,6 +787,8 @@ export const metrics = {
     problemsTotal: practiceProblemsTotal,
     responseTime: practiceResponseTime,
     streakMax: practiceStreakMax,
+    triesJudgedTotal: practiceTriesJudgedTotal,
+    judgeDisagreementsTotal: practiceJudgeDisagreementsTotal,
   },
   practicePicker: {
     loadDuration: practicePickerLoadDuration,
