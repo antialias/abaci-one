@@ -4,8 +4,8 @@ import { db } from '@/db'
 import { players } from '@/db/schema'
 import type { SlotResult, SlotResultSubmission } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
-import { canPerformAction, getStudentPresence } from '@/lib/classroom'
-import { emitSessionStarted, emitSessionStartedToPlayer } from '@/lib/classroom/socket-emitter'
+import { canPerformAction } from '@/lib/classroom'
+import { emitSessionStartedToPlayer } from '@/lib/classroom/socket-emitter'
 import {
   abandonSessionPlan,
   acknowledgeGameBreakResults,
@@ -343,9 +343,10 @@ export const DELETE = withAuth(async (_request, { params }) => {
 })
 
 /**
- * Emit the session-started events to both:
- * 1. Player channel (for parent observation) - ALWAYS
- * 2. Classroom channel (for teacher observation) - only if student is present
+ * Emit the session-started event to the player channel (for parent
+ * observation). The teachers' rooms hear every start from the row write's
+ * commit path (`session-report-server.ts`, Phase 4d), for every classroom
+ * the student is enrolled in.
  *
  * Ends are not emitted here: every end (natural completion included) emits
  * `session-ended` from the row write's commit path (`session-report-server.ts`).
@@ -360,12 +361,6 @@ async function emitSessionStartedEvents(playerId: string, sessionId: string): Pr
 
     // Always emit to player channel (for parents)
     await emitSessionStartedToPlayer({ sessionId, playerId, playerName })
-
-    // Also emit to classroom channel if student is present
-    const presence = await getStudentPresence(playerId)
-    if (presence) {
-      await emitSessionStarted({ sessionId, playerId, playerName }, presence.classroomId)
-    }
 
     // Fire-and-forget: notify subscribers (web push, email, in-app)
     const baseUrl =

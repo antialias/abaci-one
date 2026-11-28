@@ -22,8 +22,8 @@ import type { GameMove } from './lib/arcade/validation/types'
 import { type GameName, getValidator } from './lib/arcade/validators'
 import { registerClassroomChannels } from './lib/classroom/classroom-room-access'
 import {
+  isKidScreenOnceAdmitted,
   isMemberOnceAdmitted,
-  mayActOnceAdmitted,
   registerObserveSession,
   registerPracticeStateRelay,
   registerSessionBroadcasts,
@@ -1164,7 +1164,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
       }) => {
         // Only the kid's admitted screen sends frames (the phone's go through
         // remote-camera:* to that screen, which forwards them as its own)
-        if (!(await mayActOnceAdmitted(socket, String(data?.sessionId ?? '')))) return
+        if (!(await isKidScreenOnceAdmitted(socket, String(data?.sessionId ?? '')))) return
 
         // Broadcast to all observers in the session channel
         socket.to(`session:${data.sessionId}`).emit('vision-frame', data)
@@ -1215,7 +1215,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
     socket.on(
       'start-vision-recording',
       async ({ sessionId }: { sessionId: string; playerId?: string }) => {
-        if (!(await mayActOnceAdmitted(socket, String(sessionId ?? '')))) {
+        if (!(await isKidScreenOnceAdmitted(socket, String(sessionId ?? '')))) {
           console.log(`[Socket] start-vision-recording dropped for ${sessionId}: not admitted`)
           return
         }
@@ -1264,7 +1264,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
 
     // Vision Recording: Stop recording session (finalizes last problem)
     socket.on('stop-vision-recording', async ({ sessionId }: { sessionId: string }) => {
-      if (!(await mayActOnceAdmitted(socket, String(sessionId ?? '')))) return
+      if (!(await isKidScreenOnceAdmitted(socket, String(sessionId ?? '')))) return
       try {
         const recorder = VisionRecorder.getInstance()
         await recorder.stopSession(sessionId)
@@ -1314,7 +1314,7 @@ export function initializeSocketServer(httpServer: HTTPServer) {
         problem?: { terms: number[]; answer: number }
       }) => {
         // From the kid's admitted screen only
-        if (!(await mayActOnceAdmitted(socket, String(sessionId ?? '')))) return
+        if (!(await isKidScreenOnceAdmitted(socket, String(sessionId ?? '')))) return
         const recorder = VisionRecorder.getInstance()
         const playerId = sessionPlayerOf(socket, sessionId)
 

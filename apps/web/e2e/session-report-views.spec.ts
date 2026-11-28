@@ -811,7 +811,7 @@ test.describe('session report views (Phases 4c-4e)', () => {
     }
   })
 
-  test('the classroom and player channels admit members only (socket identity PR 2)', async ({
+  test('the classroom and player channels admit members only (socket identity PRs 2–3)', async ({
     context,
     browser,
     request,
@@ -856,6 +856,67 @@ test.describe('session report views (Phases 4c-4e)', () => {
       }
     } finally {
       for (const sock of sockets) sock.disconnect()
+    }
+  })
+
+  test('the teacher room hears a student’s start, each write and the end (socket identity PR 3)', async ({
+    context,
+    request,
+    baseURL,
+  }) => {
+    playerId = await seedStudent(request)
+    // The admin is the classroom's teacher and the student's parent
+    const classroomId = await seededClassroom(request, playerId)
+    const teacher = await rawSocket(baseURL!, cookieHeader(await context.cookies()))
+    try {
+      // Everything the teacher room brings, from the join on
+      const heard: Array<{ event: string; data: any }> = []
+      const waiters: Array<() => void> = []
+      teacher.onAny((event: string, data: unknown) => {
+        heard.push({ event, data })
+        for (const w of waiters.splice(0)) w()
+      })
+      const hear = (event: string, match: (data: any) => boolean) =>
+        new Promise<any>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error(`no ${event} within 30 s`)), 30_000)
+          const look = () => {
+            const found = heard.find((h) => h.event === event && match(h.data))
+            if (found) {
+              clearTimeout(timer)
+              resolve(found.data)
+            } else waiters.push(look)
+          }
+          look()
+        })
+
+      teacher.emit('join-classroom', { classroomId })
+      await hear('channel-joined', (d) => d?.channel === 'classroom' && d.id === classroomId)
+
+      const plan = await startSession(request, playerId)
+      expect(
+        await hear('session-started', (d) => d?.sessionId === plan.id),
+        'the start'
+      ).toMatchObject({ playerId })
+      const summary = await hear(
+        'classroom-session-summary',
+        (d) => d?.sessionId === plan.id && d.outcome === 'in_progress'
+      )
+      expect(summary).toMatchObject({ playerId, totalProblems: plan.parts[0].slots.length })
+
+      const end = await request.patch(`/api/curriculum/${playerId}/sessions/plans/${plan.id}`, {
+        data: { action: 'end_early', reason: 'e2e: teacher room' },
+      })
+      expect(end.ok(), await end.text()).toBeTruthy()
+      expect(await hear('session-ended', (d) => d?.sessionId === plan.id)).toMatchObject({
+        playerId,
+      })
+      const last = await hear(
+        'classroom-session-summary',
+        (d) => d?.sessionId === plan.id && d.outcome !== 'in_progress'
+      )
+      expect(last.rowVersion).toBeGreaterThan(summary.rowVersion)
+    } finally {
+      teacher.disconnect()
     }
   })
 

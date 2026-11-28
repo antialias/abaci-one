@@ -100,12 +100,14 @@ export async function authorizeSessionRoomJoin(
 
 /**
  * `socket.data`'s record of its live-room admissions: the joins of
- * `session:<id>` still being checked, and the session's own player for each
- * viewer admission (`join-session`, or an observer's `observe-session`).
+ * `session:<id>` still being checked, the session's own player for each
+ * viewer admission (`join-session`, or an observer's `observe-session`), and
+ * the sessions it was admitted to as the kid's screen (`join-session`).
  */
 export interface SessionAdmissionsData {
   pendingSessionJoins?: Map<string, Promise<void>>
   sessionPlayers?: Map<string, string>
+  kidScreenSessions?: Set<string>
 }
 
 /**
@@ -190,7 +192,11 @@ export function registerSessionRoomJoins(
         return
       }
       await socket.join(room(sessionId))
-      if (label === 'join-session') recordSessionPlayer(socket, sessionId, decision.playerId)
+      if (label === 'join-session') {
+        recordSessionPlayer(socket, sessionId, decision.playerId)
+        if (!socket.data.kidScreenSessions) socket.data.kidScreenSessions = new Set()
+        socket.data.kidScreenSessions.add(sessionId)
+      }
       if (ack) socket.emit(ack, { sessionId })
     } catch (error) {
       console.error(`[session-room] ${label} failed`, error)
@@ -315,16 +321,29 @@ export function mayActInSession(socket: SessionControlSocket, sessionId: string)
 }
 
 /**
- * `mayActInSession`, decided after a join of that session the socket has in
+ * Whether a socket is the kid's own screen for a session: admitted to
+ * `session:<id>` by `join-session` (not by `observe-session`, not by a share
+ * link). Only it may send the kid's broadcasts (`practice-state`,
+ * `SESSION_BROADCASTS`, the vision events): an observer, a parent or teacher
+ * on a second device included, may send controls but never the kid's state.
+ */
+export function isKidScreen(socket: SessionControlSocket, sessionId: string): boolean {
+  return (
+    mayActInSession(socket, sessionId) && (socket.data.kidScreenSessions?.has(sessionId) ?? false)
+  )
+}
+
+/**
+ * `isKidScreen`, decided after a join of that session the socket has in
  * flight: the kid's screen sends its first broadcasts right after
  * `join-session`, while the join is still being checked.
  */
-export async function mayActOnceAdmitted(
+export async function isKidScreenOnceAdmitted(
   socket: SessionControlSocket,
   sessionId: string
 ): Promise<boolean> {
   await admissionSettled(socket, sessionId)
-  return mayActInSession(socket, sessionId)
+  return isKidScreen(socket, sessionId)
 }
 
 /**
@@ -430,9 +449,9 @@ export function registerPracticeStateRelay(
 ): void {
   socket.on('practice-state', (data: PracticeStateRelayData) => {
     const sessionId = String(data?.sessionId ?? '')
-    if (!mayActInSession(socket, sessionId)) {
+    if (!isKidScreen(socket, sessionId)) {
       console.log(
-        `[Socket] practice-state dropped for session ${sessionId}: not admitted, or view-only`
+        `[Socket] practice-state dropped for session ${sessionId}: not the kid's admitted screen`
       )
       return
     }
@@ -452,18 +471,18 @@ export const SESSION_BROADCASTS = [
 
 /**
  * Relay the kid's other broadcasts (`SESSION_BROADCASTS`) to `session:<id>`,
- * the sender excluded. Only from a socket that may act in the session
- * (`mayActOnceAdmitted`: the kid's screen once `join-session` admitted it);
- * anyone else's is dropped, so no one can drive an observer's view of a
- * session they were not let into.
+ * the sender excluded. Only from the kid's screen (`isKidScreenOnceAdmitted`:
+ * once `join-session` admitted it); anyone else's is dropped, an admitted
+ * observer's included, so no one but the kid's screen drives what observers
+ * see.
  */
 export function registerSessionBroadcasts(socket: PracticeStateRelaySocket): void {
   for (const event of SESSION_BROADCASTS) {
     socket.on(event, async (data: { sessionId: string }) => {
       const sessionId = String(data?.sessionId ?? '')
-      if (!(await mayActOnceAdmitted(socket, sessionId))) {
+      if (!(await isKidScreenOnceAdmitted(socket, sessionId))) {
         console.log(
-          `[Socket] ${event} dropped for session ${sessionId}: not admitted, or view-only`
+          `[Socket] ${event} dropped for session ${sessionId}: not the kid's admitted screen`
         )
         return
       }

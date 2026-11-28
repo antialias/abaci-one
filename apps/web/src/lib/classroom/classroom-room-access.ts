@@ -1,22 +1,23 @@
 /**
  * Who may join a classroom's channel `classroom:<id>` and a player's channel
- * `player:<id>`, and who may send the skill tutorial's state and controls
- * through the classroom channel.
+ * `player:<id>`, and where the skill tutorial's state and controls go.
  *
- * - `classroom:<id>` carries the teacher's view (enrollment requests,
- *   presence, sessions started and ended) and the skill tutorial's relay. Its
- *   members are the classroom's teacher and the parents of its enrolled
- *   students (the student's own device, whose tutorial the teacher follows),
- *   as the classroom routes decide it (presence needs an enrollment).
+ * - `classroom:<id>` is the teacher-only room (§10 P4d-8, P4d-9): its only
+ *   member is the classroom's teacher. It carries the teacher's view:
+ *   enrollment requests, presence, every enrolled student's session starts,
+ *   summaries and ends, entry prompts and the students' tutorial states.
+ *   Students' devices do not join it.
  * - `player:<id>`: whoever may `view` that player (`canPerformAction`), as the
  *   player's HTTP routes decide it: a parent, or an enrolled student's teacher.
+ *   The student's own device joins it to hear the teacher's tutorial controls.
  * - `skill-tutorial-state`: only for a player the sender may `start-session`
- *   for (the kid's own device, or the teacher of a present student), and only
- *   into classrooms that player is enrolled in.
+ *   for (the kid's own device, or the teacher of a present student). The
+ *   server sends it to `classroom:<id>` of every classroom that player is
+ *   enrolled in, decided by enrollment here, not by any room the sender
+ *   joined: the first frame needs no join to finish first.
  * - `skill-tutorial-control`: only for a player the sender may
- *   `control-tutorial` (a parent, or the teacher of a present student). A
- *   classmate's device, though a member of the channel, cannot steer another
- *   child's tutorial.
+ *   `control-tutorial` (a parent, or the teacher of a present student), sent
+ *   to that player's `player:<id>`.
  *
  * Every check uses the socket's verified viewer (`socket.data.viewer`); an id
  * in a payload is the subject of the check, never the one checked. A join
@@ -25,27 +26,22 @@
  * Leaving is never checked: it only takes the socket out.
  */
 
-import { and, eq, inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import { type SocketViewerData, socketViewerId } from '@/lib/socket-viewer'
-import { canPerformAction, getParentedPlayerIds } from './access-control'
+import { canPerformAction } from './access-control'
 
-/** A classroom's channel: the teacher's view and the skill tutorial relay. */
+/** A classroom's channel: the teacher-only room. */
 export function classroomRoom(classroomId: string): string {
   return `classroom:${classroomId}`
 }
 
-/** A player's channel: presence, enrollment and sessions of that player. */
+/** A player's channel: presence, enrollment, sessions and tutorial controls of that player. */
 export function playerRoom(playerId: string): string {
   return `player:${playerId}`
 }
 
-const CLASSROOM_PREFIX = 'classroom:'
-
-/**
- * Whether `viewerId` belongs to the classroom: its teacher, or a parent of a
- * student enrolled in it.
- */
+/** Whether `viewerId` teaches the classroom: the only member of `classroom:<id>`. */
 export async function mayJoinClassroom(
   viewerId: string | null,
   classroomId: string
@@ -55,30 +51,16 @@ export async function mayJoinClassroom(
     where: eq(schema.classrooms.id, classroomId),
     columns: { teacherId: true },
   })
-  if (!classroom) return false
-  if (classroom.teacherId === viewerId) return true
-  const children = await getParentedPlayerIds(viewerId)
-  if (children.length === 0) return false
-  const [enrolled] = await db
-    .select({ id: schema.classroomEnrollments.id })
-    .from(schema.classroomEnrollments)
-    .where(
-      and(
-        eq(schema.classroomEnrollments.classroomId, classroomId),
-        inArray(schema.classroomEnrollments.playerId, children)
-      )
-    )
-    .limit(1)
-  return !!enrolled
+  return classroom?.teacherId === viewerId
 }
 
-/** The classrooms a player is enrolled in. */
-async function enrolledClassroomIds(playerId: string): Promise<Set<string>> {
+/** The teacher rooms of every classroom a player is enrolled in, present or not. */
+export async function teacherRoomsOf(playerId: string): Promise<string[]> {
   const rows = await db
     .select({ classroomId: schema.classroomEnrollments.classroomId })
     .from(schema.classroomEnrollments)
     .where(eq(schema.classroomEnrollments.playerId, playerId))
-  return new Set(rows.map((r) => r.classroomId))
+  return rows.map((r) => classroomRoom(r.classroomId))
 }
 
 /** The socket surface these channels need (a socket.io `Socket`). */
@@ -87,8 +69,7 @@ export interface ClassroomChannelSocket {
   join(room: string): unknown
   leave(room: string): unknown
   emit(event: string, data: unknown): unknown
-  to(room: string): { emit(event: string, data: unknown): unknown }
-  rooms: Iterable<string>
+  to(room: string | string[]): { emit(event: string, data: unknown): unknown }
   data: SocketViewerData
 }
 
@@ -101,17 +82,6 @@ export interface ClassroomChannelServer {
 interface TutorialMessage {
   playerId: string
   [key: string]: unknown
-}
-
-/**
- * The classroom channels this socket joined that `playerId` is enrolled in:
- * where its tutorial's state and controls go.
- */
-async function tutorialRoomsOf(socket: ClassroomChannelSocket, playerId: string) {
-  const joined = [...socket.rooms].filter((room) => room.startsWith(CLASSROOM_PREFIX))
-  if (joined.length === 0) return []
-  const enrolled = await enrolledClassroomIds(playerId)
-  return joined.filter((room) => enrolled.has(room.slice(CLASSROOM_PREFIX.length)))
 }
 
 /**
@@ -131,7 +101,7 @@ export function registerClassroomChannels(
     const classroomId = typeof request?.classroomId === 'string' ? request.classroomId : ''
     try {
       if (!(await mayJoinClassroom(socketViewerId(socket), classroomId))) {
-        refuse('classroom', classroomId, 'Not a member of this classroom')
+        refuse('classroom', classroomId, 'Not the teacher of this classroom')
         return
       }
       await socket.join(classroomRoom(classroomId))
@@ -168,7 +138,7 @@ export function registerClassroomChannels(
     await socket.leave(playerRoom(request.playerId))
   })
 
-  // The student's device tells the teacher where its tutorial is
+  // The student's device tells its teachers where its tutorial is
   socket.on('skill-tutorial-state', async (data: TutorialMessage) => {
     const viewerId = socketViewerId(socket)
     const playerId = typeof data?.playerId === 'string' ? data.playerId : ''
@@ -181,15 +151,14 @@ export function registerClassroomChannels(
         console.log(`⚠️ skill-tutorial-state dropped for ${playerId}: not the player's device`)
         return
       }
-      for (const room of await tutorialRoomsOf(socket, playerId)) {
-        socket.to(room).emit('skill-tutorial-state', data)
-      }
+      const rooms = await teacherRoomsOf(playerId)
+      if (rooms.length > 0) socket.to(rooms).emit('skill-tutorial-state', data)
     } catch (error) {
       console.error('Error relaying skill tutorial state:', error)
     }
   })
 
-  // The teacher steers a present student's tutorial
+  // The teacher steers a present student's tutorial, on the student's channel
   socket.on('skill-tutorial-control', async (data: TutorialMessage) => {
     const viewerId = socketViewerId(socket)
     const playerId = typeof data?.playerId === 'string' ? data.playerId : ''
@@ -202,9 +171,7 @@ export function registerClassroomChannels(
         console.log(`⚠️ skill-tutorial-control dropped for ${playerId}: may not control it`)
         return
       }
-      for (const room of await tutorialRoomsOf(socket, playerId)) {
-        io.to(room).emit('skill-tutorial-control', data)
-      }
+      io.to(playerRoom(playerId)).emit('skill-tutorial-control', data)
     } catch (error) {
       console.error('Error relaying skill tutorial control:', error)
     }

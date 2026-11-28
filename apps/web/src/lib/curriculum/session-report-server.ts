@@ -16,10 +16,14 @@
  *   live to ended (completed or abandoned: natural completion, end early,
  *   abandon, auto-abandon, worksheet approval), after that write's report,
  *   and even when building the report failed. Rooms: the player's, the
- *   classroom's, the gated report room and (Phase 4c) the live room
+ *   teacher rooms, the gated report room and (Phase 4c) the live room
  *   `session:<id>`, whose observers then show the ended view (§10 P4a-4).
  * - Reports go only to the gated room `session-report:<id>`
- *   (`session-report-access.ts`).
+ *   (`session-report-access.ts`). A teacher card's numbers (progress, totals,
+ *   outcome, row version) go to the teacher-only `classroom:<id>` for every classroom
+ *   the student is enrolled in, with `session-started` on the write that
+ *   started the session and `session-ended` on the one that ended it
+ *   (Phase 4d, `classroom-room-access.ts`, §10 P4d-8).
  * No timers, no polling: one push per committed write.
  */
 
@@ -128,19 +132,37 @@ async function pushOne(before: SessionPlan, after: SessionPlan): Promise<void> {
   if (pushed !== undefined && rowVersion <= pushed) return
   rememberPushed(after.id, rowVersion)
 
-  const { emitSessionEndedEverywhere, emitSessionReport } = await import(
-    '@/lib/classroom/socket-emitter'
-  )
+  const {
+    classroomSessionSummaryOf,
+    emitClassroomSessionSummary,
+    emitSessionEndedEverywhere,
+    emitSessionReport,
+    emitSessionStartedToClassrooms,
+  } = await import('@/lib/classroom/socket-emitter')
+  const { teacherRoomsOf } = await import('@/lib/classroom/classroom-room-access')
+
+  // The teacher rooms of every classroom the student is enrolled in (Phase
+  // 4d, §10 P4d-8), present or not; none when the lookup fails
+  let teacherRooms: string[] = []
+  try {
+    teacherRooms = await teacherRoomsOf(after.playerId)
+  } catch (error) {
+    console.error('[session-report] enrollment lookup failed', { sessionId: after.id, error })
+  }
 
   // The report, in its own try: a failed build must not swallow the end below
   try {
-    await emitSessionReport(await loadSessionReport(after))
+    const report = await loadSessionReport(after)
+    await emitSessionReport(report)
+    await emitClassroomSessionSummary(classroomSessionSummaryOf(report), teacherRooms)
   } catch (error) {
     console.error('[session-report] report not pushed', { sessionId: after.id, error })
   }
 
   const outcome = sessionOutcome(after)
-  if (!isEndedOutcome(outcome) || isEndedOutcome(sessionOutcome(before))) return
+  const started = !before.startedAt && !!after.startedAt
+  const ended = isEndedOutcome(outcome) && !isEndedOutcome(sessionOutcome(before))
+  if (!started && !ended) return
   let playerName = 'Unknown'
   try {
     const [player] = await db
@@ -152,12 +174,12 @@ async function pushOne(before: SessionPlan, after: SessionPlan): Promise<void> {
   } catch (error) {
     console.error('[session-report] player lookup failed', error)
   }
-  let classroomId: string | null = null
-  try {
-    const { getStudentPresence } = await import('@/lib/classroom/presence-manager')
-    classroomId = (await getStudentPresence(after.playerId))?.classroomId ?? null
-  } catch (error) {
-    console.error('[session-report] presence lookup failed', error)
+  if (started && !ended) {
+    await emitSessionStartedToClassrooms(
+      { sessionId: after.id, playerId: after.playerId, playerName },
+      teacherRooms
+    )
+    return
   }
   await emitSessionEndedEverywhere(
     {
@@ -168,7 +190,7 @@ async function pushOne(before: SessionPlan, after: SessionPlan): Promise<void> {
       outcome: outcome as 'completed' | 'abandoned',
       rowVersion,
     },
-    classroomId
+    teacherRooms
   )
 }
 

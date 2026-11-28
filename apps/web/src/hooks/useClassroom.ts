@@ -661,18 +661,55 @@ async function fetchActiveSession(classroomId: string): Promise<ActiveSessionInf
 }
 
 /**
+ * A refetched list, version-checked against the held one (Phase 4d): a card
+ * a push already moved past the refetch's row version keeps the pushed
+ * numbers. Membership is the refetch's (an ended session drops out).
+ */
+export function mergeActiveSessions(
+  fresh: ActiveSessionInfo[],
+  held: ActiveSessionInfo[] | undefined
+): ActiveSessionInfo[] {
+  if (!held) return fresh
+  const byId = new Map(held.map((s) => [s.sessionId, s]))
+  return fresh.map((s) => {
+    const h = byId.get(s.sessionId)
+    if (!h || h.rowVersion === undefined || (s.rowVersion ?? -1) >= h.rowVersion) return s
+    return {
+      ...s,
+      completedProblems: h.completedProblems,
+      totalProblems: h.totalProblems,
+      totals: h.totals,
+      outcome: h.outcome,
+      rowVersion: h.rowVersion,
+    }
+  })
+}
+
+/**
  * Get active practice sessions for students in a classroom
  *
  * Teachers can use this to see which students are currently practicing
  * and observe their sessions in real-time.
+ *
+ * No polling (plan §8 Q8, Phase 4d): `useClassroomSocket` invalidates this
+ * query on `session-started` and `session-ended` and patches it on
+ * `classroom-session-summary`, which the server sends to the teacher-only
+ * room `classroom:<id>` on every start, every committed write and every end
+ * (natural completion included, even when the report build fails; §10
+ * P4a-4, P4d-8).
  */
 export function useActiveSessionsInClassroom(classroomId: string | undefined) {
+  const queryClient = useQueryClient()
+  const key = classroomKeys.activeSessions(classroomId ?? '')
   return useQuery({
-    queryKey: classroomKeys.activeSessions(classroomId ?? ''),
-    queryFn: () => fetchActiveSession(classroomId!),
+    queryKey: key,
+    queryFn: async () =>
+      mergeActiveSessions(
+        await fetchActiveSession(classroomId!),
+        queryClient.getQueryData<ActiveSessionInfo[]>(key)
+      ),
     enabled: !!classroomId,
-    staleTime: 10 * 1000, // 10 seconds - sessions change frequently
-    refetchInterval: 15 * 1000, // Poll every 15 seconds for real-time updates
+    staleTime: 10 * 1000, // 10 seconds
   })
 }
 

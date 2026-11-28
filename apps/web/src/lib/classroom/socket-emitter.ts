@@ -5,7 +5,8 @@
  * This ensures consistent event payloads and makes it easy to audit who gets notified.
  *
  * Channel Patterns:
- * - classroom:${classroomId} - Teacher's view
+ * - classroom:${classroomId} - Teacher's view: the teacher-only room (only the
+ *   classroom's teacher may join it, `classroom-room-access.ts`, §10 P4d-9)
  * - user:${userId}           - Parent/user notifications
  * - player:${playerId}       - Student-specific notifications
  */
@@ -13,6 +14,7 @@
 import type { SessionReport } from '@/lib/curriculum/session-report'
 import { getSocketIO } from '@/lib/socket-io'
 import type {
+  ClassroomSessionSummaryEvent,
   EnrollmentApprovedEvent,
   EnrollmentRequestApprovedEvent,
   EnrollmentRequestCreatedEvent,
@@ -225,27 +227,26 @@ export interface SessionEventPayload {
 }
 
 /**
- * Emit a session started event
- *
- * Use when: A student starts a practice session while present in a classroom.
- * This notifies the teacher so they can see the session in their active sessions view.
+ * Tell the teacher rooms a session started (Phase 4d, §10 P4d-8): from the
+ * commit path, on the write that started it, for every classroom the student
+ * is enrolled in, present or not (every start: the plan route's, the MCP
+ * tools', the debug route's).
  */
-export async function emitSessionStarted(
+export async function emitSessionStartedToClassrooms(
   payload: SessionEventPayload,
-  classroomId: string
+  classroomRooms: string[]
 ): Promise<void> {
+  if (classroomRooms.length === 0) return
   const io = await getSocketIO()
   if (!io) return
-
   const eventData: SessionStartedEvent = {
     sessionId: payload.sessionId,
     playerId: payload.playerId,
     playerName: payload.playerName,
   }
-
   try {
-    io.to(`classroom:${classroomId}`).emit('session-started', eventData)
-    console.log(`[SocketEmitter] session-started -> classroom:${classroomId}`)
+    io.to(classroomRooms).emit('session-started', eventData)
+    console.log(`[SocketEmitter] session-started -> ${classroomRooms.join(', ')}`)
   } catch (error) {
     console.error('[SocketEmitter] Failed to emit session-started:', error)
   }
@@ -327,17 +328,17 @@ export async function emitSessionSongStatus(event: SessionSongStatusEvent): Prom
 }
 
 /**
- * Tell parents, the teacher, observers and report subscribers a session ended
- * (Phase 4a; the session room since 4c): the player's and classroom's rooms,
- * the gated report room and the live room `session:<id>`, in one emit (a
- * socket in several of them hears it once). Observers in the live room keep
- * the final report on screen and show the ended view (§10 P4a-4, P4c-1).
- * Every end goes through here from the commit path, natural completion
- * included.
+ * Tell parents, the teachers, observers and report subscribers a session
+ * ended (Phase 4a; the session room since 4c): the player's room, the teacher
+ * rooms of every classroom the student is enrolled in (Phase 4d), the gated
+ * report room and the live room `session:<id>`, in one emit (a socket in
+ * several of them hears it once). Observers in the live room keep the final
+ * report on screen and show the ended view (§10 P4a-4, P4c-1). Every end goes
+ * through here from the commit path, natural completion included.
  */
 export async function emitSessionEndedEverywhere(
   event: SessionEndedEvent,
-  classroomId: string | null
+  classroomRooms: string[]
 ): Promise<void> {
   const io = await getSocketIO()
   if (!io) return
@@ -347,7 +348,7 @@ export async function emitSessionEndedEverywhere(
     `session:${event.sessionId}`,
     `session-stats:${event.sessionId}`,
   ]
-  if (classroomId) rooms.push(`classroom:${classroomId}`)
+  rooms.push(...classroomRooms)
   try {
     io.to(rooms).emit('session-ended', event)
     console.log(`[SocketEmitter] session-ended (${event.reason}) -> ${rooms.join(', ')}`)
@@ -359,6 +360,42 @@ export async function emitSessionEndedEverywhere(
 // ============================================================================
 // Entry Prompt Events
 // ============================================================================
+
+/** The numbers a teacher card needs, cut from the report (Phase 4d, §10 P4d-8). */
+export function classroomSessionSummaryOf(report: SessionReport): ClassroomSessionSummaryEvent {
+  // No position once the session is not in progress: done = the items attempted
+  const progress = report.position?.progress ?? {
+    done: report.totals.problems,
+    total: report.totals.plannedProblems,
+  }
+  return {
+    sessionId: report.sessionId,
+    playerId: report.playerId,
+    outcome: report.outcome,
+    completedProblems: progress.done,
+    totalProblems: progress.total,
+    totals: report.totals,
+    rowVersion: report.rowVersion,
+  }
+}
+
+/**
+ * Push a teacher card's numbers to the teacher rooms of every classroom the
+ * student is enrolled in (Phase 4d, §10 P4d-8). From the commit path only.
+ */
+export async function emitClassroomSessionSummary(
+  summary: ClassroomSessionSummaryEvent,
+  classroomRooms: string[]
+): Promise<void> {
+  if (classroomRooms.length === 0) return
+  const io = await getSocketIO()
+  if (!io) return
+  try {
+    io.to(classroomRooms).emit('classroom-session-summary', summary)
+  } catch (error) {
+    console.error('[SocketEmitter] Failed to emit classroom-session-summary:', error)
+  }
+}
 
 /**
  * Entry prompt event payload

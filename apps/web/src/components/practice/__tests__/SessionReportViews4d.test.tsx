@@ -1,6 +1,6 @@
 /**
  * Phase 4d (session architecture §4, §7): the dashboard list row, the active
- * card and the end event, from the
+ * card, the classroom active-sessions query and the end event, from the
  * shared report fixture, so these screens show the same numbers as every
  * other view of the session.
  */
@@ -11,7 +11,7 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SessionHistoryEntry } from '@/lib/curriculum/progress-manager'
 import { summarizeSessionReport } from '@/lib/curriculum/session-report'
-import { sessionHistoryKeys } from '@/lib/queryKeys'
+import { classroomKeys, sessionHistoryKeys } from '@/lib/queryKeys'
 import {
   abandonedSession,
   liveTenProblemSession,
@@ -52,6 +52,8 @@ const { api } = vi.hoisted(() => ({ api: vi.fn() }))
 vi.mock('@/lib/queryClient', () => ({ api }))
 
 import { useChildSessionsSocket } from '@/hooks/useChildSessionsSocket'
+import { type ActiveSessionInfo, useActiveSessionsInClassroom } from '@/hooks/useClassroom'
+import { useClassroomSocket } from '@/hooks/useClassroomSocket'
 import { useSessionHistory } from '@/hooks/useSessionHistory'
 import { ActiveSessionCard, SessionItem } from '../VirtualizedSessionList'
 
@@ -184,6 +186,17 @@ describe('active card', () => {
   })
 })
 
+describe('classroom active sessions: no poll', () => {
+  it('the active-sessions query has no refetchInterval (push invalidates it)', async () => {
+    api.mockResolvedValue(json({ sessions: [] }))
+    const qc = client()
+    renderHook(() => useActiveSessionsInClassroom('cls-1'), { wrapper: wrapperOf(qc) })
+    const query = qc.getQueryCache().find({ queryKey: classroomKeys.activeSessions('cls-1') })
+    expect(query).toBeDefined()
+    expect((query!.options as { refetchInterval?: unknown }).refetchInterval).toBeUndefined()
+  })
+})
+
 describe('session-ended', () => {
   it('removes the active card (parent view)', async () => {
     const live = reportOf(liveTenProblemSession())
@@ -245,5 +258,173 @@ describe('session-ended', () => {
       socket.fire('session-ended', { playerId: 'kid-1', sessionId: 's1', reason: 'completed' })
     )
     await waitFor(() => expect(api.mock.calls.length).toBe(calls + 1))
+  })
+})
+
+describe('teacher cards: the teacher-only classroom room (no poll)', () => {
+  /** The teacher's card for the live fixture, as the active-sessions route answers it */
+  function seededCard(qc: QueryClient): void {
+    const live = reportOf(liveTenProblemSession())
+    const card: ActiveSessionInfo = {
+      sessionId: 'fx-live',
+      playerId: 'kid-1',
+      startedAt: new Date(T0).toISOString(),
+      currentPartIndex: 2,
+      currentSlotIndex: 0,
+      totalParts: 3,
+      completedProblems: live.position!.progress.done,
+      totalProblems: live.position!.progress.total,
+      outcome: 'in_progress',
+      totals: live.totals,
+      rowVersion: live.rowVersion,
+    }
+    qc.setQueryData(classroomKeys.activeSessions('cls-1'), [card])
+  }
+  const cardOf = (qc: QueryClient) =>
+    qc.getQueryData<ActiveSessionInfo[]>(classroomKeys.activeSessions('cls-1'))![0]
+  const summary = (completedProblems: number, rowVersion: number, outcome = 'in_progress') => ({
+    sessionId: 'fx-live',
+    playerId: 'kid-1',
+    outcome,
+    completedProblems,
+    totalProblems: 10,
+    totals: { ...reportOf(liveTenProblemSession()).totals, problems: completedProblems },
+    rowVersion,
+  })
+
+  it('joins the teacher room; a pushed write moves the card', () => {
+    const qc = client()
+    seededCard(qc)
+    renderHook(() => useClassroomSocket('cls-1'), { wrapper: wrapperOf(qc) })
+    const socket = sockets[0]
+    act(() => socket.fire('connect'))
+    expect(socket.emit).toHaveBeenCalledWith('join-classroom', { classroomId: 'cls-1' })
+    expect(cardOf(qc).completedProblems).toBe(7)
+
+    act(() => socket.fire('classroom-session-summary', summary(8, 12)))
+    expect(cardOf(qc)).toMatchObject({ completedProblems: 8, rowVersion: 12 })
+    expect(cardOf(qc).totals?.problems).toBe(8)
+
+    // An older push (out of order) changes nothing
+    act(() => socket.fire('classroom-session-summary', summary(7, 11)))
+    expect(cardOf(qc)).toMatchObject({ completedProblems: 8, rowVersion: 12 })
+  })
+
+  it('an unknown or ended session refetches the list instead of patching it', () => {
+    const qc = client()
+    seededCard(qc)
+    renderHook(() => useClassroomSocket('cls-1'), { wrapper: wrapperOf(qc) })
+    act(() => sockets[0].fire('classroom-session-summary', summary(10, 20, 'completed')))
+    expect(qc.getQueryState(classroomKeys.activeSessions('cls-1'))?.isInvalidated).toBe(true)
+  })
+
+  it('every accepted join refetches (first and reconnect); a student entering refetches', () => {
+    const qc = client()
+    seededCard(qc)
+    renderHook(() => useClassroomSocket('cls-1'), { wrapper: wrapperOf(qc) })
+    const socket = sockets[0]
+    const invalidated = () => qc.getQueryState(classroomKeys.activeSessions('cls-1'))?.isInvalidated
+    act(() => socket.fire('connect'))
+    expect(invalidated()).toBe(false) // not in the teacher room yet
+    // Another channel's ack (a player channel, another classroom) is not this join
+    act(() => socket.fire('channel-joined', { channel: 'player', id: 'cls-1' }))
+    act(() => socket.fire('channel-joined', { channel: 'classroom', id: 'cls-2' }))
+    expect(invalidated()).toBe(false)
+    act(() => socket.fire('channel-joined', { channel: 'classroom', id: 'cls-1' }))
+    expect(invalidated()).toBe(true)
+
+    seededCard(qc)
+    act(() => socket.fire('disconnect'))
+    act(() => socket.fire('connect'))
+    act(() => socket.fire('channel-joined', { channel: 'classroom', id: 'cls-1' }))
+    expect(invalidated()).toBe(true)
+
+    seededCard(qc)
+    expect(invalidated()).toBe(false)
+    act(() => socket.fire('student-entered', { playerName: 'Kid' }))
+    expect(invalidated()).toBe(true)
+  })
+
+  it('an end pushed before the join completed is still reflected (the join refetches)', async () => {
+    const live = reportOf(liveTenProblemSession())
+    const card = {
+      sessionId: 'fx-live',
+      playerId: 'kid-1',
+      startedAt: new Date(T0).toISOString(),
+      currentPartIndex: 2,
+      currentSlotIndex: 0,
+      totalParts: 3,
+      completedProblems: 7,
+      totalProblems: 10,
+      outcome: 'in_progress',
+      totals: live.totals,
+      rowVersion: 11,
+    }
+    api.mockResolvedValueOnce(json({ sessions: [card] }))
+    const qc = client()
+    const { result } = renderHook(
+      () => {
+        useClassroomSocket('cls-1')
+        return useActiveSessionsInClassroom('cls-1')
+      },
+      { wrapper: wrapperOf(qc) }
+    )
+    await waitFor(() => expect(result.current.data).toHaveLength(1))
+    // The session ends while the socket is not yet in the teacher room: the
+    // end is pushed to nobody
+    api.mockImplementation(async () => json({ sessions: [] }))
+    act(() => sockets[0].fire('connect'))
+    act(() => sockets[0].fire('channel-joined', { channel: 'classroom', id: 'cls-1' }))
+    await waitFor(() => expect(result.current.data).toEqual([]))
+  })
+
+  it('a refetch older than a pushed summary keeps the pushed numbers', async () => {
+    const live = reportOf(liveTenProblemSession())
+    const card = {
+      sessionId: 'fx-live',
+      playerId: 'kid-1',
+      startedAt: new Date(T0).toISOString(),
+      currentPartIndex: 2,
+      currentSlotIndex: 0,
+      totalParts: 3,
+      completedProblems: 7,
+      totalProblems: 10,
+      outcome: 'in_progress',
+      totals: live.totals,
+      rowVersion: 11,
+    }
+    api.mockImplementation(async () => json({ sessions: [card] }))
+    const qc = client()
+    const { result } = renderHook(
+      () => {
+        useClassroomSocket('cls-1')
+        return useActiveSessionsInClassroom('cls-1')
+      },
+      { wrapper: wrapperOf(qc) }
+    )
+    await waitFor(() => expect(result.current.data).toHaveLength(1))
+    act(() => sockets[0].fire('classroom-session-summary', summary(8, 12)))
+    await waitFor(() =>
+      expect(result.current.data?.[0]).toMatchObject({ completedProblems: 8, rowVersion: 12 })
+    )
+
+    // A refetch that read the row before that write (rowVersion 11) lands after it
+    const calls = api.mock.calls.length
+    await act(() => qc.invalidateQueries({ queryKey: classroomKeys.activeSessions('cls-1') }))
+    await waitFor(() => expect(api.mock.calls.length).toBe(calls + 1))
+    await waitFor(() =>
+      expect(qc.getQueryState(classroomKeys.activeSessions('cls-1'))?.fetchStatus).toBe('idle')
+    )
+    expect(
+      qc.getQueryData<ActiveSessionInfo[]>(classroomKeys.activeSessions('cls-1'))?.[0]
+    ).toMatchObject({ completedProblems: 8, rowVersion: 12 })
+    expect(qc.getQueryState(classroomKeys.activeSessions('cls-1'))?.status).toBe('success')
+
+    // A newer refetch wins
+    api.mockImplementation(async () =>
+      json({ sessions: [{ ...card, completedProblems: 9, rowVersion: 13 }] })
+    )
+    await act(() => qc.invalidateQueries({ queryKey: classroomKeys.activeSessions('cls-1') }))
+    await waitFor(() => expect(result.current.data?.[0]).toMatchObject({ rowVersion: 13 }))
   })
 })

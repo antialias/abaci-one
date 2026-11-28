@@ -4,11 +4,12 @@
  * The rooms and relays that had no check, on the real socket server with real
  * clients and cookies (socket-server-harness.ts) and the real access rules
  * over an EphemeralDatabase:
- * - `classroom:<id>`: the teacher and the parents of enrolled students only;
- *   a classmate's device cannot steer, or speak for, another child's tutorial;
+ * - `classroom:<id>`: the teacher only (since PR 3; the tutorial, the teacher
+ *   room's feed and who hears what are in `socket-teacher-room-server.test.ts`);
  * - `player:<id>`: whoever may `view` the player;
- * - the kid's session broadcasts and vision events: only from a socket that
- *   may act in the session, recorded under the session's own player;
+ * - the kid's session broadcasts and vision events: only from the kid's
+ *   screen (admitted by `join-session`), recorded under the session's own
+ *   player;
  * - co-play offers: only from an observer admitted to the session;
  * - `task:*`: the task's owner, an admin, or (a worksheet) who may see its player.
  * Each flow that must keep working is driven as its client drives it, with an
@@ -184,19 +185,19 @@ describe('PR 2: the rooms and relays that had no check', () => {
     eph.cleanup()
   })
 
-  describe('classroom:<id>: the teacher and the parents of enrolled students', () => {
-    it('the teacher and an enrolled kid’s device join; a stranger and an anonymous socket are refused', async () => {
+  describe('classroom:<id>: the teacher only (PR 3)', () => {
+    it('the teacher joins; an enrolled kid’s device, a stranger and an anonymous socket are refused', async () => {
       const teacher = await client(await cookieFor('teacher'))
       const ack = next(teacher, 'channel-joined', 5000)
       teacher.emit('join-classroom', { classroomId: CLASSROOM })
       expect(await ack).toEqual({ channel: 'classroom', id: CLASSROOM })
-      await joined(teacher, `classroom:${CLASSROOM}`)
+      expect((await roomsOf(teacher)).has(`classroom:${CLASSROOM}`)).toBe(true)
 
-      const kidDevice = await client(await cookieFor('parent-a'))
-      kidDevice.emit('join-classroom', { classroomId: CLASSROOM })
-      await joined(kidDevice, `classroom:${CLASSROOM}`)
-
-      for (const sock of [await client(await cookieFor('stranger')), await client()]) {
+      for (const sock of [
+        await client(await cookieFor('parent-a')),
+        await client(await cookieFor('stranger')),
+        await client(),
+      ]) {
         const refused = next(sock, 'channel-error', 5000)
         sock.emit('join-classroom', { classroomId: CLASSROOM })
         expect(await refused).toMatchObject({ channel: 'classroom', id: CLASSROOM })
@@ -205,60 +206,8 @@ describe('PR 2: the rooms and relays that had no check', () => {
 
       // Leaving is never checked
       teacher.emit('leave-classroom', { classroomId: CLASSROOM })
-      await vi.waitFor(async () =>
-        expect((await roomsOf(teacher)).has(`classroom:${CLASSROOM}`)).toBe(false)
-      )
-    })
-
-    it('a classmate’s device cannot steer another child’s tutorial; the teacher can', async () => {
-      const kidA = await client(await cookieFor('parent-a'))
-      const classmate = await client(await cookieFor('parent-b'))
-      const teacher = await client(await cookieFor('teacher'))
-      for (const sock of [kidA, classmate, teacher]) {
-        sock.emit('join-classroom', { classroomId: CLASSROOM })
-        await joined(sock, `classroom:${CLASSROOM}`)
-      }
-      const controls = collect(kidA, 'skill-tutorial-control')
-
-      // The classmate is a member of the channel, and still may not
-      classmate.emit('skill-tutorial-control', {
-        playerId: 'kid-a',
-        action: { type: 'skip-tutorial' },
-      })
-      await settled(classmate)
-
-      // The teacher of the present student steers it (useTutorialControl)
-      const steered = next(kidA, 'skill-tutorial-control', 5000)
-      teacher.emit('skill-tutorial-control', { playerId: 'kid-a', action: { type: 'next-step' } })
-      expect(await steered).toEqual({ playerId: 'kid-a', action: { type: 'next-step' } })
-      expect(controls.map((c) => c.action.type)).toEqual(['next-step'])
-    })
-
-    it('the kid’s device tells the teacher where its tutorial is; a classmate cannot speak for it', async () => {
-      const kidA = await client(await cookieFor('parent-a'))
-      const classmate = await client(await cookieFor('parent-b'))
-      const teacher = await client(await cookieFor('teacher'))
-      for (const sock of [kidA, classmate, teacher]) {
-        sock.emit('join-classroom', { classroomId: CLASSROOM })
-        await joined(sock, `classroom:${CLASSROOM}`)
-      }
-      const states = collect(teacher, 'skill-tutorial-state')
-      const state = (skillTitle: string) => ({
-        playerId: 'kid-a',
-        playerName: 'kid-a',
-        launcherState: 'tutorial',
-        skillId: 's',
-        skillTitle,
-      })
-
-      classmate.emit('skill-tutorial-state', state('spoofed'))
-      await settled(classmate)
-
-      // useSkillTutorialBroadcast on kid-a's device
-      const heard = next(teacher, 'skill-tutorial-state', 5000)
-      kidA.emit('skill-tutorial-state', state('real'))
-      expect(await heard).toMatchObject({ playerId: 'kid-a', skillTitle: 'real' })
-      expect(states.map((s) => s.skillTitle)).toEqual(['real'])
+      await settled(teacher)
+      expect((await roomsOf(teacher)).has(`classroom:${CLASSROOM}`)).toBe(false)
     })
   })
 
@@ -367,6 +316,89 @@ describe('PR 2: the rooms and relays that had no check', () => {
       holder.emit('vision-buffer-info', { sessionId })
       expect(await info).toMatchObject({ sessionId, available: false })
     })
+
+    it('PR 3: an admitted observer’s broadcasts are dropped (a parent or teacher on a second device)', async () => {
+      const kid = await kidScreen(await cookieFor('parent-a'), sessionId)
+      const kidHeard = {
+        'part-transition': collect(kid, 'part-transition'),
+        'part-transition-complete': collect(kid, 'part-transition-complete'),
+        'session-flow-state': collect(kid, 'session-flow-state'),
+        'tutorial-state': collect(kid, 'tutorial-state'),
+        'practice-state': collect(kid, 'practice-state'),
+      }
+      const parentPhone = await observer(await cookieFor('parent-a'), {
+        sessionId,
+        playerId: 'kid-a',
+      })
+      const teacher = await observer(await cookieFor('teacher'), { sessionId, playerId: 'kid-a' })
+      const teacherHeard = collect(teacher, 'part-transition')
+      for (const sock of [parentPhone, teacher]) {
+        sock.emit('part-transition', { sessionId, fromObserver: true })
+        sock.emit('part-transition-complete', { sessionId, fromObserver: true })
+        sock.emit('session-flow-state', { sessionId, flowState: 'fake' })
+        sock.emit('tutorial-state', { sessionId, fromObserver: true })
+        sock.emit('practice-state', { sessionId, sessionParts: [], slotResults: [] })
+        await settled(sock)
+      }
+      for (const heard of Object.values(kidHeard)) expect(heard).toEqual([])
+      expect(teacherHeard).toEqual([])
+
+      // The kid's screen still reaches both observers
+      const both = [
+        next(parentPhone, 'part-transition', 5000),
+        next(teacher, 'part-transition', 5000),
+      ]
+      kid.emit('part-transition', { sessionId, fromKid: true })
+      expect(await Promise.all(both)).toEqual([
+        { sessionId, fromKid: true },
+        { sessionId, fromKid: true },
+      ])
+    })
+
+    it('PR 3: the kid’s first events, sent before its join is decided, still pass', async () => {
+      const parentPhone = await observer(await cookieFor('parent-a'), {
+        sessionId,
+        playerId: 'kid-a',
+      })
+      const kid = await client(await cookieFor('parent-a'))
+      const heard = [
+        next(parentPhone, 'session-flow-state', 5000),
+        next(parentPhone, 'part-transition', 5000),
+        next(parentPhone, 'part-transition-complete', 5000),
+        next(parentPhone, 'tutorial-state', 5000),
+      ]
+      // useSessionBroadcast's connect handler: join, then broadcast at once
+      kid.emit('join-session', { sessionId, playerId: 'kid-a' })
+      kid.emit('session-flow-state', { sessionId, flowState: 'practicing' })
+      kid.emit('part-transition', { sessionId, first: true })
+      kid.emit('part-transition-complete', { sessionId, first: true })
+      kid.emit('tutorial-state', { sessionId, first: true })
+      expect(await Promise.all(heard)).toEqual([
+        { sessionId, flowState: 'practicing' },
+        { sessionId, first: true },
+        { sessionId, first: true },
+        { sessionId, first: true },
+      ])
+    })
+
+    it('PR 3: a share holder with a guest cookie keeps co-play (owner’s decision)', async () => {
+      const share = await createSessionShare(sessionId, 'kid-a', 'parent-a', '1h')
+      const kid = await kidScreen(await cookieFor('parent-a'), sessionId)
+      // In production every visitor carries a guest cookie
+      const sid = `guest-sid-${Math.random().toString(36).slice(2, 8)}`
+      await getCurrentEphemeralDb().insert(schema.users).values({ id: 'share-guest', guestId: sid })
+      const holder = await observer(`${GUEST_COOKIE_NAME}=${await createGuestToken(sid)}`, {
+        sessionId,
+        shareToken: share.id,
+      })
+      const player = { name: 'Grandma', emoji: '👵', color: '#0f0' }
+      const offered = next(kid, 'observer-coplay-ready', 5000)
+      holder.emit('observer-coplay-ready', { sessionId, player })
+      expect(await offered).toMatchObject({ sessionId, observerId: 'share-guest', player })
+      const left = next(kid, 'observer-coplay-leave', 5000)
+      holder.emit('observer-coplay-leave', { sessionId })
+      expect(await left).toEqual({ sessionId, observerId: 'share-guest' })
+    })
   })
 
   describe('vision: the kid’s screen only, under the session’s own player', () => {
@@ -401,6 +433,39 @@ describe('PR 2: the rooms and relays that had no check', () => {
       const stopped = next(kid, 'vision-recording-stopped', 5000)
       kid.emit('stop-vision-recording', { sessionId })
       expect(await stopped).toEqual({ sessionId })
+    })
+
+    it('PR 3: an admitted observer’s recording requests, markers and frames are dropped', async () => {
+      const recorder = VisionRecorder.getInstance()
+      const start = vi.spyOn(recorder, 'startSession')
+      const stop = vi.spyOn(recorder, 'stopSession').mockResolvedValue()
+      const marker = vi.spyOn(recorder, 'onProblemMarker').mockResolvedValue()
+      const kid = await kidScreen(await cookieFor('parent-a'), sessionId)
+      const kidFrames = collect(kid, 'vision-frame')
+      for (const who of ['parent-a', 'teacher']) {
+        const sock = await observer(await cookieFor(who), { sessionId, playerId: 'kid-a' })
+        sock.emit('start-vision-recording', { sessionId, playerId: 'kid-a' })
+        sock.emit('vision-problem-marker', {
+          sessionId,
+          problemNumber: 1,
+          partIndex: 0,
+          eventType: 'problem-shown',
+          playerId: 'kid-a',
+        })
+        sock.emit('vision-frame', {
+          sessionId,
+          imageData: 'x',
+          detectedValue: 1,
+          confidence: 1,
+          timestamp: 1,
+        })
+        sock.emit('stop-vision-recording', { sessionId })
+        await settled(sock)
+      }
+      expect(start).not.toHaveBeenCalled()
+      expect(stop).not.toHaveBeenCalled()
+      expect(marker).not.toHaveBeenCalled()
+      expect(kidFrames).toEqual([])
     })
 
     it('a metadata-only marker auto-starts under the session’s player', async () => {

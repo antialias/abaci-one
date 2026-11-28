@@ -115,8 +115,9 @@ export const POST = withAuth(async (request) => {
           totalPayloadBytes,
         })
       },
-      // Its starter follows it over the socket (task-socket-access.ts)
-      await getUserId()
+      // Its starter follows it over the socket (task-socket-access.ts); a
+      // visitor with no viewer session starts an ownerless task
+      (await getUserId().catch(() => null)) ?? undefined
     )
 
     return NextResponse.json({ taskId })
