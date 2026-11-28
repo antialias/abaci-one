@@ -3,15 +3,18 @@
 /**
  * PartTransitionScreen - Full-screen transition between practice session parts
  *
- * Shows a kid-friendly message about the upcoming part type change,
- * especially important for telling kids to put away their abacus
- * when transitioning from abacus to visualization mode.
+ * Shows a kid-friendly message about the upcoming part, and the abacus
+ * notice (pick it up, put it aside) when the caller passes one: the
+ * transition carries it only when no game break follows; after a break the
+ * shell shows the notice alone (`variant="abacus-notice"`), right before the
+ * part's first item (`lib/curriculum/abacus-notice.ts`, plan §8 A19).
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@/contexts/ThemeContext'
 import type { SessionPartType } from '@/db/schema/session-plans'
 import type { PartTransitionSide } from '@/lib/classroom/socket-events'
+import type { AbacusNotice } from '@/lib/curriculum/abacus-notice'
 import { arithmeticTransitionView } from '@/lib/curriculum/parts/arithmetic/session-view'
 import type { StoredPart } from '@/lib/curriculum/parts/kind'
 import { kindIdOf } from '@/lib/curriculum/parts/registry'
@@ -35,12 +38,11 @@ const COUNTDOWN_UPDATE_INTERVAL_MS = 100
 
 /**
  * How the screen shows a part: what its kind answers (§1.3). The screen never
- * switches on a kind's own vocabulary; it asks `needsPhysicalAbacus` and shows
- * the kind's label and emoji. `presentation` is arithmetic's, and picks
- * arithmetic's messages.
+ * switches on a kind's own vocabulary; it shows the kind's label and emoji.
+ * `presentation` is arithmetic's, and picks arithmetic's messages. Whether
+ * the abacus comes or goes is the caller's (`abacusNotice`).
  */
 export interface PartTransitionView extends PartTransitionSide {
-  needsPhysicalAbacus: boolean
   presentation?: SessionPartType
 }
 
@@ -51,7 +53,7 @@ export function partTransitionViewOf(
   const kind = kindIdOf(part)
   if (kind === 'arithmetic' && part.type)
     return arithmeticTransitionView({ type: part.type, presentation: part.presentation })
-  return { kind, label: 'Next part', emoji: '⭐', needsPhysicalAbacus: false }
+  return { kind, label: 'Next part', emoji: '⭐' }
 }
 
 export interface PartTransitionScreenProps {
@@ -61,10 +63,20 @@ export interface PartTransitionScreenProps {
   previous: PartTransitionView | null
   /** The part we're transitioning TO, as its kind shows it */
   next: PartTransitionView
+  /** Pick up or put away the physical abacus; null = no notice */
+  abacusNotice: AbacusNotice | null
+  /**
+   * `transition` (default): the message, the parts and the notice if any.
+   * `abacus-notice`: the notice alone, with the parts, before a part's first
+   * item after a break.
+   */
+  variant?: 'transition' | 'abacus-notice'
   /** Countdown duration in ms */
   countdownMs?: number
   /** Timestamp when countdown started (for sync) */
   countdownStartTime: number
+  /** The countdown holds while true (a pause waits for the session); Continue still works */
+  paused?: boolean
   /** Student info for display */
   student: {
     name: string
@@ -89,8 +101,11 @@ export function PartTransitionScreen({
   isVisible,
   previous,
   next,
+  abacusNotice,
+  variant = 'transition',
   countdownMs = TRANSITION_COUNTDOWN_MS,
   countdownStartTime,
+  paused = false,
   student,
   onComplete,
   messageSeed,
@@ -102,6 +117,17 @@ export function PartTransitionScreen({
   const [elapsedMs, setElapsedMs] = useState(0)
   const animationFrameRef = useRef<number | null>(null)
   const hasCompletedRef = useRef(false)
+  // Time the countdown held (paused), so it resumes where it stopped
+  const heldMsRef = useRef(0)
+  const heldSinceRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (paused) {
+      if (heldSinceRef.current === null) heldSinceRef.current = Date.now()
+    } else if (heldSinceRef.current !== null) {
+      heldMsRef.current += Date.now() - heldSinceRef.current
+      heldSinceRef.current = null
+    }
+  }, [paused])
 
   // Select message once when transition starts
   // The headline: arithmetic picks from its message pools by presentation;
@@ -110,18 +136,20 @@ export function PartTransitionScreen({
   const previousPresentation = previous?.presentation ?? null
   const nextPresentation = next.presentation
   const nextLabel = next.label
+  const noticeOnly = variant === 'abacus-notice'
   const message = useMemo(
     () =>
-      nextPresentation
-        ? selectTransitionMessage(previousPresentation, nextPresentation, messageSeed)
-        : { headline: 'Next Up!', subtitle: nextLabel },
-    [previousPresentation, nextPresentation, nextLabel, messageSeed]
+      noticeOnly
+        ? { headline: '' }
+        : nextPresentation
+          ? selectTransitionMessage(previousPresentation, nextPresentation, messageSeed)
+          : { headline: 'Next Up!', subtitle: nextLabel },
+    [noticeOnly, previousPresentation, nextPresentation, nextLabel, messageSeed]
   )
 
-  // Abacus action: the kinds say whether each part is worked on the physical abacus
-  const previousNeedsAbacus = previous?.needsPhysicalAbacus ?? false
-  const showAbacusPutAway = previousNeedsAbacus && !next.needsPhysicalAbacus
-  const showAbacusPickUp = !previousNeedsAbacus && next.needsPhysicalAbacus
+  // Abacus action: the caller's notice (the parts' presentations, and whether a break follows)
+  const showAbacusPutAway = abacusNotice === 'put_away'
+  const showAbacusPickUp = abacusNotice === 'pick_up'
 
   // Compute abacus action text for audio narration
   const abacusActionText = showAbacusPutAway
@@ -148,10 +176,12 @@ export function PartTransitionScreen({
       setElapsedMs(0)
       return
     }
+    // Held: the frame loop stops and the ring stays where it is
+    if (paused) return
 
     const updateCountdown = () => {
       const now = Date.now()
-      const elapsed = now - countdownStartTime
+      const elapsed = now - countdownStartTime - heldMsRef.current
       setElapsedMs(elapsed)
 
       if (elapsed >= countdownMs) {
@@ -173,7 +203,7 @@ export function PartTransitionScreen({
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [isVisible, countdownStartTime, countdownMs, onComplete])
+  }, [isVisible, paused, countdownStartTime, countdownMs, onComplete])
 
   if (!isVisible) return null
 
@@ -195,7 +225,7 @@ export function PartTransitionScreen({
 
   return (
     <div
-      data-component="part-transition-screen"
+      data-component={noticeOnly ? 'abacus-notice-screen' : 'part-transition-screen'}
       data-previous-part={previous ? (previous.presentation ?? previous.kind) : 'start'}
       data-next-part={next.presentation ?? next.kind}
       className={css({
@@ -247,34 +277,36 @@ export function PartTransitionScreen({
           {student.emoji}
         </div>
 
-        {/* Message */}
-        <div
-          data-element="transition-message"
-          className={css({
-            textAlign: 'center',
-          })}
-        >
-          <h2
+        {/* Message (the notice alone carries none) */}
+        {!noticeOnly && (
+          <div
+            data-element="transition-message"
             className={css({
-              fontSize: '1.75rem',
-              fontWeight: 'bold',
-              color: isDark ? 'gray.100' : 'gray.800',
-              marginBottom: '0.5rem',
+              textAlign: 'center',
             })}
           >
-            {message.headline}
-          </h2>
-          {message.subtitle && (
-            <p
+            <h2
               className={css({
-                fontSize: '1.125rem',
-                color: isDark ? 'gray.400' : 'gray.600',
+                fontSize: '1.75rem',
+                fontWeight: 'bold',
+                color: isDark ? 'gray.100' : 'gray.800',
+                marginBottom: '0.5rem',
               })}
             >
-              {message.subtitle}
-            </p>
-          )}
-        </div>
+              {message.headline}
+            </h2>
+            {message.subtitle && (
+              <p
+                className={css({
+                  fontSize: '1.125rem',
+                  color: isDark ? 'gray.400' : 'gray.600',
+                })}
+              >
+                {message.subtitle}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Part type indicator */}
         <div
@@ -343,7 +375,8 @@ export function PartTransitionScreen({
                   ? 'green.900/50'
                   : 'green.100',
               borderRadius: '8px',
-              fontSize: '0.9375rem',
+              fontSize: noticeOnly ? '1.375rem' : '0.9375rem',
+              fontWeight: noticeOnly ? '600' : undefined,
               color: showAbacusPutAway
                 ? isDark
                   ? 'amber.200'
@@ -428,7 +461,7 @@ export function PartTransitionScreen({
 
           {/* Skip button */}
           <button
-            data-action="skip-transition"
+            data-action={noticeOnly ? 'continue-abacus-notice' : 'skip-transition'}
             onClick={handleSkip}
             className={css({
               padding: '0.625rem 1.5rem',

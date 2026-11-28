@@ -1172,8 +1172,9 @@ export function ActiveSession({
   // This effect only handles the inputting phase case for unambiguous matches
   // DISABLED when abacus is docked - user controls when to submit, help triggers on submit if needed
   useEffect(() => {
-    // LINEAR parts put the abacus away — never auto-trigger bead help. (The hook's
-    // enterHelpMode is already a no-op for linear; this avoids the wasted work.)
+    // LINEAR parts never auto-trigger bead help (a ramp part keeps the physical
+    // abacus, but its help stays bead-free). The hook's enterHelpMode is already
+    // a no-op for linear; this avoids the wasted work.
     if (isLinearActive) return
     // Skip auto-help when abacus is docked - user has manual control
     if (isDockedByUser) return
@@ -1743,7 +1744,7 @@ export function ActiveSession({
 
   // Handle help requested from progressive assistance UI
   const handleHelpFromAssistance = useCallback(() => {
-    // LINEAR parts have the abacus away — no bead help to request.
+    // LINEAR parts have no bead help to request (ramp parts included).
     if (isLinearActive) return
     enterHelpMode(0)
   }, [enterHelpMode, isLinearActive])

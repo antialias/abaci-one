@@ -103,6 +103,16 @@ async function submitPart2AndVerifyCompletion(page: Page) {
   const gameBreakScreen = page.locator('[data-component="game-break-screen"]')
   await expect(gameBreakScreen).not.toBeVisible({ timeout: 15000 })
 
+  // Part 2 is visualization after abacus: an app with the after-break notice
+  // (plan §8 A19) shows it first; an older app goes straight to the problem.
+  // The smoke image runs against whatever app is deployed, so take either.
+  const problem = page.locator('[data-component="vertical-problem"]')
+  const notice = page.locator('[data-component="abacus-notice-screen"]')
+  await expect(problem.or(notice).first()).toBeVisible({ timeout: 15000 })
+  if (await notice.isVisible()) {
+    await page.locator('[data-action="continue-abacus-notice"]').click()
+  }
+
   await submitCorrectAnswer(page)
 
   await expect(page).toHaveURL(/\/summary/, { timeout: 15000 })

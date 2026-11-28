@@ -5,16 +5,25 @@
  *   sets the overlay after a paint); the screen and the broadcast name the
  *   parts as their kinds show them;
  * - the HUD's counts come from the session report alone;
- * - a do-over write names its item.
+ * - a do-over write names its item;
+ * - the abacus notice sits right before its part: on the transition screen
+ *   when no break follows, after the break otherwise, before the session
+ *   mounts (plan §8 A19).
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { type ReactNode, useLayoutEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SessionHudData } from '@/components/practice'
 import type { RecordRedoParams } from '@/components/practice/ActiveSession'
 import type { Player } from '@/db/schema/players'
-import type { SessionPart, SessionPlan, SlotResult } from '@/db/schema/session-plans'
+import type {
+  BreakRecord,
+  GameBreakSettings,
+  SessionPart,
+  SessionPlan,
+  SlotResult,
+} from '@/db/schema/session-plans'
 import type { SessionReport } from '@/lib/curriculum/session-report'
 import {
   liveMidPartOneSession,
@@ -77,15 +86,27 @@ vi.mock('@/components/practice/PartTransitionScreen', async (importActual) => {
     PartTransitionScreen: ({
       previous,
       next,
+      abacusNotice,
+      variant,
+      onComplete,
     }: {
       previous: { label: string } | null
       next: { label: string }
+      abacusNotice: string | null
+      variant?: string
+      onComplete: () => void
     }) => (
       <div
         data-testid="transition-screen"
         data-previous={previous?.label ?? 'start'}
         data-next={next.label}
-      />
+        data-notice={abacusNotice ?? 'none'}
+        data-variant={variant ?? 'transition'}
+      >
+        <button type="button" onClick={onComplete}>
+          Continue
+        </button>
+      </div>
     ),
   }
 })
@@ -252,6 +273,120 @@ describe('PracticeClient — the transition screen comes from flowState', () => 
     page.showPlan(plan({ currentPartIndex: 1, flowVersion: 3 }))
     expect(screen.queryByTestId('transition-screen')).toBeNull()
     expect(h.sendPartTransitionComplete).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('PracticeClient — the abacus notice sits right before its part', () => {
+  const breaksOn: GameBreakSettings = {
+    enabled: true,
+    maxDurationMinutes: 1,
+    selectionMode: 'auto-start',
+    selectedGame: 'matching',
+  }
+  const skippedBreak: BreakRecord = {
+    breakIndex: 0,
+    afterPartIndex: 0,
+    startedAt: new Date(0).toISOString(),
+    endedAt: new Date(1000).toISOString(),
+    reason: 'skipped',
+    game: null,
+  }
+  const answeredInPart2: SlotResult = {
+    slotId: 'p2s0',
+    partNumber: 2,
+    partIndex: 1,
+    slotIndex: 0,
+    problem: { terms: [1, 1], answer: 2, skillsRequired: [] },
+    studentAnswer: 2,
+    isCorrect: true,
+    responseTimeMs: 900,
+    skillsExercised: [],
+    usedOnScreenAbacus: false,
+    timestamp: new Date(2000),
+    hadHelp: false,
+    incorrectAttempts: 0,
+  } as unknown as SlotResult
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    h.report = undefined
+    h.commits = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve(new Response(JSON.stringify({ history: [] }))))
+    )
+  })
+
+  it('no break follows: the transition screen carries the notice', () => {
+    renderPage(plan({ flowState: 'part_transition', currentPartIndex: 1 }))
+    expect(screen.getByTestId('transition-screen')).toHaveAttribute('data-notice', 'put_away')
+  })
+
+  it('a break follows: the transition screen carries none', () => {
+    renderPage(
+      plan({ flowState: 'part_transition', currentPartIndex: 1, gameBreakSettings: breaksOn })
+    )
+    expect(screen.getByTestId('transition-screen')).toHaveAttribute('data-notice', 'none')
+  })
+
+  it('after the break: the notice, then the session mounts; observers see it come and go', () => {
+    const page = renderPage(
+      plan({ flowState: 'break_active', currentPartIndex: 1, gameBreakSettings: breaksOn })
+    )
+    expect(screen.queryByTestId('transition-screen')).toBeNull()
+    page.showPlan(
+      plan({
+        currentPartIndex: 1,
+        flowVersion: 3,
+        gameBreakSettings: breaksOn,
+        breaks: [skippedBreak],
+      })
+    )
+    const notice = screen.getByTestId('transition-screen')
+    expect(notice).toHaveAttribute('data-variant', 'abacus-notice')
+    expect(notice).toHaveAttribute('data-notice', 'put_away')
+    expect(notice).toHaveAttribute('data-next', 'Equations')
+    // The session is not mounted under the notice: its first item (and clock) waits
+    expect(screen.queryByTestId('active-session')).toBeNull()
+    expect(h.commits).toEqual([])
+    expect(h.sendPartTransition).toHaveBeenCalledTimes(1)
+    expect(h.sendPartTransition).toHaveBeenCalledWith(
+      expect.objectContaining({ label: 'Abacus' }),
+      expect.objectContaining({ label: 'Equations' }),
+      expect.any(Number),
+      7000
+    )
+
+    // A refetch of the same plan keeps the one notice
+    page.showPlan(
+      plan({
+        currentPartIndex: 1,
+        flowVersion: 3,
+        gameBreakSettings: breaksOn,
+        breaks: [skippedBreak],
+      })
+    )
+    expect(h.sendPartTransition).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(screen.queryByTestId('transition-screen')).toBeNull()
+    expect(screen.getByTestId('active-session')).toBeInTheDocument()
+    expect(h.commits.length).toBeGreaterThan(0)
+    expect(h.commits.every((c) => !c.overlay)).toBe(true)
+    expect(h.sendPartTransitionComplete).toHaveBeenCalledTimes(1)
+  })
+
+  it('a reload once the part has a try: no notice', () => {
+    renderPage(
+      plan({
+        currentPartIndex: 1,
+        gameBreakSettings: breaksOn,
+        breaks: [skippedBreak],
+        results: [answeredInPart2],
+      })
+    )
+    expect(screen.queryByTestId('transition-screen')).toBeNull()
+    expect(screen.getByTestId('active-session')).toBeInTheDocument()
   })
 })
 

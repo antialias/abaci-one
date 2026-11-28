@@ -96,6 +96,16 @@ export function isExcludedTry(result: Pick<SlotResult, 'source'>): boolean {
   return result.source === 'teacher-excluded'
 }
 
+/**
+ * Whether a game break runs when a part transition completes: the plan's
+ * break setting. The flow machine (`session-flow.ts`) and the abacus notice
+ * (`abacus-notice.ts`) both ask this, so a per-gap break choice (plan §8
+ * A19 (4)) changes them together.
+ */
+export function breaksEnabled(plan: Pick<SessionPlan, 'gameBreakSettings'>): boolean {
+  return (plan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
+}
+
 /** The tries that count (see `isCountedTry`), in recorded order. */
 export function countedTries<T extends Pick<SlotResult, 'practiceOnly' | 'voided'>>(
   results: readonly T[] | null | undefined
