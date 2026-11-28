@@ -20,7 +20,7 @@ import { useMemo } from 'react'
 import { itemSlotIndexOfRow, tryKindOfRow, tryRoundOfRow } from '@/db/schema/legacy-try-fields'
 import { isCountedTry } from '@/db/schema/session-plan-helpers'
 import type { ProblemSlot, SessionPart, SlotResult } from '@/db/schema/session-plans'
-import { MAX_RETRY_EPOCHS } from '@/lib/curriculum/parts/arithmetic/state'
+import { DEFAULT_MAX_ROUNDS } from '@/lib/curriculum/parts/cursor/retry-rounds'
 import { css } from '../../../styled-system/css'
 import { Tooltip } from '../ui/Tooltip'
 import { formatMs } from './autoPauseCalculator'
@@ -238,7 +238,7 @@ function wasAnswerDivulged(results: SlotResult[], partNumber: number, slotIndex:
       !r.isCorrect &&
       // a wrong try of the last retry round (a do-over is never a retry)
       tryKindOfRow(r) === 'retry' &&
-      tryRoundOfRow(r) >= MAX_RETRY_EPOCHS
+      tryRoundOfRow(r) >= DEFAULT_MAX_ROUNDS
   )
 }
 

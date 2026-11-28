@@ -20,13 +20,16 @@ import { useActiveSessionPlan } from '@/hooks/useSessionPlan'
 import { type StudentActionData, useStudentActions } from '@/hooks/useStudentActions'
 import { useStudentStakeholders } from '@/hooks/useStudentStakeholders'
 import { getGame } from '@/lib/arcade/game-registry'
-import type { ArithmeticDotsPosition } from '@/lib/curriculum/parts/arithmetic/session-view'
 import { css } from '../../../styled-system/css'
 import { NavBannerSlot } from './BannerSlots'
 import { RelationshipSummary } from './RelationshipBadge'
 import { RelationshipCard } from './RelationshipCard'
 import { SessionMoodIndicator } from './SessionMoodIndicator'
-import { type RedoTarget, SessionProgressIndicator } from './SessionProgressIndicator'
+import {
+  type RedoTarget,
+  SessionProgressIndicator,
+  type SessionProgressIndicatorProps,
+} from './SessionProgressIndicator'
 import { ACTION_DEFINITIONS } from './studentActions'
 
 /**
@@ -76,7 +79,10 @@ export interface SessionHudData {
    * The progress dots' props: the part kind's view of the plan (arithmetic's
    * dots are its slots; Phase 5b).
    */
-  dots: ArithmeticDotsPosition
+  dots: Pick<
+    SessionProgressIndicatorProps,
+    'parts' | 'results' | 'currentPartIndex' | 'currentSlotIndex'
+  >
   /** Session health info */
   sessionHealth?: {
     overall: 'good' | 'warning' | 'struggling'
