@@ -85,7 +85,7 @@ function Page({
     <ActiveSession
       plan={plan}
       student={student}
-      onAnswer={vi.fn(() => Promise.resolve())}
+      onAnswer={vi.fn(() => Promise.resolve<SessionPlan | null>(null))}
       onEndEarly={vi.fn()}
       redoState={redoState}
       onRecordRedo={onRecordRedo}

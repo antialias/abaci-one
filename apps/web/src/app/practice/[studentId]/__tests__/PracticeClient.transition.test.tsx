@@ -43,6 +43,7 @@ const h = vi.hoisted(() => ({
   // the transition overlay was in the DOM at that commit
   commits: [] as Array<{ flowState: string; overlay: boolean }>,
   recordRedo: vi.fn(),
+  recordResult: vi.fn((_v: unknown) => new Promise(() => {})),
   sendPartTransition: vi.fn(),
   sendPartTransitionComplete: vi.fn(),
   sendProblemMarker: vi.fn(),
@@ -155,7 +156,7 @@ vi.mock('@/hooks/useSessionPlan', () => {
     useEndSessionEarly: mutation,
     useFinishGameBreak: mutation,
     useRecordRedoResult: () => ({ ...mutation(), mutateAsync: h.recordRedo }),
-    useRecordSlotResult: mutation,
+    useRecordSlotResult: () => ({ ...mutation(), mutateAsync: h.recordResult }),
     useStartGameBreak: mutation,
   }
 })
@@ -516,5 +517,72 @@ describe('PracticeClient — a do-over names its item', () => {
       true,
       expect.objectContaining({ isManualRedo: true, epochNumber: 0 })
     )
+  })
+})
+
+describe('PracticeClient — an answer resolves to the plan the server returned (K5a-3a)', () => {
+  type OnAnswer = (r: unknown) => Promise<SessionPlan | null>
+  const answerOf = (n: number) => ({
+    tryId: `try-${n}`,
+    partIndex: 0,
+    slotIndex: 3,
+    slotId: 'fx-p0s3',
+    epochNumber: 0,
+    problem: { terms: [13, 6], answer: 19, skillsRequired: [] },
+    studentAnswer: 19,
+    isCorrect: true,
+    responseTimeMs: 1000,
+    skillsExercised: [],
+    usedOnScreenAbacus: false,
+    hadHelp: false,
+    incorrectAttempts: 0,
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    h.report = undefined
+  })
+
+  it('resolves to the plan the write returned', async () => {
+    const fixture = liveMidPartOneSession()
+    const returned = { ...fixture.plan, rowVersion: 99 }
+    h.recordResult.mockImplementationOnce(() => Promise.resolve(returned))
+    renderPage(fixture.plan)
+    const { onAnswer } = h.activeProps as { onAnswer: OnAnswer }
+    let resolved: SessionPlan | null | undefined
+    await act(async () => {
+      resolved = await onAnswer(answerOf(1))
+    })
+    expect(resolved).toBe(returned)
+  })
+
+  it('resolves null when the write fails, and null for the write dropped behind it', async () => {
+    const fixture = liveMidPartOneSession()
+    let fail: (e: Error) => void = () => {}
+    h.recordResult
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            fail = reject
+          })
+      )
+      .mockImplementationOnce(() => Promise.resolve(fixture.plan))
+    renderPage(fixture.plan)
+    const { onAnswer } = h.activeProps as { onAnswer: OnAnswer }
+    let first: SessionPlan | null | undefined
+    let second: SessionPlan | null | undefined
+    await act(async () => {
+      const a = onAnswer(answerOf(1))
+      const b = onAnswer(answerOf(2)) // queued behind the first
+      // The queue starts the first write on its own turn
+      await vi.waitFor(() => expect(h.recordResult).toHaveBeenCalledTimes(1))
+      fail(new Error('boom'))
+      first = await a
+      second = await b
+    })
+    expect(first).toBeNull()
+    expect(second).toBeNull()
+    // The dropped write never ran
+    expect(h.recordResult).toHaveBeenCalledTimes(1)
   })
 })
