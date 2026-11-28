@@ -38,7 +38,15 @@ vi.mock('@/db', () => ({
 vi.mock('@/lib/auth/withAuth', () => ({ withAuth: (handler: unknown) => handler }))
 vi.mock('@/lib/viewer', () => ({ getUserId: async () => 'adult' }))
 const allowed = vi.hoisted(() => ({ value: true }))
-vi.mock('@/lib/classroom', () => ({ canPerformAction: async () => allowed.value }))
+const askedActions = vi.hoisted(() => [] as string[])
+vi.mock('@/lib/classroom', () => ({
+  // The record route's permission, and only it
+  canPerformAction: async (_userId: string, _playerId: string, action: string) => {
+    askedActions.push(action)
+    if (action !== 'start-session') throw new Error(`unexpected action ${action}`)
+    return allowed.value
+  },
+}))
 const mcpKeyUser = vi.hoisted(() => ({ value: 'nobody' }))
 vi.mock('@/lib/mcp/auth', () => ({ validateMcpApiKey: async () => mcpKeyUser.value }))
 
@@ -54,6 +62,7 @@ const { GLITCH_KINDS, GLITCH_SESSION_LIMIT, SAVE_REJECTED_LABELS } = await impor
   '@/lib/curriculum/glitches'
 )
 const { metricsRegistry, practiceGlitchesTotal } = await import('@/lib/metrics')
+const { GET: metricsGET } = await import('@/app/api/metrics/route')
 const { BUILD_ID } = await import('@/lib/build-id')
 
 let eph: EphemeralDbResult
@@ -62,6 +71,7 @@ let userId: string
 
 beforeEach(async () => {
   allowed.value = true
+  askedActions.length = 0
   practiceGlitchesTotal.reset()
   eph = createEphemeralDatabase()
   setCurrentEphemeralDb(eph.db)
@@ -187,7 +197,6 @@ const DETAILS: Record<(typeof GLITCH_KINDS)[number], Record<string, unknown>> = 
     answer: 7,
     enqueuedAt: 1000,
     planStatus: 'completed',
-    endedBy: 'teacher',
     drainedBy: 'summary',
     ...CONTEXT,
   },
@@ -278,6 +287,7 @@ describe('POST glitches: the whitelist', () => {
       glitch('stale_screen', { ...DETAILS.stale_screen, reason: undefined }),
       glitch('do_over_refused', { ...DETAILS.do_over_refused, reason: 'not_current' }),
       glitch('try_lost_at_end', { ...DETAILS.try_lost_at_end, planStatus: undefined }),
+      glitch('try_lost_at_end', { ...DETAILS.try_lost_at_end, planStatus: 'ended by teacher' }),
       glitch('stale_screen', { ...DETAILS.stale_screen, round: -1 }),
       { ...glitch('stale_screen'), clientAt: 'now' },
       { ...glitch('stale_screen'), detail: [] },
@@ -290,6 +300,11 @@ describe('POST glitches: the whitelist', () => {
 })
 
 describe('POST glitches: auth in the record route order', () => {
+  it("asks for the record route's own permission, 'start-session'", async () => {
+    expect((await post(glitch('stale_screen'))).status).toBe(200)
+    expect(askedActions).toEqual(['start-session'])
+  })
+
   it('403 before anything else, even for a plan that is not the player’s', async () => {
     allowed.value = false
     expect((await post(glitch('stale_screen'))).status).toBe(403)
@@ -306,6 +321,39 @@ describe('POST glitches: auth in the record route order', () => {
     // A malformed body on a plan not the player's is still 404, not 400
     expect((await post({ junk: true }, { planId: 'plan-other' })).status).toBe(404)
     expect(await rows()).toHaveLength(0)
+  })
+})
+
+describe('POST glitches: the body cap', () => {
+  async function postRaw(text: string, headers: Record<string, string> = {}) {
+    const response = await (glitchPOST as unknown as Handler)(
+      new Request('http://localhost/api', { method: 'POST', headers, body: text }),
+      { params: Promise.resolve({ playerId, planId: 'plan-a' }) }
+    )
+    return { status: response.status, body: await response.json() }
+  }
+
+  it('refuses a declared Content-Length over 8 KB with 413, counted as malformed', async () => {
+    const answer = await postRaw(JSON.stringify(glitch('stale_screen')), {
+      'content-length': String(8 * 1024 + 1),
+    })
+    expect(answer.status).toBe(413)
+    expect(answer.body.code).toBe('GLITCH_TOO_LARGE')
+    expect(await counterSamples()).toEqual({ 'malformed/none': 1 })
+    expect(await rows()).toHaveLength(0)
+  })
+
+  it('refuses a body over 8 KB when no length is declared, measured as read', async () => {
+    const body = JSON.stringify({ ...glitch('stale_screen'), pad: 'x'.repeat(9 * 1024) })
+    const answer = await postRaw(body)
+    expect(answer.status).toBe(413)
+    expect(await counterSamples()).toEqual({ 'malformed/none': 1 })
+  })
+
+  it('refuses a body that is not JSON with 400', async () => {
+    const answer = await postRaw('{not json')
+    expect(answer.status).toBe(400)
+    expect(answer.body.code).toBe('MALFORMED_GLITCH')
   })
 })
 
@@ -490,6 +538,15 @@ describe('practice_glitches_total', () => {
   it('is registered with the kind and detail labels', async () => {
     const text = await metricsRegistry.metrics()
     expect(text).toContain('# TYPE practice_glitches_total counter')
+  })
+
+  it('is listed by the /api/metrics route', async () => {
+    const response = await (metricsGET as unknown as Handler)(
+      new Request('http://localhost/api/metrics'),
+      { params: Promise.resolve({}) }
+    )
+    expect(response.status).toBe(200)
+    expect(await response.text()).toContain('# TYPE practice_glitches_total counter')
   })
 
   it("labels every stored glitch from the route's own fixed set, never the client's strings", async () => {

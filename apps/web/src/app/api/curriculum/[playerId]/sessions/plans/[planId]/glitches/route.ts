@@ -4,11 +4,13 @@ import { BUILD_ID } from '@/lib/build-id'
 import { canPerformAction } from '@/lib/classroom'
 import { getSessionPlan } from '@/lib/curriculum'
 import {
+  GlitchBodyTooLargeError,
   GlitchLimitError,
   glitchCounterLabels,
   MALFORMED_GLITCH_LABELS,
   MalformedGlitchError,
   parseGlitch,
+  readGlitchBody,
   storeGlitch,
 } from '@/lib/curriculum/glitches'
 import { practiceGlitchesTotal } from '@/lib/metrics'
@@ -18,8 +20,9 @@ import { getUserId } from '@/lib/viewer'
  * POST /api/curriculum/[playerId]/sessions/plans/[planId]/glitches
  * Record a glitch the session's screen met (practice-kinds §8 A23.3, K5a-3c).
  *
- * Body: `{ ref, kind, clientAt, clientBuild, detail }`, whitelisted by
- * `parseGlitch` (400 `MALFORMED_GLITCH`, counted as `kind="malformed"`).
+ * Body: `{ ref, kind, clientAt, clientBuild, detail }`, at most 8 KB (413
+ * `GLITCH_TOO_LARGE`, read under the cap), whitelisted by `parseGlitch` (400
+ * `MALFORMED_GLITCH`); both refusals count as `kind="malformed"`.
  * The record route's checks, in its order: `start-session` → 403, the plan
  * belongs to the player in the path → 404. Idempotent by `(session, ref)`:
  * `{ id, ref, stored }` with 200 either way, so a resend is a no-op. A new
@@ -42,13 +45,7 @@ export const POST = withAuth(async (request, { params }) => {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
 
-    let body: unknown
-    try {
-      body = await request.json()
-    } catch {
-      throw new MalformedGlitchError('body is not JSON')
-    }
-    const glitch = parseGlitch(body)
+    const glitch = parseGlitch(await readGlitchBody(request))
 
     const result = await storeGlitch({
       glitch,
@@ -83,6 +80,10 @@ export const POST = withAuth(async (request, { params }) => {
     if (error instanceof MalformedGlitchError) {
       practiceGlitchesTotal.inc({ ...MALFORMED_GLITCH_LABELS })
       return NextResponse.json({ error: error.message, code: error.code }, { status: 400 })
+    }
+    if (error instanceof GlitchBodyTooLargeError) {
+      practiceGlitchesTotal.inc({ ...MALFORMED_GLITCH_LABELS })
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 413 })
     }
     if (error instanceof GlitchLimitError) {
       return NextResponse.json({ error: error.message, code: error.code }, { status: 429 })

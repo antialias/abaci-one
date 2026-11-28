@@ -21,6 +21,7 @@
 import { and, asc, count, eq, inArray } from 'drizzle-orm'
 import { db, schema } from '@/db'
 import type { PracticeGlitch } from '@/db/schema/practice-glitches'
+import type { SessionStatus } from '@/db/schema/session-plans'
 
 // ============================================================================
 // The kinds and the reference
@@ -52,6 +53,20 @@ const DO_OVER_REASONS = ['divulged', 'no_try', 'not_accepted'] as const
 const SAVE_FAILURES = ['timeout', 'network', 'http_5xx', 'contention', 'unknown_kind'] as const
 const DRAINED_BY = ['practice', 'summary', 'other'] as const
 const MODES = ['first_or_retry', 'do_over'] as const
+/** Every `SessionStatus`, once: the record type makes the list exhaustive */
+const SESSION_STATUS_SET: Record<SessionStatus, true> = {
+  draft: true,
+  approved: true,
+  in_progress: true,
+  completed: true,
+  abandoned: true,
+  'recency-refresh': true,
+  deleted: true,
+}
+const SESSION_STATUSES = Object.keys(SESSION_STATUS_SET)
+
+/** The most a glitch POST body may weigh (the route refuses more with 413) */
+export const GLITCH_BODY_MAX_BYTES = 8192
 
 /** The counter's `detail` label of a `save_rejected`: the client's code, mapped here */
 export const SAVE_REJECTED_LABELS = [
@@ -168,8 +183,7 @@ const DETAIL_FIELDS: Record<GlitchKind, Record<string, Field>> = {
     ...TRY_FIELDS,
     answer: { check: isAnswer },
     enqueuedAt: { check: isMs },
-    planStatus: { check: isString, required: true },
-    endedBy: { check: isStringOrNull },
+    planStatus: { check: oneOf(SESSION_STATUSES), required: true },
     drainedBy: { check: oneOf(DRAINED_BY) },
     ...CONTEXT_FIELDS,
   },
@@ -268,6 +282,35 @@ export function glitchCounterLabels(glitch: ParsedGlitch): GlitchCounterLabels {
       return { kind, detail: saveRejectedLabel(detail) }
     case 'try_lost_at_end':
       return { kind, detail: detail.planStatus === 'completed' ? 'completed' : 'ended' }
+  }
+}
+
+/** A glitch POST body over `GLITCH_BODY_MAX_BYTES` (413 `GLITCH_TOO_LARGE`). */
+export class GlitchBodyTooLargeError extends Error {
+  readonly code = 'GLITCH_TOO_LARGE'
+  constructor() {
+    super(`A glitch body is at most ${GLITCH_BODY_MAX_BYTES} bytes`)
+    this.name = 'GlitchBodyTooLargeError'
+  }
+}
+
+/**
+ * The POST body as JSON, read under the cap: a declared `Content-Length` over
+ * it is refused before reading, and the text read is measured again (the
+ * header can be absent or wrong). Throws `GlitchBodyTooLargeError` or
+ * `MalformedGlitchError`.
+ */
+export async function readGlitchBody(request: Request): Promise<unknown> {
+  const declared = Number(request.headers.get('content-length'))
+  if (Number.isFinite(declared) && declared > GLITCH_BODY_MAX_BYTES) {
+    throw new GlitchBodyTooLargeError()
+  }
+  const text = await request.text()
+  if (byteLength(text) > GLITCH_BODY_MAX_BYTES) throw new GlitchBodyTooLargeError()
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new MalformedGlitchError('body is not JSON')
   }
 }
 
