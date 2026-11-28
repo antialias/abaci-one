@@ -22,6 +22,7 @@ import type {
   SlotResult,
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
+import { formatProblemExpression } from '@/lib/curriculum/parts/arithmetic/describe'
 import { type SessionReport, sessionBreaksOf } from '@/lib/curriculum/session-report'
 import { getSkillDisplayName } from '@/utils/skillSearch'
 
@@ -309,16 +310,6 @@ function computeAge(birthday: string | null | undefined): number | undefined {
     age--
   }
   return age >= 0 ? age : undefined
-}
-
-function formatProblemExpression(terms: number[], answer: number): string {
-  const expression = terms
-    .map((term, index) => {
-      if (index === 0) return String(term)
-      return term < 0 ? ` - ${Math.abs(term)}` : ` + ${term}`
-    })
-    .join('')
-  return `${expression} = ${answer}`
 }
 
 function displaySkill(skillId: string): string {

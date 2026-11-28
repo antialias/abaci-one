@@ -10,14 +10,21 @@
  * retry rounds, nothing a second kind would not have. A kind's module may
  * import it; it imports no kind.
  *
- * Phase 2 scope (§10 P2-1): `plan`, `reportContribution` and `evidenceOf` are
- * not on the contract yet. Generation stays in `generateSessionPlan`, the
- * report arrives in Phase 4a, skill evidence moves with the ledger rebase.
+ * Phase 2 scope (§10 P2-1): `plan` and `reportContribution` are not on the
+ * contract yet. Generation stays in `generateSessionPlan`, the report arrives
+ * in Phase 4a. The recorder's half (`judge`, `evidenceOf`, `describe`,
+ * `payloadOf`) is the practice-kinds plan's K1a (§1.3).
  *
  * Client-safe: type-only.
  */
 
-import type { TryKind } from '@/db/schema/session-plans'
+import type {
+  StoredTry,
+  TryEvidence,
+  TryKind,
+  TryOutcome,
+  TryPayload,
+} from '@/db/schema/session-plans'
 
 /** A stored part as structure sees it. Absent `kind` is a part from before kinds: arithmetic. */
 export interface StoredPart {
@@ -33,6 +40,19 @@ export interface KindTry {
   round: number
   practiceOnly: boolean
   isCorrect: boolean
+}
+
+/**
+ * A recorded try as a kind reads its evidence and description from it: the
+ * stored row, its outcome, and its payload completed by the kind's
+ * `payloadOf` (a subset of the normalized `Try`, practice-kinds plan §1.3).
+ * Worksheet and offline tries have no item in the plan, so a kind reads the
+ * try, never the item (R9).
+ */
+export interface KindTryRecord {
+  result: StoredTry
+  outcome: TryOutcome
+  payload: TryPayload
 }
 
 /** Progress through one part: items done of items planned. */
@@ -80,8 +100,14 @@ export interface PartKind<Content, State, Item, Part extends StoredPart = Stored
   applyTryAside(content: Content, state: State, tries: readonly KindTry[], t: KindTry): State
   isDone(content: Content, state: State): boolean
   progress(content: Content, state: State, tries: readonly KindTry[]): PartProgress
-  /** Whether `answer` is correct for `itemId` */
+  /** Whether `answer` is correct for `itemId` (only an answered try is judged) */
   judge(content: Content, itemId: string, answer: unknown): boolean
+  /** What the try is evidence of; null = recorded, not counted */
+  evidenceOf(part: Part, t: KindTryRecord): TryEvidence | null
+  /** One line naming what the try answered, for MCP, the song and logs */
+  describe(part: Part, t: KindTryRecord): string
+  /** The in-memory payload, completed from the row (default: the stored payload) */
+  payloadOf(row: StoredTry): TryPayload
   presentationOf(part: Part): AttemptPresentation
   /** null = the part's tries are not BKT evidence */
   bktMode(part: Part): BktMode | null

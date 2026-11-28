@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/db'
 import { practiceAttachments } from '@/db/schema/practice-attachments'
 import { summarizeTries } from '@/db/schema/session-plan-helpers'
-import { mintTryId } from '@/db/schema/session-plan-normalize'
+import { envelopeOfRow, mintTryId } from '@/db/schema/session-plan-normalize'
 import { type SlotResult, sessionPlans } from '@/db/schema/session-plans'
 import { withAuth } from '@/lib/auth/withAuth'
 import { canPerformAction } from '@/lib/classroom'
@@ -117,13 +117,18 @@ export const POST = withAuth(async (_request, { params }) => {
       // Already approved (a double submit raced past the attachment check)
       if (existingResults.some((r) => r.attachmentId === attachmentId && !r.voided)) return []
       const startSlotIndex = existingResults.length
-      return conversionResult.slotResults.map((result, idx) => ({
-        ...result,
-        tryId: mintTryId(),
-        attachmentId,
-        slotIndex: startSlotIndex + idx,
-        timestamp: now,
-      }))
+      return conversionResult.slotResults.map((result, idx) => {
+        const row: SlotResult = {
+          ...result,
+          tryId: mintTryId(),
+          attachmentId,
+          slotIndex: startSlotIndex + idx,
+          timestamp: now,
+        }
+        // The try envelope as the normalizer derives it (R16): stamped or
+        // not, the row reads the same
+        return { ...row, ...envelopeOfRow(row, plan.parts) }
+      })
     })
     const addedCount = updatedSession.results.filter(
       (r) => r.attachmentId === attachmentId && !r.voided

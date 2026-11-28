@@ -39,6 +39,16 @@ export const readAbacusKind: PartKind<Content, State, ReadAbacusItem, ReadAbacus
   progress: (content, state) => ({ done: state.index, total: content.items.length }),
   judge: (content, itemId, answer) =>
     content.items.find((i) => i.itemId === itemId)?.expectedValue === answer,
+  // Its snapshot lives in the payload once (practice-kinds plan §3.1)
+  evidenceOf: (_part, t) => {
+    const item = t.payload.item as ReadAbacusItem | undefined
+    return item ? { skills: item.skillsRequired, presentation: 'static' } : null
+  },
+  describe: (_part, t) => {
+    const item = t.payload.item as ReadAbacusItem | undefined
+    return item ? `read the abacus: ${item.expectedValue}` : 'read the abacus'
+  },
+  payloadOf: (row) => row.payload ?? { kind: 'read_abacus' },
   presentationOf: () => ({
     layer: 'read_abacus',
     modality: 'visual',

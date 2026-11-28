@@ -375,10 +375,54 @@ export interface SlotResult {
   timingReview?: SlotTimingReview
   /** formalizes the untyped `_originalSource` (results route :92) */
   originalSource?: SlotResultSource
+
+  // ---- Try envelope (practice-kinds plan §1.3, §3.1; K1a) ----
+  //
+  // Stamped by the recorders and the other writers (worksheet approval, seeds)
+  // from K1a on. Absent on rows written before, and on rows a pre-K1 image
+  // writes after a rollback (it stores unjudged, R13): read them through
+  // `normalizeTry`, which derives them (`envelopeOfRow`). The top-level
+  // arithmetic fields above (`slotId`, `slotIndex`, `problem`,
+  // `studentAnswer`, `skillsExercised`, `usedOnScreenAbacus`) keep being
+  // written on every arithmetic row: they are arithmetic's payload on disk
+  // and what every older reader reads (K6, K14).
+
+  /** The item the try answered (arithmetic: the slot's id) */
+  itemId?: string
+  /** A skip stores the legacy projection at top level and `outcome: 'skipped'` here (§3.1) */
+  outcome?: TryOutcome
+  /** The kid's answer; null unless `outcome` is 'answered' */
+  answer?: unknown
+  /** What the try is evidence of; null = recorded, not counted (absent ≠ null) */
+  evidence?: TryEvidence | null
+  /** The kind's snapshot beyond the shared fields; arithmetic's is `{ kind: 'arithmetic' }` (its snapshot is the top-level fields) */
+  payload?: TryPayload
 }
 
 /** How a try came about (session architecture §1.2). */
 export type TryKind = 'first' | 'retry' | 'do_over'
+
+/** Whether the kid answered (practice-kinds plan K3): only an answered try is judged. */
+export type TryOutcome = 'answered' | 'skipped' | 'timeout'
+
+/**
+ * What a try is evidence of (practice-kinds plan K2): the skills and the
+ * presentation it was practiced in. The mastery mode is resolved from the
+ * presentation at read time, never stored.
+ */
+export interface TryEvidence {
+  skills: string[]
+  presentation: string
+}
+
+/**
+ * A stored try as the kind contract names it (practice-kinds plan §1.3): the
+ * row keeps its `SlotResult` name in code until the ledger.
+ */
+export type StoredTry = SlotResult
+
+/** A try's kind payload: the kind id plus whatever the kind stores (§1.3). */
+export type TryPayload = { kind: string } & Record<string, unknown>
 
 /**
  * One try as a client submits it; the server fills in the rest. `partIndex`,

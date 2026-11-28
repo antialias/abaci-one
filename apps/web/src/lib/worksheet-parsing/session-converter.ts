@@ -4,9 +4,9 @@
  * Converts parsed worksheet data into SlotResults that can be
  * used to create an offline practice session.
  */
-import type { SlotResult, GeneratedProblem } from '@/db/schema/session-plans'
-import type { WorksheetParsingResult, ParsedProblem } from './schemas'
+import type { GeneratedProblem, SlotResult } from '@/db/schema/session-plans'
 import { analyzeRequiredSkills } from '@/utils/problemGenerator'
+import type { ParsedProblem, WorksheetParsingResult } from './schemas'
 
 /**
  * Options for session conversion
@@ -63,8 +63,12 @@ function toSlotResult(
   options: ConversionOptions
 ): Omit<SlotResult, 'timestamp'> {
   const problem = toGeneratedProblem(parsed)
+  const answered = parsed.studentAnswer !== null
+  // A blank keeps its legacy top-level projection (`studentAnswer: 0`, wrong):
+  // every reader of `studentAnswer` reads it so (K14). The envelope says it
+  // was skipped, so no judge ever calls a blank under a 0 answer right (R16).
   const studentAnswer = parsed.studentAnswer ?? 0
-  const isCorrect = parsed.studentAnswer !== null && parsed.studentAnswer === problem.answer
+  const isCorrect = answered && parsed.studentAnswer === problem.answer
 
   return {
     slotId: crypto.randomUUID(),
@@ -79,6 +83,11 @@ function toSlotResult(
     hadHelp: false,
     incorrectAttempts: isCorrect ? 0 : parsed.studentAnswer !== null ? 1 : 0,
     source: options.source,
+    // The try envelope (practice-kinds plan §3.1); approval stamps the rest
+    // (`itemId`, `evidence`) once it knows the session's parts
+    outcome: answered ? 'answered' : 'skipped',
+    answer: answered ? parsed.studentAnswer : null,
+    payload: { kind: 'arithmetic' },
   }
 }
 

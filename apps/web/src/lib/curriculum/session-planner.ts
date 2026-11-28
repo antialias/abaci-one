@@ -52,6 +52,8 @@ import {
   type SkippedPart,
   type SlotResult,
   type SlotResultSubmission,
+  type TryEvidence,
+  type TryOutcome,
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { resolveLinearEntryPolicy } from '@/lib/curriculum/linear-entry-policy'
@@ -96,7 +98,8 @@ import {
 import { explainLinearReadiness } from './linear-readiness'
 import { resolveEnabledPartTypes } from './part-gating'
 import { arithmeticCursorSlotIndex } from './parts/arithmetic/session-view'
-import { isPartPlayable, partKindOf } from './parts/registry'
+import type { AnyPartKind } from './parts/kind'
+import { isPartPlayable, kindIdOf, partKindOf } from './parts/registry'
 import { generateProblemFromConstraints } from './problem-generator'
 import {
   getAllSkillMastery,
@@ -1452,6 +1455,84 @@ function isRecordedTry(plan: SessionPlan, tryId: string | undefined): boolean {
   return tryId !== undefined && plan.results.some((r) => r.tryId === tryId)
 }
 
+/**
+ * The outcome of a try sent in the legacy body (`record`/`record_redo`), the
+ * only body there is until K2. A skip arrives as `handleSkip` has always sent
+ * it (`ActiveSession.tsx`): the correct answer, wrong, with manual help. The
+ * one place this heuristic lives (practice-kinds plan K1a): every other
+ * reader takes `outcome` from the row. A client's verdict is its own judge
+ * (`answer === problem.answer`), so an answered try that stores the correct
+ * answer is never wrong and cannot be taken for a skip.
+ */
+function outcomeOfLegacyBody(
+  body: Pick<SlotResult, 'hadHelp' | 'helpTrigger' | 'studentAnswer' | 'isCorrect' | 'problem'>
+): TryOutcome {
+  return body.hadHelp &&
+    body.helpTrigger === 'manual' &&
+    body.studentAnswer === body.problem?.answer &&
+    !body.isCorrect
+    ? 'skipped'
+    : 'answered'
+}
+
+/**
+ * The row with its try envelope stamped (practice-kinds plan §1.3, K1a):
+ * `itemId`, `outcome` (from the legacy body), `answer` (null unless
+ * answered), `evidence` (the kind's `evidenceOf`) and `payload` (arithmetic:
+ * `{ kind: 'arithmetic' }`; its snapshot stays in the top-level fields, which
+ * are written as they always were, K14).
+ *
+ * The server judges an answered try with the kind's `judge`. K1a is
+ * behaviour-identical: the row keeps the client's verdict, the one every
+ * client and reader acts on today, and a disagreement is returned for the
+ * recorder to log once its write commits (`logJudgeDisagreement`), never
+ * stored, so no kid's record changes. Storing the server's verdict waits
+ * for zero disagreements in production (plan §8, amendment A1; K2).
+ */
+function withTryEnvelope(
+  part: SessionPart,
+  kind: AnyPartKind,
+  itemId: string,
+  row: SlotResult
+): { row: SlotResult; evidence: TryEvidence | null; disagreement: JudgeDisagreement | null } {
+  const outcome = outcomeOfLegacyBody(row)
+  const answer = outcome === 'answered' ? row.studentAnswer : null
+  const verdict = outcome === 'answered' && kind.judge(kind.contentOf(part), itemId, answer)
+  const disagreement =
+    verdict === row.isCorrect
+      ? null
+      : { tryId: row.tryId, itemId, outcome, clientVerdict: row.isCorrect, judge: verdict }
+  const payload = { kind: kindIdOf(part) }
+  const evidence = kind.evidenceOf(part, {
+    result: row,
+    outcome,
+    payload: kind.payloadOf({ ...row, payload }),
+  })
+  return { row: { ...row, itemId, outcome, answer, evidence, payload }, evidence, disagreement }
+}
+
+/** The server's judge and the client's verdict on one try, when they differ. */
+interface JudgeDisagreement {
+  tryId: string | undefined
+  itemId: string
+  outcome: TryOutcome
+  clientVerdict: boolean
+  judge: boolean
+}
+
+/** Judge parity (K1a): logged once per recorded try, after its write commits. */
+function logJudgeDisagreement(
+  caller: string,
+  planId: string,
+  disagreement: JudgeDisagreement | null
+): void {
+  if (!disagreement) return
+  console.warn(`[${caller}] judge disagrees with the client verdict; storing the client's`, {
+    planId,
+    ...disagreement,
+  })
+}
+
 /** Revoke any active share links once a session completes (non-critical). */
 async function revokeSharesIfComplete(planId: string, isComplete: boolean, caller: string) {
   if (!isComplete) return
@@ -1485,6 +1566,10 @@ interface RecordedTryOutcome {
   previousPartIndex: number
   previousSlotIndex: number
   inRetryEpoch: boolean
+  /** The stamped evidence: what the skill-attempt bump reads after commit */
+  evidence: TryEvidence | null
+  /** Logged after commit, once per recorded try */
+  disagreement: JudgeDisagreement | null
 }
 
 /**
@@ -1657,7 +1742,11 @@ export async function recordSlotResult(
     // `epochNumber`, `isManualRedo`, `originalSlotIndex`) are not written
     // since Phase 6b-1; every reader takes kind, round and item position
     // through the normalizer (`legacy-try-fields.ts`, §10 P6b1-4)
-    const newResult: SlotResult = {
+    const {
+      row: newResult,
+      evidence,
+      disagreement,
+    } = withTryEnvelope(currentPart, partKindOf(currentPart), expected.slotId, {
       ...withoutLegacyTryFields(result),
       tryId: result.tryId ?? mintTryId(),
       kind,
@@ -1674,7 +1763,7 @@ export async function recordSlotResult(
         isCorrect: result.isCorrect,
         practiceOnly: false,
       }),
-    }
+    })
 
     return {
       write: tryWrite(plan, newResult, {
@@ -1689,6 +1778,8 @@ export async function recordSlotResult(
         previousPartIndex: plan.currentPartIndex,
         previousSlotIndex: arithmeticCursorSlotIndex(plan),
         inRetryEpoch,
+        evidence,
+        disagreement,
       },
     }
   })
@@ -1698,8 +1789,10 @@ export async function recordSlotResult(
   // Update global skill mastery timestamps with help tracking. Once per
   // recorded try: only the request whose write committed gets here.
   // Note: masteryWeight is applied by BKT when it reads SlotResults (not here)
-  if (result.skillsExercised && result.skillsExercised.length > 0) {
-    const skillResults = result.skillsExercised.map((skillId) => ({
+  logJudgeDisagreement('recordSlotResult', planId, outcome.disagreement)
+  const { evidence } = outcome
+  if (evidence && evidence.skills.length > 0) {
+    const skillResults = evidence.skills.map((skillId) => ({
       skillId,
       isCorrect: result.isCorrect,
     }))
@@ -1736,6 +1829,15 @@ export async function recordSlotResult(
   })
 
   return updated
+}
+
+/** What a committed do-over write reports back to its recorder, for side effects. */
+interface RecordedDoOver {
+  practiceOnly: boolean
+  /** The stamped evidence: what the skill-attempt bump reads after commit */
+  evidence: TryEvidence | null
+  /** Logged after commit, once per recorded try */
+  disagreement: JudgeDisagreement | null
 }
 
 /**
@@ -1826,9 +1928,9 @@ export async function recordRedoResult(
 
   const {
     plan: updated,
-    value: practiceOnly,
+    value: recorded,
     committed,
-  } = await withRowCas<boolean | null>(planId, (plan) => {
+  } = await withRowCas<RecordedDoOver | null>(planId, (plan) => {
     if (isRecordedTry(plan, result.tryId)) {
       console.log('[recordRedoResult] duplicate tryId ignored', { planId, tryId: result.tryId })
       return noWrite(null)
@@ -1876,7 +1978,11 @@ export async function recordRedoResult(
 
     const { round, practiceOnly } = doOverStamp(priorTries)
     // No legacy try fields since Phase 6b-1 (§10 P6b1-4): `kind` says do-over
-    const newResult: SlotResult = {
+    const {
+      row: newResult,
+      evidence,
+      disagreement,
+    } = withTryEnvelope(part, kind, slot.slotId, {
       ...withoutLegacyTryFields(result),
       tryId: result.tryId ?? mintTryId(),
       kind: 'do_over',
@@ -1893,7 +1999,7 @@ export async function recordRedoResult(
         isCorrect: result.isCorrect,
         practiceOnly,
       }),
-    }
+    })
 
     return {
       write: tryWrite(plan, newResult, {
@@ -1904,15 +2010,17 @@ export async function recordRedoResult(
         practiceOnly,
         isCorrect: result.isCorrect,
       }),
-      value: practiceOnly,
+      value: { practiceOnly, evidence, disagreement },
     }
   })
 
-  if (!committed || practiceOnly === null) return updated
+  if (!committed || recorded === null) return updated
 
   // Update global skill mastery timestamps (not for practice-only: no pedagogical effect)
-  if (!practiceOnly && result.skillsExercised && result.skillsExercised.length > 0) {
-    const skillResults = result.skillsExercised.map((skillId) => ({
+  logJudgeDisagreement('recordRedoResult', planId, recorded.disagreement)
+  const { practiceOnly, evidence } = recorded
+  if (!practiceOnly && evidence && evidence.skills.length > 0) {
+    const skillResults = evidence.skills.map((skillId) => ({
       skillId,
       isCorrect: result.isCorrect,
     }))
