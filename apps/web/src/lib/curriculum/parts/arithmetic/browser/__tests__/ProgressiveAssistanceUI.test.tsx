@@ -2,7 +2,7 @@ import React from 'react'
 import { render } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { ProgressiveAssistanceUI } from '../ProgressiveAssistanceUI'
-import type { AssistanceMachineState } from '../hooks/useProgressiveAssistance'
+import type { AssistanceMachineState } from '../useProgressiveAssistance'
 
 // The component only reads machineState.state; context is never touched, so a
 // minimal stub is enough.

@@ -79,8 +79,40 @@ const FOLDER_EXEMPT: Record<string, { modules: string[]; why: string }> = {
     why: "arithmetic's session view (K5, the shell)",
   },
   'components/practice/ActiveSession.tsx': {
-    modules: [`${A}/session-view`, `${A}/state`],
-    why: "arithmetic's session view and state (K5, the shell)",
+    modules: [
+      `${A}/session-view`,
+      `${A}/state`,
+      // K5a-2 moved these views here; K5a-3's shell renders them through the browser kind
+      `${A}/browser/AssistanceDebugPanel`,
+      `${A}/browser/coachHintGenerator`,
+      `${A}/browser/DecompositionSection`,
+      `${A}/browser/LinearProblem`,
+      `${A}/browser/PracticeFeedback`,
+      `${A}/browser/PracticeHelpOverlay`,
+      `${A}/browser/ProblemDebugPanel`,
+      `${A}/browser/ProgressiveAssistanceUI`,
+      `${A}/browser/PurposeBadge`,
+      `${A}/browser/RetryTransitionScreen`,
+      `${A}/browser/useProgressiveAssistance`,
+      `${A}/browser/VerticalProblem`,
+    ],
+    why: "arithmetic's session view and state (K5, the shell), and its views (K5a-2 moved them; K5a-3's shell)",
+  },
+  'components/practice/AnnotatedProblem.tsx': {
+    modules: [`${A}/browser/LinearProblem`],
+    why: "arithmetic's equation view in the history card (K5a-2 moved it; K5b's TryCard makes this arithmetic's card body)",
+  },
+  'components/practice/PracticePreview.tsx': {
+    modules: [`${A}/browser/LinearProblem`, `${A}/browser/VerticalProblem`],
+    why: "arithmetic's problem views in the browse preview (K5a-2 moved them; K5b's TryCard 'browse')",
+  },
+  'components/practice/SessionProgressIndicator.tsx': {
+    modules: [`${A}/browser/PurposeBadge`],
+    why: "arithmetic's extractTargetSkillName for the dot tooltips (K5a-2 moved it; K5b's dots from items())",
+  },
+  'components/practice/hooks/usePracticeAssistanceAudio.ts': {
+    modules: [`${A}/browser/useProgressiveAssistance`],
+    why: "the help machine's state names, type only (K5a-2 moved it; this hook has no importer, K5a-3 retires it with the shell)",
   },
   'components/practice/AllProblemsSection.tsx': {
     modules: [`${A}/result-view`],
@@ -113,6 +145,33 @@ const FOLDER_EXEMPT: Record<string, { modules: string[]; why: string }> = {
   'components/practice/sessionSummaryUtils.ts': {
     modules: [`${A}/result-view`],
     why: "arithmetic's slots for the summary (K5)",
+  },
+  'components/classroom/SessionObserverModal.tsx': {
+    modules: [
+      `${A}/browser/LinearProblem`,
+      `${A}/browser/PracticeFeedback`,
+      `${A}/browser/PurposeBadge`,
+      `${A}/browser/VerticalProblem`,
+    ],
+    why: "the observer's copy of arithmetic's problem views (K5a-2 moved them; K5b's ObserverView)",
+  },
+  'components/vision/ProblemVideoPlayer.tsx': {
+    modules: [`${A}/browser/VerticalProblem`],
+    why: 'the problem drawn over a vision replay (K5a-2 moved it; K5b reads answerText)',
+  },
+  // A shared view (§8 A20): marketing pages draw arithmetic's VerticalProblem.
+  // No phase removes these; they stay until the owner decides where it lives.
+  'components/blog/heroes/BlameDistributionHero.tsx': {
+    modules: [`${A}/browser/VerticalProblem`],
+    why: "a blog hero draws arithmetic's problem (shared view, A20; no phase removes it)",
+  },
+  'components/blog/heroes/VisionBeforeAfter.tsx': {
+    modules: [`${A}/browser/VerticalProblem`],
+    why: "a blog hero draws arithmetic's problem (shared view, A20; no phase removes it)",
+  },
+  'components/page-spots/PracticeShowcase.tsx': {
+    modules: [`${A}/browser/VerticalProblem`],
+    why: "a landing-page spot draws arithmetic's problem (shared view, A20; no phase removes it)",
   },
   'hooks/useSessionObserver.ts': {
     modules: [`${A}/result-view`],
@@ -372,7 +431,7 @@ describe('kind-folder gate: a kind folder is imported only by the registries and
       modules.filter((m) => !imported.get(file)?.has(m)).map((m) => `${file} -> ${m}`)
     )
     expect(stale).toEqual([])
-    expect(Object.keys(FOLDER_EXEMPT)).toHaveLength(17)
+    expect(Object.keys(FOLDER_EXEMPT)).toHaveLength(26)
   })
 })
 

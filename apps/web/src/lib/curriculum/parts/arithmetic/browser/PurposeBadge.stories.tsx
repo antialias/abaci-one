@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import type { ProblemSlot } from '@/db/schema/session-plans'
 import type { TermCountExplanation } from '@/lib/curriculum/config/term-count-scaling'
-import { css } from '../../../styled-system/css'
+import { css } from '@/../styled-system/css'
 import { PurposeBadge as RealPurposeBadge } from './PurposeBadge'
-import { Tooltip, TooltipProvider } from '../ui/Tooltip'
+import { Tooltip, TooltipProvider } from '@/components/ui/Tooltip'
 
 // =============================================================================
 // Mock Data Factories

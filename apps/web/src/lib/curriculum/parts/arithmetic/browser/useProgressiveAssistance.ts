@@ -10,7 +10,7 @@ import {
   getComplexityCost,
   type PauseInfo,
   type ProgressiveThresholds,
-} from '../autoPauseCalculator'
+} from '@/components/practice/autoPauseCalculator'
 import {
   getProgressiveAssistanceTiming,
   type ProgressiveAssistanceTimingConfig,

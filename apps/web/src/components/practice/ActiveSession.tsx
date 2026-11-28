@@ -15,6 +15,11 @@ import type {
   SlotResultSubmission,
 } from '@/db/schema/session-plans'
 import {
+  extractTargetSkillName,
+  PurposeBadge,
+} from '@/lib/curriculum/parts/arithmetic/browser/PurposeBadge'
+import { RetryTransitionScreen } from '@/lib/curriculum/parts/arithmetic/browser/RetryTransitionScreen'
+import {
   arithmeticCursorLinearIndex,
   arithmeticRetryRoundSize,
   arithmeticSlotAt,
@@ -26,8 +31,6 @@ import { getCurrentProblemInfo, MAX_RETRY_EPOCHS } from '@/lib/curriculum/parts/
 import { css } from '../../../styled-system/css'
 import type { AutoPauseStats, PauseInfo } from './autoPauseCalculator'
 import { BrowseModeView } from './BrowseModeView'
-import { extractTargetSkillName, PurposeBadge } from './PurposeBadge'
-import { RetryTransitionScreen } from './RetryTransitionScreen'
 import { SessionPausedModal } from './SessionPausedModal'
 
 // Re-export types for consumers
@@ -46,32 +49,33 @@ export interface StudentInfo {
 import { useAbacusDisplay } from '@soroban/abacus-react'
 import type { ReceivedAbacusControl } from '@/hooks/useSessionBroadcast'
 import { useSetRemoteCameraSession } from '@/hooks/useSessionPlan'
-import { AbacusDock } from '../AbacusDock'
-import { DecompositionProvider, DecompositionSection } from '../decomposition'
-import { AssistanceDebugPanel } from './AssistanceDebugPanel'
-import { generateCoachHint } from './coachHintGenerator'
+import { AssistanceDebugPanel } from '@/lib/curriculum/parts/arithmetic/browser/AssistanceDebugPanel'
+import { generateCoachHint } from '@/lib/curriculum/parts/arithmetic/browser/coachHintGenerator'
+import { DecompositionSection } from '@/lib/curriculum/parts/arithmetic/browser/DecompositionSection'
+import { LinearProblem } from '@/lib/curriculum/parts/arithmetic/browser/LinearProblem'
+import { PracticeFeedback } from '@/lib/curriculum/parts/arithmetic/browser/PracticeFeedback'
+import { PracticeHelpOverlay } from '@/lib/curriculum/parts/arithmetic/browser/PracticeHelpOverlay'
+import { ProblemDebugPanel } from '@/lib/curriculum/parts/arithmetic/browser/ProblemDebugPanel'
+import { ProgressiveAssistanceUI } from '@/lib/curriculum/parts/arithmetic/browser/ProgressiveAssistanceUI'
+import { useProgressiveAssistance } from '@/lib/curriculum/parts/arithmetic/browser/useProgressiveAssistance'
+import { VerticalProblem } from '@/lib/curriculum/parts/arithmetic/browser/VerticalProblem'
+import { DecompositionProvider } from '../decomposition'
 import { DebugOverlay } from './DebugOverlay'
-import { useHasPhysicalKeyboard } from './hooks/useDeviceDetection'
 import {
   type AttemptInput,
   findMatchedPrefixIndex,
   useInteractionPhase,
 } from './hooks/useInteractionPhase'
-import { useProgressiveAssistance } from './hooks/useProgressiveAssistance'
 import { tryResponseTime } from './hooks/useTryLifecycle'
-import { LinearProblem } from './LinearProblem'
+import { AbacusDock } from './input/AbacusDock'
 // Audio disabled for practice sessions (use abacus / visualize)
-import { NumericKeypad } from './NumericKeypad'
-import { PracticeFeedback } from './PracticeFeedback'
-import { PracticeHelpOverlay } from './PracticeHelpOverlay'
-import { ProblemDebugPanel } from './ProblemDebugPanel'
-import { ProgressiveAssistanceUI } from './ProgressiveAssistanceUI'
+import { NumericKeypad } from './input/NumericKeypad'
+import { useHasPhysicalKeyboard } from './input/useDeviceDetection'
 import {
   chooseRedoReturnTarget,
   type RedoWriteOutcome,
   type TransitionTarget,
 } from './redoReturnTarget'
-import { VerticalProblem } from './VerticalProblem'
 
 /**
  * Timing data for the current problem attempt

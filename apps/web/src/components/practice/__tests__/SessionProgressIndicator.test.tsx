@@ -56,7 +56,7 @@ vi.mock('../purposeExplanations', () => ({
 }))
 
 // Mock PurposeBadge extractTargetSkillName
-vi.mock('../PurposeBadge', () => ({
+vi.mock('@/lib/curriculum/parts/arithmetic/browser/PurposeBadge', () => ({
   extractTargetSkillName: () => null,
 }))
 

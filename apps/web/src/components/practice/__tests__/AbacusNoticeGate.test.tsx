@@ -33,17 +33,23 @@ vi.mock('@soroban/abacus-react', async (importActual) => ({
 vi.mock('@/hooks/useSessionPlan', () => ({
   useSetRemoteCameraSession: () => ({ mutate: vi.fn() }),
 }))
-vi.mock('../../AbacusDock', () => ({ AbacusDock: () => null }))
+vi.mock('../input/AbacusDock', () => ({ AbacusDock: () => null }))
 vi.mock('../../decomposition', () => ({
   DecompositionProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+}))
+vi.mock('@/lib/curriculum/parts/arithmetic/browser/DecompositionSection', () => ({
   DecompositionSection: () => null,
 }))
-vi.mock('../AssistanceDebugPanel', () => ({ AssistanceDebugPanel: () => null }))
-vi.mock('../NumericKeypad', () => ({ NumericKeypad: () => null }))
-vi.mock('../PracticeHelpOverlay', () => ({ PracticeHelpOverlay: () => null }))
+vi.mock('@/lib/curriculum/parts/arithmetic/browser/AssistanceDebugPanel', () => ({
+  AssistanceDebugPanel: () => null,
+}))
+vi.mock('../input/NumericKeypad', () => ({ NumericKeypad: () => null }))
+vi.mock('@/lib/curriculum/parts/arithmetic/browser/PracticeHelpOverlay', () => ({
+  PracticeHelpOverlay: () => null,
+}))
 vi.mock('../hooks/usePartTransitionAudio', () => ({ usePartTransitionAudio: () => {} }))
-vi.mock('../hooks/useDeviceDetection', async (importActual) => ({
-  ...(await importActual<typeof import('../hooks/useDeviceDetection')>()),
+vi.mock('../input/useDeviceDetection', async (importActual) => ({
+  ...(await importActual<typeof import('../input/useDeviceDetection')>()),
   useHasPhysicalKeyboard: () => false,
 }))
 

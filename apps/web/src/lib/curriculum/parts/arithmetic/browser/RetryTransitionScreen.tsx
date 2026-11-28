@@ -8,8 +8,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
+import { css } from '@/../styled-system/css'
 import { useTheme } from '@/contexts/ThemeContext'
-import { css } from '../../../styled-system/css'
 
 // ============================================================================
 // Constants

@@ -26,6 +26,10 @@ import {
   reportEnding,
   reportProgress,
 } from '@/lib/curriculum/observer-report'
+import { LinearProblem } from '@/lib/curriculum/parts/arithmetic/browser/LinearProblem'
+import { PracticeFeedback } from '@/lib/curriculum/parts/arithmetic/browser/PracticeFeedback'
+import { PurposeBadge } from '@/lib/curriculum/parts/arithmetic/browser/PurposeBadge'
+import { VerticalProblem } from '@/lib/curriculum/parts/arithmetic/browser/VerticalProblem'
 import type { SessionReport } from '@/lib/curriculum/session-report'
 import { api } from '@/lib/queryClient'
 import {
@@ -34,18 +38,14 @@ import {
   type VideoAttemptInfo,
 } from '@/lib/utils/attempt-tracking'
 import { css } from '../../../styled-system/css'
-import { AbacusDock } from '../AbacusDock'
 import { ObserverDebugPanel } from '../debug/ObserverDebugPanel'
-import { LinearProblem } from '../practice/LinearProblem'
+import { AbacusDock } from '../practice/input/AbacusDock'
 import { LiveResultsPanel } from '../practice/LiveResultsPanel'
 import { LiveSessionReportInline } from '../practice/LiveSessionReportModal'
 import { MobileResultsSummary } from '../practice/MobileResultsSummary'
 import { ObserverTransitionView } from '../practice/ObserverTransitionView'
-import { PracticeFeedback } from '../practice/PracticeFeedback'
-import { PurposeBadge } from '../practice/PurposeBadge'
 import { SessionPlanOverview } from '../practice/SessionPlanOverview'
 import { SessionProgressIndicator } from '../practice/SessionProgressIndicator'
-import { VerticalProblem } from '../practice/VerticalProblem'
 import { ObserverVisionFeed } from '../vision/ObserverVisionFeed'
 import { ProblemVideoPlayer } from '../vision/ProblemVideoPlayer'
 import { GameBreakSpectatorView } from './GameBreakSpectatorView'

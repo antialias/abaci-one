@@ -3,12 +3,9 @@
 import { useCallback, useState } from 'react'
 import { shouldUseDebugTiming } from '@/constants/helpTiming'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
-import { css } from '../../../styled-system/css'
-import { DebugMermaidDiagram } from '../flowchart/DebugMermaidDiagram'
-import type {
-  AssistanceMachineState,
-  AssistanceEventLogEntry,
-} from './hooks/useProgressiveAssistance'
+import { css } from '@/../styled-system/css'
+import { DebugMermaidDiagram } from '@/components/flowchart/DebugMermaidDiagram'
+import type { AssistanceMachineState, AssistanceEventLogEntry } from './useProgressiveAssistance'
 
 interface AssistanceDebugPanelProps {
   machineState: AssistanceMachineState

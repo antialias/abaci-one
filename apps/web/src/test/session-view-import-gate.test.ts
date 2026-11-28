@@ -34,7 +34,13 @@ import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 
 const SRC = path.resolve(__dirname, '..')
-const GATED_DIRS = ['components/practice', 'app/practice', 'hooks']
+const GATED_DIRS = [
+  'components/practice',
+  'app/practice',
+  'hooks',
+  // arithmetic's views, moved out of components/practice in K5a-2, keep the gate they had
+  'lib/curriculum/parts/arithmetic/browser',
+]
 const GATED_NAMES = new Set(['slots', 'retryState', 'currentSlotIndex'])
 const EXEMPT_FILES = new Set(['components/practice/SessionProgressIndicator.tsx'])
 

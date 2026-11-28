@@ -1,9 +1,9 @@
 'use client'
 
 import { useCallback, useState } from 'react'
+import { css } from '@/../styled-system/css'
 import { useVisualDebugSafe } from '@/contexts/VisualDebugContext'
 import type { GeneratedProblem, ProblemSlot, SessionPart } from '@/db/schema/session-plans'
-import { css } from '../../../styled-system/css'
 
 interface ProblemDebugPanelProps {
   /** The current problem being displayed */

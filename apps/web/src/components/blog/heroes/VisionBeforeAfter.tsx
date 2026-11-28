@@ -1,7 +1,7 @@
 'use client'
 
 import { css } from '../../../../styled-system/css'
-import { VerticalProblem } from '@/components/practice/VerticalProblem'
+import { VerticalProblem } from '@/lib/curriculum/parts/arithmetic/browser/VerticalProblem'
 
 export default function VisionBeforeAfter() {
   return (

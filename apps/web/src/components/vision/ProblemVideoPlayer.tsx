@@ -21,7 +21,7 @@ import {
   buildMetadataUrl,
 } from '@/lib/utils/attempt-tracking'
 import { css } from '../../../styled-system/css'
-import { VerticalProblem } from '../practice/VerticalProblem'
+import { VerticalProblem } from '@/lib/curriculum/parts/arithmetic/browser/VerticalProblem'
 
 interface ProblemVideoPlayerProps {
   /** Player ID for the API route */
