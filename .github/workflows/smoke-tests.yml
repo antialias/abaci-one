@@ -8,6 +8,7 @@ on:
       # The image also carries the two setup files the smoke tests depend on.
       - 'apps/web/e2e/auth.setup.ts'
       - 'apps/web/e2e/tier.setup.ts'
+      - 'apps/web/e2e/session-cookie.ts'
       - 'apps/web/scripts/smoke-test-runner.ts'
       - 'apps/web/Dockerfile.smoke-tests'
       - 'apps/web/playwright.config.ts'
@@ -50,7 +51,33 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push Docker image
+      # Build and load the image first, and check that Playwright can load
+      # every smoke test in it, before anything is pushed: the cron pulls
+      # :latest, so an image missing a file the tests import would otherwise
+      # replace a good one and run zero tests (2026-11-28).
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile.smoke-tests
+          load: true
+          push: false
+          tags: smoke-tests:check
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          secrets: |
+            gitea_npm_token=${{ secrets.GITEA_NPM_TOKEN }}
+
+      - name: Check the smoke tests load
+        run: |
+          out=$(docker run --rm -e BASE_URL=https://abaci.one smoke-tests:check \
+            npx playwright test smoke --list 2>&1) || { echo "$out"; exit 1; }
+          echo "$out" | tail -5
+          total=$(echo "$out" | sed -n 's/^Total: \([0-9][0-9]*\) tests\{0,1\} in.*/\1/p' | tail -1)
+          if [ -z "$total" ] || [ "$total" -eq 0 ]; then
+            echo "The smoke image lists no tests."; exit 1
+          fi
+
+      - name: Push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .

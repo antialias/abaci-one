@@ -34,8 +34,12 @@ COPY apps/web/e2e/smoke ./e2e/smoke/
 # Copy the auth/tier setup projects. playwright.config gates every smoke test
 # through auth-setup -> tier-setup (they forge the admin JWT and write
 # e2e/.auth/admin.json). Without these the dependency projects match zero files
-# and every test ENOENTs on the missing storageState.
-COPY apps/web/e2e/auth.setup.ts apps/web/e2e/tier.setup.ts ./e2e/
+# and every test ENOENTs on the missing storageState. session-cookie.ts is the
+# helper auth.setup.ts imports (minting the admin JWT); without it Playwright
+# fails to load the config and runs zero tests. Anything these files import
+# must be copied too: the image build's `playwright test --list` check fails
+# when one is missing (smoke-tests.yml).
+COPY apps/web/e2e/auth.setup.ts apps/web/e2e/tier.setup.ts apps/web/e2e/session-cookie.ts ./e2e/
 RUN mkdir -p e2e/.auth
 
 # Copy the smoke test runner script
