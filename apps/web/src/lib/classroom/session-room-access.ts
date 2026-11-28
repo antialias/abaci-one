@@ -113,7 +113,7 @@ export interface SessionAdmissionsData {
 /**
  * Run a live-room join, recorded as in flight until it settles: what the
  * socket sends meanwhile is checked once the join is decided
- * (`mayActOnceAdmitted`), not dropped because the check was still running.
+ * (`isKidScreenOnceAdmitted`, `isMemberOnceAdmitted`), not dropped because the check was still running.
  */
 function trackJoin(
   socket: { data: SessionAdmissionsData },
