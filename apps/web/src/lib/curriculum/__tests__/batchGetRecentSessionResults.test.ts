@@ -17,9 +17,9 @@ import type { SessionPart, SessionStatus, SlotResult } from '@/db/schema/session
 import {
   createEphemeralDatabase,
   createTestStudent,
+  type EphemeralDbResult,
   getCurrentEphemeralDb,
   setCurrentEphemeralDb,
-  type EphemeralDbResult,
 } from '@/test/journey-simulator/EphemeralDatabase'
 import { batchGetRecentSessionResults } from '../session-planner'
 
@@ -461,6 +461,41 @@ describe('batchGetRecentSessionResults', () => {
     expect(playerResults).toHaveLength(1)
     // No parts to match, should fall back to 'linear'
     expect(playerResults[0].partType).toBe('linear')
+  })
+
+  // Practice kinds K0 (plan of record §4, review R1): the row filter pinned as
+  // it stands. Every mastery-history reader goes through it, so a try stored
+  // without a `skillsExercised` array vanishes from readiness with no error.
+  // K1b changes it to "has `evidence` or a `skillsExercised` array" on purpose
+  // and updates this test with the reason.
+  it('keeps only rows whose skillsExercised is an array (pinned before K1b)', async () => {
+    const { playerId } = await createTestStudent(ephemeralDb.db, 'row-filter')
+    const at = new Date('2025-01-01T10:00:00Z')
+    const row = (tryId: string, over: Record<string, unknown> = {}) =>
+      ({ ...makeSlotResult({ partNumber: 1, timestamp: at }), tryId, ...over }) as SlotResult
+    const { skillsExercised: _omitted, ...withoutSkills } = row('no-skills')
+
+    await insertSession(ephemeralDb.db, {
+      id: 'session-row-filter',
+      playerId,
+      parts: [makeSessionPart(1, 'abacus')],
+      results: [
+        row('with-skills'),
+        row('empty-skills', { skillsExercised: [] }),
+        withoutSkills as SlotResult,
+        row('null-skills', { skillsExercised: null }),
+        row('string-skills', { skillsExercised: 'basic.directAddition' }),
+        // a row carrying only K1's envelope `evidence` is dropped today
+        row('evidence-only', {
+          skillsExercised: undefined,
+          evidence: { skills: ['basic.directAddition'], presentation: 'abacus' },
+        }),
+      ],
+      completedAt: new Date('2025-01-01T10:10:00Z'),
+    })
+
+    const kept = (await batchGetRecentSessionResults([playerId])).get(playerId) ?? []
+    expect(kept.map((r) => r.tryId).sort()).toEqual(['empty-skills', 'with-skills'])
   })
 
   it('getRecentSessionResults delegates to batch and returns correct results', async () => {
