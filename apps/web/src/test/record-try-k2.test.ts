@@ -6,11 +6,13 @@
  *
  * - The superset body and the legacy body for the same try give identical
  *   rows, byte for byte; a `record_try` envelope gives the same row too.
- * - Today's open tabs: verbatim copies of the request bodies today's client
- *   sends (`record`, a skip, `record_redo`) are recorded through the route.
+ * - Today's open tabs: bodies built as today's client builds them (`record`,
+ *   a skip, `record_redo`) are recorded through the route; the request bodies
+ *   captured from a build of 208433adb are `record-try-k2-captured.test.ts`.
  * - The rollback target: a K2 bundle's superset body sent to the K1 recorder
- *   as it was at 208433adb (`pre-k2/recorders.ts`) stores the row a K2 server
- *   stores from the legacy body.
+ *   logic (`pre-k2/recorders.ts`: K1's code over today's shared modules, with
+ *   K1's `acceptsDoOver`) stores the row a K2 server stores from the legacy
+ *   body, a divulged do-over included.
  * - The server is the only judge (amendment A1), and the response carries the
  *   stored verdict; for a duplicate, the verdict already stored (A11).
  * - `record_try` for a part of kind `zzz`: 409 `unknown_kind`, the row
@@ -23,6 +25,8 @@
  *   is lost (the `session-row-version.test.ts` walk).
  */
 
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest'
 import * as schema from '@/db/schema'
 import { normalizeTries } from '@/db/schema/session-plan-normalize'
@@ -44,7 +48,7 @@ import {
   UnknownKindError,
 } from '@/lib/curriculum/record-try'
 import { ROW_CAS_ATTEMPTS, WriteContentionError } from '@/lib/curriculum/row-cas'
-import { getSessionPlan } from '@/lib/curriculum/session-planner'
+import { applySessionFlowEvent, getSessionPlan } from '@/lib/curriculum/session-planner'
 import { supersetBodyOf } from '@/lib/curriculum/try-wire'
 import { sendRecord, sendRecordRedo } from '@/test/fixtures/legacy-try-bodies'
 import {
@@ -278,7 +282,7 @@ const supersetSender: Sender = (planId, plan, step) => {
 
 const envelopeSender: Sender = (planId, plan, step) => recordTry(planId, envelopeOf(plan, step))
 
-/** The K1 recorder at 208433adb with the K2 bundle's superset body (a rollback). */
+/** The K1 recorder logic (`pre-k2/recorders.ts`) with the K2 bundle's superset body (a rollback). */
 const k1SupersetSender: Sender = (planId, plan, step) => {
   if (step.t === 'redo') {
     const [body, ctx] = legacyRedo(plan, step)
@@ -357,7 +361,7 @@ describe('K2: one recorder', () => {
       expect(envelope.partStates).toEqual(legacy.partStates)
     })
 
-    it('rollback: the K1 recorder (208433adb) stores from the superset body the row K2 stores from the legacy body', async () => {
+    it('rollback: the K1 recorder logic stores from the superset body the row K2 stores from the legacy body', async () => {
       const k2 = await walk(playerId, legacySender)
       const k1Rows = await walk(playerId, k1SupersetSender)
       expect(masked(k1Rows.results)).toEqual(masked(k2.results))
@@ -365,10 +369,11 @@ describe('K2: one recorder', () => {
     })
   })
 
-  describe("today's open tabs: verbatim request bodies of today's client", () => {
-    // `JSON.stringify` of what useSessionPlan (208433adb) sends for a
-    // handleSubmit answer, a handleSkip and a doOverWriteOf do-over (key order
-    // and all), the problems those of `arithmeticPart(3)`
+  describe("today's open tabs: bodies built as today's client builds them", () => {
+    // Built from what useSessionPlan (208433adb) sends for a handleSubmit
+    // answer, a handleSkip and a doOverWriteOf do-over (key order and all), the
+    // problems those of `arithmeticPart(3)`. No captured scenario reaches a
+    // skip; the captured bodies are `record-try-k2-captured.test.ts`
     const RECORD_RIGHT = `{"action":"record","result":{"tryId":"00000000-0000-4000-8000-000000000011","slotId":"p0s0","slotIndex":0,"epochNumber":0,"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]},"studentAnswer":3,"isCorrect":true,"responseTimeMs":2875,"skillsExercised":["basic.directAddition"],"usedOnScreenAbacus":false,"incorrectAttempts":0,"hadHelp":false,"partIndex":0}}`
     const RECORD_SKIP = `{"action":"record","result":{"tryId":"00000000-0000-4000-8000-000000000012","slotId":"p0s1","slotIndex":1,"epochNumber":0,"partIndex":0,"problem":{"terms":[2,2],"answer":4,"skillsRequired":["basic.directAddition"]},"studentAnswer":4,"isCorrect":false,"responseTimeMs":5120,"skillsExercised":["basic.directAddition"],"usedOnScreenAbacus":false,"incorrectAttempts":0,"hadHelp":true,"helpTrigger":"manual"}}`
     const RECORD_REDO = `{"action":"record_redo","result":{"tryId":"00000000-0000-4000-8000-000000000013","slotId":"p0s0","slotIndex":0,"epochNumber":0,"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]},"studentAnswer":3,"isCorrect":true,"responseTimeMs":1990,"skillsExercised":["basic.directAddition"],"usedOnScreenAbacus":false,"incorrectAttempts":0,"hadHelp":false,"originalSlotIndex":0},"redoContext":{"itemId":"p0s0","originalPartIndex":0,"originalSlotIndex":0,"originalWasCorrect":true}}`
@@ -525,6 +530,9 @@ describe('K2: one recorder', () => {
     })
     expect(status).toBe(409)
     expect(json.code).toBe('SLOT_MISMATCH')
+    // The refusal names its reason (additive: old bundles key on the code)
+    expect(json.reason).toBe('divulged')
+    expect(String(json.error)).toMatch(/\(divulged\)$/)
     expect((await row(planId)).results).toHaveLength(before.results.length)
     // The kind refuses it; the item answered right on its first try it takes
     const content = arithmeticKind.contentOf(before.parts[0] as never)
@@ -606,5 +614,116 @@ describe('K2: one recorder', () => {
     // one write per CAS round: three rounds, three landed
     expect(after.rowVersion).toBe(plan.rowVersion + 3)
     expect(recordSkillAttemptsWithHelp).toHaveBeenCalledTimes(3)
+  })
+
+  it('a divulged do-over: the K1 recorder logic (500) and K2 (409 divulged) both leave the row as it was', async () => {
+    // s0 wrong, s1 right -> round 1 [s0] wrong -> round 2 [s0] wrong: divulged
+    const divulge = async (send: Sender) => {
+      const planId = await insertPlan(playerId, [arithmeticPart(2)])
+      for (const [i, correct] of [false, true, false, false].entries()) {
+        await send(planId, await row(planId), { t: 'answer', correct, tryId: tid(200 + i) })
+      }
+      const redo: Step = { t: 'redo', slotIndex: 0, correct: true, tryId: tid(299) }
+      const refused = await send(planId, await row(planId), redo).then(
+        () => null,
+        (e: unknown) => e as Error
+      )
+      return { refused, plan: await row(planId) }
+    }
+    const k2 = await divulge(legacySender)
+    const k1Run = await divulge(k1SupersetSender)
+    expect(k2.refused).toMatchObject({ name: 'SlotResultMismatchError', reason: 'divulged' })
+    // K1's own check, reached as on K1 (its plain Error: the route's 500)
+    expect(k1Run.refused?.message).toMatch(/answer was already revealed/)
+    expect(k1Run.refused?.name).toBe('Error')
+    expect(masked(k1Run.plan.results)).toEqual(masked(k2.plan.results))
+    expect(k1Run.plan.partStates).toEqual(k2.plan.partStates)
+  })
+
+  describe('check order (K2 review): a duplicate and not_practicing come before the kind', () => {
+    it('during a transition into an unknown-kind part: not_practicing, not unknown_kind', async () => {
+      const planId = await insertPlan(playerId, [arithmeticPart(1), unknownPart])
+      const first = legacyBody(await row(planId), { t: 'answer', correct: true, tryId: tid(1) })
+      expect((await patch(playerId, planId, { action: 'record', result: first })).status).toBe(200)
+      const between = await row(planId)
+      expect(between.flowState).toBe('part_transition')
+
+      // A new try naming the unknown part, in each body
+      const named = await patch(playerId, planId, {
+        action: 'record',
+        result: { ...first, tryId: tid(2), partIndex: 1 },
+      })
+      expect(named.status).toBe(409)
+      expect(named.json.code).toBe('not_practicing')
+      const envelope = await patch(playerId, planId, {
+        action: 'record_try',
+        result: {
+          tryId: tid(3),
+          partIndex: 1,
+          itemId: 'z0',
+          mode: 'first_or_retry',
+          outcome: 'answered',
+          answer: 1,
+          payload: { kind: 'zzz' },
+          timing: { responseTimeMs: 1000 },
+          help: { hadHelp: false, incorrectAttempts: 0 },
+        },
+      })
+      expect(envelope.status).toBe(409)
+      expect(envelope.json.code).toBe('not_practicing')
+      expect((await row(planId)).rowVersion).toBe(between.rowVersion)
+    })
+
+    it('a resend of a try already recorded is answered from its row, whatever the current kind', async () => {
+      const planId = await insertPlan(playerId, [arithmeticPart(1), unknownPart])
+      const first = legacyBody(await row(planId), { t: 'answer', correct: true, tryId: tid(1) })
+      await patch(playerId, planId, { action: 'record', result: first })
+      await applySessionFlowEvent(planId, { type: 'PART_TRANSITION_COMPLETED' })
+      const onUnknown = await row(planId)
+      expect([onUnknown.currentPartIndex, onUnknown.flowState]).toEqual([1, 'practicing'])
+
+      const verdict = { tryId: tid(1), isCorrect: true, outcome: 'answered' }
+      // The same body, and the same body naming the part now current
+      for (const result of [first, { ...first, partIndex: 1 }]) {
+        const resend = await patch(playerId, planId, { action: 'record', result })
+        expect(resend.status).toBe(200)
+        expect(resend.json.try).toEqual(verdict)
+      }
+      const viaTry = await patch(playerId, planId, {
+        action: 'record_try',
+        result: {
+          tryId: tid(1),
+          partIndex: 1,
+          itemId: 'z0',
+          mode: 'first_or_retry',
+          outcome: 'answered',
+          answer: 1,
+          payload: { kind: 'zzz' },
+          timing: { responseTimeMs: 1000 },
+          help: { hadHelp: false, incorrectAttempts: 0 },
+        },
+      })
+      expect(viaTry.status).toBe(200)
+      expect(viaTry.json.try).toEqual(verdict)
+      // A new try there is the unknown kind's
+      const fresh = await patch(playerId, planId, {
+        action: 'record',
+        result: { ...first, tryId: tid(2), partIndex: 1 },
+      })
+      expect(fresh.status).toBe(409)
+      expect(fresh.json.code).toBe('unknown_kind')
+      expect((await row(planId)).rowVersion).toBe(onUnknown.rowVersion)
+    })
+  })
+
+  it("the recorder names no kind (the legacy wire is its adapter's, behind parts/legacy-wire.ts)", () => {
+    const src = readFileSync(path.join(__dirname, '../lib/curriculum/record-try.ts'), 'utf8')
+      // the GBTRACE event names, kept since before K2
+      .replace(/'record-slot-result-(start|finish)'/g, "''")
+    expect(src).not.toMatch(
+      /slot|arithmetic|problem|epochNumber|studentAnswer|GeneratedProblem|ProblemSlot|SessionPart\b|retryState/
+    )
+    const imports = [...src.matchAll(/from\s+'([^']+)'/g)].map((m) => m[1])
+    expect(imports.filter((i) => /arithmetic/.test(i))).toEqual([])
   })
 })

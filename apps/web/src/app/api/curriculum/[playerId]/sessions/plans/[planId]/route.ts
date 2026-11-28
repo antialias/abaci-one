@@ -114,7 +114,6 @@ export const PATCH = withAuth(async (request, { params }) => {
         playerId,
         planId,
         slotIndex: result?.slotIndex,
-        isCorrect: result?.isCorrect,
       })
     } else if (action === 'record_redo') {
       console.log('[GBTRACE][server]', 'patch-record-redo-request', {
@@ -122,7 +121,6 @@ export const PATCH = withAuth(async (request, { params }) => {
         playerId,
         planId,
         slotIndex: result?.slotIndex,
-        isCorrect: result?.isCorrect,
         redoContext,
       })
     } else if (
@@ -331,6 +329,8 @@ export const PATCH = withAuth(async (request, { params }) => {
         {
           error: error.message,
           code: 'SLOT_MISMATCH',
+          // why it was refused (K2, additive: old bundles key on the code)
+          reason: error.reason,
           submittedSlotId: error.submittedSlotId,
           expectedSlotId: error.expectedSlotId,
         },

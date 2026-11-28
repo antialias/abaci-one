@@ -11,7 +11,7 @@
  */
 
 import type { SessionPart, SlotResult, TryEvidence } from '@/db/schema/session-plans'
-import type { KindTry, KindTryRecord, PartKind } from '../kind'
+import type { DoOverRefusal, KindTry, KindTryRecord, PartKind } from '../kind'
 import { formatProblemExpression } from './describe'
 import { arithmeticProgress } from './report'
 import {
@@ -95,9 +95,9 @@ export const arithmeticKind: PartKind<
   // in K2, where it was a plain Error (500); refused here it is the
   // recorder's quiet 409 `SLOT_MISMATCH` (R14).
   acceptsDoOver: (slots, _state, tries, itemId) =>
-    slots.some((s) => s.slotId === itemId) &&
-    tries.some((t) => t.itemId === itemId) &&
-    !answerWasDivulged(tries, itemId),
+    arithmeticDoOverRefusal(slots, tries, itemId) === null,
+
+  whyNotDoOver: (slots, _state, tries, itemId) => arithmeticDoOverRefusal(slots, tries, itemId),
 
   applyTry(slots, state, _tries, t) {
     if (t.kind === 'do_over') {
@@ -177,6 +177,17 @@ export const arithmeticKind: PartKind<
       payload: { kind: 'arithmetic' },
     }
   },
+}
+
+/** Why a do-over of `itemId` is refused (the 409's `reason`, K2), null when it is taken. */
+function arithmeticDoOverRefusal(
+  slots: ArithmeticContent,
+  tries: readonly KindTry[],
+  itemId: string
+): DoOverRefusal | null {
+  if (!slots.some((s) => s.slotId === itemId)) return 'unknown_item'
+  if (!tries.some((t) => t.itemId === itemId)) return 'no_try'
+  return answerWasDivulged(tries, itemId) ? 'divulged' : null
 }
 
 /** Whether the item's answer was shown: a wrong try of the last retry round. */

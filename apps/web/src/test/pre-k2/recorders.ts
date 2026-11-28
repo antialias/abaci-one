@@ -1,15 +1,19 @@
 /**
- * VERBATIM copy of the two K1 recorders, `recordSlotResult` and
- * `recordRedoResult`, with their helpers, from
+ * The K1 recorder LOGIC, not a K1 image: a verbatim copy of
+ * `recordSlotResult` and `recordRedoResult`, with their helpers, from
  * `src/lib/curriculum/session-planner.ts` at 208433adb (before practice-kinds
- * K2, lines 1359-2081): the "rollback target" side of `record-try-k2.test.ts`,
- * which shows a K2 bundle's superset body recorded by a K1 server (§3.3).
- * Only imports changed (paths repointed), and the two judge-parity counters K2
- * deleted from `lib/metrics.ts` are local no-ops here. It runs against this
- * tree's shared modules (row CAS, flow machine, normalizer, arithmetic kind),
- * which K2 leaves as they were except arithmetic's `acceptsDoOver`, which now
- * also refuses a divulged answer (the copy's own divulged check after it is
- * then never reached). Never edit the logic.
+ * K2, lines 1359-2081), run over THIS tree's shared modules (row CAS, flow
+ * machine, normalizer, arithmetic kind). It is the "rollback target" side of
+ * `record-try-k2.test.ts`, which shows a K2 bundle's superset body recorded by
+ * the K1 recorders (§3.3).
+ *
+ * What differs from a K1 image: only imports changed (paths repointed); the
+ * two judge-parity counters K2 deleted from `lib/metrics.ts` are local no-ops;
+ * and the one shared module K2 changed in a way the copy can see, arithmetic's
+ * `acceptsDoOver` (K2 added the divulged rule), is put back as it was at
+ * 208433adb (`k1PartKindOf` below), so the copy's own divulged check (a plain
+ * Error, a 500) is reached as on K1. The other shared modules are today's,
+ * which K2 left as they were. Never edit the logic.
  */
 import {
   itemSlotIndexOfRow,
@@ -39,13 +43,25 @@ import {
 import { arithmeticCursorSlotIndex } from '@/lib/curriculum/parts/arithmetic/session-view'
 import { MAX_RETRY_EPOCHS } from '@/lib/curriculum/parts/arithmetic/state'
 import type { AnyPartKind } from '@/lib/curriculum/parts/kind'
-import { kindIdOf, partKindOf } from '@/lib/curriculum/parts/registry'
+import { kindIdOf, partKindOf as todaysPartKindOf } from '@/lib/curriculum/parts/registry'
 import { recordSkillAttemptsWithHelp } from '@/lib/curriculum/progress-manager'
 import { noWrite, type SessionPlanPatch, withRowCas } from '@/lib/curriculum/row-cas'
 import { applyFlowEvent, type RecordedTry } from '@/lib/curriculum/session-flow'
 import { sanitizeResultTiming } from '@/lib/curriculum/timing/response-time-guard'
 import { weightOfTry } from '@/lib/curriculum/try-weight'
 import { revokeSharesForSession } from '@/lib/session-share'
+
+// Arithmetic's acceptsDoOver at 208433adb (K2 moved the divulged rule into it)
+function partKindOf(part: Pick<SessionPart, 'kind'>): AnyPartKind {
+  const kind = todaysPartKindOf(part)
+  if (kind.id !== 'arithmetic') return kind
+  return {
+    ...kind,
+    acceptsDoOver: (slots, _state, tries, itemId) =>
+      (slots as { slotId: string }[]).some((s) => s.slotId === itemId) &&
+      tries.some((t) => t.itemId === itemId),
+  }
+}
 
 // The K1 counters (deleted in K2): no-ops here
 const practiceTriesJudgedTotal = { inc: (_labels: Record<string, string>) => {} }

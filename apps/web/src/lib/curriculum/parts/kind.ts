@@ -55,6 +55,12 @@ export interface KindTryRecord {
   payload: TryPayload
 }
 
+/**
+ * Why a do-over is refused: the item is not the part's, it has no try yet, or
+ * its answer was shown (a kind that divulges answers).
+ */
+export type DoOverRefusal = 'unknown_item' | 'no_try' | 'divulged'
+
 /** Progress through one part: items done of items planned. */
 export interface PartProgress {
   done: number
@@ -116,6 +122,16 @@ export interface PartKind<Content, State, Item, Part extends StoredPart = Stored
   expectedItem(content: Content, state: State): Item | null
   /** Whether a do-over of `itemId` may be recorded, given the part's tries so far */
   acceptsDoOver(content: Content, state: State, tries: readonly KindTry[], itemId: string): boolean
+  /**
+   * Why `acceptsDoOver` refuses, named in the recorder's 409 (K2, amendment
+   * A12); null when it accepts. Default: the refusal is `not_accepted`.
+   */
+  whyNotDoOver?(
+    content: Content,
+    state: State,
+    tries: readonly KindTry[],
+    itemId: string
+  ): DoOverRefusal | null
   /** The state after a recorded try (`tries` = the part's tries before it) */
   applyTry(content: Content, state: State, tries: readonly KindTry[], t: KindTry): State
   /**
