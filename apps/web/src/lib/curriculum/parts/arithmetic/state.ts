@@ -9,8 +9,13 @@
  * (`unenteredArithmeticStateOf`).
  *
  * Moved here from `db/schema/session-plan-helpers.ts`, which re-exports the
- * plan-level helpers until Phase 5. Every function here is pure; the moved
- * ones are unchanged.
+ * plan-level helpers until Phase 5. Every function here is pure.
+ *
+ * Since practice-kinds K3 the cursor is the shared one
+ * (`parts/cursor/retry-rounds.ts`), composed here over the slots: the stored
+ * state is byte-identical (its encoding is this kind's old field names), and
+ * a queued retry still carries the slot's `problem` and `originalPurpose`,
+ * which a pre-K3 image reads from the queue (`expectedArithmeticItem` there).
  *
  * Client-safe: only `import type` from schema files.
  */
@@ -22,9 +27,15 @@ import type {
   RetryItem,
   SessionPlan,
 } from '@/db/schema/session-plans'
+import {
+  DEFAULT_MAX_ROUNDS,
+  type QueuedRetry,
+  type RetryRoundItem,
+  retryRoundsCursor,
+} from '../cursor/retry-rounds'
 
 /** Maximum number of retry epochs (original + 2 retries = 3 total attempts) */
-export const MAX_RETRY_EPOCHS = 2
+export const MAX_RETRY_EPOCHS = DEFAULT_MAX_ROUNDS
 
 /** An arithmetic part's content: its slots. */
 export type ArithmeticContent = ProblemSlot[]
@@ -116,6 +127,63 @@ export function isInRetryEpoch(plan: ArithmeticStateSource, partIndex: number): 
 }
 
 /**
+ * A slot as the shared cursor sees it: its id, and the slot itself. A retry
+ * is shown from its queued entry (`queuedSlotItem`), which may name a slot
+ * the part no longer holds at that index: then `slot` is whatever is there.
+ */
+interface SlotItem {
+  itemId: string
+  slot: ProblemSlot | undefined
+}
+
+const slotItems = (slots: ArithmeticContent): SlotItem[] =>
+  slots.map((slot) => ({ itemId: slot.slotId, slot }))
+
+/**
+ * The queued retry: the positional fields and, between them as stored before
+ * K3, the problem and the slot's purpose (a pre-K3 image shows a retry from
+ * the queue, `item.problem`). The key order is the stored bytes.
+ */
+function queuedRetryOf(shown: RetryRoundItem<SlotItem, RetryItem>, at: QueuedRetry): RetryItem {
+  const item = toArithmeticItem(shown)
+  return {
+    slotId: at.slotId,
+    originalSlotIndex: at.originalSlotIndex,
+    problem: item.problem!,
+    epochNumber: at.epochNumber,
+    originalPurpose: item.purpose,
+  }
+}
+
+/**
+ * A retry is the queued entry itself, as before K3: its id and index, its
+ * problem and purpose (`toArithmeticItem`), never a lookup of the slot, so a
+ * hand-built or stale queue (an id the slot at that index does not carry)
+ * shows what it always showed.
+ */
+function queuedSlotItem(list: readonly SlotItem[], queued: RetryItem): SlotItem {
+  return { itemId: queued.slotId, slot: list[queued.originalSlotIndex]?.slot }
+}
+
+/** The shared cursor over a part's slots (practice-kinds K3; `arithmeticKind` composes it). */
+export const arithmeticCursor = retryRoundsCursor<ArithmeticContent, SlotItem, RetryItem>(
+  slotItems,
+  { maxRounds: MAX_RETRY_EPOCHS, queue: queuedRetryOf, queuedItemOf: queuedSlotItem }
+)
+
+/** The cursor's item as this kind has always shown it: a retry's problem and purpose from the queue. */
+function toArithmeticItem(shown: RetryRoundItem<SlotItem, RetryItem>): ArithmeticItem {
+  return {
+    slotId: shown.itemId,
+    originalSlotIndex: shown.itemIndex,
+    epochNumber: shown.round,
+    retryIndex: shown.retryIndex,
+    problem: shown.queued ? shown.queued.problem : shown.slot!.problem,
+    purpose: shown.queued ? shown.queued.originalPurpose : shown.slot!.purpose,
+  }
+}
+
+/**
  * The one place that decides which item the student is on. Retry-round items
  * redeemed by a do-over are skipped. Null when the part has nothing to show:
  * the current retry round has no unredeemed item left, or the original slots
@@ -125,34 +193,8 @@ export function expectedArithmeticItem(
   slots: ArithmeticContent,
   state: ArithmeticState
 ): ArithmeticItem | null {
-  const { retry } = state
-  if (isRoundRunning(retry)) {
-    const items = retry.currentEpochItems
-    for (let retryIndex = retry.currentRetryIndex; retryIndex < items.length; retryIndex++) {
-      const item = items[retryIndex]
-      if (retry.redeemedSlots?.includes(item.originalSlotIndex)) continue
-      return {
-        slotId: item.slotId,
-        originalSlotIndex: item.originalSlotIndex,
-        epochNumber: item.epochNumber,
-        retryIndex,
-        problem: item.problem,
-        purpose: item.originalPurpose,
-      }
-    }
-    return null
-  }
-
-  const slot = slots[state.slotIndex]
-  if (!slot) return null
-  return {
-    slotId: slot.slotId,
-    originalSlotIndex: state.slotIndex,
-    epochNumber: 0,
-    retryIndex: null,
-    problem: slot.problem,
-    purpose: slot.purpose,
-  }
+  const shown = arithmeticCursor.expectedItem(slots, state)
+  return shown ? toArithmeticItem(shown) : null
 }
 
 /**
@@ -181,7 +223,7 @@ export function getCurrentProblemInfo(plan: SessionPlan): {
   originalSlotIndex: number
   slotId: string
   purpose: 'focus' | 'reinforce' | 'review' | 'challenge'
-  partNumber: 1 | 2 | 3
+  partNumber: number
 } | null {
   const current = resolveCurrentItem(plan)
   if (!current?.problem) return null
@@ -193,15 +235,6 @@ export function getCurrentProblemInfo(plan: SessionPlan): {
     slotId: current.slotId,
     purpose: current.purpose,
     partNumber: plan.parts[current.partIndex].partNumber,
-  }
-}
-
-function emptyRetryState(): PartRetryState {
-  return {
-    currentEpoch: 0,
-    pendingRetries: [],
-    currentEpochItems: [],
-    currentRetryIndex: 0,
   }
 }
 
@@ -233,94 +266,4 @@ export function needsRetryTransition(plan: SessionPlan): boolean {
   }
 
   return false
-}
-
-// ============================================================================
-// How a try moves the cursor (pure; recordSlotResult/recordRedoResult write the result)
-// ============================================================================
-
-/**
- * Settle a cursor that may have nothing left to show: when the original slots
- * are done and the current retry round has no unredeemed item left, start the
- * next retry round; when none can start, clear the rounds (the part is done,
- * `expectedArithmeticItem` is null).
- */
-export function settleArithmetic(
-  slots: ArithmeticContent,
-  state: ArithmeticState
-): ArithmeticState {
-  const { slotIndex } = state
-  let retry = state.retry
-  for (;;) {
-    if (expectedArithmeticItem(slots, { slotIndex, retry })) return { slotIndex, retry }
-    if (!retry || retry.pendingRetries.length === 0 || retry.currentEpoch >= MAX_RETRY_EPOCHS) {
-      break
-    }
-    // Start the next retry round. Slot index stays at the end (original slots done).
-    retry = {
-      ...retry,
-      currentEpoch: retry.currentEpoch + 1,
-      currentEpochItems: [...retry.pendingRetries],
-      pendingRetries: [],
-      currentRetryIndex: 0,
-    }
-  }
-
-  // No more retries (all correct, redeemed, or max rounds reached): the part is done.
-  if (retry) {
-    retry = { ...retry, currentEpochItems: [], currentRetryIndex: 0, pendingRetries: [] }
-  }
-  return { slotIndex, retry }
-}
-
-/**
- * Step past the item just answered (a first try or a retry), then settle. A
- * wrong answer queues the same problem for the next retry round; past the last
- * round it is not re-queued (definitively wrong, the answer is divulged).
- */
-export function stepPastItem(
-  slots: ArithmeticContent,
-  state: ArithmeticState,
-  item: ArithmeticItem,
-  isCorrect: boolean
-): ArithmeticState {
-  let retry = state.retry
-  if (!isCorrect && item.epochNumber < MAX_RETRY_EPOCHS) {
-    const queued: RetryItem = {
-      slotId: item.slotId,
-      originalSlotIndex: item.originalSlotIndex,
-      problem: item.problem!,
-      epochNumber: item.epochNumber + 1,
-      originalPurpose: item.purpose,
-    }
-    const base = retry ?? emptyRetryState()
-    retry = { ...base, pendingRetries: [...base.pendingRetries, queued] }
-  }
-  if (item.retryIndex !== null) {
-    retry = { ...retry!, currentRetryIndex: item.retryIndex + 1 }
-  }
-  return settleArithmetic(slots, {
-    slotIndex: state.slotIndex + (item.retryIndex === null ? 1 : 0),
-    retry,
-  })
-}
-
-/**
- * A correct do-over of a wrong item redeems it: it leaves the queue and is
- * skipped in a running round. No settle (the caller decides; see
- * `arithmeticKind.applyTry`). Unchanged state (same object) when the part has
- * no retry state.
- */
-export function redeemSlot(state: ArithmeticState, slotIndex: number): ArithmeticState {
-  const { retry } = state
-  if (!retry) return state
-  const redeemed = retry.redeemedSlots || []
-  return {
-    slotIndex: state.slotIndex,
-    retry: {
-      ...retry,
-      pendingRetries: retry.pendingRetries.filter((item) => item.originalSlotIndex !== slotIndex),
-      redeemedSlots: redeemed.includes(slotIndex) ? [...redeemed] : [...redeemed, slotIndex],
-    },
-  }
 }

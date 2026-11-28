@@ -161,11 +161,76 @@ describe('arithmeticKind', () => {
       done: 3,
       total: 3,
     })
-    expect(arithmeticKind.presentationOf(part('abacus'))).toEqual({
+    // K3: presentationOf returns the Presentation; its axes are what the
+    // method answered before (`layer: type`, `abacusAvailable: useAbacus`)
+    expect(arithmeticKind.presentationOf(part('abacus')).axes).toEqual({
       layer: 'abacus',
       modality: 'visual',
       abacusAvailable: true,
       input: 'keypad',
     })
+    for (const type of ['abacus', 'visualization', 'linear'] as const) {
+      for (const useAbacus of [true, false]) {
+        const p = { ...part(type), useAbacus }
+        expect(arithmeticKind.presentationOf(p).axes, `${type} ${useAbacus}`).toEqual({
+          layer: type,
+          modality: 'visual',
+          abacusAvailable: useAbacus,
+          input: 'keypad',
+        })
+        expect(arithmeticKind.presentationOf(p)).toMatchObject({ id: type, masteryMode: type })
+      }
+    }
+  })
+})
+
+describe('arithmeticKind, the K3 widening', () => {
+  const slots = [slot(0), slot(1), slot(2)]
+
+  it('lists its slots as items and finds one by id', () => {
+    expect(arithmeticKind.items(slots)).toEqual([
+      { itemId: 's0' },
+      { itemId: 's1' },
+      { itemId: 's2' },
+    ])
+    expect(arithmeticKind.itemOf(slots, 's1')).toEqual({
+      slotId: 's1',
+      originalSlotIndex: 1,
+      epochNumber: 0,
+      retryIndex: null,
+      problem: slots[1].problem,
+      purpose: 'focus',
+    })
+    expect(arithmeticKind.itemOf(slots, 'nope')).toBeNull()
+    expect([...arithmeticKind.presentations.keys()]).toEqual(['abacus', 'visualization', 'linear'])
+  })
+
+  it('reads the presentation from `presentation`, else `type`, else linear; an unknown id is its own', () => {
+    expect(arithmeticKind.presentationOf({ ...part('abacus'), presentation: 'abacus' }).id).toBe(
+      'abacus'
+    )
+    expect(arithmeticKind.presentationOf({ ...part('linear'), type: undefined as never }).id).toBe(
+      'linear'
+    )
+    const flash = arithmeticKind.presentationOf({ ...part('visualization'), type: 'flash_anzan' })
+    expect(flash).toMatchObject({
+      id: 'flash_anzan',
+      label: 'flash_anzan',
+      masteryMode: 'flash_anzan',
+      axes: { layer: 'flash_anzan', abacusAvailable: false },
+    })
+  })
+
+  it('roundsRemaining: 2, 1, 0 as an item is retried; 0 when it divulges', () => {
+    let s = arithmeticKind.initialState(slots)
+    expect(arithmeticKind.roundsRemaining(slots, s, 's0')).toBe(2)
+    s = arithmeticKind.applyTry(slots, s, [], t('s0', false))
+    expect(arithmeticKind.roundsRemaining(slots, s, 's0')).toBe(1) // queued for round 1
+    s = arithmeticKind.applyTry(slots, s, [], t('s1', true))
+    expect(arithmeticKind.roundsRemaining(slots, s, 's1')).toBe(0) // passed
+    s = arithmeticKind.applyTry(slots, s, [], t('s2', true))
+    expect(arithmeticKind.roundsRemaining(slots, s, 's0')).toBe(1) // shown in round 1
+    s = arithmeticKind.applyTry(slots, s, [], t('s0', false, { kind: 'retry', round: 1 }))
+    expect(arithmeticKind.roundsRemaining(slots, s, 's0')).toBe(0) // shown in round 2: last
   })
 })

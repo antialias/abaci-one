@@ -31,6 +31,9 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
       return '🧠'
     case 'linear':
       return '📝'
+    default:
+      // A presentation this image does not know (practice-kinds K3: `type` is a string)
+      return '⭐'
   }
 }
 
@@ -58,6 +61,11 @@ function getPartTypeColors(
       return isDark
         ? { bg: 'orange.900', border: 'orange.700', text: 'orange.200' }
         : { bg: 'orange.50', border: 'orange.200', text: 'orange.700' }
+    default:
+      // A presentation this image does not know (practice-kinds K3: `type` is a string)
+      return isDark
+        ? { bg: 'gray.800', border: 'gray.600', text: 'gray.200' }
+        : { bg: 'gray.50', border: 'gray.200', text: 'gray.700' }
   }
 }
 

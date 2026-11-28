@@ -12,26 +12,38 @@ import { players } from './players'
 // ============================================================================
 
 /**
- * Session part types - defined centrally in @/constants/practiceTypes
+ * Arithmetic's presentation ids - defined centrally in @/constants/practiceTypes
+ * (a view over arithmetic's presentations since practice-kinds K3). A stored
+ * part's `type` is a string (`SessionPart.type`): a newer image may store a
+ * presentation this one does not know.
  * @see PRACTICE_TYPES for the full list with labels and icons
  */
 export type SessionPartType = PracticeTypeId
 
 /**
- * A session part containing multiple problem slots
+ * A session part containing multiple problem slots: an arithmetic part.
  */
 export interface SessionPart {
   /**
    * The part kind (`lib/curriculum/parts/registry.ts`). Absent on parts stored
-   * before kinds existed: they are arithmetic. Only arithmetic exists, so the
-   * type stays this shape until structural slot readers move off it (Phase 5;
-   * session architecture §10 P2-2).
+   * before kinds existed: they are arithmetic. `SessionPlan.parts` keeps this
+   * type until the slot readers move off it (practice-kinds K5); a part of
+   * another kind is a `KindPart` (`StoredPartRow`).
    */
   kind?: 'arithmetic'
-  /** Part number (1, 2, or 3) */
-  partNumber: 1 | 2 | 3
-  /** Type of practice for this part */
-  type: SessionPartType
+  /** Part number, 1..n (practice-kinds K3: no longer only 1, 2 or 3) */
+  partNumber: number
+  /**
+   * The part's presentation id (practice-kinds §3.1): written from K6 on, the
+   * same value as `type`; a part without it reads `type` (`presentationOf`)
+   */
+  presentation?: string
+  /**
+   * Type of practice for this part: arithmetic's presentation id. A string
+   * since K3: readers that index a table by it fall back for an id they do
+   * not know.
+   */
+  type: string
   /** Display format for problems */
   format: 'vertical' | 'linear'
   /** Whether the physical abacus should be used */
@@ -41,6 +53,22 @@ export interface SessionPart {
   /** Estimated duration in minutes for this part */
   estimatedMinutes: number
 }
+
+/**
+ * A part of a kind other than arithmetic, as stored (practice-kinds §3.1):
+ * the kind's content whole, under `content`. None is written yet (K8 writes
+ * the first); the type is here so structure can name it.
+ */
+export interface KindPart {
+  kind: string
+  partNumber: number
+  presentation: string
+  estimatedMinutes: number
+  content: unknown
+}
+
+/** A stored part of any kind (practice-kinds §1.3 `StoredPart`, §3.1). */
+export type StoredPartRow = SessionPart | KindPart
 
 /**
  * A single problem slot in the session plan
@@ -161,9 +189,9 @@ export interface GeneratedProblem {
  */
 export interface PartSummary {
   /** Part number */
-  partNumber: 1 | 2 | 3
-  /** Part type */
-  type: SessionPartType
+  partNumber: number
+  /** Part type: arithmetic's presentation id (a string, as `SessionPart.type`, since practice-kinds K3) */
+  type: string
   /** Description (e.g., "Use Abacus", "Mental Math (Visualization)", "Mental Math (Linear)") */
   description: string
   /** Number of problems in this part */
@@ -254,8 +282,8 @@ export type SlotResultSource =
 export interface SlotResult {
   /** ID of the problem slot this result answers */
   slotId: string
-  /** Which part this result belongs to (1, 2, or 3) */
-  partNumber: 1 | 2 | 3
+  /** Which part this result belongs to (1..n) */
+  partNumber: number
   /** Index within the part */
   slotIndex: number
   problem: GeneratedProblem

@@ -13,7 +13,7 @@ import type { ParsedProblem, WorksheetParsingResult } from './schemas'
  */
 export interface ConversionOptions {
   /** Part number to assign to all problems (default: 1) */
-  partNumber?: 1 | 2 | 3
+  partNumber?: number
   /** Source identifier for the session results */
   source?: 'practice' | 'recency-refresh'
 }

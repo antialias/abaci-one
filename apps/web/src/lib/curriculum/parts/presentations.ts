@@ -7,20 +7,18 @@
  * So "flash anzan counts toward visualization" will be one line in a
  * presentation list, with no backfill (D8).
  *
- * K3 builds this from `partKinds` (each kind's `presentations`); until then
- * it lists arithmetic's, the only kind with presentations.
+ * Built from the registry (`partKinds`, each kind's `presentations`, K3):
+ * a kind's presentations are registered with the kind.
  *
  * Client-safe: pure, no kind vocabulary.
  */
 
-import { arithmeticPresentations } from './arithmetic/presentations'
 import type { Presentation } from './kind'
-
-const presentationLists: readonly ReadonlyMap<string, Presentation>[] = [arithmeticPresentations]
+import { partKinds } from './registry'
 
 /** Every registered presentation, in kind-registration order then the kind's own */
-export const registeredPresentations: readonly Presentation[] = presentationLists.flatMap(
-  (list) => [...list.values()]
+export const registeredPresentations: readonly Presentation[] = [...partKinds.values()].flatMap(
+  (kind) => [...kind.presentations.values()]
 )
 
 const byId = new Map(registeredPresentations.map((p) => [p.id, p]))

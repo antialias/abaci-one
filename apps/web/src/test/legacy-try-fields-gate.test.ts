@@ -45,6 +45,8 @@ const NORMALIZER_AND_WRITERS = new Set([
 const OTHER_RECORDS: Record<string, string> = {
   'lib/curriculum/parts/arithmetic/state.ts': 'the current item and the retry queue items',
   'lib/curriculum/parts/arithmetic/server.ts': "the current item's retry round (itemPositionOf)",
+  'lib/curriculum/parts/cursor/retry-rounds.ts':
+    "the retry queue's entries, stored under the first kind's names (practice-kinds K3)",
   'components/practice/ActiveSession.tsx':
     'the current item, the attempt on screen, the submission built from it',
   'components/practice/hooks/useInteractionPhase.ts': 'the attempt on screen',

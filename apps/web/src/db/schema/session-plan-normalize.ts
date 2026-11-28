@@ -11,14 +11,9 @@
 
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import { arithmeticEvidenceOf, arithmeticKind } from '@/lib/curriculum/parts/arithmetic/server'
-import {
-  type ArithmeticState,
-  arithmeticPartStateOf,
-  type CurrentPlanItem,
-  expectedArithmeticItem,
-} from '@/lib/curriculum/parts/arithmetic/state'
+import { type ArithmeticItem, arithmeticPartStateOf } from '@/lib/curriculum/parts/arithmetic/state'
 import { masteryModeOf } from '@/lib/curriculum/parts/presentations'
-import { findPartKind, kindIdOf } from '@/lib/curriculum/parts/registry'
+import { expectedItemOf, findPartKind, kindIdOf } from '@/lib/curriculum/parts/registry'
 import { asTryEvidence } from '@/lib/curriculum/try-evidence'
 import { itemSlotIndexOfRow, tryKindOfRow, tryRoundOfRow } from './legacy-try-fields'
 import { sameProblem } from './session-plan-helpers'
@@ -412,20 +407,24 @@ export function partStateOf(plan: PartStateSource, partIndex: number): unknown {
 }
 
 /**
- * The item the student is on in the plan's current arithmetic part, from that
- * part's state (`partStateOf`): what a first or retry try must answer
- * (`recordSlotResult`). The same decision, from the same state, as
- * `resolveCurrentItem`, which the client shows (`getCurrentProblemInfo`).
- * Null past the last part, when the part has nothing to show, or when the
- * current part is not arithmetic.
+ * The item the student is on in the plan's current part, as its kind shows
+ * it (`expectedItem` over `partStateOf`, through the registry; K3), with the
+ * part's index: what a first or retry try must answer. For arithmetic, the
+ * same decision, from the same state, as `resolveCurrentItem`, which the
+ * client shows (`getCurrentProblemInfo`). Null past the last part, when the
+ * part has nothing to show, or when its kind is unknown to this image.
+ * `Item` is the kind's item type, for a caller that knows the kind; the
+ * default is arithmetic's, the shape the pre-K3 callers (tests, the K1
+ * recorder copy in `test/pre-k2/`) read. A type only: the value is the kind's.
  */
-export function currentItemOf(plan: PartStateSource): CurrentPlanItem | null {
+export function currentItemOf<Item extends object = ArithmeticItem>(
+  plan: PartStateSource
+): (Item & { partIndex: number }) | null {
   const partIndex = plan.currentPartIndex
   const part = plan.parts[partIndex]
-  if (!part || kindIdOf(part) !== 'arithmetic') return null
-  const state = partStateOf(plan, partIndex) as ArithmeticState
-  const item = expectedArithmeticItem(part.slots, state)
-  return item ? { partIndex, ...item } : null
+  if (!part) return null
+  const expected = expectedItemOf(part, partStateOf(plan, partIndex))
+  return expected ? { partIndex, ...(expected.item as Item) } : null
 }
 
 /**

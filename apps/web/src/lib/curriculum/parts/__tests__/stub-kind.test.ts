@@ -4,7 +4,7 @@
  * safely.
  */
 
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { AnyPartKind, KindTry } from '../kind'
@@ -17,6 +17,19 @@ const importsOf = (src: string) =>
 
 /** The arithmetic vocabulary structure must not know. */
 const SLOT_WORDS = /slot|retryState|currentSlotIndex|ProblemSlot|GeneratedProblem|SessionPart\b/
+
+/**
+ * The shared cursor's list (practice-kinds §6.5, K3): `SLOT_WORDS` without
+ * `slot`, whose words name the stored encoding there (`slotIndex`,
+ * `redeemedSlots`, documented as such), plus the first kind's own words.
+ */
+const CURSOR_WORDS =
+  /retryState|currentSlotIndex|ProblemSlot|GeneratedProblem|SessionPart\b|[pP]roblem|arithmetic/
+
+const filesIn = (rel: string) =>
+  readdirSync(path.join(__dirname, rel))
+    .filter((f) => /\.tsx?$/.test(f))
+    .map((f) => `${rel}/${f}`)
 
 const part: ReadAbacusPart = {
   kind: 'read_abacus',
@@ -73,7 +86,30 @@ describe('a stub kind against the contract', () => {
     expect(kind.progress(content, state, tries)).toEqual({ done: 2, total: 2 })
     expect(kind.acceptsDoOver(content, state, tries, 'b')).toBe(true)
     expect(kind.acceptsDoOver(content, state, tries, 'zzz')).toBe(false)
-    expect(kind.bktMode(part)).toBeNull()
+    // K3's widening: items, itemOf, roundsRemaining, the presentation
+    expect(kind.items(content)).toEqual([{ itemId: 'a' }, { itemId: 'b' }])
+    expect(kind.itemOf(content, 'b')).toMatchObject({ expectedValue: 2 })
+    expect(kind.itemOf(content, 'zzz')).toBeNull()
+    expect(kind.roundsRemaining(content, state, 'b')).toBe(0)
+    expect(kind.presentationOf(part)).toMatchObject({ id: 'static', masteryMode: 'read_abacus' })
+    expect([...kind.presentations.keys()]).toEqual(['static'])
+  })
+
+  it('the shared cursor and the presentation index name no kind (K3)', () => {
+    const cursorFiles = filesIn('../cursor')
+    expect(cursorFiles).toEqual(['../cursor/retry-rounds.ts'])
+    for (const file of cursorFiles) {
+      const src = read(file)
+      expect(src, file).not.toMatch(CURSOR_WORDS)
+      expect(importsOf(src), file).toEqual(['../kind'])
+    }
+    for (const file of ['../presentations.ts', '../browser-kind.ts']) {
+      const src = read(file)
+      expect(src, file).not.toMatch(SLOT_WORDS)
+      expect(src, file).not.toMatch(/arithmetic/)
+    }
+    expect(importsOf(read('../presentations.ts'))).toEqual(['./kind', './registry'])
+    expect(importsOf(read('../browser-kind.ts'))).toEqual([])
   })
 
   it('a kind this image does not know: no kind, not abandoned, no planned items', () => {

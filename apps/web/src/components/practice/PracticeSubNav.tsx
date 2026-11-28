@@ -55,7 +55,8 @@ export interface SessionHudData {
   currentPartIndex: number
   /** Current part info */
   currentPart: {
-    type: 'abacus' | 'visualization' | 'linear'
+    /** The part's presentation id (`SessionPart['type']`, a string since practice-kinds K3) */
+    type: string
     partNumber: number
   }
   /** All results so far */

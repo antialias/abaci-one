@@ -46,10 +46,11 @@ export interface PartTransitionView extends PartTransitionSide {
 
 /** Ask the part's kind how the transition screen shows it. */
 export function partTransitionViewOf(
-  part: Pick<StoredPart, 'kind'> & { type?: SessionPartType }
+  part: Pick<StoredPart, 'kind' | 'presentation'> & { type?: string }
 ): PartTransitionView {
   const kind = kindIdOf(part)
-  if (kind === 'arithmetic' && part.type) return arithmeticTransitionView({ type: part.type })
+  if (kind === 'arithmetic' && part.type)
+    return arithmeticTransitionView({ type: part.type, presentation: part.presentation })
   return { kind, label: 'Next part', emoji: '⭐', needsPhysicalAbacus: false }
 }
 

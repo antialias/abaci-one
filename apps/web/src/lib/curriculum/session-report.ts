@@ -28,7 +28,7 @@ import {
   type Try,
 } from '@/db/schema/session-plan-normalize'
 import type { BreakRecord, SessionFlowState, SessionPlan, TryKind } from '@/db/schema/session-plans'
-import { findPartKind, kindIdOf, plannedItemCount } from './parts/registry'
+import { expectedItemOf, findPartKind, kindIdOf, plannedItemCount } from './parts/registry'
 import { getEffectiveResponseTimeMs } from './timing/effective-time'
 
 // ============================================================================
@@ -59,8 +59,18 @@ export interface PartReportRow extends Counts {
   partNumber: number
   /** The part's kind id (absent on old rows = arithmetic) */
   kind: string
-  /** Arithmetic's presentation type (abacus / visualization / linear), when it has one */
+  /**
+   * Arithmetic's presentation type (abacus / visualization / linear), when it
+   * has one. Kept for the open bundles that read it (`SessionHero`, R3);
+   * new readers read `presentation ?? type` until K5b moves them
+   */
   type: string | null
+  /**
+   * The part's presentation id, from its kind (`presentationOf`; practice-
+   * kinds K3, beside `type` and the same value for arithmetic); the part's
+   * own `presentation` field for a kind this image does not know, else null
+   */
+  presentation: string | null
   /** Σ effective response time of the part's tries */
   activeMs: number
 }
@@ -388,18 +398,26 @@ function currentItemOf(plan: ReportPlan): SessionReportPosition['currentItem'] {
   const partIndex = plan.currentPartIndex
   const part = plan.parts[partIndex]
   if (!part) return undefined
-  const kind = findPartKind(part)
-  if (!kind) return undefined
   try {
-    const item = kind.expectedItem(kind.contentOf(part), partStateOf(plan, partIndex)) as {
-      slotId?: unknown
-      itemId?: unknown
-    } | null
-    const itemId = typeof item?.itemId === 'string' ? item.itemId : item?.slotId
-    return typeof itemId === 'string' ? { partIndex, itemId } : undefined
+    const expected = expectedItemOf(part, partStateOf(plan, partIndex))
+    return expected ? { partIndex, itemId: expected.itemId } : undefined
   } catch {
     return undefined
   }
+}
+
+/** A part's presentation id through its kind; a kind this image does not know: the part's own field. */
+function presentationIdOf(part: ReportPlan['parts'][number]): string | null {
+  const kind = findPartKind(part)
+  if (kind) {
+    try {
+      return kind.presentationOf(part).id
+    } catch {
+      return null
+    }
+  }
+  const own: unknown = (part as { presentation?: unknown }).presentation
+  return typeof own === 'string' ? own : null
 }
 
 /** Where a session's breaks were read from (§3.1). */
@@ -678,6 +696,7 @@ export function buildSessionReport(input: SessionReportInput): SessionReport {
       partNumber: part.partNumber,
       kind: kindIdOf(part),
       type: typeof part.type === 'string' ? part.type : null,
+      presentation: presentationIdOf(part),
       activeMs: partTries.reduce((sum, t) => sum + (effectiveMsOf(t) ?? 0), 0),
       ...counts,
     }

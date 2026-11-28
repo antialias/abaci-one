@@ -13,7 +13,10 @@
  * Phase 2 scope (§10 P2-1): `plan` and `reportContribution` are not on the
  * contract yet. Generation stays in `generateSessionPlan`, the report arrives
  * in Phase 4a. The recorder's half (`judge`, `evidenceOf`, `describe`,
- * `payloadOf`) is the practice-kinds plan's K1a (§1.3).
+ * `payloadOf`) is the practice-kinds plan's K1a (§1.3); the presentations,
+ * the item list (`items`, `itemOf`), `roundsRemaining` and `presentationOf`
+ * returning the `Presentation` are K3's, which retired `bktMode` (the mode
+ * is the presentation's, `masteryModeOf`). Planning (`PartPlanner`) is K6's.
  *
  * Client-safe: type-only.
  */
@@ -26,10 +29,21 @@ import type {
   TryPayload,
 } from '@/db/schema/session-plans'
 
-/** A stored part as structure sees it. Absent `kind` is a part from before kinds: arithmetic. */
+/**
+ * A stored part as structure sees it (§1.3). Absent `kind` is a part from
+ * before kinds: arithmetic. `presentation` is written from K6 on; a part
+ * without it has its kind's legacy field (`presentationOf` reads either).
+ */
 export interface StoredPart {
   kind?: string
   partNumber: number
+  presentation?: string
+  estimatedMinutes?: number
+}
+
+/** One item of a part, in the order `items()` lists them (position = index; R9). */
+export interface ItemRef {
+  itemId: string
 }
 
 /** The try record as a kind sees it (a subset of the normalized `Try`, §2). */
@@ -77,10 +91,9 @@ export interface AttemptPresentation {
 
 /**
  * How a kind's items are shown and answered (practice-kinds plan §1.3, K1).
- * A kind has one or more; a part names one. Registered per kind
- * (`arithmetic/presentations.ts`) and looked up by id
- * (`parts/presentations.ts`); `PartKind.presentations` joins the contract in
- * K3. `Part` is the kind's stored part, as in `PartKind`.
+ * A kind has one or more (`PartKind.presentations`); a part names one.
+ * Looked up by id across kinds in `parts/presentations.ts`. `Part` is the
+ * kind's stored part, as in `PartKind`.
  */
 export interface Presentation<Part extends StoredPart = StoredPart> {
   /** Stored on a try's evidence (`evidence.presentation`) and, from K3, on a part */
@@ -102,9 +115,6 @@ export interface Presentation<Part extends StoredPart = StoredPart> {
   timeMultiplier?: number
 }
 
-/** The BKT modes; a kind whose tries are not BKT evidence answers null. */
-export type BktMode = 'abacus' | 'visualization' | 'linear'
-
 /**
  * One kind of practice part.
  *
@@ -113,10 +123,16 @@ export type BktMode = 'abacus' | 'visualization' | 'linear'
  */
 export interface PartKind<Content, State, Item, Part extends StoredPart = StoredPart> {
   readonly id: string
+  /** The kind's presentations by id, in offer order */
+  readonly presentations: ReadonlyMap<string, Presentation<Part>>
   /** The part's content as stored in the plan */
   contentOf(part: Part): Content
   /** Whether a stored part can be played (replaces the old auto-abandon test) */
   isPlayable(content: Content): boolean
+  /** The part's items in order: the dots, the planned count, per-item report rows */
+  items(content: Content): ItemRef[]
+  /** An item by id as the kind shows it, or null when the part has none */
+  itemOf(content: Content, itemId: string): Item | null
   initialState(content: Content): State
   /** What the student is shown next; null when the part has nothing left to show */
   expectedItem(content: Content, state: State): Item | null
@@ -143,6 +159,11 @@ export interface PartKind<Content, State, Item, Part extends StoredPart = Stored
   applyTryAside(content: Content, state: State, tries: readonly KindTry[], t: KindTry): State
   isDone(content: Content, state: State): boolean
   progress(content: Content, state: State, tries: readonly KindTry[]): PartProgress
+  /**
+   * Rounds still to come for `itemId` after a wrong try where it stands now;
+   * 0 = a wrong try shows the answer (feedback's `showAnswer`, R9)
+   */
+  roundsRemaining(content: Content, state: State, itemId: string): number
   /** Whether `answer` is correct for `itemId` (only an answered try is judged) */
   judge(content: Content, itemId: string, answer: unknown): boolean
   /** What the try is evidence of; null = recorded, not counted */
@@ -151,9 +172,13 @@ export interface PartKind<Content, State, Item, Part extends StoredPart = Stored
   describe(part: Part, t: KindTryRecord): string
   /** The in-memory payload, completed from the row (default: the stored payload) */
   payloadOf(row: StoredTry): TryPayload
-  presentationOf(part: Part): AttemptPresentation
-  /** null = the part's tries are not BKT evidence */
-  bktMode(part: Part): BktMode | null
+  /**
+   * The part's presentation: from `part.presentation`, else the kind's legacy
+   * field. Its label, emoji, `needsPhysicalAbacus`, mastery mode and ledger
+   * axes come from it. Never throws: an id the kind does not register is
+   * answered with a presentation of its own (labelled by the id, its own mode).
+   */
+  presentationOf(part: Part): Presentation<Part>
   /**
    * The id and round of an item `expectedItem` returned, for the recorder's
    * `record_try` (K2, amendment A12). Default: the item's own `itemId`, round 0.

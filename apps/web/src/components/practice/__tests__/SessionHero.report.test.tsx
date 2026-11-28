@@ -153,4 +153,23 @@ describe('SessionHero from the session report', () => {
     const { container } = renderHero(tenProblemSessionReport(), { previousAccuracy: 0.6 })
     expect(container.querySelector('[data-element="trend-row"]')).not.toBeNull()
   })
+
+  // Practice-kinds K3 (R3): a part row carries `presentation` beside `type`.
+  // The open bundles' hero reads `type`; it shows the same chips whatever the
+  // new field says, and a report from before K3 (no field) reads the same.
+  it('the practice-type chips read `type`, never the K3 `presentation` beside it', () => {
+    const report = tenProblemSessionReport()
+    const chips = statsOf(renderHero(report).container)['practice-types']
+    const strange: SessionReport = {
+      ...report,
+      parts: report.parts.map((p) => ({ ...p, presentation: 'flash_anzan' })),
+    }
+    const preK3 = {
+      ...report,
+      parts: report.parts.map(({ presentation: _p, ...rest }) => rest),
+    } as unknown as SessionReport
+    expect(chips).toContain('Use Abacus')
+    expect(statsOf(renderHero(strange).container)['practice-types']).toBe(chips)
+    expect(statsOf(renderHero(preK3).container)['practice-types']).toBe(chips)
+  })
 })
