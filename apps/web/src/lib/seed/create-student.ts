@@ -1,7 +1,6 @@
 import { createId } from '@paralleldrive/cuid2'
 import { eq } from 'drizzle-orm'
 import { db, schema } from '../../db'
-import { envelopeOfRow } from '../../db/schema/session-plan-normalize'
 import type { SessionPart, SessionSummary, SlotResult } from '../../db/schema/session-plans'
 import type { GameResultsReport } from '../arcade/game-sdk/types'
 import { directEnrollStudent } from '../classroom/enrollment-manager'
@@ -9,7 +8,12 @@ import { computeBktFromHistory, type SkillBktResult } from '../curriculum/bkt'
 import { BKT_THRESHOLDS } from '../curriculum/config/bkt-integration'
 import { getRecentSessionResults } from '../curriculum/session-planner'
 import { formatActualOutcomes } from './formatting'
-import { applyTuningAdjustments, checkSuccessCriteria, generateSlotResults } from './helpers'
+import {
+  applyTuningAdjustments,
+  checkSuccessCriteria,
+  generateSlotResults,
+  seededSessionRows,
+} from './helpers'
 import type { SkillConfig, TestStudentProfile, TuningRound } from './types'
 
 /**
@@ -122,6 +126,8 @@ export async function createTestStudent(
     result: SlotResult
     skillId: string
     skillAgeDays: number
+    /** The skill's config writes pre-K1 rows (see `seededSessionRows`) */
+    simulateLegacyData: boolean
   }
 
   const problemsByAge = new Map<number, ProblemWithMeta[]>()
@@ -136,6 +142,7 @@ export async function createTestStudent(
         result,
         skillId: config.skillId,
         skillAgeDays: ageDays,
+        simulateLegacyData: config.simulateLegacyData === true,
       })
     }
     problemsByAge.set(ageDays, existing)
@@ -236,9 +243,13 @@ export async function createTestStudent(
             estimatedMinutes: 30,
           },
         ]
-        // The try envelope as the normalizer derives it (practice-kinds plan
-        // R16): the seeded rows read the same stamped or not
-        const sessionResults = orderedResults.map((r) => ({ ...r, ...envelopeOfRow(r, parts) }))
+        const sessionResults = seededSessionRows(
+          orderedResults.map((result, idx) => ({
+            result,
+            simulateLegacyData: sessionProblems[idx].simulateLegacyData,
+          })),
+          parts
+        )
 
         const summary: SessionSummary = {
           focusDescription: `Test session ${sessionNumber} for ${profile.name} (${sessionAgeDays} days ago)`,

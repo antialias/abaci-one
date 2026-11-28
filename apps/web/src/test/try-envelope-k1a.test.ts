@@ -14,8 +14,10 @@
  *   and the client's verdict stored, so no kid's record changes.
  * - The skill-attempt bump reads `evidence.skills`, which is the row's
  *   `skillsExercised` (not always the problem's `skillsRequired`).
- * - BKT parity: every seeded profile's history gives the same BKT, readiness
- *   and linear-gate verdicts with the envelope stamped as without it.
+ * - Seeds (a smoke test, not BKT parity): `seededSessionRows`, create-student's
+ *   stamping, stamps every row but a legacy-data profile's, and today's BKT,
+ *   readiness and gate readers read alike. No K1a reader reads the new
+ *   fields, so this cannot catch a wrong `evidence`; K1b proves BKT parity.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -52,7 +54,7 @@ import {
   recordSlotResult,
 } from '@/lib/curriculum/session-planner'
 import { assessAllSkillsReadiness } from '@/lib/curriculum/skill-readiness'
-import { generateSlotResults } from '@/lib/seed/helpers'
+import { generateSlotResults, seededSessionRows } from '@/lib/seed/helpers'
 import { TEST_PROFILES } from '@/lib/seed/profiles'
 import { convertToSlotResults } from '@/lib/worksheet-parsing/session-converter'
 import {
@@ -364,6 +366,24 @@ describe('K1a: the try envelope through the recorders', () => {
     expect(disagreements()[0][1]).toMatchObject({ clientVerdict: true, judge: false })
   })
 
+  it('a disagreement is logged once per recorded try, not once per CAS round', async () => {
+    const planId = await insertPlan(playerId)
+    const before = (await getSessionPlan(planId))!
+    const wrongCalledRight = { ...answerBody(before, 1, false), isCorrect: true }
+    // Two first tries for one item race: the loser's closure runs, loses the
+    // CAS, re-reads and is refused; only the committed try may log
+    const settled = await Promise.allSettled([
+      recordSlotResult(planId, wrongCalledRight),
+      recordSlotResult(planId, { ...wrongCalledRight, tryId: tid(2) }),
+    ])
+    expect(settled.map((s) => s.status).sort()).toEqual(['fulfilled', 'rejected'])
+    expect(
+      warn.mock.calls.filter((c) => c[0] === '[withRowCas] lost a write race; re-reading').length
+    ).toBeGreaterThanOrEqual(1)
+    expect((await getSessionPlan(planId))!.results).toHaveLength(1)
+    expect(disagreements()).toHaveLength(1)
+  })
+
   it("the skill-attempt bump reads evidence.skills: the row's skillsExercised", async () => {
     const planId = await insertPlan(playerId)
     const before = (await getSessionPlan(planId))!
@@ -485,46 +505,61 @@ describe('K1a: worksheet blanks are skipped (R16)', () => {
   })
 })
 
-describe('K1a: BKT parity over every seeded profile', () => {
+describe('K1a smoke: seeded profiles through the real seed stamping (BKT parity proper is K1b)', () => {
   const T0 = new Date('2026-11-01T10:00:00Z')
 
-  it('the same BKT, readiness and linear-gate verdicts with the envelope stamped', () => {
+  /** A profile's rows and its one linear part, stamped by `seededSessionRows` as create-student does. */
+  function seeded(profile: (typeof TEST_PROFILES)[number]) {
+    const rows = profile.skillHistory.flatMap((config) =>
+      generateSlotResults(config, 0, T0).map((result) => ({
+        result,
+        simulateLegacyData: config.simulateLegacyData === true,
+      }))
+    )
+    rows.forEach((r, idx) => {
+      r.result = { ...r.result, slotIndex: idx }
+    })
+    const parts: SessionPart[] = [
+      {
+        partNumber: 1,
+        type: 'linear',
+        format: 'linear',
+        useAbacus: false,
+        estimatedMinutes: 30,
+        slots: rows.map((r, idx) => ({
+          slotId: `seed-${idx}`,
+          index: idx,
+          purpose: 'focus',
+          constraints: {},
+          problem: r.result.problem,
+        })),
+      },
+    ]
+    return { rows, parts, stored: seededSessionRows(rows, parts) }
+  }
+
+  // K1a has no reader of the new fields, so this cannot see a wrong
+  // `evidence`: it checks the stamping runs and leaves today's readers
+  // whole. K1b, whose readers read `evidence`, proves BKT parity (§4 K1).
+  it('stamps every row, and BKT, readiness and the linear gate read as without it', () => {
     for (const profile of TEST_PROFILES) {
-      const rows = profile.skillHistory.flatMap((config) => generateSlotResults(config, 0, T0))
-      const parts: SessionPart[] = [
-        {
-          partNumber: 1,
-          type: 'linear',
-          format: 'linear',
-          useAbacus: false,
-          estimatedMinutes: 30,
-          slots: rows.map((r, idx) => ({
-            slotId: `seed-${idx}`,
-            index: idx,
-            purpose: 'focus',
-            constraints: {},
-            problem: r.problem,
-          })),
-        },
-      ]
-      const context = (r: SlotResult, idx: number): ProblemResultWithContext => ({
+      const { rows, parts, stored } = seeded(profile)
+      const context = (r: SlotResult): ProblemResultWithContext => ({
         ...r,
-        slotIndex: idx,
         sessionId: 'seed',
         sessionCompletedAt: T0,
         partType: 'linear',
       })
-      const before = rows.map(context)
-      // As create-student stamps them
-      const after = rows
-        .map((r, idx) => ({ ...r, slotIndex: idx }))
-        .map((r) => ({ ...r, ...envelopeOfRow(r, parts) }))
-        .map(context)
-      for (const r of after) for (const f of ENVELOPE_FIELDS) expect(r).toHaveProperty(f)
+      const before = rows.map((r) => context(r.result))
+      const after = stored.map(context)
+      rows.forEach((r, idx) => {
+        if (r.simulateLegacyData) return
+        for (const f of ENVELOPE_FIELDS) expect(after[idx], profile.name).toHaveProperty(f)
+      })
 
       const bkt = (h: ProblemResultWithContext[]) => computeBktFromHistory(h, { applyDecay: false })
       expect(bkt(after), profile.name).toEqual(bkt(before))
-      const skillIds = new Set(rows.flatMap((r) => r.skillsExercised))
+      const skillIds = new Set(rows.flatMap((r) => r.result.skillsExercised))
       expect(
         Object.fromEntries(assessAllSkillsReadiness(after, bkt(after).skills, skillIds)),
         profile.name
@@ -537,9 +572,27 @@ describe('K1a: BKT parity over every seeded profile', () => {
           thresholds: { minAccuracy: 0.6, accuracyWindowSize: 5, minOpportunities: 1 },
         })
       expect(gate(after), profile.name).toEqual(gate(before))
-      // And the in-memory evidence is today's: skillsExercised, 'linear'
+      // Stamped or derived, the in-memory evidence is today's: skillsExercised, 'linear'
       for (const t of normalizeTries('seed', parts, after))
         expect(t.evidence).toEqual({ skills: t.result.skillsExercised, presentation: 'linear' })
     }
   }, 60_000)
+
+  it('leaves a legacy-data profile pre-K1, so it exercises the derive path', () => {
+    const legacy = TEST_PROFILES.filter((p) => p.skillHistory.some((c) => c.simulateLegacyData))
+    expect(legacy.length).toBeGreaterThan(0)
+    for (const profile of legacy) {
+      const { rows, stored } = seeded(profile)
+      stored.forEach((r, idx) => {
+        const isLegacy = rows[idx].simulateLegacyData === true
+        expect(
+          ENVELOPE_FIELDS.some((f) => f in r),
+          profile.name
+        ).toBe(!isLegacy)
+        if (isLegacy) expect(r).toBe(rows[idx].result)
+      })
+      expect(rows.some((r) => r.simulateLegacyData)).toBe(true)
+      expect(rows.some((r) => !r.simulateLegacyData)).toBe(true)
+    }
+  })
 })

@@ -30375,3 +30375,1448 @@ exports[`part-kind golden replay (old path = snapshot recorded before the extrac
   },
 ]
 `;
+
+exports[`part-kind golden replay (old path = snapshot recorded before the extraction) > skips (K1a): a first-try skip, a skip inside a retry round, a skip that ends the part 1`] = `
+[
+  {
+    "label": "s0 skipped",
+    "outcome": "ok",
+    "revoked": 0,
+    "row": {
+      "breaks": [],
+      "completedAt": null,
+      "currentPartIndex": 0,
+      "flowState": "practicing",
+      "flowUpdatedAtMoved": false,
+      "flowVersion": 0,
+      "partStates": {
+        "0": {
+          "retry": {
+            "currentEpoch": 0,
+            "currentEpochItems": [],
+            "currentRetryIndex": 0,
+            "pendingRetries": [
+              {
+                "epochNumber": 1,
+                "originalPurpose": "focus",
+                "originalSlotIndex": 0,
+                "problem": {
+                  "answer": 3,
+                  "skillsRequired": [
+                    "basic.directAddition",
+                  ],
+                  "terms": [
+                    1,
+                    2,
+                  ],
+                },
+                "slotId": "p0s0",
+              },
+            ],
+          },
+          "slotIndex": 1,
+        },
+      },
+      "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
+      "results": [
+        {
+          "answer": null,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": true,
+          "helpTrigger": "manual",
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s0",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "skipped",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 3,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              1,
+              2,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s0",
+          "slotIndex": 0,
+          "studentAnswer": 3,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000001",
+          "usedOnScreenAbacus": false,
+        },
+      ],
+      "sessionHealth": {
+        "accuracy": 0,
+        "avgResponseTimeMs": 3000,
+        "currentStreak": -1,
+        "overall": "struggling",
+        "pacePercent": 100,
+      },
+      "shown": {
+        "epochNumber": 0,
+        "isRetry": false,
+        "originalSlotIndex": 1,
+        "partNumber": 1,
+        "problem": {
+          "answer": 5,
+          "skillsRequired": [
+            "basic.heavenBead",
+          ],
+          "terms": [
+            2,
+            3,
+          ],
+        },
+        "purpose": "focus",
+        "slotId": "p0s1",
+      },
+      "status": "in_progress",
+    },
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        true,
+        3000,
+      ],
+    ],
+  },
+  {
+    "label": "s1 right",
+    "outcome": "ok",
+    "revoked": 0,
+    "row": {
+      "breaks": [],
+      "completedAt": null,
+      "currentPartIndex": 0,
+      "flowState": "practicing",
+      "flowUpdatedAtMoved": false,
+      "flowVersion": 0,
+      "partStates": {
+        "0": {
+          "retry": {
+            "currentEpoch": 0,
+            "currentEpochItems": [],
+            "currentRetryIndex": 0,
+            "pendingRetries": [
+              {
+                "epochNumber": 1,
+                "originalPurpose": "focus",
+                "originalSlotIndex": 0,
+                "problem": {
+                  "answer": 3,
+                  "skillsRequired": [
+                    "basic.directAddition",
+                  ],
+                  "terms": [
+                    1,
+                    2,
+                  ],
+                },
+                "slotId": "p0s0",
+              },
+            ],
+          },
+          "slotIndex": 2,
+        },
+      },
+      "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
+      "results": [
+        {
+          "answer": null,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": true,
+          "helpTrigger": "manual",
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s0",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "skipped",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 3,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              1,
+              2,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s0",
+          "slotIndex": 0,
+          "studentAnswer": 3,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000001",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": 5,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.heavenBead",
+            ],
+          },
+          "hadHelp": false,
+          "incorrectAttempts": 0,
+          "isCorrect": true,
+          "itemId": "p0s1",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "answered",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 5,
+            "skillsRequired": [
+              "basic.heavenBead",
+            ],
+            "terms": [
+              2,
+              3,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.heavenBead",
+          ],
+          "slotId": "p0s1",
+          "slotIndex": 1,
+          "studentAnswer": 5,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000002",
+          "usedOnScreenAbacus": false,
+        },
+      ],
+      "sessionHealth": {
+        "accuracy": 0.5,
+        "avgResponseTimeMs": 3000,
+        "currentStreak": 1,
+        "overall": "struggling",
+        "pacePercent": 100,
+      },
+      "shown": {
+        "epochNumber": 0,
+        "isRetry": false,
+        "originalSlotIndex": 2,
+        "partNumber": 1,
+        "problem": {
+          "answer": 7,
+          "skillsRequired": [
+            "basic.directAddition",
+          ],
+          "terms": [
+            3,
+            4,
+          ],
+        },
+        "purpose": "review",
+        "slotId": "p0s2",
+      },
+      "status": "in_progress",
+    },
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.heavenBead",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
+  },
+  {
+    "label": "s2 wrong -> round 1 [s0, s2]",
+    "outcome": "ok",
+    "revoked": 0,
+    "row": {
+      "breaks": [],
+      "completedAt": null,
+      "currentPartIndex": 0,
+      "flowState": "practicing",
+      "flowUpdatedAtMoved": false,
+      "flowVersion": 0,
+      "partStates": {
+        "0": {
+          "retry": {
+            "currentEpoch": 1,
+            "currentEpochItems": [
+              {
+                "epochNumber": 1,
+                "originalPurpose": "focus",
+                "originalSlotIndex": 0,
+                "problem": {
+                  "answer": 3,
+                  "skillsRequired": [
+                    "basic.directAddition",
+                  ],
+                  "terms": [
+                    1,
+                    2,
+                  ],
+                },
+                "slotId": "p0s0",
+              },
+              {
+                "epochNumber": 1,
+                "originalPurpose": "review",
+                "originalSlotIndex": 2,
+                "problem": {
+                  "answer": 7,
+                  "skillsRequired": [
+                    "basic.directAddition",
+                  ],
+                  "terms": [
+                    3,
+                    4,
+                  ],
+                },
+                "slotId": "p0s2",
+              },
+            ],
+            "currentRetryIndex": 0,
+            "pendingRetries": [],
+          },
+          "slotIndex": 3,
+        },
+      },
+      "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
+      "results": [
+        {
+          "answer": null,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": true,
+          "helpTrigger": "manual",
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s0",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "skipped",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 3,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              1,
+              2,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s0",
+          "slotIndex": 0,
+          "studentAnswer": 3,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000001",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": 5,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.heavenBead",
+            ],
+          },
+          "hadHelp": false,
+          "incorrectAttempts": 0,
+          "isCorrect": true,
+          "itemId": "p0s1",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "answered",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 5,
+            "skillsRequired": [
+              "basic.heavenBead",
+            ],
+            "terms": [
+              2,
+              3,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.heavenBead",
+          ],
+          "slotId": "p0s1",
+          "slotIndex": 1,
+          "studentAnswer": 5,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000002",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": 8,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": false,
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s2",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "answered",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 7,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              3,
+              4,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s2",
+          "slotIndex": 2,
+          "studentAnswer": 8,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000003",
+          "usedOnScreenAbacus": false,
+        },
+      ],
+      "sessionHealth": {
+        "accuracy": 0.3333333333333333,
+        "avgResponseTimeMs": 3000,
+        "currentStreak": -1,
+        "overall": "struggling",
+        "pacePercent": 100,
+      },
+      "shown": {
+        "epochNumber": 1,
+        "isRetry": true,
+        "originalSlotIndex": 0,
+        "partNumber": 1,
+        "problem": {
+          "answer": 3,
+          "skillsRequired": [
+            "basic.directAddition",
+          ],
+          "terms": [
+            1,
+            2,
+          ],
+        },
+        "purpose": "focus",
+        "slotId": "p0s0",
+      },
+      "status": "in_progress",
+    },
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
+  },
+  {
+    "label": "r1 s0 skipped again",
+    "outcome": "ok",
+    "revoked": 0,
+    "row": {
+      "breaks": [],
+      "completedAt": null,
+      "currentPartIndex": 0,
+      "flowState": "practicing",
+      "flowUpdatedAtMoved": false,
+      "flowVersion": 0,
+      "partStates": {
+        "0": {
+          "retry": {
+            "currentEpoch": 1,
+            "currentEpochItems": [
+              {
+                "epochNumber": 1,
+                "originalPurpose": "focus",
+                "originalSlotIndex": 0,
+                "problem": {
+                  "answer": 3,
+                  "skillsRequired": [
+                    "basic.directAddition",
+                  ],
+                  "terms": [
+                    1,
+                    2,
+                  ],
+                },
+                "slotId": "p0s0",
+              },
+              {
+                "epochNumber": 1,
+                "originalPurpose": "review",
+                "originalSlotIndex": 2,
+                "problem": {
+                  "answer": 7,
+                  "skillsRequired": [
+                    "basic.directAddition",
+                  ],
+                  "terms": [
+                    3,
+                    4,
+                  ],
+                },
+                "slotId": "p0s2",
+              },
+            ],
+            "currentRetryIndex": 1,
+            "pendingRetries": [
+              {
+                "epochNumber": 2,
+                "originalPurpose": "focus",
+                "originalSlotIndex": 0,
+                "problem": {
+                  "answer": 3,
+                  "skillsRequired": [
+                    "basic.directAddition",
+                  ],
+                  "terms": [
+                    1,
+                    2,
+                  ],
+                },
+                "slotId": "p0s0",
+              },
+            ],
+          },
+          "slotIndex": 3,
+        },
+      },
+      "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
+      "results": [
+        {
+          "answer": null,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": true,
+          "helpTrigger": "manual",
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s0",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "skipped",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 3,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              1,
+              2,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s0",
+          "slotIndex": 0,
+          "studentAnswer": 3,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000001",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": 5,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.heavenBead",
+            ],
+          },
+          "hadHelp": false,
+          "incorrectAttempts": 0,
+          "isCorrect": true,
+          "itemId": "p0s1",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "answered",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 5,
+            "skillsRequired": [
+              "basic.heavenBead",
+            ],
+            "terms": [
+              2,
+              3,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.heavenBead",
+          ],
+          "slotId": "p0s1",
+          "slotIndex": 1,
+          "studentAnswer": 5,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000002",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": 8,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": false,
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s2",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "answered",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 7,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              3,
+              4,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s2",
+          "slotIndex": 2,
+          "studentAnswer": 8,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000003",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": null,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": true,
+          "helpTrigger": "manual",
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s0",
+          "kind": "retry",
+          "masteryWeight": 0.5,
+          "outcome": "skipped",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 3,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              1,
+              2,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 1,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s0",
+          "slotIndex": 0,
+          "studentAnswer": 3,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000004",
+          "usedOnScreenAbacus": false,
+        },
+      ],
+      "sessionHealth": {
+        "accuracy": 0.25,
+        "avgResponseTimeMs": 3000,
+        "currentStreak": -2,
+        "overall": "struggling",
+        "pacePercent": 100,
+      },
+      "shown": {
+        "epochNumber": 1,
+        "isRetry": true,
+        "originalSlotIndex": 2,
+        "partNumber": 1,
+        "problem": {
+          "answer": 7,
+          "skillsRequired": [
+            "basic.directAddition",
+          ],
+          "terms": [
+            3,
+            4,
+          ],
+        },
+        "purpose": "review",
+        "slotId": "p0s2",
+      },
+      "status": "in_progress",
+    },
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        true,
+        3000,
+      ],
+    ],
+  },
+  {
+    "label": "r1 s2 right -> round 2 [s0]",
+    "outcome": "ok",
+    "revoked": 0,
+    "row": {
+      "breaks": [],
+      "completedAt": null,
+      "currentPartIndex": 0,
+      "flowState": "practicing",
+      "flowUpdatedAtMoved": false,
+      "flowVersion": 0,
+      "partStates": {
+        "0": {
+          "retry": {
+            "currentEpoch": 2,
+            "currentEpochItems": [
+              {
+                "epochNumber": 2,
+                "originalPurpose": "focus",
+                "originalSlotIndex": 0,
+                "problem": {
+                  "answer": 3,
+                  "skillsRequired": [
+                    "basic.directAddition",
+                  ],
+                  "terms": [
+                    1,
+                    2,
+                  ],
+                },
+                "slotId": "p0s0",
+              },
+            ],
+            "currentRetryIndex": 0,
+            "pendingRetries": [],
+          },
+          "slotIndex": 3,
+        },
+      },
+      "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
+      "results": [
+        {
+          "answer": null,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": true,
+          "helpTrigger": "manual",
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s0",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "skipped",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 3,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              1,
+              2,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s0",
+          "slotIndex": 0,
+          "studentAnswer": 3,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000001",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": 5,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.heavenBead",
+            ],
+          },
+          "hadHelp": false,
+          "incorrectAttempts": 0,
+          "isCorrect": true,
+          "itemId": "p0s1",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "answered",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 5,
+            "skillsRequired": [
+              "basic.heavenBead",
+            ],
+            "terms": [
+              2,
+              3,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.heavenBead",
+          ],
+          "slotId": "p0s1",
+          "slotIndex": 1,
+          "studentAnswer": 5,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000002",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": 8,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": false,
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s2",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "answered",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 7,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              3,
+              4,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s2",
+          "slotIndex": 2,
+          "studentAnswer": 8,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000003",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": null,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": true,
+          "helpTrigger": "manual",
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s0",
+          "kind": "retry",
+          "masteryWeight": 0.5,
+          "outcome": "skipped",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 3,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              1,
+              2,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 1,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s0",
+          "slotIndex": 0,
+          "studentAnswer": 3,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000004",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": 7,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": false,
+          "incorrectAttempts": 0,
+          "isCorrect": true,
+          "itemId": "p0s2",
+          "kind": "retry",
+          "masteryWeight": 0.5,
+          "outcome": "answered",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 7,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              3,
+              4,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 1,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s2",
+          "slotIndex": 2,
+          "studentAnswer": 7,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000005",
+          "usedOnScreenAbacus": false,
+        },
+      ],
+      "sessionHealth": {
+        "accuracy": 0.4,
+        "avgResponseTimeMs": 3000,
+        "currentStreak": 1,
+        "overall": "struggling",
+        "pacePercent": 100,
+      },
+      "shown": {
+        "epochNumber": 2,
+        "isRetry": true,
+        "originalSlotIndex": 0,
+        "partNumber": 1,
+        "problem": {
+          "answer": 3,
+          "skillsRequired": [
+            "basic.directAddition",
+          ],
+          "terms": [
+            1,
+            2,
+          ],
+        },
+        "purpose": "focus",
+        "slotId": "p0s0",
+      },
+      "status": "in_progress",
+    },
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": true,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        false,
+        3000,
+      ],
+    ],
+  },
+  {
+    "label": "r2 s0 skipped -> divulged, part 2",
+    "outcome": "ok",
+    "revoked": 0,
+    "row": {
+      "breaks": [],
+      "completedAt": null,
+      "currentPartIndex": 1,
+      "flowState": "part_transition",
+      "flowUpdatedAtMoved": true,
+      "flowVersion": 1,
+      "partStates": {
+        "0": {
+          "retry": {
+            "currentEpoch": 2,
+            "currentEpochItems": [],
+            "currentRetryIndex": 0,
+            "pendingRetries": [],
+          },
+          "slotIndex": 3,
+        },
+        "1": {
+          "slotIndex": 0,
+        },
+      },
+      "parts": "[{"partNumber":1,"type":"abacus","format":"vertical","useAbacus":true,"slots":[{"slotId":"p0s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[1,2],"answer":3,"skillsRequired":["basic.directAddition"]}},{"slotId":"p0s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[2,3],"answer":5,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p0s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[3,4],"answer":7,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":2,"type":"visualization","format":"vertical","useAbacus":false,"slots":[{"slotId":"p1s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[11,2],"answer":13,"skillsRequired":["basic.directAddition"]}},{"slotId":"p1s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[12,3],"answer":15,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p1s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[13,4],"answer":17,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2},{"partNumber":3,"type":"linear","format":"linear","useAbacus":false,"slots":[{"slotId":"p2s0","index":0,"purpose":"focus","constraints":{},"problem":{"terms":[21,2],"answer":23,"skillsRequired":["basic.directAddition"]}},{"slotId":"p2s1","index":1,"purpose":"focus","constraints":{},"problem":{"terms":[22,3],"answer":25,"skillsRequired":["basic.heavenBead"]}},{"slotId":"p2s2","index":2,"purpose":"review","constraints":{},"problem":{"terms":[23,4],"answer":27,"skillsRequired":["basic.directAddition"]}}],"estimatedMinutes":2}]",
+      "results": [
+        {
+          "answer": null,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": true,
+          "helpTrigger": "manual",
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s0",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "skipped",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 3,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              1,
+              2,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s0",
+          "slotIndex": 0,
+          "studentAnswer": 3,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000001",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": 5,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.heavenBead",
+            ],
+          },
+          "hadHelp": false,
+          "incorrectAttempts": 0,
+          "isCorrect": true,
+          "itemId": "p0s1",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "answered",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 5,
+            "skillsRequired": [
+              "basic.heavenBead",
+            ],
+            "terms": [
+              2,
+              3,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.heavenBead",
+          ],
+          "slotId": "p0s1",
+          "slotIndex": 1,
+          "studentAnswer": 5,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000002",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": 8,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": false,
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s2",
+          "kind": "first",
+          "masteryWeight": 1,
+          "outcome": "answered",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 7,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              3,
+              4,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 0,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s2",
+          "slotIndex": 2,
+          "studentAnswer": 8,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000003",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": null,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": true,
+          "helpTrigger": "manual",
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s0",
+          "kind": "retry",
+          "masteryWeight": 0.5,
+          "outcome": "skipped",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 3,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              1,
+              2,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 1,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s0",
+          "slotIndex": 0,
+          "studentAnswer": 3,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000004",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": 7,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": false,
+          "incorrectAttempts": 0,
+          "isCorrect": true,
+          "itemId": "p0s2",
+          "kind": "retry",
+          "masteryWeight": 0.5,
+          "outcome": "answered",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 7,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              3,
+              4,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 1,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s2",
+          "slotIndex": 2,
+          "studentAnswer": 7,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000005",
+          "usedOnScreenAbacus": false,
+        },
+        {
+          "answer": null,
+          "evidence": {
+            "presentation": "abacus",
+            "skills": [
+              "basic.directAddition",
+            ],
+          },
+          "hadHelp": true,
+          "helpTrigger": "manual",
+          "incorrectAttempts": 1,
+          "isCorrect": false,
+          "itemId": "p0s0",
+          "kind": "retry",
+          "masteryWeight": 0.25,
+          "outcome": "skipped",
+          "partIndex": 0,
+          "partNumber": 1,
+          "payload": {
+            "kind": "arithmetic",
+          },
+          "practiceOnly": false,
+          "problem": {
+            "answer": 3,
+            "skillsRequired": [
+              "basic.directAddition",
+            ],
+            "terms": [
+              1,
+              2,
+            ],
+          },
+          "responseTimeMs": 3000,
+          "round": 2,
+          "skillsExercised": [
+            "basic.directAddition",
+          ],
+          "slotId": "p0s0",
+          "slotIndex": 0,
+          "studentAnswer": 3,
+          "timestamp": "<set>",
+          "tryId": "00000000-0000-4000-8000-000000000006",
+          "usedOnScreenAbacus": false,
+        },
+      ],
+      "sessionHealth": {
+        "accuracy": 0.3333333333333333,
+        "avgResponseTimeMs": 3000,
+        "currentStreak": -1,
+        "overall": "struggling",
+        "pacePercent": 100,
+      },
+      "shown": {
+        "epochNumber": 0,
+        "isRetry": false,
+        "originalSlotIndex": 0,
+        "partNumber": 2,
+        "problem": {
+          "answer": 13,
+          "skillsRequired": [
+            "basic.directAddition",
+          ],
+          "terms": [
+            11,
+            2,
+          ],
+        },
+        "purpose": "focus",
+        "slotId": "p1s0",
+      },
+      "status": "in_progress",
+    },
+    "skillAttempts": [
+      [
+        [
+          {
+            "isCorrect": false,
+            "skillId": "basic.directAddition",
+          },
+        ],
+        true,
+        3000,
+      ],
+    ],
+  },
+]
+`;

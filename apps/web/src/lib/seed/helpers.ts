@@ -1,4 +1,5 @@
-import type { GeneratedProblem, SlotResult } from '../../db/schema/session-plans'
+import { envelopeOfRow } from '../../db/schema/session-plan-normalize'
+import type { GeneratedProblem, SessionPart, SlotResult } from '../../db/schema/session-plans'
 import { responseTimeWeight } from '../curriculum/bkt/evidence-quality'
 import { MAX_RESPONSE_TIME_CAP_MS } from '../curriculum/timing/constants'
 import { designSequenceForClassification } from './bkt-simulation'
@@ -96,6 +97,27 @@ export function generateSlotResults(
       helpTrigger: 'none' as const,
     }
   })
+}
+
+/** One row of a seeded session, with whether its skill's config simulates legacy data. */
+export interface SeededRow {
+  result: SlotResult
+  simulateLegacyData?: boolean
+}
+
+/**
+ * A seeded session's rows as stored: each stamped with the try envelope the
+ * normalizer derives for it (practice-kinds plan R16), so it reads the same
+ * stamped or not. A config that simulates legacy data keeps its rows
+ * pre-K1, so those profiles go on exercising the normalizer's derive path.
+ */
+export function seededSessionRows(
+  rows: readonly SeededRow[],
+  parts: readonly SessionPart[]
+): SlotResult[] {
+  return rows.map(({ result, simulateLegacyData }) =>
+    simulateLegacyData ? result : { ...result, ...envelopeOfRow(result, parts) }
+  )
 }
 
 /**

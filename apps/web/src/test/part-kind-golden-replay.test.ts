@@ -48,7 +48,9 @@
  * `payload`; plan §1.3, §3.1). Every other line, `isCorrect` included, is as
  * before. Judge parity: the server's judge agrees with the client's verdict
  * on every try of every scenario (a disagreement is logged, never stored;
- * checked after each scenario below).
+ * checked after each scenario below). K1a also added the skips scenario
+ * (a skip as `handleSkip` sends it, first try and inside retry rounds), new
+ * snapshot entries only.
  */
 
 import { eq } from 'drizzle-orm'
@@ -307,6 +309,20 @@ const answer =
   (plan) =>
     recordSlotResult(plan.id, submissionFor(plan, correct, opts))
 
+/** What `handleSkip` sends (ActiveSession.tsx): the correct answer, wrong, manual help. */
+const skip =
+  (opts: Parameters<typeof submissionFor>[2] = {}): Step =>
+  (plan) => {
+    const body = submissionFor(plan, false, opts)
+    return recordSlotResult(plan.id, {
+      ...body,
+      studentAnswer: body.problem.answer,
+      isCorrect: false,
+      hadHelp: true,
+      helpTrigger: 'manual',
+    })
+  }
+
 const redo =
   (partIndex: number, slotIndex: number, correct: boolean, tryId?: string): Step =>
   (plan) =>
@@ -457,6 +473,21 @@ describe('part-kind golden replay (old path = snapshot recorded before the extra
         ['redo s1 wrong: practice-only, no settle', redo(0, 1, false, next())],
         ['client shows nothing (stuck legacy edge)', answer(true, { tryId: next() })],
         ['redo of an unanswered slot refused', redo(1, 0, true, next())],
+      ])
+    ).toMatchSnapshot()
+  })
+
+  it('skips (K1a): a first-try skip, a skip inside a retry round, a skip that ends the part', async () => {
+    const planId = await insertPlan(playerId)
+    const o = { sendEpoch: true, sendPartIndex: true }
+    expect(
+      await replay(planId, [
+        ['s0 skipped', skip({ ...o, tryId: next() })],
+        ['s1 right', answer(true, { ...o, tryId: next() })],
+        ['s2 wrong -> round 1 [s0, s2]', answer(false, { ...o, tryId: next() })],
+        ['r1 s0 skipped again', skip({ ...o, tryId: next() })],
+        ['r1 s2 right -> round 2 [s0]', answer(true, { ...o, tryId: next() })],
+        ['r2 s0 skipped -> divulged, part 2', skip({ ...o, tryId: next() })],
       ])
     ).toMatchSnapshot()
   })
