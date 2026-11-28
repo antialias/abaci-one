@@ -14,8 +14,11 @@
 /**
  * - `user`: a signed-in NextAuth session (`auth()`'s `session.user.id`);
  * - `guest`: a verified guest cookie, and its `users` row (`getUserId()`'s id);
- * - `anonymous`: neither. Share-link holders and remote-camera phones connect
- *   this way and are admitted by their token, never by an id.
+ * - `anonymous`: neither cookie.
+ * Share-link holders and remote-camera phones are admitted by their token,
+ * never by an id, whatever their viewer is. A phone page gets a guest cookie
+ * from the middleware like any signed-out visitor, so its socket is that
+ * guest (and a new phone browser gets a `users` row at its first handshake).
  */
 export type SocketViewer =
   | { kind: 'user'; userId: string }

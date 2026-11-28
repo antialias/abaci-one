@@ -4,7 +4,8 @@
  * The socket handshake's viewer (`resolveSocketViewer`): the identity the
  * HTTP side gives the same browser, read from real cookies. A NextAuth
  * session cookie made by NextAuth's own `encode` (plain, `__Secure-` and
- * chunked), a signed guest cookie (mapped to its `users` row, created on
+ * chunked; only the one name `auth()` would read: by AUTH_URL, else the
+ * request's protocol), a signed guest cookie (mapped to its `users` row, created on
  * first sight, the same row `getUserId()` uses), both, none, tampered,
  * expired, and no secret. It never throws.
  */
@@ -14,7 +15,7 @@ import { encode } from 'next-auth/jwt'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
 import { createGuestToken, GUEST_COOKIE_NAME } from '@/lib/guest-token'
-import { resolveSocketViewer } from '@/lib/socket-identity'
+import { resolveSocketViewer, sessionCookieIsSecure } from '@/lib/socket-identity'
 import {
   createEphemeralDatabase,
   type EphemeralDbResult,
@@ -75,6 +76,11 @@ describe('resolveSocketViewer', () => {
     vi.stubEnv('AUTH_SECRET', SECRET)
     vi.stubEnv('AUTH_SECRET_PREVIOUS', '')
     vi.stubEnv('NEXTAUTH_SECRET', '')
+    // No env URL unless a test sets one: the handshake's protocol decides
+    vi.stubEnv('AUTH_URL', '')
+    delete process.env.AUTH_URL
+    vi.stubEnv('NEXTAUTH_URL', '')
+    delete process.env.NEXTAUTH_URL
   })
   afterEach(() => {
     vi.unstubAllEnvs()
@@ -90,11 +96,81 @@ describe('resolveSocketViewer', () => {
     })
   })
 
-  it('reads the __Secure- cookie (https) with its own salt', async () => {
-    const token = await sessionToken('user-secure', { name: SECURE })
-    await expect(resolveSocketViewer({ cookie: cookies({ [SECURE]: token }) })).resolves.toEqual({
-      kind: 'user',
-      userId: 'user-secure',
+  describe('reads the one session cookie auth() would: by the request protocol', () => {
+    const user = (userId: string) => ({ kind: 'user', userId })
+    const anonymous = { kind: 'anonymous' }
+    async function both() {
+      return {
+        plain: cookies({ [PLAIN]: await sessionToken('user-plain') }),
+        secure: cookies({ [SECURE]: await sessionToken('user-secure', { name: SECURE }) }),
+      }
+    }
+
+    it('local dev and the e2e build (http, no AUTH_URL): the plain cookie only', async () => {
+      const { plain, secure } = await both()
+      await expect(resolveSocketViewer({ cookie: plain })).resolves.toEqual(user('user-plain'))
+      await expect(resolveSocketViewer({ cookie: secure })).resolves.toEqual(anonymous)
+    })
+
+    it('prod (AUTH_URL https, behind the https proxy): the __Secure- cookie only', async () => {
+      vi.stubEnv('AUTH_URL', 'https://abaci.example')
+      const { plain, secure } = await both()
+      // Whatever the proxy forwards: the env URL decides, as in createActionURL
+      for (const proto of [undefined, 'https', 'http']) {
+        const fwd = proto ? { 'x-forwarded-proto': proto } : {}
+        await expect(resolveSocketViewer({ cookie: secure, ...fwd })).resolves.toEqual(
+          user('user-secure')
+        )
+        await expect(resolveSocketViewer({ cookie: plain, ...fwd })).resolves.toEqual(anonymous)
+      }
+    })
+
+    it('an http AUTH_URL reads the plain cookie even behind an https proxy', async () => {
+      vi.stubEnv('AUTH_URL', 'http://localhost:3022')
+      const { plain, secure } = await both()
+      const fwd = { 'x-forwarded-proto': 'https' }
+      await expect(resolveSocketViewer({ cookie: plain, ...fwd })).resolves.toEqual(
+        user('user-plain')
+      )
+      await expect(resolveSocketViewer({ cookie: secure, ...fwd })).resolves.toEqual(anonymous)
+    })
+
+    it('NEXTAUTH_URL counts when AUTH_URL is unset', async () => {
+      delete process.env.AUTH_URL
+      vi.stubEnv('NEXTAUTH_URL', 'https://abaci.example')
+      const { plain, secure } = await both()
+      await expect(resolveSocketViewer({ cookie: secure })).resolves.toEqual(user('user-secure'))
+      await expect(resolveSocketViewer({ cookie: plain })).resolves.toEqual(anonymous)
+    })
+
+    it('no env URL: x-forwarded-proto, else the connection TLS', async () => {
+      const { plain, secure } = await both()
+      const https = { 'x-forwarded-proto': 'https' }
+      await expect(resolveSocketViewer({ cookie: secure, ...https })).resolves.toEqual(
+        user('user-secure')
+      )
+      await expect(resolveSocketViewer({ cookie: plain, ...https })).resolves.toEqual(anonymous)
+      await expect(resolveSocketViewer({ cookie: secure }, { encrypted: true })).resolves.toEqual(
+        user('user-secure')
+      )
+      // A proxy's http wins over the connection, as Next keeps it
+      await expect(
+        resolveSocketViewer({ cookie: plain, 'x-forwarded-proto': 'http' }, { encrypted: true })
+      ).resolves.toEqual(user('user-plain'))
+    })
+
+    it('an AUTH_URL that does not parse is no session (auth() throws on it)', async () => {
+      vi.stubEnv('AUTH_URL', 'not a url')
+      const { plain, secure } = await both()
+      await expect(resolveSocketViewer({ cookie: plain })).resolves.toEqual(anonymous)
+      await expect(resolveSocketViewer({ cookie: secure })).resolves.toEqual(anonymous)
+    })
+
+    it('matches sessionCookieIsSecure', () => {
+      expect(sessionCookieIsSecure({})).toBe(false)
+      expect(sessionCookieIsSecure({ 'x-forwarded-proto': 'https' })).toBe(true)
+      expect(sessionCookieIsSecure({ 'x-forwarded-proto': ['https'] })).toBe(true)
+      expect(sessionCookieIsSecure({}, { encrypted: true })).toBe(true)
     })
   })
 
