@@ -75,6 +75,8 @@ export interface PartTransitionScreenProps {
   countdownMs?: number
   /** Timestamp when countdown started (for sync) */
   countdownStartTime: number
+  /** The countdown holds while true (a pause waits for the session); Continue still works */
+  paused?: boolean
   /** Student info for display */
   student: {
     name: string
@@ -103,6 +105,7 @@ export function PartTransitionScreen({
   variant = 'transition',
   countdownMs = TRANSITION_COUNTDOWN_MS,
   countdownStartTime,
+  paused = false,
   student,
   onComplete,
   messageSeed,
@@ -114,6 +117,17 @@ export function PartTransitionScreen({
   const [elapsedMs, setElapsedMs] = useState(0)
   const animationFrameRef = useRef<number | null>(null)
   const hasCompletedRef = useRef(false)
+  // Time the countdown held (paused), so it resumes where it stopped
+  const heldMsRef = useRef(0)
+  const heldSinceRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (paused) {
+      if (heldSinceRef.current === null) heldSinceRef.current = Date.now()
+    } else if (heldSinceRef.current !== null) {
+      heldMsRef.current += Date.now() - heldSinceRef.current
+      heldSinceRef.current = null
+    }
+  }, [paused])
 
   // Select message once when transition starts
   // The headline: arithmetic picks from its message pools by presentation;
@@ -162,10 +176,12 @@ export function PartTransitionScreen({
       setElapsedMs(0)
       return
     }
+    // Held: the frame loop stops and the ring stays where it is
+    if (paused) return
 
     const updateCountdown = () => {
       const now = Date.now()
-      const elapsed = now - countdownStartTime
+      const elapsed = now - countdownStartTime - heldMsRef.current
       setElapsedMs(elapsed)
 
       if (elapsed >= countdownMs) {
@@ -187,7 +203,7 @@ export function PartTransitionScreen({
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [isVisible, countdownStartTime, countdownMs, onComplete])
+  }, [isVisible, paused, countdownStartTime, countdownMs, onComplete])
 
   if (!isVisible) return null
 

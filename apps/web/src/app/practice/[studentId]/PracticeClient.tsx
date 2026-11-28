@@ -1130,6 +1130,9 @@ export function PracticeClient({
               plan={currentPlan}
               student={{ name: player.name, emoji: player.emoji, color: player.color }}
               enabled={!isBrowseMode}
+              // A pause asked for during the notice waits for ActiveSession,
+              // which mounts after it; the countdown holds meanwhile
+              paused={manualPauseRequest || (teacherPauseRequest !== null && !teacherResumeRequest)}
               onShown={handleAbacusNoticeShown}
               onEnded={sendPartTransitionComplete}
             >

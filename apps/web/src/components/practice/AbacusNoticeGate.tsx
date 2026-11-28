@@ -30,6 +30,11 @@ export interface AbacusNoticeGateProps {
   student: { name: string; emoji: string; color: string }
   /** false = never show the notice (browse mode) */
   enabled?: boolean
+  /**
+   * A pause is waiting (a teacher's or the kid's): the countdown holds. The
+   * session handles the pause when it mounts, after the notice.
+   */
+  paused?: boolean
   /** The notice came up: the parts it stands between, and its countdown's start (observers) */
   onShown?: (
     previous: PartTransitionView | null,
@@ -45,6 +50,7 @@ export function AbacusNoticeGate({
   plan,
   student,
   enabled = true,
+  paused = false,
   onShown,
   onEnded,
   children,
@@ -88,10 +94,14 @@ export function AbacusNoticeGate({
     announcedRef.current = activeKey
     onShownRef.current?.(views.previous, views.next, shown.countdownStartTime)
   }, [activeKey, views, shown])
+  // Gone when the active key moves off an announced notice (a prev-ref, not
+  // an effect cleanup: StrictMode's re-run must not end it as it starts)
+  const lastActiveKeyRef = useRef(activeKey)
   useEffect(() => {
-    if (!activeKey) return
-    return () => {
-      if (announcedRef.current === activeKey) onEndedRef.current?.()
+    const previous = lastActiveKeyRef.current
+    lastActiveKeyRef.current = activeKey
+    if (previous && previous !== activeKey && announcedRef.current === previous) {
+      onEndedRef.current?.()
     }
   }, [activeKey])
 
@@ -109,6 +119,7 @@ export function AbacusNoticeGate({
         previous={views.previous}
         next={views.next}
         countdownStartTime={shown.countdownStartTime}
+        paused={paused}
         student={student}
         onComplete={handleDone}
       />

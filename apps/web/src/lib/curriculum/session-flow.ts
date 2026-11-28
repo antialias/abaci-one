@@ -20,7 +20,7 @@
  * legacy cursor (§10 P6b-1 (1)).
  */
 
-import { isCountedTry } from '@/db/schema/session-plan-helpers'
+import { breaksEnabled, isCountedTry } from '@/db/schema/session-plan-helpers'
 import {
   adjustmentsOf,
   normalizeTries,
@@ -31,7 +31,6 @@ import {
 import type {
   BreakRecord,
   GameBreakEndReason,
-  GameBreakSettings,
   SessionAdjustment,
   SessionFlowState,
   SessionPlan,
@@ -115,10 +114,6 @@ function sameResults(
 
 function noChange(): AppliedFlowEvent {
   return { changed: false, patch: {} }
-}
-
-function breaksEnabled(plan: SessionPlan): boolean {
-  return (plan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
 }
 
 function breaksOf(plan: SessionPlan): BreakRecord[] {

@@ -5,6 +5,7 @@
  * break before the part's first try.
  */
 import { describe, expect, it } from 'vitest'
+import { breaksEnabled } from '@/db/schema/session-plan-helpers'
 import type {
   BreakRecord,
   SessionFlowState,
@@ -16,7 +17,6 @@ import {
   abacusNoticeAfterBreak,
   abacusNoticeBefore,
   abacusNoticeOnTransition,
-  breakFollowsTransition,
   partNeedsPhysicalAbacus,
 } from '../abacus-notice'
 import { applyFlowEvent } from '../session-flow'
@@ -157,7 +157,7 @@ describe('the transition screen carries the notice only when no break follows', 
         gameBreakSettings: settings,
       })
       const applied = applyFlowEvent(p, { type: 'PART_TRANSITION_COMPLETED' })
-      expect(applied.patch?.flowState === 'break_pending').toBe(breakFollowsTransition(p))
+      expect(applied.patch?.flowState === 'break_pending').toBe(breaksEnabled(p))
     }
   })
 })

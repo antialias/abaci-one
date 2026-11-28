@@ -55,7 +55,7 @@ const VISUALIZATION_TO_LINEAR_MESSAGES: TransitionMessage[] = [
   { headline: 'Equation Mode!', subtitle: 'Same math, different look' },
   { headline: 'Reading Problems', subtitle: 'Like a math sentence' },
   { headline: 'Linear Style', subtitle: 'Left to right' },
-  { headline: 'Number Sentences', subtitle: 'Quick mental math' },
+  { headline: 'Number Sentences', subtitle: 'Equations ahead' },
 ]
 
 const START_TO_VISUALIZATION_MESSAGES: TransitionMessage[] = [

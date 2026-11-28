@@ -6,7 +6,7 @@
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, waitFor } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { type ReactNode, StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { BreakRecord, SessionPlan } from '@/db/schema/session-plans'
 import { liveMidPartOneSession } from '@/test/fixtures/session-report'
@@ -131,6 +131,56 @@ describe('AbacusNoticeGate — the notice after a break, before the first item',
     expect(answered.slotId).toBe(plan.parts[1].slots[0].slotId)
     expect(answered.responseTimeMs).toBe(2000)
     page.unmount()
+  })
+
+  it('under StrictMode, observers see the notice start once and end only when it goes', () => {
+    const onShown = vi.fn()
+    const onEnded = vi.fn()
+    const page = render(
+      <StrictMode>
+        <AbacusNoticeGate
+          plan={afterBreakPlan()}
+          student={student}
+          onShown={onShown}
+          onEnded={onEnded}
+        >
+          <div data-component="active-session" />
+        </AbacusNoticeGate>
+      </StrictMode>
+    )
+    expect(onShown).toHaveBeenCalledTimes(1)
+    expect(onEnded).not.toHaveBeenCalled()
+    act(() => {
+      fireEvent.click(
+        page.container.querySelector('[data-action="continue-abacus-notice"]') as Element
+      )
+    })
+    expect(onEnded).toHaveBeenCalledTimes(1)
+    expect(page.container.querySelector('[data-component="active-session"]')).toBeInTheDocument()
+  })
+
+  it('holds its countdown while a pause waits, and runs on from where it stopped', async () => {
+    const plan = afterBreakPlan()
+    const ui = (paused: boolean) => (
+      <AbacusNoticeGate plan={plan} student={student} paused={paused}>
+        <div data-component="active-session" />
+      </AbacusNoticeGate>
+    )
+    const page = render(ui(true))
+    const q = (selector: string) => page.container.querySelector(selector)
+    // Paused for 20 s, well past the 7 s countdown: the notice stays
+    now += 20_000
+    page.rerender(ui(true))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(q('[data-component="abacus-notice-screen"]')).toBeInTheDocument()
+    // Resumed: the 20 s held do not count, so it is still up
+    page.rerender(ui(false))
+    now += 3000
+    await new Promise((r) => setTimeout(r, 50))
+    expect(q('[data-component="abacus-notice-screen"]')).toBeInTheDocument()
+    // Past the countdown's 7 s of unheld time: it goes on by itself
+    now += 4100
+    await waitFor(() => expect(q('[data-component="active-session"]')).toBeInTheDocument())
   })
 
   it('a part that already has a try shows the item straight away', () => {

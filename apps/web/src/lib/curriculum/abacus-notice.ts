@@ -4,7 +4,7 @@
  *
  * The notice belongs right before the part it is about. Between two parts the
  * server runs `part_transition`, then a game break when breaks are on
- * (`session-flow.ts`), so:
+ * (`session-flow.ts`; both read `breaksEnabled`), so:
  * - with a break, the transition screen carries no notice; the shell shows
  *   it after the break, before the next part's first item;
  * - with no break, the transition screen carries it, as before.
@@ -19,8 +19,9 @@
  * Client-safe and kind-blind: kinds are reached through the registry only.
  */
 
+import { breaksEnabled } from '@/db/schema/session-plan-helpers'
 import { normalizeTries } from '@/db/schema/session-plan-normalize'
-import type { GameBreakSettings, SessionPlan } from '@/db/schema/session-plans'
+import type { SessionPlan } from '@/db/schema/session-plans'
 import type { StoredPart } from './parts/kind'
 import { findPartKind } from './parts/registry'
 
@@ -53,20 +54,12 @@ export function abacusNoticeBefore(
   return after ? 'pick_up' : 'put_away'
 }
 
-/**
- * Whether a game break runs when the part transition completes: the plan's
- * break setting, which is all `session-flow.ts` (`breaksEnabled`) asks.
- */
-export function breakFollowsTransition(plan: Pick<SessionPlan, 'gameBreakSettings'>): boolean {
-  return (plan.gameBreakSettings as GameBreakSettings | null)?.enabled ?? false
-}
-
 /** The notice the transition screen into part `partIndex` shows: none when a break follows it. */
 export function abacusNoticeOnTransition(
   plan: Pick<SessionPlan, 'parts' | 'gameBreakSettings'>,
   partIndex: number
 ): AbacusNotice | null {
-  if (breakFollowsTransition(plan)) return null
+  if (breaksEnabled(plan)) return null
   return abacusNoticeBefore(plan, partIndex)
 }
 
