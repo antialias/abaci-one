@@ -16,10 +16,6 @@
  * and session-report-push.test.ts.
  */
 
-import http from 'node:http'
-import type { AddressInfo } from 'node:net'
-import { encode } from 'next-auth/jwt'
-import { type Socket as ClientSocket, io as connect } from 'socket.io-client'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as schema from '@/db/schema'
 import { createRoom } from '@/lib/arcade/room-manager'
@@ -31,6 +27,18 @@ import {
   getCurrentEphemeralDb,
   setCurrentEphemeralDb,
 } from './journey-simulator/EphemeralDatabase'
+import {
+  client,
+  collect,
+  cookieFor,
+  disconnectClients,
+  drained,
+  joined,
+  next,
+  roomsOf,
+  startSocketServer,
+  stopSocketServer,
+} from './socket-server-harness'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/db', () => ({
@@ -56,95 +64,16 @@ vi.mock('@/lib/classroom', async (importOriginal) => ({
   isParentOf,
 }))
 
-const SECRET = 'made-up-secret-for-socket-server-tests-000001'
-const COOKIE = 'authjs.session-token'
-
-async function cookieFor(userId: string) {
-  return `${COOKIE}=${await encode({ token: { sub: userId }, secret: SECRET, salt: COOKIE })}`
-}
-
-let server: http.Server
-let url = ''
-let io: Awaited<ReturnType<typeof import('@/socket-server')['initializeSocketServer']>>
-const clients: ClientSocket[] = []
-
-/** A connected client whose handshake carries `cookie` (none: anonymous). */
-async function client(cookie?: string): Promise<ClientSocket> {
-  const sock = connect(url, {
-    path: '/api/socket',
-    transports: ['websocket'],
-    extraHeaders: cookie ? { cookie } : {},
-    reconnection: false,
-    forceNew: true,
-  })
-  clients.push(sock)
-  await new Promise<void>((resolve, reject) => {
-    sock.once('connect', () => resolve())
-    sock.once('connect_error', reject)
-  })
-  return sock
-}
-
-/** The first `event` the client hears within `ms`, or null. */
-function next<T = any>(sock: ClientSocket, event: string, ms = 1500): Promise<T | null> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      sock.off(event, on)
-      resolve(null)
-    }, ms)
-    const on = (data: T) => {
-      clearTimeout(timer)
-      resolve(data)
-    }
-    sock.once(event, on)
-  })
-}
-
-/** Everything `event` brings to the client from now on. */
-function collect<T = any>(sock: ClientSocket, event: string): T[] {
-  const heard: T[] = []
-  sock.on(event, (data: T) => heard.push(data))
-  return heard
-}
-
-/** The server-side rooms of the client's socket. */
-async function roomsOf(sock: ClientSocket): Promise<Set<string>> {
-  const [remote] = await io.in(sock.id!).fetchSockets()
-  return remote ? new Set(remote.rooms) : new Set()
-}
-
-/** Wait until the client's socket is in `room` on the server. */
-async function joined(sock: ClientSocket, room: string) {
-  await vi.waitFor(async () => expect((await roomsOf(sock)).has(room)).toBe(true), {
-    timeout: 5000,
-  })
-}
-
-/**
- * Wait until the server has handled everything this client sent so far: an
- * anonymous `join-arcade-session` is answered at once (no viewer, nothing
- * awaited), and a connection's events reach their handlers in order.
- */
-async function drained(sock: ClientSocket) {
-  const answer = next(sock, 'session-error', 5000)
-  sock.emit('join-arcade-session', {})
-  expect(await answer).not.toBeNull()
-}
+let io: Awaited<ReturnType<typeof startSocketServer>>
 
 describe('socket identity on the real server', () => {
   let eph: EphemeralDbResult
 
   beforeAll(async () => {
-    vi.stubEnv('AUTH_SECRET', SECRET)
-    const { initializeSocketServer } = await import('@/socket-server')
-    server = http.createServer()
-    io = initializeSocketServer(server)
-    await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()))
-    url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
+    io = await startSocketServer()
   })
   afterAll(async () => {
-    await new Promise<void>((r) => io.close(() => r()))
-    vi.unstubAllEnvs()
+    await stopSocketServer()
   })
   beforeEach(async () => {
     eph = createEphemeralDatabase()
@@ -155,7 +84,7 @@ describe('socket identity on the real server', () => {
     isParentOf.mockClear()
   })
   afterEach(() => {
-    for (const c of clients.splice(0)) c.disconnect()
+    disconnectClients()
     setCurrentEphemeralDb(null)
     eph.cleanup()
   })
@@ -236,9 +165,11 @@ describe('socket identity on the real server', () => {
     anonymous.emit('observer-coplay-leave', { sessionId: 's1', observerId: 'parent' })
     await drained(anonymous)
 
-    // A stranger naming the parent: relayed as the stranger. Anything the
-    // anonymous socket got relayed would have reached the kid before this
+    // An admitted observer naming the parent: relayed as itself. Anything
+    // the anonymous socket got relayed would have reached the kid before this
+    // (who may offer at all is in socket-rooms-server.test.ts)
     const stranger = await client(await cookieFor('stranger'))
+    await io.in(stranger.id!).socketsJoin('session:s1')
     const heard = next(kid, 'observer-coplay-ready', 5000)
     stranger.emit('observer-coplay-ready', { sessionId: 's1', observerId: 'parent', player })
     expect(await heard).toMatchObject({ sessionId: 's1', observerId: 'stranger', player })

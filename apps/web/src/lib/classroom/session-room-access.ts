@@ -55,11 +55,19 @@ export type SessionRoomLevel = 'observe' | 'view'
 /** What a join of `session:<id>` sends; `playerId` may be omitted. */
 export type SessionRoomJoinRequest = SubscribeSessionReportRequest
 
+/**
+ * A live-room join's decision: an admitted viewer's join also names the
+ * session's own player (a share holder's does not).
+ */
+export type SessionRoomJoinDecision =
+  | { ok: true; playerId?: string }
+  | Exclude<SessionReportJoinDecision, { ok: true }>
+
 /** `request.viewerId` is the socket's verified viewer (`joinCheckOf`), never the payload's. */
 export async function authorizeSessionRoomJoin(
   request: SessionJoinCheck,
   level: SessionRoomLevel = 'observe'
-): Promise<SessionReportJoinDecision> {
+): Promise<SessionRoomJoinDecision> {
   const { sessionId, viewerId, playerId, shareToken } = request ?? ({} as never)
   if (typeof sessionId !== 'string' || !sessionId) return { ok: false, error: 'Session required' }
   if (typeof shareToken === 'string' && shareToken) {
@@ -78,7 +86,76 @@ export async function authorizeSessionRoomJoin(
     if (!plan) return { ok: false, error: 'Session not found' }
     player = plan.playerId
   }
-  return authorizeSessionReportJoin({ sessionId, viewerId, playerId: player }, level)
+  // Admitted only when `player` is the session's own (authorizeSessionReportJoin)
+  const decision = await authorizeSessionReportJoin(
+    { sessionId, viewerId, playerId: player },
+    level
+  )
+  return decision.ok ? { ok: true, playerId: player } : decision
+}
+
+// ---------------------------------------------------------------------------
+// Admissions: joins in flight, and the player of each admitted session
+// ---------------------------------------------------------------------------
+
+/**
+ * `socket.data`'s record of its live-room admissions: the joins of
+ * `session:<id>` still being checked, and the session's own player for each
+ * viewer admission (`join-session`, or an observer's `observe-session`).
+ */
+export interface SessionAdmissionsData {
+  pendingSessionJoins?: Map<string, Promise<void>>
+  sessionPlayers?: Map<string, string>
+}
+
+/**
+ * Run a live-room join, recorded as in flight until it settles: what the
+ * socket sends meanwhile is checked once the join is decided
+ * (`mayActOnceAdmitted`), not dropped because the check was still running.
+ */
+function trackJoin(
+  socket: { data: SessionAdmissionsData },
+  sessionId: string,
+  run: () => Promise<void>
+): Promise<void> {
+  if (!socket.data.pendingSessionJoins) socket.data.pendingSessionJoins = new Map()
+  const pending = socket.data.pendingSessionJoins
+  const join: Promise<void> = run().finally(() => {
+    if (pending.get(sessionId) === join) pending.delete(sessionId)
+  })
+  pending.set(sessionId, join)
+  return join
+}
+
+/** Record the session's own player for an admitted viewer. */
+function recordSessionPlayer(
+  socket: { data: SessionAdmissionsData },
+  sessionId: string,
+  playerId: string | undefined
+): void {
+  if (!playerId) return
+  if (!socket.data.sessionPlayers) socket.data.sessionPlayers = new Map()
+  socket.data.sessionPlayers.set(sessionId, playerId)
+}
+
+/**
+ * The session's own player, as the socket's admission found it (null for a
+ * share holder or a socket never admitted). The vision recorder files under
+ * this player, never under one a payload names.
+ */
+export function sessionPlayerOf(
+  socket: { data: SessionAdmissionsData },
+  sessionId: string
+): string | null {
+  return socket.data.sessionPlayers?.get(sessionId) ?? null
+}
+
+/** Wait for a join of `session:<id>` this socket has in flight, if any. */
+async function admissionSettled(
+  socket: { data: SessionAdmissionsData },
+  sessionId: string
+): Promise<void> {
+  await socket.data.pendingSessionJoins?.get(sessionId)
 }
 
 /**
@@ -88,7 +165,9 @@ export async function authorizeSessionRoomJoin(
  * `session-room-error { sessionId, error }` and joins nothing, so the socket
  * hears none of the room's traffic.
  */
-export function registerSessionRoomJoins(socket: SessionReportSocket): void {
+export function registerSessionRoomJoins(
+  socket: SessionReportSocket & { data: SessionAdmissionsData }
+): void {
   const join = async (
     request: SessionRoomJoinRequest,
     label: string,
@@ -111,6 +190,7 @@ export function registerSessionRoomJoins(socket: SessionReportSocket): void {
         return
       }
       await socket.join(room(sessionId))
+      if (label === 'join-session') recordSessionPlayer(socket, sessionId, decision.playerId)
       if (ack) socket.emit(ack, { sessionId })
     } catch (error) {
       console.error(`[session-room] ${label} failed`, error)
@@ -125,7 +205,9 @@ export function registerSessionRoomJoins(socket: SessionReportSocket): void {
   // pauses); acked with `session-room-joined` so it can rebroadcast its state
   // once its broadcasts are relayed
   socket.on('join-session', (request: SessionRoomJoinRequest) =>
-    join(request, 'join-session', sessionRoom, 'observe', 'session-room-joined')
+    trackJoin(socket, String(request?.sessionId ?? ''), () =>
+      join(request, 'join-session', sessionRoom, 'observe', 'session-room-joined')
+    )
   )
   // The history list's live time estimate (receives session-stats)
   socket.on('subscribe-session-stats', (request: SessionRoomJoinRequest) =>
@@ -167,7 +249,7 @@ export function isSessionRoomMember(socket: SessionRoomMember, sessionId: string
 /** The socket surface the control relays need. */
 export interface SessionControlSocket extends SessionRoomMember {
   on(event: string, handler: (data: any) => void): unknown
-  data: SharedSessionsData & SocketViewerData
+  data: SharedSessionsData & SocketViewerData & SessionAdmissionsData
 }
 
 /** The server surface the control relays emit through (a socket.io `Server`). */
@@ -233,6 +315,31 @@ export function mayActInSession(socket: SessionControlSocket, sessionId: string)
 }
 
 /**
+ * `mayActInSession`, decided after a join of that session the socket has in
+ * flight: the kid's screen sends its first broadcasts right after
+ * `join-session`, while the join is still being checked.
+ */
+export async function mayActOnceAdmitted(
+  socket: SessionControlSocket,
+  sessionId: string
+): Promise<boolean> {
+  await admissionSettled(socket, sessionId)
+  return mayActInSession(socket, sessionId)
+}
+
+/**
+ * `isSessionRoomMember` (a share holder too), decided after a join in
+ * flight: an observer's co-play readiness and DVR requests.
+ */
+export async function isMemberOnceAdmitted(
+  socket: SessionControlSocket,
+  sessionId: string
+): Promise<boolean> {
+  await admissionSettled(socket, sessionId)
+  return isSessionRoomMember(socket, sessionId)
+}
+
+/**
  * An observer join (`observe-session`): the session and its player, or a
  * share token. `observerId` is what older clients send; it is ignored.
  */
@@ -246,7 +353,7 @@ export interface ObserveSessionRequest {
 
 /** The socket surface `observe-session` needs. */
 export interface ObserveSessionSocket extends SessionReportSocket {
-  data: SharedSessionsData & SocketViewerData
+  data: SharedSessionsData & SocketViewerData & SessionAdmissionsData
 }
 
 /** An admitted observer join: `observerId` is the verified viewer (null for a share holder). */
@@ -267,7 +374,10 @@ export function registerObserveSession(
   socket: ObserveSessionSocket,
   onAdmitted: (observer: AdmittedObserver) => Promise<void> | void
 ): void {
-  socket.on('observe-session', async (request: ObserveSessionRequest) => {
+  socket.on('observe-session', (request: ObserveSessionRequest) =>
+    trackJoin(socket, String(request?.sessionId ?? ''), () => observe(request))
+  )
+  const observe = async (request: ObserveSessionRequest) => {
     const { sessionId, playerId, shareToken } = request ?? ({} as never)
     const observerId = socketViewerId(socket)
     try {
@@ -285,12 +395,13 @@ export function registerObserveSession(
       const shared = typeof shareToken === 'string' && !!shareToken
       if (shared) markSharedSession(socket, sessionId)
       await socket.join(sessionRoom(sessionId))
+      if (!shared) recordSessionPlayer(socket, sessionId, decision.playerId)
       await onAdmitted({ sessionId, observerId, shareToken, shared })
     } catch (error) {
       console.error('Error starting session observation:', error)
       socket.emit('observe-error', { error: 'Failed to start observation' })
     }
-  })
+  }
 }
 
 /** A `practice-state` broadcast as the relay needs it. */
@@ -329,4 +440,34 @@ export function registerPracticeStateRelay(
     socket.to(sessionRoom(sessionId)).emit('practice-state', data)
     socket.to(sessionStatsRoom(sessionId)).emit('session-stats', sessionStatsOf(data))
   })
+}
+
+/** The kid's session broadcasts besides `practice-state`, relayed as they are. */
+export const SESSION_BROADCASTS = [
+  'part-transition',
+  'part-transition-complete',
+  'session-flow-state',
+  'tutorial-state',
+] as const
+
+/**
+ * Relay the kid's other broadcasts (`SESSION_BROADCASTS`) to `session:<id>`,
+ * the sender excluded. Only from a socket that may act in the session
+ * (`mayActOnceAdmitted`: the kid's screen once `join-session` admitted it);
+ * anyone else's is dropped, so no one can drive an observer's view of a
+ * session they were not let into.
+ */
+export function registerSessionBroadcasts(socket: PracticeStateRelaySocket): void {
+  for (const event of SESSION_BROADCASTS) {
+    socket.on(event, async (data: { sessionId: string }) => {
+      const sessionId = String(data?.sessionId ?? '')
+      if (!(await mayActOnceAdmitted(socket, sessionId))) {
+        console.log(
+          `[Socket] ${event} dropped for session ${sessionId}: not admitted, or view-only`
+        )
+        return
+      }
+      socket.to(sessionRoom(sessionId)).emit(event, data)
+    })
+  }
 }

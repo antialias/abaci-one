@@ -811,6 +811,54 @@ test.describe('session report views (Phases 4c-4e)', () => {
     }
   })
 
+  test('the classroom and player channels admit members only (socket identity PR 2)', async ({
+    context,
+    browser,
+    request,
+    baseURL,
+  }) => {
+    playerId = await seedStudent(request)
+    // The admin is the classroom's teacher and the student's parent
+    const classroomId = await seededClassroom(request, playerId)
+    const outcomes = ['channel-joined', 'channel-error']
+    const sockets: ClientSocket[] = []
+    try {
+      const admin = await rawSocket(baseURL!, cookieHeader(await context.cookies()))
+      sockets.push(admin)
+      expect(await ask(admin, 'join-classroom', { classroomId }, outcomes)).toBe('channel-joined')
+      expect(await ask(admin, 'join-player', { playerId }, outcomes)).toBe('channel-joined')
+
+      const strangerCookie = `authjs.session-token=${await mintSessionJWT(
+        getLocalAuthSecret(),
+        'authjs.session-token',
+        `e2e-channel-stranger-${Date.now()}`,
+        { name: 'Channel Stranger', email: null }
+      )}`
+      const guestContext = await browser.newContext(noAuth)
+      contexts.push(guestContext)
+      const guestCookie = await issuedGuestCookie(guestContext.request)
+      expect(guestCookie, 'the middleware issues a guest cookie').not.toBe('')
+
+      for (const [who, cookie] of [
+        ['second user', strangerCookie],
+        ['guest', guestCookie],
+        ['anonymous', ''],
+      ] as const) {
+        const sock = await rawSocket(baseURL!, cookie)
+        sockets.push(sock)
+        expect(
+          await ask(sock, 'join-classroom', { classroomId }, outcomes),
+          `${who}: classroom`
+        ).toBe('channel-error')
+        expect(await ask(sock, 'join-player', { playerId }, outcomes), `${who}: player`).toBe(
+          'channel-error'
+        )
+      }
+    } finally {
+      for (const sock of sockets) sock.disconnect()
+    }
+  })
+
   test('dashboard history and the classroom route read the report (Phase 4d)', async ({
     page,
     context,

@@ -383,8 +383,12 @@ export function createMatchingPairsValidator<
     }
 
     if (context?.userId && context?.playerOwnership) {
+      // The ownership map holds every room member's players. The one player
+      // it cannot hold is the mover's own user-id player: a co-play
+      // observer's (its id is the observer's user id) or the practice
+      // fallback's. Any other unowned id is someone else's to move
       const playerOwner = context.playerOwnership[playerId]
-      if (playerOwner && playerOwner !== context.userId) {
+      if (playerOwner ? playerOwner !== context.userId : playerId !== context.userId) {
         return { valid: false, error: 'You can only move your own players' }
       }
     }

@@ -1,11 +1,12 @@
-import { NextResponse } from 'next/server'
-import { withAuth } from '@/lib/auth/withAuth'
 import { spawn } from 'child_process'
+import { unlink, writeFile } from 'fs/promises'
+import { NextResponse } from 'next/server'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { writeFile, unlink } from 'fs/promises'
+import { withAuth } from '@/lib/auth/withAuth'
 import { createTask } from '@/lib/task-manager'
 import type { DemoRefineEvent } from '@/lib/tasks/events'
+import { getUserId } from '@/lib/viewer'
 
 export const dynamic = 'force-dynamic'
 
@@ -296,7 +297,9 @@ export const POST = withAuth(async (request) => {
         // Clean up temp screenshot file
         if (screenshotPath) unlink(screenshotPath).catch(() => {})
       }
-    }
+    },
+    // Its starter follows it over the socket (task-socket-access.ts)
+    await getUserId()
   )
 
   return NextResponse.json({ taskId })

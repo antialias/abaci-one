@@ -337,6 +337,8 @@ Please modify the flowchart according to this request. Return the complete updat
 
       handle.setProgress(100, 'Flowchart refined!')
       handle.complete(output)
-    }
+    },
+    // The workshop user owns the task (who may follow it over the socket)
+    input.userId
   )
 }
