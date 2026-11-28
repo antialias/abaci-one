@@ -43,7 +43,6 @@ const legacyAttempt: FlaggedAttempt = {
   completedAt: '2026-05-28T10:05:00.000Z',
   // a row from before Phase 1 has no stored id: the server sends its positional one
   tryId: 'legacy:session-1:0',
-  resultIndex: 0,
   tier: 'tier1',
   reason: 'legacy-implausible',
   effectiveMs: 28_860_000,
@@ -111,49 +110,6 @@ describe('FlaggedAttemptCard — legacy 8h01m litmus', () => {
     const doesnt = screen.getByRole('button', { name: /Doesn.t count/i })
     expect(counts).toHaveAttribute('aria-pressed', 'true')
     expect(doesnt).toHaveAttribute('aria-pressed', 'false')
-  })
-})
-
-describe('FlaggedAttemptCard — an attempt from a server that predates tries/[tryId] (D9, §10 P6b1-12a)', () => {
-  // What a pod from before P6b1-12 sends: no tryId, only the index
-  const { tryId: _noId, ...fromOldServer } = legacyAttempt
-
-  it('an edit goes to the index route, never tries/undefined', async () => {
-    render(<FlaggedAttemptCard playerId="player-1" attempt={fromOldServer} />, { wrapper })
-
-    fireEvent.click(screen.getByRole('button', { name: /Ignore this time/i }))
-
-    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
-    expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/0',
-      expect.objectContaining({
-        method: 'PATCH',
-        body: JSON.stringify({ action: 'exclude', scope: 'timing' }),
-      })
-    )
-  })
-
-  it('confirming a timing goes to the index route too', async () => {
-    const tier2: FlaggedAttempt = {
-      ...fromOldServer,
-      resultIndex: 4,
-      tier: 'tier2',
-      reason: 'unusual-for-child',
-      effectiveMs: 95_000,
-      result: { ...legacyResult, responseTimeMs: 95_000 },
-    }
-    render(<FlaggedAttemptCard playerId="player-1" attempt={tier2} />, { wrapper })
-
-    fireEvent.click(screen.getByRole('button', { name: /Looks right — keep it/i }))
-
-    await waitFor(() => expect(global.fetch).toHaveBeenCalled())
-    expect(global.fetch).toHaveBeenCalledWith(
-      '/api/curriculum/player-1/sessions/plans/session-1/results/4',
-      expect.objectContaining({
-        method: 'PATCH',
-        body: JSON.stringify({ action: 'confirm_timing' }),
-      })
-    )
   })
 })
 

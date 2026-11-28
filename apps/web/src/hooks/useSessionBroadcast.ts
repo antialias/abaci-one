@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Socket } from 'socket.io-client'
 import type { BroadcastState } from '@/components/practice'
-import type { SessionFlowState, SessionPartType } from '@/db/schema/session-plans'
+import type { SessionFlowState } from '@/db/schema/session-plans'
 import { useUserId } from '@/hooks/useUserId'
 import type {
   AbacusControlEvent,
@@ -32,13 +32,9 @@ export interface BroadcastPracticeState extends BroadcastState {
   position: ObserverPosition
 }
 
-/**
- * A part as the transition broadcast names it: the kind's `{ kind, label }`,
- * plus arithmetic's presentation for the legacy `previousPartType` /
- * `nextPartType` fields.
- */
-export interface BroadcastTransitionPart extends PartTransitionSide {
-  presentation?: SessionPartType
+/** A part as the transition broadcast names it (the view may carry more; only these are sent) */
+function sideOf({ kind, label, emoji }: PartTransitionSide): PartTransitionSide {
+  return { kind, label, emoji }
 }
 
 /**
@@ -91,8 +87,8 @@ export interface UseSessionBroadcastResult {
   readyObservers: ReadyObserver[]
   /** Send part transition event to observers */
   sendPartTransition: (
-    previous: BroadcastTransitionPart | null,
-    next: BroadcastTransitionPart,
+    previous: PartTransitionSide | null,
+    next: PartTransitionSide,
     countdownStartTime: number,
     countdownDurationMs: number
   ) => void
@@ -424,8 +420,8 @@ export function useSessionBroadcast(
   // Broadcast part transition to observers
   const sendPartTransition = useCallback(
     (
-      previous: BroadcastTransitionPart | null,
-      next: BroadcastTransitionPart,
+      previous: PartTransitionSide | null,
+      next: PartTransitionSide,
       countdownStartTime: number,
       countdownDurationMs: number
     ) => {
@@ -436,12 +432,8 @@ export function useSessionBroadcast(
       const event: PartTransitionEvent = {
         sessionId,
         // The kinds' names for the parts (Phase 5b)
-        previous: previous ? { kind: previous.kind, label: previous.label } : null,
-        next: { kind: next.kind, label: next.label },
-        // Legacy fields for observers that still read them (one release, D9);
-        // only arithmetic has a presentation, and only arithmetic exists
-        previousPartType: previous?.presentation ?? null,
-        nextPartType: next.presentation ?? 'linear',
+        previous: previous ? sideOf(previous) : null,
+        next: sideOf(next),
         countdownStartTime,
         countdownDurationMs,
       }

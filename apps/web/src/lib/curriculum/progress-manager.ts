@@ -729,7 +729,6 @@ export async function getTimingReviewData(playerId: string): Promise<TimingRevie
   for (const session of windowSessions) {
     const completedAt = session.completedAt ? session.completedAt.toISOString() : null
     session.results.forEach((result, resultIndex) => {
-      // resultIndex stays the raw array index (open tabs on older bundles address it, D9)
       if (!isCountedTry(result)) return
       const classification = classifyAttemptTiming(result, childStats)
 
@@ -768,7 +767,6 @@ export async function getTimingReviewData(playerId: string): Promise<TimingRevie
         sessionId: session.id,
         completedAt,
         tryId: tryIdOf(result, resultIndex, session.id),
-        resultIndex,
         tier: displayTier,
         reason: displayReason,
         effectiveMs: getEffectiveResponseTimeMs(result),

@@ -31,8 +31,6 @@ function practiceState(): PracticeStateEvent {
     isCorrect: true,
     timing: { startedAt: 1, elapsed: 4000 },
     purpose: 'focus',
-    currentProblemNumber: 10,
-    totalProblems: 10,
   }
 }
 

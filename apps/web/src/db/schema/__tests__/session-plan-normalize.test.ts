@@ -6,7 +6,6 @@ import {
   doOverStamp,
   findTryIndex,
   legacyTryId,
-  legacyWireFieldsOf,
   mintTryId,
   normalizeTries,
   type PartStateSource,
@@ -15,7 +14,6 @@ import {
   resolveItemId,
 } from '../session-plan-normalize'
 import type {
-  BreakRecord,
   GeneratedProblem,
   PartRetryState,
   ProblemSlot,
@@ -375,77 +373,5 @@ describe('part states (Phase 6b-1)', () => {
     expect(at(2, 1)).toEqual({ slotIndex: 1, retry: undefined })
     // a part the plan does not have has no slots
     expect(at(3, 2)).toEqual({ slotIndex: 0, retry: undefined })
-  })
-})
-
-describe('legacyWireFieldsOf: the legacy fields old bundles read (§10 P6b1-16)', () => {
-  const retry: PartRetryState = {
-    currentEpoch: 1,
-    pendingRetries: [],
-    currentEpochItems: [
-      {
-        slotId: 's1',
-        originalSlotIndex: 1,
-        problem: P[1],
-        epochNumber: 1,
-        originalPurpose: 'focus',
-      },
-    ],
-    currentRetryIndex: 0,
-  }
-  const settled: PartRetryState = { ...retry, currentEpochItems: [] }
-  const T = '2026-12-01T15:00:00.000Z'
-  const results = { gameName: 'memory-quiz' } as never
-  const wire = (over: Record<string, unknown>) =>
-    legacyWireFieldsOf({
-      parts,
-      currentPartIndex: 0,
-      partStates: {},
-      flowState: 'practicing',
-      flowUpdatedAt: new Date(T),
-      breaks: [],
-      ...over,
-    } as never)
-
-  it("the current part's cursor and every part's retry state, in the legacy encoding", () => {
-    // before the first try: no entry, cursor at the start, no retry state
-    expect(wire({})).toMatchObject({ currentSlotIndex: 0, retryState: {} })
-    // in a retry round: cursor parked at the end
-    expect(wire({ partStates: { '0': { slotIndex: 3, retry } } })).toMatchObject({
-      currentSlotIndex: 3,
-      retryState: { 0: retry },
-    })
-    // moved on: the new part's cursor, the finished part's retry state kept
-    expect(
-      wire({
-        currentPartIndex: 1,
-        partStates: { '0': { slotIndex: 3, retry: settled }, '1': { slotIndex: 0 } },
-      })
-    ).toMatchObject({ currentSlotIndex: 0, retryState: { 0: settled } })
-    // past the last part: 0, as move-on wrote it
-    expect(
-      wire({ currentPartIndex: 2, partStates: { '0': { slotIndex: 3 }, '1': { slotIndex: 1 } } })
-    ).toMatchObject({ currentSlotIndex: 0, retryState: {} })
-  })
-
-  it('the break the kid is in: its start in a break state, its results in break_results', () => {
-    const open: BreakRecord = { breakIndex: 0, startedAt: T, game: 'memory-quiz' } as BreakRecord
-    const closed = { ...open, endedAt: T, results } as BreakRecord
-    const ms = new Date(T).getTime()
-    expect(wire({})).toMatchObject({ breakStartedAt: null, breakResults: null })
-    expect(wire({ flowState: 'break_pending' })).toMatchObject({
-      breakStartedAt: ms,
-      breakResults: null,
-    })
-    expect(wire({ flowState: 'break_active', breaks: [open] })).toMatchObject({
-      breakStartedAt: ms,
-      breakResults: null,
-    })
-    expect(wire({ flowState: 'break_results', breaks: [closed] })).toMatchObject({
-      breakStartedAt: ms,
-      breakResults: results,
-    })
-    // after the results screen, nothing
-    expect(wire({ breaks: [closed] })).toMatchObject({ breakStartedAt: null, breakResults: null })
   })
 })

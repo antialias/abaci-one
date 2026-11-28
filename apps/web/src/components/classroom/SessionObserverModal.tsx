@@ -1041,8 +1041,8 @@ export function SessionObserverView({
         {/* Part transition view - shows when student is between parts */}
         {!isEnded && transitionState && (
           <ObserverTransitionView
-            previousPartType={transitionState.previousPartType}
-            nextPartType={transitionState.nextPartType}
+            previous={transitionState.previous}
+            next={transitionState.next}
             countdownStartTime={transitionState.countdownStartTime}
             countdownDurationMs={transitionState.countdownDurationMs}
             student={student}

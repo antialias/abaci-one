@@ -18,19 +18,16 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { useToast } from '@/components/common/ToastContext'
 import { PageWithNav } from '@/components/PageWithNav'
+import { EstimateRecoveryHeader } from '@/components/practice/timing-review/EstimateRecoveryHeader'
+import { FlaggedAttemptCard } from '@/components/practice/timing-review/FlaggedAttemptCard'
+import { formatSessionDate } from '@/components/practice/timing-review/formatting'
 import {
   useDeleteSessionPlan,
   useRestoreSessionPlan,
   useTimingReview,
 } from '@/hooks/useTimingReview'
-import type {
-  DeletedSessionSummary,
-  FlaggedAttempt,
-} from '@/lib/curriculum/timing/review-types'
+import type { DeletedSessionSummary, FlaggedAttempt } from '@/lib/curriculum/timing/review-types'
 import { css } from '../../../../../styled-system/css'
-import { EstimateRecoveryHeader } from '@/components/practice/timing-review/EstimateRecoveryHeader'
-import { FlaggedAttemptCard } from '@/components/practice/timing-review/FlaggedAttemptCard'
-import { formatSessionDate } from '@/components/practice/timing-review/formatting'
 
 interface ReviewTimingsClientProps {
   studentId: string
@@ -136,11 +133,18 @@ function DeletedSessionRow({
     >
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.2rem' })}>
         <span
-          className={css({ fontSize: '0.9rem', fontWeight: 'medium', color: 'gray.700', _dark: { color: 'gray.300' } })}
+          className={css({
+            fontSize: '0.9rem',
+            fontWeight: 'medium',
+            color: 'gray.700',
+            _dark: { color: 'gray.300' },
+          })}
         >
           {formatSessionDate(session.completedAt)}
         </span>
-        <span className={css({ fontSize: '0.8rem', color: 'gray.500', _dark: { color: 'gray.500' } })}>
+        <span
+          className={css({ fontSize: '0.8rem', color: 'gray.500', _dark: { color: 'gray.500' } })}
+        >
           {session.problemsCorrect}/{session.problemsAttempted} correct · removed
         </span>
       </div>
@@ -166,13 +170,7 @@ function DeletedSessionRow({
   )
 }
 
-function SessionGroupCard({
-  studentId,
-  group,
-}: {
-  studentId: string
-  group: SessionGroup
-}) {
+function SessionGroupCard({ studentId, group }: { studentId: string; group: SessionGroup }) {
   const deleteMutation = useDeleteSessionPlan()
   const { showSuccess, showError } = useToast()
   const [confirming, setConfirming] = useState(false)
@@ -180,7 +178,11 @@ function SessionGroupCard({
   const unresolved = group.attempts.filter((a) => !a.resolved).length
 
   return (
-    <section data-component="session-group" data-session-id={group.sessionId} className={cardSurface}>
+    <section
+      data-component="session-group"
+      data-session-id={group.sessionId}
+      className={cardSurface}
+    >
       <header
         className={css({
           display: 'flex',
@@ -193,12 +195,20 @@ function SessionGroupCard({
       >
         <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.15rem' })}>
           <span
-            className={css({ fontSize: '1rem', fontWeight: 'semibold', color: 'gray.900', _dark: { color: 'gray.50' } })}
+            className={css({
+              fontSize: '1rem',
+              fontWeight: 'semibold',
+              color: 'gray.900',
+              _dark: { color: 'gray.50' },
+            })}
           >
             {formatSessionDate(group.completedAt)}
           </span>
-          <span className={css({ fontSize: '0.8rem', color: 'gray.500', _dark: { color: 'gray.400' } })}>
-            {group.attempts.length} flagged{unresolved > 0 ? ` · ${unresolved} to review` : ' · all reviewed'}
+          <span
+            className={css({ fontSize: '0.8rem', color: 'gray.500', _dark: { color: 'gray.400' } })}
+          >
+            {group.attempts.length} flagged
+            {unresolved > 0 ? ` · ${unresolved} to review` : ' · all reviewed'}
           </span>
         </div>
         <div className={css({ display: 'flex', gap: '0.5rem', alignItems: 'center' })}>
@@ -268,11 +278,7 @@ function SessionGroupCard({
 
       <div className={css({ display: 'flex', flexDirection: 'column', gap: '0.75rem' })}>
         {group.attempts.map((attempt) => (
-          <FlaggedAttemptCard
-            key={attempt.tryId ?? `${attempt.sessionId}:${attempt.resultIndex}`}
-            playerId={studentId}
-            attempt={attempt}
-          />
+          <FlaggedAttemptCard key={attempt.tryId} playerId={studentId} attempt={attempt} />
         ))}
       </div>
     </section>
@@ -335,20 +341,33 @@ export function ReviewTimingsClient({
           >
             {playerEmoji} Review timings for {playerName}
           </h1>
-          <p className={css({ fontSize: '0.9rem', color: 'gray.600', margin: 0, _dark: { color: 'gray.400' } })}>
+          <p
+            className={css({
+              fontSize: '0.9rem',
+              color: 'gray.600',
+              margin: 0,
+              _dark: { color: 'gray.400' },
+            })}
+          >
             Unusually long or interrupted timings across recent practice. Reviewing them keeps the
             pace estimate accurate.
           </p>
         </div>
 
         {query.isLoading && (
-          <p data-element="loading" className={css({ color: 'gray.500', _dark: { color: 'gray.400' } })}>
+          <p
+            data-element="loading"
+            className={css({ color: 'gray.500', _dark: { color: 'gray.400' } })}
+          >
             Loading timings…
           </p>
         )}
 
         {query.isError && (
-          <p data-element="error" className={css({ color: 'red.600', _dark: { color: 'red.400' } })}>
+          <p
+            data-element="error"
+            className={css({ color: 'red.600', _dark: { color: 'red.400' } })}
+          >
             Couldn’t load timing data. Please try again.
           </p>
         )}
@@ -398,10 +417,19 @@ export function ReviewTimingsClient({
                 })}
               >
                 <div className={css({ fontSize: '2rem', marginBottom: '0.5rem' })}>✓</div>
-                <p className={css({ margin: 0, fontWeight: 'medium', color: 'gray.800', _dark: { color: 'gray.200' } })}>
+                <p
+                  className={css({
+                    margin: 0,
+                    fontWeight: 'medium',
+                    color: 'gray.800',
+                    _dark: { color: 'gray.200' },
+                  })}
+                >
                   No unusual timings to review.
                 </p>
-                <p className={css({ marginTop: '0.35rem', fontSize: '0.85rem', color: 'gray.500' })}>
+                <p
+                  className={css({ marginTop: '0.35rem', fontSize: '0.85rem', color: 'gray.500' })}
+                >
                   This student’s pace data looks clean.
                 </p>
               </div>

@@ -1,14 +1,13 @@
-import { legacyWireFieldsOf } from '@/db/schema/session-plan-normalize'
-import type { SessionPlan, GameBreakSettings } from '@/db/schema/session-plans'
+import type { GameBreakSettings, SessionPlan } from '@/db/schema/session-plans'
 import {
-  generateSessionPlan,
   type EnabledParts,
   type GenerateSessionPlanOptions,
+  generateSessionPlan,
 } from '@/lib/curriculum'
 import type { ProblemGenerationMode } from '@/lib/curriculum/config'
 import type { SessionMode } from '@/lib/curriculum/session-mode'
 import { createTask } from '../task-manager'
-import type { SessionPlanEvent, PlanTimingBreakdown } from './events'
+import type { PlanTimingBreakdown, SessionPlanEvent } from './events'
 
 export interface SessionPlanInput {
   playerId: string
@@ -116,8 +115,7 @@ export async function startSessionPlanGeneration(
       }
 
       const plan = await generateSessionPlan(options)
-      // The legacy position and break fields, derived, for older bundles (D9, §10 P6b1-16)
-      handle.complete({ plan: { ...plan, ...legacyWireFieldsOf(plan) } })
+      handle.complete({ plan })
     },
     userId
   )

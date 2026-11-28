@@ -1,12 +1,12 @@
-import { eq } from 'drizzle-orm'
 import { createId } from '@paralleldrive/cuid2'
-import { mkdir, writeFile, rm } from 'fs/promises'
+import { eq } from 'drizzle-orm'
+import { mkdir, rm, writeFile } from 'fs/promises'
 import path from 'path'
 import { db } from '@/db'
 import {
-  visionProblemVideos,
-  type VisionProblemVideoStatus,
   type NewVisionProblemVideo,
+  type VisionProblemVideoStatus,
+  visionProblemVideos,
 } from '@/db/schema/vision-problem-videos'
 import { VideoEncoder } from './VideoEncoder'
 
@@ -51,7 +51,6 @@ export interface PracticeStateInput {
   phase: 'problem' | 'feedback' | 'tutorial'
   studentAnswer: string
   isCorrect: boolean | null
-  currentProblemNumber: number
 }
 
 /**

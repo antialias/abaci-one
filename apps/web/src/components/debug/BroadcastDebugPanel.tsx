@@ -23,10 +23,8 @@ interface BroadcastDebugPanelProps {
     phase?: string
     studentAnswer?: string
     isCorrect?: boolean | null
-    currentProblemNumber?: number
-    totalProblems?: number
-    currentPartIndex?: number
-    currentSlotIndex?: number
+    /** The item on screen, as observers are told it */
+    currentItem?: { partIndex: number; itemId: string }
   } | null
   /** Last broadcast timestamp */
   lastBroadcastTime?: number
@@ -71,8 +69,9 @@ export function BroadcastDebugPanel({
           phase: broadcastState.phase ?? null,
           studentAnswer: broadcastState.studentAnswer ?? '',
           isCorrect: broadcastState.isCorrect ?? null,
-          problemNumber: `${broadcastState.currentProblemNumber ?? '?'}/${broadcastState.totalProblems ?? '?'}`,
-          position: `part ${broadcastState.currentPartIndex ?? '?'}, slot ${broadcastState.currentSlotIndex ?? '?'}`,
+          item: broadcastState.currentItem
+            ? `part ${broadcastState.currentItem.partIndex}, item ${broadcastState.currentItem.itemId}`
+            : null,
         }
       : null,
     lastBroadcast: lastBroadcastTime ? new Date(lastBroadcastTime).toLocaleTimeString() : null,
@@ -259,12 +258,10 @@ export function BroadcastDebugPanel({
               <div className={css({ color: '#d1d5db', fontSize: '10px' })}>
                 <div>Phase: {broadcastState.phase ?? '—'}</div>
                 <div>
-                  Problem: {broadcastState.currentProblemNumber ?? '?'}/
-                  {broadcastState.totalProblems ?? '?'}
-                </div>
-                <div>
-                  Position: Part {(broadcastState.currentPartIndex ?? 0) + 1}, Slot{' '}
-                  {(broadcastState.currentSlotIndex ?? 0) + 1}
+                  Item:{' '}
+                  {broadcastState.currentItem
+                    ? `Part ${broadcastState.currentItem.partIndex + 1}, ${broadcastState.currentItem.itemId}`
+                    : '—'}
                 </div>
                 <div>Answer: "{broadcastState.studentAnswer ?? ''}"</div>
                 {broadcastState.isCorrect !== null && broadcastState.isCorrect !== undefined && (

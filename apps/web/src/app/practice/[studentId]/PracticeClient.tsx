@@ -42,6 +42,7 @@ import type {
 } from '@/db/schema/session-plans'
 import type { GameResultsReport } from '@/lib/arcade/game-sdk/types'
 import {
+  arithmeticCursorLinearIndex,
   arithmeticDotsPosition,
   arithmeticItemNumber,
   arithmeticLinearIndex,
@@ -739,6 +740,9 @@ export function PracticeClient({
   // Update the refs so callbacks defined earlier can access these functions
   stopRecordingRef.current = stopVisionRecording
   sendProblemMarkerRef.current = sendProblemMarker
+  // The problem number the DVR markers key on: the plan's cursor (a do-over
+  // does not move it, and has its own marker below)
+  const shownProblemNumber = broadcastState ? arithmeticCursorLinearIndex(currentPlan) + 1 : null
 
   // When recording starts, emit problem-shown marker for the current problem
   // This handles the case where recording starts mid-session after the first problem-shown was dropped
@@ -747,9 +751,9 @@ export function PracticeClient({
     wasRecordingRef.current = isRecording
 
     // Detect transition from not-recording to recording
-    if (!wasRecording && isRecording && broadcastState && broadcastPosition) {
+    if (!wasRecording && isRecording && broadcastState && shownProblemNumber !== null) {
       sendProblemMarker(
-        broadcastPosition.currentProblemNumber,
+        shownProblemNumber,
         broadcastState.item.partIndex,
         'problem-shown',
         undefined,
@@ -758,12 +762,9 @@ export function PracticeClient({
         broadcastState.currentProblem
       )
     }
-  }, [isRecording, broadcastState, broadcastPosition, sendProblemMarker, getRetryContext])
+  }, [isRecording, broadcastState, shownProblemNumber, sendProblemMarker, getRetryContext])
 
   // Emit 'problem-shown' marker when a new problem appears (including first problem).
-  // Keyed on the problem number observers are sent (the plan's cursor; a
-  // do-over does not move it, and has its own marker below)
-  const shownProblemNumber = broadcastPosition?.currentProblemNumber ?? null
   useEffect(() => {
     if (!broadcastState || shownProblemNumber === null) return
 

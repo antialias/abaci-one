@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { legacyWireFieldsOf } from '@/db/schema/session-plan-normalize'
 import { canPerformAction } from '@/lib/classroom'
 import {
   type ApplySlotResultReviewParams,
@@ -13,10 +12,7 @@ import { getUserId } from '@/lib/viewer'
 const toMs = (d: Date | null | undefined) => (d instanceof Date ? d.getTime() : d)
 
 /**
- * Review/repair one try (#158), addressed by `tryId` (`tries/[tryId]`) or by
- * its position in `results` (`results/[resultIndex]`, kept for older bundles
- * until P6b1-12b).
- * Both routes share this so they answer identically.
+ * Review/repair one try (#158), addressed by `tryId` (`tries/[tryId]`).
  */
 export async function reviewTry(
   request: Request,
@@ -49,8 +45,6 @@ export async function reviewTry(
         startedAt: toMs(updatedPlan.startedAt),
         completedAt: toMs(updatedPlan.completedAt),
         deletedAt: toMs(updatedPlan.deletedAt),
-        // The legacy position and break fields, derived, for older bundles (D9, §10 P6b1-16)
-        ...legacyWireFieldsOf(updatedPlan),
       },
     })
   } catch (error) {

@@ -1,9 +1,9 @@
 /**
- * Phase 5b: the kid's page broadcasts position computed from the server's plan
- * and the item on screen (`arithmeticObserverPosition`), and the part kinds'
- * `{ kind, label }` for a transition. Observers that read the legacy fields
- * (`useSessionObserver`, one release of older bundles) must still follow:
- * these send what the page sends and feed it to the observer hook.
+ * Phase 5b: the kid's page broadcasts the plan's parts and tries and the item
+ * on screen (`arithmeticObserverPosition`), and the part kinds' `{ kind,
+ * label, emoji }` for a transition. The observer places its current dot by
+ * `currentItem` (§10 P6b1-13: the legacy position fields are gone): these
+ * send what the page sends and feed it to the observer hook.
  */
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -124,30 +124,33 @@ describe('useSessionBroadcast — position from the plan (Phase 5b)', () => {
     vi.clearAllMocks()
   })
 
-  it('sends the legacy position fields and currentItem, and an observer follows them', () => {
+  it('sends the parts, the tries and currentItem, and an observer places its dot by it', () => {
     const { kid } = renderKid(kidState({ partIndex: 0, itemId: 'p0s2', doOver: false, round: 0 }))
     const events = emitted<PracticeStateEvent>(kid, 'practice-state')
     const last = events[events.length - 1]
     expect(last).toMatchObject({
       sessionId: SESSION_ID,
-      currentProblemNumber: 3,
-      totalProblems: 5,
-      currentPartIndex: 0,
-      currentSlotIndex: 2,
       sessionParts: parts,
       slotResults: [],
       currentItem: { partIndex: 0, itemId: 'p0s2' },
       purpose: 'review',
     })
-    // The screen's own fields are not on the wire
-    expect(last).not.toHaveProperty('item')
-    expect(last).not.toHaveProperty('position')
+    // The screen's own fields, and the legacy position fields, are not on the wire
+    for (const field of [
+      'item',
+      'position',
+      'currentProblemNumber',
+      'totalProblems',
+      'currentPartIndex',
+      'currentSlotIndex',
+    ]) {
+      expect(last).not.toHaveProperty(field)
+    }
 
     const { hook, observer } = renderObserver()
     act(() => observer.handlers.get('practice-state')?.(last))
     expect(hook.result.current.state).toMatchObject({
-      currentProblemNumber: 3,
-      totalProblems: 5,
+      currentItem: { partIndex: 0, itemId: 'p0s2' },
       currentPartIndex: 0,
       currentSlotIndex: 2,
       currentProblem: { terms: [2, 1], answer: 3 },
@@ -165,18 +168,41 @@ describe('useSessionBroadcast — position from the plan (Phase 5b)', () => {
     expect(emitted<PracticeStateEvent>(kid, 'practice-state')).toHaveLength(1)
   })
 
-  it('sends a do-over at its own slot with the cursor problem number', () => {
+  it('sends a do-over as its own item; the observer shows its dot', () => {
     const { kid } = renderKid(kidState({ partIndex: 0, itemId: 'p0s0', doOver: true, round: 0 }))
     const events = emitted<PracticeStateEvent>(kid, 'practice-state')
-    expect(events[events.length - 1]).toMatchObject({
-      currentPartIndex: 0,
-      currentSlotIndex: 0,
-      currentProblemNumber: 3,
-      currentItem: { partIndex: 0, itemId: 'p0s0' },
-    })
+    const last = events[events.length - 1]
+    expect(last).toMatchObject({ currentItem: { partIndex: 0, itemId: 'p0s0' } })
+
+    const { hook, observer } = renderObserver()
+    act(() => observer.handlers.get('practice-state')?.(last))
+    expect(hook.result.current.state).toMatchObject({ currentPartIndex: 0, currentSlotIndex: 0 })
   })
 
-  it("sends the kinds' { kind, label } for a transition, with the legacy types, and an observer follows", () => {
+  it('a broadcast without currentItem (a kid screen older than Phase 5b) shows no current dot', () => {
+    const { hook, observer } = renderObserver()
+    const { currentItem: _none, ...old } = arithmeticObserverPosition(plan, {
+      partIndex: 0,
+      itemId: 'p0s2',
+      doOver: false,
+    })
+    act(() =>
+      observer.handlers.get('practice-state')?.({
+        sessionId: SESSION_ID,
+        currentProblem: { terms: [2, 1], answer: 3 },
+        phase: 'problem',
+        studentAnswer: '',
+        isCorrect: null,
+        timing: { startedAt: 1, elapsed: 0 },
+        purpose: 'review',
+        ...old,
+      })
+    )
+    expect(hook.result.current.state?.sessionParts).toEqual(parts)
+    expect(hook.result.current.state).not.toHaveProperty('currentSlotIndex')
+  })
+
+  it("sends the kinds' { kind, label, emoji } for a transition, and an observer follows", () => {
     const { hook, kid } = renderKid(null)
     const previous = partTransitionViewOf(parts[0])
     const next = partTransitionViewOf(parts[1])
@@ -185,10 +211,8 @@ describe('useSessionBroadcast — position from the plan (Phase 5b)', () => {
     const [event] = emitted<PartTransitionEvent>(kid, 'part-transition')
     expect(event).toEqual({
       sessionId: SESSION_ID,
-      previous: { kind: 'arithmetic', label: 'Abacus' },
-      next: { kind: 'arithmetic', label: 'Equations' },
-      previousPartType: 'abacus',
-      nextPartType: 'linear',
+      previous: { kind: 'arithmetic', label: 'Abacus', emoji: '🧮' },
+      next: { kind: 'arithmetic', label: 'Equations', emoji: '✏️' },
       countdownStartTime: 5000,
       countdownDurationMs: 7000,
     })
@@ -196,8 +220,8 @@ describe('useSessionBroadcast — position from the plan (Phase 5b)', () => {
     const { hook: obs, observer } = renderObserver()
     act(() => observer.handlers.get('part-transition')?.(event))
     expect(obs.result.current.transitionState).toMatchObject({
-      previousPartType: 'abacus',
-      nextPartType: 'linear',
+      previous: { kind: 'arithmetic', label: 'Abacus', emoji: '🧮' },
+      next: { kind: 'arithmetic', label: 'Equations', emoji: '✏️' },
       countdownStartTime: 5000,
       countdownDurationMs: 7000,
     })
@@ -208,7 +232,6 @@ describe('useSessionBroadcast — position from the plan (Phase 5b)', () => {
     act(() => hook.result.current.sendPartTransition(null, partTransitionViewOf(parts[0]), 1, 7000))
     const [event] = emitted<PartTransitionEvent>(kid, 'part-transition')
     expect(event.previous).toBeNull()
-    expect(event.previousPartType).toBeNull()
-    expect(event.next).toEqual({ kind: 'arithmetic', label: 'Abacus' })
+    expect(event.next).toEqual({ kind: 'arithmetic', label: 'Abacus', emoji: '🧮' })
   })
 })

@@ -69,7 +69,9 @@ export function ObserverDebugPanel({
           phase: state.phase,
           studentAnswer: state.studentAnswer,
           isCorrect: state.isCorrect,
-          problemNumber: `${state.currentProblemNumber}/${state.totalProblems}`,
+          item: state.currentItem
+            ? `part ${state.currentItem.partIndex}, item ${state.currentItem.itemId}`
+            : null,
           position:
             state.currentPartIndex !== undefined
               ? `part ${state.currentPartIndex}, slot ${state.currentSlotIndex ?? '?'}`
@@ -294,9 +296,6 @@ export function ObserverDebugPanel({
               </div>
               <div className={css({ color: '#d1d5db', fontSize: '10px' })}>
                 <div>Phase: {state.phase}</div>
-                <div>
-                  Problem: {state.currentProblemNumber}/{state.totalProblems}
-                </div>
                 {state.currentPartIndex !== undefined && (
                   <div>
                     Position: Part {state.currentPartIndex + 1}, Slot{' '}

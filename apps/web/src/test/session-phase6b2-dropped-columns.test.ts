@@ -26,12 +26,9 @@
  * session report (single and list), the song's input. `flowVersion` and
  * `flowUpdatedAt` are not compared (P6b-5).
  *
- * Old bundles (D9, P6b1-16): at every point of the walk (from before the first
- * try, through each break state) the plan as the routes send it
- * (`serializePlan`, through JSON) is fed to verbatim copies of the 6a and 6b-0
- * clients' position and break logic (`./old-bundles/`); each shows the item,
- * part states and break state that this image's client logic shows. The
- * derived wire fields need no column.
+ * The walk passes through every flow state. Its old-bundle check (the plan as
+ * the routes sent it, fed to copies of the 6a and 6b-0 clients) went with the
+ * derived legacy wire fields (§10 P6b1-16, removed).
  *
  * This file was `session-phase6b1-mixed-pod.test.ts` (P6b1-6). Its 6b-0 twin,
  * which read the raw legacy columns, and its handovers, which wrote them, are
@@ -54,7 +51,6 @@ import type {
 } from '@/db/schema/session-plans'
 import { calculateTotalProblemsWithRetries } from '@/lib/curriculum/parts/arithmetic/report'
 import { getCurrentProblemInfo } from '@/lib/curriculum/parts/arithmetic/state'
-import { serializePlan } from '@/lib/curriculum/plan-wire'
 import { readTriesSync } from '@/lib/curriculum/read-tries'
 import {
   applySessionFlowEvent,
@@ -73,8 +69,6 @@ import {
   getCurrentEphemeralDb,
   setCurrentEphemeralDb,
 } from './journey-simulator/EphemeralDatabase'
-import * as phase6a from './old-bundles/phase6a-client'
-import * as phase6b0 from './old-bundles/phase6b0-client'
 
 vi.mock('server-only', () => ({}))
 
@@ -419,66 +413,11 @@ afterEach(() => {
   eph.cleanup()
 })
 
-interface OldBundleCoverage {
-  points: number
-  flowStates: Set<string>
-  /** Points where a retry item was shown */
-  retries: number
-  /** Points where the results screen restores persisted results */
-  results: number
-}
-
-/**
- * 6b-1's client break reads (PracticeClient, the same expressions as 6b-0's,
- * over this image's `currentBreakOf`).
- */
-function breakView(currentPlan: SessionPlan) {
-  const flowState = currentPlan.flowState ?? 'practicing'
-  const showGameBreak = flowState === 'break_pending' || flowState === 'break_active'
-  const showGameBreakResults = flowState === 'break_results'
-  const currentBreak = currentBreakOf(currentPlan)
-  const currentBreakStartMs =
-    currentBreak?.startedAt != null ? new Date(currentBreak.startedAt).getTime() : null
-  return {
-    showGameBreak,
-    showGameBreakResults,
-    gameBreakStartTime:
-      showGameBreak && currentBreakStartMs != null && !Number.isNaN(currentBreakStartMs)
-        ? currentBreakStartMs
-        : null,
-    persistedResults: showGameBreakResults ? (currentBreak?.results ?? null) : null,
-  }
-}
-
-/**
- * The plan as the routes send it, read by the 6a and 6b-0 bundles' copied
- * logic: the same item, part states and break as 6b-1's client logic reads.
- */
-function checkOldBundles(label: string, plan: SessionPlan, coverage: OldBundleCoverage) {
-  const wire = JSON.parse(JSON.stringify(serializePlan(plan)))
-  const shown = getCurrentProblemInfo(wire)
-  expect(phase6a.getCurrentProblemInfo(wire), `${label}: 6a shows`).toEqual(shown)
-  expect(phase6b0.getCurrentProblemInfo(wire), `${label}: 6b-0 shows`).toEqual(shown)
-  for (let i = 0; i < wire.parts.length; i++) {
-    expect(phase6a.partStateOf(wire, i), `${label}: 6a part ${i}`).toEqual(partStateOf(wire, i))
-    expect(phase6b0.arithmeticPartStateOf(wire, i), `${label}: 6b-0 part ${i}`).toEqual(
-      partStateOf(wire, i)
-    )
-  }
-  const view = breakView(wire)
-  expect(phase6a.phase6aBreakView(wire), `${label}: 6a break`).toEqual(view)
-  expect(phase6b0.phase6b0BreakView(wire), `${label}: 6b-0 break`).toEqual(view)
-  coverage.points++
-  coverage.flowStates.add(wire.flowState)
-  if (shown?.isRetry) coverage.retries++
-  if (view.persistedResults) coverage.results++
-}
-
 /** Walk the session; the first step at which the twin's view or outcome differs, or null. */
 async function walk() {
   const outcomes: string[] = []
   let entriesLeftOut = 0
-  const oldBundles: OldBundleCoverage = { points: 0, flowStates: new Set(), retries: 0, results: 0 }
+  const flowStates = new Set<string>()
 
   const leftBy6b0 = () =>
     copyRow(NAMES.left, (p) => {
@@ -502,7 +441,7 @@ async function walk() {
   }
 
   const compare = async (label: string, now: number) => {
-    checkOldBundles(label, await row(NAMES.next), oldBundles)
+    flowStates.add((await row(NAMES.next)).flowState)
     const nextView = await readView(NAMES.next, now)
     const view = await readView(NAMES.left, now)
     if (JSON.stringify(view) !== JSON.stringify(nextView)) {
@@ -557,7 +496,7 @@ async function walk() {
       }
     }
   }
-  return { divergedAt: null, outcomes, entriesLeftOut, oldBundles }
+  return { divergedAt: null, outcomes, entriesLeftOut, flowStates }
 }
 
 describe('Phase 6b-2: 6b-1 writes and reads a session on the table 0149 dropped the columns from', () => {
@@ -577,7 +516,7 @@ describe('Phase 6b-2: 6b-1 writes and reads a session on the table 0149 dropped 
     await expect(validateCriticalSessionPlanColumns(eph.db)).resolves.toBeUndefined()
   })
 
-  it('every step of the walk: the same outcomes, views and old-bundle reads', async () => {
+  it('every step of the walk: the same outcomes and views', async () => {
     const result = await walk()
     expect(result.divergedAt, JSON.stringify(result.diff?.slice(0, 30), null, 1)).toBeNull()
     // The walk reached every reader: repeats were no-ops, the refusals were refused
@@ -598,10 +537,8 @@ describe('Phase 6b-2: 6b-1 writes and reads a session on the table 0149 dropped 
       ['memory-quiz', 'gameFinished'],
       [null, 'skipped'],
     ])
-    // Old bundles were checked at every point, through every break state, a
-    // retry round and a restored results screen
-    expect(result.oldBundles!.points).toBe(2 * STEPS.length + 1)
-    expect([...result.oldBundles!.flowStates].sort()).toEqual([
+    // The walk went through every flow state
+    expect([...result.flowStates!].sort()).toEqual([
       'break_active',
       'break_pending',
       'break_results',
@@ -609,7 +546,5 @@ describe('Phase 6b-2: 6b-1 writes and reads a session on the table 0149 dropped 
       'part_transition',
       'practicing',
     ])
-    expect(result.oldBundles!.retries).toBeGreaterThan(0)
-    expect(result.oldBundles!.results).toBeGreaterThan(0)
   })
 })
