@@ -22,6 +22,9 @@ import {
   getCurrentEphemeralDb,
   setCurrentEphemeralDb,
 } from '@/test/journey-simulator/EphemeralDatabase'
+import { readAbacusKind } from '../parts/__tests__/fixtures/read-abacus-kind'
+import type { AnyPartKind } from '../parts/kind'
+import { partKinds } from '../parts/registry'
 import { getRecentSessionDates, getRecentSessions } from '../progress-manager'
 import { buildSessionReports } from '../session-report-batch'
 
@@ -328,6 +331,71 @@ describe('getRecentSessions', () => {
     expect(fat.parts[0].slots.map((slot) => slot.index)).toEqual(
       Array.from({ length: 100 }, (_, i) => i)
     )
+  })
+
+  // Practice-kinds K3: the slim projection works by kind. An arithmetic part is
+  // reduced to its slots; a part of another kind passes whole, for its kind to
+  // count (`items()`), and an unknown kind's part counts nothing and breaks nothing.
+  it('slim parts by kind: an arithmetic part and a read_abacus part both count', async () => {
+    const registry = partKinds as Map<string, AnyPartKind>
+    registry.set(readAbacusKind.id, readAbacusKind as unknown as AnyPartKind)
+    try {
+      const arithmetic: SessionPart = {
+        partNumber: 1,
+        type: 'abacus',
+        format: 'vertical',
+        useAbacus: true,
+        estimatedMinutes: 4,
+        slots: Array.from({ length: 3 }, (_, i) => ({
+          slotId: `slot-${i}`,
+          index: i,
+          purpose: 'focus',
+          constraints: { allowedSkills: { heavy: true } },
+          problem: { terms: [i, 1], answer: i + 1, skillsRequired: [] },
+        })) as SessionPart['slots'],
+      }
+      const reading = {
+        kind: 'read_abacus',
+        partNumber: 2,
+        presentation: 'static',
+        content: {
+          items: Array.from({ length: 4 }, (_, i) => ({
+            itemId: `r${i}`,
+            beadState: [i],
+            expectedValue: i,
+            skillsRequired: [],
+          })),
+        },
+      }
+      const unknown = { kind: 'zzz', partNumber: 3, content: { items: [{ itemId: 'z0' }] } }
+      await insertSession(ephemeralDb.db, {
+        id: 'mixed',
+        playerId,
+        parts: [arithmetic, reading, unknown] as unknown as SessionPart[],
+        results: [makeSlotResult({ slotId: 'slot-0' })],
+      })
+      const [session] = await getRecentSessions(playerId, 10)
+      expect(session.report.totals.plannedProblems).toBe(3 + 4)
+
+      const rows = vi.mocked(buildSessionReports).mock.calls.at(-1)![0]
+      const slim = rows.find((r) => r.id === 'mixed')!.parts as unknown[]
+      // Arithmetic: slots only, the constraints left behind; the others whole
+      expect(slim[0]).toEqual({
+        kind: null,
+        partNumber: 1,
+        type: 'abacus',
+        presentation: null,
+        slots: [0, 1, 2].map((i) => ({
+          slotId: `slot-${i}`,
+          index: i,
+          problem: { terms: [i, 1], answer: i + 1 },
+        })),
+      })
+      expect(slim[1]).toEqual(reading)
+      expect(slim[2]).toEqual(unknown)
+    } finally {
+      registry.delete(readAbacusKind.id)
+    }
   })
 
   it('getRecentSessionDates: the same sessions, ids and dates only', async () => {

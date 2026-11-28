@@ -7,27 +7,31 @@
  * So "flash anzan counts toward visualization" will be one line in a
  * presentation list, with no backfill (D8).
  *
- * K3 builds this from `partKinds` (each kind's `presentations`); until then
- * it lists arithmetic's, the only kind with presentations.
+ * Built from the registry (`partKinds`, each kind's `presentations`, K3):
+ * a kind's presentations are registered with the kind.
  *
  * Client-safe: pure, no kind vocabulary.
  */
 
-import { arithmeticPresentations } from './arithmetic/presentations'
 import type { Presentation } from './kind'
+import { partKinds } from './registry'
 
-const presentationLists: readonly ReadonlyMap<string, Presentation>[] = [arithmeticPresentations]
-
-/** Every registered presentation, in kind-registration order then the kind's own */
-export const registeredPresentations: readonly Presentation[] = presentationLists.flatMap(
-  (list) => [...list.values()]
-)
-
-const byId = new Map(registeredPresentations.map((p) => [p.id, p]))
+/**
+ * Every registered presentation, in kind-registration order then the kind's
+ * own. Read from the registry at each call, so a kind registered after this
+ * module loaded (a test's stub kind) is seen.
+ */
+export function registeredPresentations(): Presentation[] {
+  return [...partKinds.values()].flatMap((kind) => [...kind.presentations.values()])
+}
 
 /** A registered presentation, or undefined for an id no registry knows. */
 export function findPresentation(id: string): Presentation | undefined {
-  return byId.get(id)
+  for (const kind of partKinds.values()) {
+    const presentation = kind.presentations.get(id)
+    if (presentation) return presentation
+  }
+  return undefined
 }
 
 /**
@@ -38,6 +42,6 @@ export function findPresentation(id: string): Presentation | undefined {
  * (§3.1).
  */
 export function masteryModeOf(presentationId: string): string | null {
-  const presentation = byId.get(presentationId)
+  const presentation = findPresentation(presentationId)
   return presentation ? presentation.masteryMode : presentationId
 }

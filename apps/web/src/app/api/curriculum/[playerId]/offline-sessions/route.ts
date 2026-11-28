@@ -69,7 +69,7 @@ function buildOfflineSummary(practiceTypes: SessionPartType[], date: Date): Sess
     totalProblemCount: 0,
     estimatedMinutes: 0,
     parts: practiceTypes.map((type, idx) => ({
-      partNumber: (idx + 1) as 1 | 2 | 3,
+      partNumber: idx + 1,
       type,
       description: getPracticeType(type).label,
       problemCount: 0,

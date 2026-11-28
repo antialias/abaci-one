@@ -376,7 +376,7 @@ function computeSkillHealthSummary(
  * The per-mode mastery chips, one per mastery mode of the registered
  * presentations, in registration order (practice-kinds plan K1b, R7/R8).
  */
-const MASTERY_MODE_CHIPS = registeredPresentations.flatMap((p, i, all) =>
+const MASTERY_MODE_CHIPS = registeredPresentations().flatMap((p, i, all) =>
   p.masteryMode !== null && all.findIndex((q) => q.masteryMode === p.masteryMode) === i
     ? [{ mode: p.masteryMode, emoji: p.emoji, label: p.label }]
     : []

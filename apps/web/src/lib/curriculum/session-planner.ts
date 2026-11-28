@@ -561,7 +561,7 @@ export async function generateSessionPlan(
 
   // Build only enabled parts with normalized time weights
   const parts: SessionPart[] = []
-  let partNumber = 1 as 1 | 2 | 3
+  let partNumber = 1
   const partTimings: Array<{
     type: string
     totalMs: number
@@ -671,7 +671,7 @@ export async function generateSessionPlan(
       durationMs: partMs,
     })
 
-    partNumber = (partNumber + 1) as 1 | 2 | 3
+    partNumber = partNumber + 1
   }
 
   // 5. Build summary
@@ -744,7 +744,7 @@ export async function generateSessionPlan(
  *   These are used for both focus and reinforce slots to prioritize practice.
  */
 function buildSessionPart(
-  partNumber: 1 | 2 | 3,
+  partNumber: number,
   type: SessionPartType,
   totalDurationMinutes: number,
   avgTimeSeconds: number,
@@ -927,7 +927,7 @@ function buildSessionPart(
  * to allow Socket.IO broadcasts to flush during problem generation.
  */
 async function buildSessionPartAsync(
-  partNumber: 1 | 2 | 3,
+  partNumber: number,
   type: SessionPartType,
   totalDurationMinutes: number,
   avgTimeSeconds: number,
@@ -1971,10 +1971,12 @@ function buildSummary(
 ): SessionSummary {
   const phaseInfo = phase ? getPhaseDisplayInfo(phase.id) : null
 
+  // The planner builds arithmetic parts of its own three presentations only
+  // (`type` is a string since practice-kinds K3)
   const partSummaries: PartSummary[] = parts.map((part) => ({
     partNumber: part.partNumber,
     type: part.type,
-    description: getPartDescription(part.type),
+    description: getPartDescription(part.type as SessionPartType),
     problemCount: part.slots.length,
     estimatedMinutes: part.estimatedMinutes,
   }))

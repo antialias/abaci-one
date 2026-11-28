@@ -11,18 +11,15 @@
  */
 
 import type { SessionPart, SlotResult, TryEvidence } from '@/db/schema/session-plans'
-import type { DoOverRefusal, KindTry, KindTryRecord, PartKind } from '../kind'
+import type { KindTry, KindTryRecord, PartKind, Presentation } from '../kind'
 import { formatProblemExpression } from './describe'
-import { arithmeticProgress } from './report'
+import { arithmeticPresentationOf, arithmeticPresentations } from './presentations'
 import {
   type ArithmeticContent,
   type ArithmeticItem,
   type ArithmeticState,
+  arithmeticCursor,
   expectedArithmeticItem,
-  MAX_RETRY_EPOCHS,
-  redeemSlot,
-  settleArithmetic,
-  stepPastItem,
 } from './state'
 
 /**
@@ -31,27 +28,40 @@ import {
  * wrong, a part with no retry state) returns `state` itself.
  *
  * The kind's `applyTryAside`: a do-over outside the part being practiced
- * (another part, or a break) redeems without settling (§10 P2-3).
+ * (another part, or a break) redeems without settling (§10 P2-3). The shared
+ * cursor's `redeem` since K3.
  */
 export function redeemByDoOver(
   slots: ArithmeticContent,
   state: ArithmeticState,
   t: KindTry
 ): ArithmeticState {
-  if (t.practiceOnly || !t.isCorrect || !state.retry) return state
-  const slotIndex = slots.findIndex((s) => s.slotId === t.itemId)
-  if (slotIndex < 0) return state
-  return redeemSlot(state, slotIndex)
+  return arithmeticCursor.redeem(slots, state, t)
 }
 
 /**
- * The presentation an arithmetic part's tries were practiced in: its `type`.
- * A part stored without one (old or hand-made rows), or no part at all, is
- * 'linear', as every evidence reader read it before K1b (`partType ??
- * 'linear'`); `evidenceOfRow` derives an unstamped row's evidence from it.
+ * A part's presentation (§1.3 `presentationOf`): the registered one, with the
+ * ledger's `abacusAvailable` as the part decides it (a linear part on the
+ * ramp keeps the working abacus, `useAbacus`), which is what the axes read
+ * before K3. An id this image does not register (a newer image's
+ * presentation, read after a rollback) is its own: labelled by its id, its
+ * own mastery mode (§3.1), the abacus as the part says.
  */
-export function arithmeticPresentationOf(part: { type?: unknown } | undefined): string {
-  return typeof part?.type === 'string' ? part.type : 'linear'
+export function arithmeticPartPresentation(part: SessionPart): Presentation<SessionPart> {
+  const id = arithmeticPresentationOf(part)
+  const registered = arithmeticPresentations.get(id)
+  const presentation: Presentation<SessionPart> = registered ?? {
+    id,
+    label: id,
+    emoji: '⭐',
+    masteryMode: id,
+    axes: { layer: id, modality: 'visual', abacusAvailable: false, input: 'keypad' },
+    needsPhysicalAbacus: (p) => p.useAbacus === true,
+    autoPause: true,
+  }
+  if (typeof part.useAbacus !== 'boolean') return presentation
+  if (presentation.axes.abacusAvailable === part.useAbacus) return presentation
+  return { ...presentation, axes: { ...presentation.axes, abacusAvailable: part.useAbacus } }
 }
 
 /**
@@ -85,41 +95,43 @@ export const arithmeticKind: PartKind<
   // Sessions from before problem pre-generation have slots without problems
   isPlayable: (slots) => slots.every((slot) => !!slot.problem),
 
-  initialState: () => ({ slotIndex: 0, retry: undefined }),
-
-  expectedItem: expectedArithmeticItem,
-
-  // A do-over of an item with a try, unless its answer was divulged (a wrong
+  // The cursor is the shared one (K3, decision K4): slots in order, two retry
+  // rounds, redemption, do-overs. A do-over is refused for an item the part
+  // does not have, one with no try, or one whose answer was divulged (a wrong
   // try of the last retry round, which shows the answer; the dots' copy reads
-  // the same, `SessionProgressIndicator`). Moved here from `recordRedoResult`
+  // the same, `SessionProgressIndicator`): moved here from `recordRedoResult`
   // in K2, where it was a plain Error (500); refused here it is the
   // recorder's quiet 409 `SLOT_MISMATCH` (R14).
-  acceptsDoOver: (slots, _state, tries, itemId) =>
-    arithmeticDoOverRefusal(slots, tries, itemId) === null,
+  initialState: arithmeticCursor.initialState,
+  acceptsDoOver: arithmeticCursor.acceptsDoOver,
+  whyNotDoOver: arithmeticCursor.whyNotDoOver,
+  applyTry: arithmeticCursor.applyTry,
+  applyTryAside: arithmeticCursor.applyTryAside,
+  isDone: arithmeticCursor.isDone,
+  progress: arithmeticCursor.progress,
+  roundsRemaining: arithmeticCursor.roundsRemaining,
 
-  whyNotDoOver: (slots, _state, tries, itemId) => arithmeticDoOverRefusal(slots, tries, itemId),
+  // What the student is shown, as this kind has always shown it (`slotId`,
+  // `epochNumber`, a retry's problem from the queue)
+  expectedItem: expectedArithmeticItem,
 
-  applyTry(slots, state, _tries, t) {
-    if (t.kind === 'do_over') {
-      const redeemed = redeemByDoOver(slots, state, t)
-      // A redemption that empties the running round settles like a try does
-      return redeemed === state ? state : settleArithmetic(slots, redeemed)
+  presentations: arithmeticPresentations,
+
+  items: (slots) => slots.map((slot) => ({ itemId: slot.slotId })),
+
+  itemOf(slots, itemId) {
+    const index = slots.findIndex((s) => s.slotId === itemId)
+    if (index < 0) return null
+    const slot = slots[index]
+    return {
+      slotId: slot.slotId,
+      originalSlotIndex: index,
+      epochNumber: 0,
+      retryIndex: null,
+      problem: slot.problem,
+      purpose: slot.purpose,
     }
-    const item = expectedArithmeticItem(slots, state)
-    if (!item || item.slotId !== t.itemId) {
-      throw new Error(
-        `arithmetic applyTry: try for ${t.itemId}, expected ${item?.slotId ?? '(none)'}`
-      )
-    }
-    return stepPastItem(slots, state, item, t.isCorrect)
   },
-
-  // Redeem without settling, as recordRedoResult did before Phase 3a (§10 P2-3)
-  applyTryAside: (slots, state, _tries, t) => redeemByDoOver(slots, state, t),
-
-  isDone: (slots, state) => expectedArithmeticItem(slots, state) === null,
-
-  progress: (slots, state) => arithmeticProgress(slots, state),
 
   judge(slots, itemId, answer) {
     const problem = slots.find((s) => s.slotId === itemId)?.problem
@@ -142,17 +154,10 @@ export const arithmeticKind: PartKind<
     usedOnScreenAbacus: row.usedOnScreenAbacus,
   }),
 
-  // What the ledger adapter copies today (L/ledger/adapters/problem-result.ts)
-  presentationOf: (part) => ({
-    layer: part.type ?? 'linear',
-    modality: 'visual',
-    abacusAvailable: part.useAbacus,
-    input: 'keypad',
-  }),
-
-  // A part stored without a type (old or hand-made rows) is 'linear', main's
-  // default for evidence; null stays reserved for "not evidence".
-  bktMode: (part) => (typeof part.type === 'string' ? part.type : 'linear'),
+  // The part's presentation; its `axes` are what the ledger adapter copies
+  // (L/ledger/adapters/problem-result.ts), as `presentationOf` answered
+  // before K3. The mastery mode is the presentation's (`bktMode` is retired).
+  presentationOf: arithmeticPartPresentation,
 
   // A retry item shares its slot's id; its round is the retry round
   itemPositionOf: (item) => ({ itemId: item.slotId, round: item.epochNumber }),
@@ -177,22 +182,4 @@ export const arithmeticKind: PartKind<
       payload: { kind: 'arithmetic' },
     }
   },
-}
-
-/** Why a do-over of `itemId` is refused (the 409's `reason`, K2), null when it is taken. */
-function arithmeticDoOverRefusal(
-  slots: ArithmeticContent,
-  tries: readonly KindTry[],
-  itemId: string
-): DoOverRefusal | null {
-  if (!slots.some((s) => s.slotId === itemId)) return 'unknown_item'
-  if (!tries.some((t) => t.itemId === itemId)) return 'no_try'
-  return answerWasDivulged(tries, itemId) ? 'divulged' : null
-}
-
-/** Whether the item's answer was shown: a wrong try of the last retry round. */
-function answerWasDivulged(tries: readonly KindTry[], itemId: string): boolean {
-  return tries.some(
-    (t) => t.itemId === itemId && !t.isCorrect && t.kind === 'retry' && t.round >= MAX_RETRY_EPOCHS
-  )
 }

@@ -377,3 +377,54 @@ describe('buildSessionReport: breaks without the legacy columns (Phase 6b-0)', (
     ])
   })
 })
+
+// Practice-kinds K3: a part row carries its presentation beside `type`. The
+// report of every fixture is otherwise what it was before K3 (checked once
+// against a dump of the pre-K3 build: 18 fixtures, 51 rows, one field each).
+describe('part rows name their presentation (K3)', () => {
+  it("arithmetic: the presentation is the part's type, and the row is otherwise unchanged", () => {
+    const report = tenProblemSessionReport()
+    expect(report.parts.map((p) => [p.type, p.presentation])).toEqual([
+      ['abacus', 'abacus'],
+      ['visualization', 'visualization'],
+      ['linear', 'linear'],
+    ])
+    expect(
+      Object.keys(report.parts[0]).filter((k) => k === 'type' || k === 'presentation')
+    ).toEqual(['type', 'presentation'])
+  })
+
+  it("an arithmetic part with no type: type null, presentation the resolved 'linear'", () => {
+    const fixture = tenProblemSession()
+    const [first, ...rest] = fixture.plan.parts
+    const { type: _type, ...untyped } = first
+    const report = reportOf({
+      ...fixture,
+      plan: { ...fixture.plan, parts: [untyped as never, ...rest] },
+    })
+    expect(report.parts.map((p) => [p.type, p.presentation])).toEqual([
+      [null, 'linear'],
+      ['visualization', 'visualization'],
+      ['linear', 'linear'],
+    ])
+  })
+
+  it("a part's own presentation field wins over type; an unknown kind's own field is read as it stands", () => {
+    const fixture = tenProblemSession()
+    const [first, second, third] = fixture.plan.parts
+    const unknown = { kind: 'zzz', partNumber: 3, presentation: 'flash', content: {} }
+    const report = reportOf({
+      ...fixture,
+      plan: {
+        ...fixture.plan,
+        parts: [{ ...first, presentation: 'linear' }, second, unknown as never],
+      },
+    })
+    expect(report.parts.map((p) => [p.type, p.presentation])).toEqual([
+      ['abacus', 'linear'],
+      ['visualization', 'visualization'],
+      [null, 'flash'],
+    ])
+    expect(third.type).toBe('linear')
+  })
+})

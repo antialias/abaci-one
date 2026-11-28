@@ -1,12 +1,18 @@
 /**
- * Central definition of practice types used throughout the app.
+ * The practice types of the app's screens: since practice-kinds K3 a view
+ * over arithmetic's presentations (`parts/arithmetic/presentations.ts`, R7),
+ * which decide the ids and their order. This file keeps only the display
+ * copy these screens have always shown (offline session logging, the
+ * session hero's chips, the song's part names), which differs from a
+ * presentation's own label.
  *
- * Add new practice types here - they'll be available in:
- * - Offline session logging
- * - Session plans
- * - Practice type filters
- * - Reporting/analytics
+ * A new arithmetic presentation is registered in arithmetic's list, not here;
+ * it is not a practice type until it has copy here (it is left out of
+ * `PRACTICE_TYPES`, not shown blank). A new kind's presentations are not
+ * practice types: they come from the registry.
  */
+
+import { arithmeticPresentations } from '@/lib/curriculum/parts/arithmetic/presentations'
 
 export interface PracticeTypeConfig {
   /** Unique identifier - used in database and code */
@@ -19,36 +25,43 @@ export interface PracticeTypeConfig {
   icon: string
 }
 
-/**
- * All available practice types.
- * Add new types here to make them available app-wide.
- */
-export const PRACTICE_TYPES = [
-  {
-    id: 'abacus',
+/** The display copy per arithmetic presentation id */
+const PRACTICE_TYPE_COPY = {
+  abacus: {
     label: 'Use Abacus',
     description: 'Physical abacus practice',
     icon: '🧮',
   },
-  {
-    id: 'visualization',
+  visualization: {
     label: 'Visualize',
     description: 'Mental math by visualizing beads',
     icon: '🧠',
   },
-  {
-    id: 'linear',
+  linear: {
     label: 'Linear',
     description: 'Mental math with number sentences',
     icon: '📝',
   },
-] as const satisfies readonly PracticeTypeConfig[]
+} as const satisfies Record<string, Omit<PracticeTypeConfig, 'id'>>
 
 /**
- * Union type of all valid practice type IDs.
- * Derived from PRACTICE_TYPES to ensure type safety.
+ * Union type of all valid practice type IDs: arithmetic's presentations that
+ * have copy here.
  */
-export type PracticeTypeId = (typeof PRACTICE_TYPES)[number]['id']
+export type PracticeTypeId = keyof typeof PRACTICE_TYPE_COPY
+
+function hasCopy(id: string): id is PracticeTypeId {
+  return (Object.keys(PRACTICE_TYPE_COPY) as string[]).includes(id)
+}
+
+/**
+ * All available practice types, in arithmetic's presentation order.
+ */
+export const PRACTICE_TYPES: readonly (PracticeTypeConfig & { id: PracticeTypeId })[] = [
+  ...arithmeticPresentations.keys(),
+]
+  .filter(hasCopy)
+  .map((id) => ({ id, ...PRACTICE_TYPE_COPY[id] }))
 
 /**
  * Array of just the practice type IDs (useful for validation).

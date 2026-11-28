@@ -17,6 +17,7 @@
  * Client-safe: no drizzle, no server imports.
  */
 
+import { isValidPracticeTypeId } from '@/constants/practiceTypes'
 import { getSlotRetryStatus, sameProblem } from '@/db/schema/session-plan-helpers'
 import { partStateOf } from '@/db/schema/session-plan-normalize'
 import type {
@@ -27,7 +28,7 @@ import type {
   SessionPlan,
 } from '@/db/schema/session-plans'
 import type { ObserverPosition, PracticeItemRef } from '@/lib/classroom/socket-events'
-import { arithmeticPresentations } from './presentations'
+import { arithmeticPresentationOf, arithmeticPresentations } from './presentations'
 import type { ArithmeticState } from './state'
 
 /** The plan fields this module reads (position through `partStateOf`). */
@@ -193,20 +194,35 @@ export interface ArithmeticTransitionView {
   emoji: string
   /** Abacus parts are worked on the physical abacus */
   needsPhysicalAbacus: boolean
-  /** The arithmetic presentation, which picks the screen's message */
-  presentation: SessionPartType
+  /**
+   * The arithmetic presentation, which picks the screen's message; absent
+   * for one this image does not register (the screen's plain headline)
+   */
+  presentation?: SessionPartType
 }
 
-/** Label, emoji and the physical abacus from the part's presentation (`presentations.ts`) */
+/**
+ * Label and emoji from the part's presentation (`presentationOf`'s id:
+ * `presentation`, else `type`; `presentations.ts`).
+ *
+ * The physical abacus (amendment A10, decided in K3): the screen keeps
+ * asking whether the presentation is `abacus`, not the presentation's
+ * `needsPhysicalAbacus(part)`. They differ only for a linear part on the
+ * ramp (`useAbacus`), where the presentation's answer would newly show
+ * "Grab your abacus" (and drop "Put your abacus away" after an abacus
+ * part): a change the kid sees, which K3 may not make. Switching is the
+ * owner's call, with the screen's move onto the registry (K5b).
+ */
 export function arithmeticTransitionView(
-  part: Pick<SessionPart, 'type'>
+  part: Pick<SessionPart, 'type'> & Partial<Pick<SessionPart, 'presentation'>>
 ): ArithmeticTransitionView {
-  const presentation = arithmeticPresentations.get(part.type)
+  const id = arithmeticPresentationOf(part)
+  const presentation = arithmeticPresentations.get(id)
   return {
     kind: 'arithmetic',
-    label: presentation?.label ?? part.type,
+    label: presentation?.label ?? id,
     emoji: presentation?.emoji ?? '⭐',
-    needsPhysicalAbacus: part.type === 'abacus',
-    presentation: part.type,
+    needsPhysicalAbacus: id === 'abacus',
+    ...(presentation && isValidPracticeTypeId(id) ? { presentation: id } : {}),
   }
 }

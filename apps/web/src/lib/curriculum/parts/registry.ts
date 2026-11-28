@@ -38,10 +38,30 @@ export function isPartPlayable(part: StoredPart): boolean {
   return kind ? kind.isPlayable(kind.contentOf(part)) : true
 }
 
-/** Items planned for a part (its progress total at the start); 0 for an unknown kind. */
+/** Items planned for a part (its `items()`); 0 for an unknown kind. */
 export function plannedItemCount(part: StoredPart): number {
   const kind = findPartKind(part)
   if (!kind) return 0
-  const content = kind.contentOf(part)
-  return kind.progress(content, kind.initialState(content), []).total
+  return kind.items(kind.contentOf(part)).length
+}
+
+/**
+ * The item the kid is on in a part, as its kind shows it, with its id and
+ * round (`itemPositionOf`, default the item's own `itemId`, round 0); null
+ * when the part has nothing to show or its kind is unknown to this image.
+ */
+export function expectedItemOf(
+  part: StoredPart,
+  state: unknown
+): { item: unknown; itemId: string; round: number } | null {
+  const kind = findPartKind(part)
+  if (!kind) return null
+  const item = kind.expectedItem(kind.contentOf(part), state)
+  if (item === null || item === undefined) return null
+  const position = kind.itemPositionOf
+    ? kind.itemPositionOf(item)
+    : { itemId: (item as { itemId?: unknown }).itemId, round: 0 }
+  return typeof position.itemId === 'string'
+    ? { item, itemId: position.itemId, round: position.round }
+    : null
 }

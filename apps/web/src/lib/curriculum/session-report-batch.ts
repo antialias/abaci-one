@@ -24,12 +24,19 @@ import {
 } from './session-report'
 
 /**
- * `session_plans.parts` reduced, in SQL, to what the report reads of a part:
- * `kind`, `partNumber`, `type`, and each slot's `slotId`, `index` and
- * problem `terms`/`answer` (item identity, `resolveItemId`; planned count,
- * the kind's `progress`). The full column carries every slot's generation
- * trace and blew libsql's response cap on lists of heavy users (#141), so
- * lists never select it.
+ * `session_plans.parts` reduced, in SQL, to what the report reads of a part,
+ * by kind (practice-kinds K3). An arithmetic part (no `kind`, or
+ * `'arithmetic'`) keeps `kind`, `partNumber`, `type`, `presentation` and
+ * each slot's `slotId`, `index` and problem `terms`/`answer` (item identity,
+ * `resolveItemId`; the planned count, the kind's `items`). The full column
+ * carries every slot's generation trace and blew libsql's response cap on
+ * lists of heavy users (#141), so lists never select it. A part of any other
+ * kind passes whole: its content is the kind's to read, and a kind's content
+ * is held small (a 20-item part under 16 KB, the K4 suite; a kind that needs
+ * more adds its own arm here, §6.6). Typed `SessionPart[]` as
+ * `SessionPlan.parts` is until the slot readers move off it (K5); a part of
+ * another kind in it is a `KindPart`, which structure reads only through
+ * the registry.
  *
  * Keep in step with what `buildSessionReport` reads of a part: the
  * equivalence test (`session-report-batch.test.ts`) builds the fixtures'
@@ -42,10 +49,14 @@ export function slimPartsSql(): SQL<SessionPart[]> {
   // wraps each element in json() to keep it an object, not a string.
   return sql<SessionPart[]>`(
   SELECT json_group_array(json(pp.v)) FROM (
-    SELECT json_object(
+    SELECT CASE
+      WHEN json_extract(p.value, '$.kind') IS NULL
+        OR json_extract(p.value, '$.kind') = 'arithmetic'
+      THEN json_object(
       'kind', json_extract(p.value, '$.kind'),
       'partNumber', json_extract(p.value, '$.partNumber'),
       'type', json_extract(p.value, '$.type'),
+      'presentation', json_extract(p.value, '$.presentation'),
       'slots', (
         SELECT json_group_array(json(ss.v)) FROM (
           SELECT json_object(
@@ -60,7 +71,9 @@ export function slimPartsSql(): SQL<SessionPart[]> {
           ORDER BY s.key
         ) AS ss
       )
-    ) AS v
+    )
+      ELSE json(p.value)
+    END AS v
     FROM json_each(${schema.sessionPlans.parts}) AS p
     ORDER BY p.key
   ) AS pp

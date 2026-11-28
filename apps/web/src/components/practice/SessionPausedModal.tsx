@@ -20,6 +20,9 @@ function getPartTypeLabel(type: SessionPart['type']): string {
       return 'Mental Math (Visualization)'
     case 'linear':
       return 'Linear Math'
+    default:
+      // A presentation this image does not know (practice-kinds K3: `type` is a string)
+      return type
   }
 }
 
@@ -31,6 +34,9 @@ function getPartTypeEmoji(type: SessionPart['type']): string {
       return '🧠'
     case 'linear':
       return '📝'
+    default:
+      // A presentation this image does not know (practice-kinds K3: `type` is a string)
+      return '⭐'
   }
 }
 

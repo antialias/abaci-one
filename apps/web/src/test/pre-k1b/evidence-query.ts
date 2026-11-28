@@ -8,8 +8,8 @@ import { sql } from 'drizzle-orm'
 import { db } from '@/db'
 import { legacyTryFieldsOfProjection } from '@/db/schema/legacy-try-fields'
 import type { SlotResult, TryKind } from '@/db/schema/session-plans'
-import type { BktMode } from '@/lib/curriculum/parts/kind' // pre-k1b: was '../parts/kind'
 import type { BktEvidence } from './bkt-types' // pre-k1b: was './types'
+import type { BktMode } from './registry' // pre-k1b: was '../parts/kind' (K3 retired it there)
 import { bktModeOf } from './registry' // pre-k1b: was '../parts/registry'
 
 /**

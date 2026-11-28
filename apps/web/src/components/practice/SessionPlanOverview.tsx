@@ -47,6 +47,9 @@ function getPartEmoji(type: SessionPart['type']): string {
       return '🧠'
     case 'linear':
       return '📝'
+    default:
+      // A presentation this image does not know (practice-kinds K3: `type` is a string)
+      return '⭐'
   }
 }
 
@@ -58,6 +61,9 @@ function getPartLabel(type: SessionPart['type']): string {
       return 'Visual'
     case 'linear':
       return 'Mental'
+    default:
+      // A presentation this image does not know (practice-kinds K3: `type` is a string)
+      return type
   }
 }
 
