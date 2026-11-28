@@ -55,6 +55,8 @@ const OTHER_RECORDS: Record<string, string> = {
   'app/practice/[studentId]/PracticeClient.tsx':
     "the submission's round and the do-over's redoContext",
   'hooks/useSessionBroadcast.ts': "the broadcast's retry context",
+  'lib/curriculum/try-wire.ts':
+    "the screen's submission: the round it was shown in, sent as the envelope's round (practice-kinds A16)",
   'socket-server.ts': "the vision recorder's problem markers",
   'lib/vision/recording/VisionRecorder.ts': 'vision recording metadata',
   'components/vision/ProblemVideoPlayer.tsx': 'vision_problem_videos rows',

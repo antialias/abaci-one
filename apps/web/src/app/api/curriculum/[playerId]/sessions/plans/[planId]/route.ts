@@ -123,6 +123,19 @@ export const PATCH = withAuth(async (request, { params }) => {
         slotIndex: result?.slotIndex,
         redoContext,
       })
+    } else if (action === 'record_try') {
+      // The envelope's position, never a verdict (the server judges, A1)
+      console.log('[GBTRACE][server]', 'patch-record-try-request', {
+        ts: new Date().toISOString(),
+        playerId,
+        planId,
+        tryId: result?.tryId,
+        partIndex: result?.partIndex,
+        itemId: result?.itemId,
+        mode: result?.mode,
+        round: result?.round,
+        outcome: result?.outcome,
+      })
     } else if (
       action === 'part_transition_complete' ||
       action === 'break_finished' ||
