@@ -492,4 +492,110 @@ describe('SessionShell — advance after a try comes from the returned plan', ()
     expect(s.shown()).toBe(answerOf(after, 2))
     s.page.unmount()
   })
+
+  /** Tap part 1's dot for slot `slotIndex` (it has a recorded try). */
+  async function tapSlot(plan: SessionPlan, slotIndex: number) {
+    const tapped = plan.parts[0].slots[slotIndex]
+    const original = plan.results.find((r) => r.slotId === tapped.slotId)!
+    await act(async () => {
+      tapDot({
+        isActive: true,
+        partIndex: 0,
+        itemId: tapped.slotId,
+        linearIndex: slotIndex,
+        originalResult: original,
+      })
+    })
+  }
+
+  /** The skip button of the item on screen. */
+  async function skipShown(page: ReturnType<typeof render>) {
+    const skip = page.container.querySelector('[data-action="skip"]')
+    if (!skip) throw new Error('skip button not rendered')
+    await act(async () => {
+      fireEvent.click(skip)
+    })
+  }
+
+  it('a dot tapped while a skip waits for its write wins: the do-over is shown, not the next item', async () => {
+    const before = firstPass([true])
+    const write = heldWrite()
+    const s = renderPage(before, write.promise)
+    await tick(0)
+    expect(s.shown()).toBe(answerOf(before, 1))
+
+    await skipShown(s.page)
+    await tapSlot(before, 0)
+    const after = serverAfter(before, 1, false, 0)
+    await act(async () => {
+      write.resolve(after)
+    })
+    await tick(1500)
+
+    expect(s.phase()).toBe('inputting')
+    expect(s.shown()).toBe(answerOf(before, 0))
+    expect(s.shown()).not.toBe(answerOf(after, 2))
+    expect(s.page.container.querySelector('[data-element="redo-mode-banner"]')).not.toBeNull()
+    s.page.unmount()
+  })
+
+  it("a dot tapped during a submit's feedback wins: the do-over is shown, not the next item", async () => {
+    const before = firstPass([true])
+    const s = renderPage(before, heldWrite().promise)
+    await tick(0)
+    expect(s.shown()).toBe(answerOf(before, 1))
+
+    // A first-round try mid-part: the next item is known at submit
+    await submit(s.page, true)
+    expect(s.phase()).toBe('showingFeedback')
+    await tapSlot(before, 0)
+    await tick(500)
+    await tick(0)
+
+    expect(s.phase()).toBe('inputting')
+    expect(s.shown()).toBe(answerOf(before, 0))
+    expect(s.shown()).not.toBe(answerOf(before, 2))
+    expect(s.page.container.querySelector('[data-element="redo-mode-banner"]')).not.toBeNull()
+    s.page.unmount()
+  })
+
+  it("a skip whose write fails leaves the resync's fresh attempt alone", async () => {
+    const before = firstPass([true])
+    const write = heldWrite()
+    const s = renderPage(before, write.promise)
+    await tick(0)
+    await skipShown(s.page)
+
+    // The write failed: the page refetched (the server never took the skip),
+    // bumped the resync, and the answer resolves null
+    await act(async () => {
+      showPlan({ ...before, rowVersion: (before.rowVersion ?? 0) + 1 })
+      resync()
+      write.resolve(null)
+    })
+    await tick(0)
+    expect(s.phase()).toBe('inputting')
+    expect(s.shown()).toBe(answerOf(before, 1))
+
+    // Nothing clears the screen again when the skip's feedback delay ends
+    // (a clear shows the loading screen for a commit: its node is added)
+    const loadingShown: string[] = []
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of Array.from(record.addedNodes)) {
+          if (node instanceof Element && node.getAttribute('data-status') === 'loading') {
+            loadingShown.push('loading')
+          }
+        }
+      }
+    })
+    observer.observe(s.page.container, { childList: true, subtree: true })
+    await tick(1500)
+    await tick(0)
+    observer.disconnect()
+    expect(loadingShown).toEqual([])
+    expect(s.phase()).toBe('inputting')
+    expect(s.shown()).toBe(answerOf(before, 1))
+    s.page.unmount()
+  })
 })

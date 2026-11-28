@@ -36,7 +36,7 @@ import { useSetRemoteCameraSession } from '@/hooks/useSessionPlan'
 import { css } from '../../../../../../styled-system/css'
 import { arithmeticPresentationOf } from '../presentations'
 import { arithmeticSlotAt, arithmeticSlotOf } from '../session-view'
-import { getCurrentProblemInfo } from '../state'
+import type { ArithmeticItem } from '../state'
 import { AssistanceDebugPanel } from './AssistanceDebugPanel'
 import { generateCoachHint } from './coachHintGenerator'
 import { DecompositionSection } from './DecompositionSection'
@@ -90,7 +90,7 @@ const PRESENTATION_DISPLAY: Record<string, 'vertical' | 'linear'> = {
 }
 
 /** The problem display of a part's presentation (its `format` for an id this table lacks). */
-export function presentationDisplayOf(part: SessionPart): 'vertical' | 'linear' {
+function presentationDisplayOf(part: SessionPart): 'vertical' | 'linear' {
   return (
     PRESENTATION_DISPLAY[arithmeticPresentationOf(part)] ??
     (part.format === 'vertical' ? 'vertical' : 'linear')
@@ -136,6 +136,7 @@ export function ArithmeticItemView({
   feedback,
   redo,
   itemKey,
+  shown,
   slidePending,
   handle,
   hidden,
@@ -255,8 +256,12 @@ export function ArithmeticItemView({
     ]
   )
 
-  // The problem the plan shows (getCurrentProblemInfo accounts for retry rounds)
-  const currentProblemInfo = useMemo(() => getCurrentProblemInfo(plan), [plan])
+  // The item the plan shows, as the shell derived it (the kind's expectedItem
+  // over the part's state; it accounts for retry rounds)
+  const shownItem = shown?.item as ArithmeticItem | undefined
+  const currentProblemInfo = shownItem?.problem
+    ? { ...shownItem, problem: shownItem.problem }
+    : null
 
   // Redo mode: the item being redone, by its id
   const isInRedoMode = redo?.isActive ?? false
@@ -275,7 +280,9 @@ export function ArithmeticItemView({
   // even in redo mode.
   const activePartIndex =
     isInRedoMode && redo && redoSlot?.problem ? redo.partIndex : plan.currentPartIndex
-  const isLinearActive = plan.parts[activePartIndex]?.format === 'linear'
+  // One source for the layout and the help scaffolding: the part's presentation
+  const activePart = plan.parts[activePartIndex]
+  const isLinearActive = activePart ? presentationDisplayOf(activePart) === 'linear' : false
 
   // Digit entry and help, over the phase the shell's lifecycle holds. Called
   // here, in the shell's child, so its effects run before the lifecycle's
@@ -548,8 +555,8 @@ export function ArithmeticItemView({
   }
   const showOnScreenKeypad = hasPhysicalKeyboard === false || keypadWasShownRef.current
 
-  // Current part from the plan; the item on it from getCurrentProblemInfo,
-  // which handles both original slots and retry epochs
+  // Current part from the plan; the item on it from the shell (original
+  // slots and retry rounds alike)
   const currentPart = plan.parts[plan.currentPartIndex] as SessionPart | undefined
   const regularSlot: ProblemSlot | undefined = currentProblemInfo
     ? {
@@ -565,7 +572,7 @@ export function ArithmeticItemView({
   const currentSlot = isInRedoMode && redoSlot ? redoSlot : regularSlot
 
   // Retry epoch tracking
-  const inRetryEpoch = currentProblemInfo?.isRetry ?? false
+  const inRetryEpoch = currentProblemInfo ? currentProblemInfo.retryIndex !== null : false
   const retryEpochNumber = currentProblemInfo?.epochNumber ?? 0
 
   // Auto-trigger help when an unambiguous prefix sum is detected

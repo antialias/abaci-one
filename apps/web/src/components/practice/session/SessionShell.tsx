@@ -529,10 +529,33 @@ function KindSession({
     setInterlude(null)
   }, [])
 
+  // The do-over on screen as of the latest render, read when the feedback
+  // delay ends: a dot tapped while the feedback showed sets it (set during
+  // render, like the lifecycle's kind ref; it holds the kid's latest tap,
+  // not a plan the screen waits for)
+  const latestRedoRef = useRef(redoState)
+  latestRedoRef.current = redoState
+
+  /**
+   * Whether a do-over other than `answered` (the one just answered, if the
+   * try was one) became active while the feedback showed: then it takes the
+   * screen, as the lifecycle's active item, and the advance yields to it.
+   */
+  const doOverTappedSince = useCallback((answered: ActiveRedo | null) => {
+    const now = latestRedoRef.current
+    if (!now?.isActive) return false
+    return !answered || now.partIndex !== answered.partIndex || now.itemId !== answered.itemId
+  }, [])
+
   // Where a try goes after its feedback: slide to the next item, or, with
-  // none, hand off to the session state (load whatever the plan shows)
+  // none, hand off to the session state (load whatever the plan shows). A
+  // do-over tapped meanwhile wins: hand off, and the lifecycle loads it.
   const enactAdvance = useCallback(
-    (next: unknown | null) => {
+    (next: unknown | null, answered: ActiveRedo | null) => {
+      if (doOverTappedSince(answered)) {
+        clearToLoading()
+        return
+      }
       if (next) {
         slidePending.current = true
         startTransition(() => next)
@@ -540,7 +563,7 @@ function KindSession({
       }
       clearToLoading()
     },
-    [startTransition, clearToLoading]
+    [startTransition, clearToLoading, doOverTappedSince]
   )
 
   // The submit path: the verdict on screen, the write, and where the screen
@@ -632,8 +655,10 @@ function KindSession({
       // Wait for feedback display (UI pacing), then advance
       setTimeout(
         () => {
-          enactAdvance(next)
-          if (isDoOver) {
+          // A dot tapped during the feedback is a new do-over: it stays
+          const tapped = doOverTappedSince(isDoOver ? redoState : null)
+          enactAdvance(next, isDoOver ? redoState : null)
+          if (isDoOver && !tapped) {
             onRedoComplete?.()
           }
         },
@@ -656,6 +681,7 @@ function KindSession({
       redoState,
       redoOriginalWasCorrect,
       onRedoComplete,
+      doOverTappedSince,
     ]
   )
 
@@ -687,14 +713,21 @@ function KindSession({
       const write = onAnswer(result)
       completeSubmit('incorrect')
 
-      // The next item from the plan the write returned, shown in place (a
-      // skip never slid); none hands off to the plan (the part ended, a new
-      // round starts, or the write failed and the page resyncs)
-      const next = tryItemOfTarget(chooseAdvanceTarget(answered, await write))
+      // A write that failed or was dropped resolves null: the page has
+      // resynced the screen (resyncRequest), and the kid's fresh attempt is
+      // left alone
+      const after = await write
+      if (!after) return
 
-      // Advance after showing the answer
+      // The next item from the plan the write returned, shown in place (a
+      // skip never slid); none hands off to the plan (the part ended or a new
+      // round starts)
+      const next = tryItemOfTarget(chooseAdvanceTarget(answered, after))
+
+      // Advance after showing the answer; a do-over tapped meanwhile wins
+      // (hand off, and the lifecycle loads it as its active item)
       setTimeout(() => {
-        if (next) {
+        if (next && !doOverTappedSince(null)) {
           load(next)
         } else {
           clearToLoading()
@@ -713,6 +746,7 @@ function KindSession({
       tryItemOfTarget,
       load,
       clearToLoading,
+      doOverTappedSince,
     ]
   )
 
@@ -840,6 +874,7 @@ function KindSession({
         feedback={feedback}
         redo={redoState ?? null}
         itemKey={activeItem?.key}
+        shown={shown}
         slidePending={slidePending}
         handle={viewHandle}
         hidden={isLoading || isBrowseModeProp}

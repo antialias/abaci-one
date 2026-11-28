@@ -119,6 +119,8 @@ export interface ItemViewProps<I, A extends TryClock, O, X extends EntryPhase<A>
   redo: ActiveRedo | null
   /** Key of the item the lifecycle follows (changes when the plan or a do-over names another) */
   itemKey: string | undefined
+  /** The item the plan shows (the shell's one derivation of it); null when it shows none */
+  shown: ShownItem | null
   /** Set by the shell just before a slide to the next item */
   slidePending: MutableRefObject<boolean>
   handle: MutableRefObject<ItemViewHandle | null>
