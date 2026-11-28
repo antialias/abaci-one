@@ -844,7 +844,9 @@ R1 (server): `src/db/schema/practice-glitches.ts` (+ `index.ts`), `drizzle/0150_
 
 Retired: the modal `That one didn't save` / `No problem, let's keep going!`.
 
-##### A23.10 Open questions for the owner (three)
+##### A23.10 Open questions for the owner (three; answered 2026-11-28)
+
+**Owner's answers, 2026-11-28: all three as recommended.** Q1: pending answers survive a reload, in `sessionStorage`. Q2: the hold line N6 is shown. Q3: the observer's notes wait for K5b.
 
 | # | Question | Recommendation |
 |---|---|---|
